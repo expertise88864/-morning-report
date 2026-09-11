@@ -1,94 +1,4 @@
 {
- "geopolitical:hormuz_passage:2026-09": {
-  "first_seen": "2026-09-07",
-  "days": 2,
-  "last_seen": "2026-09-08",
-  "latest_title": "伊朗宣布將在荷姆茲海峽外設立禁區",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "在荷",
-   "外設",
-   "姆茲",
-   "將在",
-   "峽外",
-   "海峽",
-   "禁區",
-   "立禁",
-   "茲海",
-   "荷姆",
-   "設立"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "hormuz_passage",
-  "identity_schema": 14
- },
- "geopolitical:中國大陸:2026-09": {
-  "first_seen": "2026-09-08",
-  "days": 1,
-  "last_seen": "2026-09-08",
-  "latest_title": "中國大陸加強台灣以東海域巡邏、加大對台施壓",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "以東",
-   "加大",
-   "加強",
-   "台施",
-   "域巡",
-   "大對",
-   "對台",
-   "巡邏",
-   "強台",
-   "施壓",
-   "東海",
-   "海域",
-   "灣以"
-  ],
-  "entity": "中國大陸",
-  "subject_basis": "literal",
-  "subjects": [
-   "中國大陸"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-09#d4e2be": {
-  "first_seen": "2026-09-08",
-  "days": 1,
-  "last_seen": "2026-09-08",
-  "latest_title": "美伊軍事衝突升溫並波及油輪",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "並波",
-   "事衝",
-   "伊軍",
-   "升溫",
-   "及油",
-   "油輪",
-   "波及",
-   "溫並",
-   "突升",
-   "美伊",
-   "衝突",
-   "軍事"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:Oil:2026-09": {
   "first_seen": "2026-09-09",
   "days": 2,
@@ -313,6 +223,66 @@
   "subject_basis": "alias",
   "subjects": [
    "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:沙烏地阿拉伯:2026-09": {
+  "first_seen": "2026-09-12",
+  "days": 1,
+  "last_seen": "2026-09-12",
+  "latest_title": "沙烏地阿拉伯輸油命脈遇襲 東西輸油管預防性關閉",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "命脈",
+   "性關",
+   "東西",
+   "油命",
+   "油管",
+   "管預",
+   "脈遇",
+   "西輸",
+   "輸油",
+   "遇襲",
+   "關閉",
+   "防性",
+   "預防"
+  ],
+  "entity": "沙烏地阿拉伯",
+  "subject_basis": "literal",
+  "subjects": [
+   "沙烏地阿拉伯"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:國際油價:2026-09": {
+  "first_seen": "2026-09-12",
+  "days": 1,
+  "last_seen": "2026-09-12",
+  "latest_title": "中東戰事升溫推升國際油價破每桶100美元",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "100",
+   "中東",
+   "事升",
+   "升溫",
+   "戰事",
+   "推升",
+   "東戰",
+   "每桶",
+   "溫推",
+   "破每",
+   "美元"
+  ],
+  "entity": "國際油價",
+  "subject_basis": "literal",
+  "subjects": [
+   "國際油價"
   ],
   "event_type": "geopolitical",
   "action": "",

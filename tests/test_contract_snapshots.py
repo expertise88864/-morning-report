@@ -710,7 +710,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (41, "644cd7938bbe1191"),  # RSS markup and research-period regression fixture.
+    "evidence_schema_version":  (42, "4e1dae901bf454d5"),  # Retained-source publication relations.
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -736,7 +736,7 @@ _FROZEN = {
     #     特化 schema 沒有對應欄位,那一段整個消失(使用者連兩天反映)。
     # v21(2026-08-19 第四批):world_events / 48h 情境 / 敘事變化 /
     #     多空交鋒 / 總經環境 / 在地動態 / primary_target。
-    "output_schema_version":  (28, "c27817bc1f737363"),  # 歷史敘事與匹配來源引用。
+    "output_schema_version":  (29, "5dedbd8c2ab965fa"),  # Source comparisons do not require chronological change.
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -785,11 +785,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (61, "e8563b08edc3a565"),  # Fallback opinions are non-evidence context.
+    "primary_profile_version":  (62, "1a9c5b8c65019d00"),  # Publication chronology is not event causality.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (25, "6abb8a2b14c84a3c"),  # Same provenance rule on legacy path.
+    "fallback_profile_version":  (26, "dde1c94078ccc677"),  # Same temporal distinction on legacy path.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -834,7 +834,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (32, "a1c30f67da4e748c"),  # Supporting risks outside conclusion, partial watches retained.
+    "renderer_version":       (33, "7c1f4ee0a0a4458f"),  # Taipei dates and actual timestamp ordering.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

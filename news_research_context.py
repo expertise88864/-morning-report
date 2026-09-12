@@ -14,15 +14,18 @@ import news_memory as memory
 import news_coverage
 import news_normalize
 import source_registry
+import news_temporal_context as temporal
 
 MAX_HISTORY_CHARS = 36_000
 MAX_DEEP_TOPICS = 3
 RESEARCH_RULES = """跨週研究規則：
 所有重要新聞先對照 research.contexts 與 historical_sources；沒有匹配歷史就不要編前情。
+contexts.publication_relations 按台北報導日期比較當期文章：earlier_reporting=較早報導，same_day_reporting=同日報導，later_reporting=較晚報導，unknown=日期不足。
+同日來源可比較共同說法與分歧，不得僅因有多篇報導就寫成跨日演變；較晚來源不得倒置成前因。報導日不等於事件發生日，較早報導也不自動證明因果或新增進展。
 historical_sources 是帶日期的原始報導摘錄，不是本報觀點，也不保證報導內容為真。
 歷史引用只能支持「當時報導了什麼」；不能單獨證明今天仍成立、今天的價格或方向。
 history: ID 僅能放在 top_news_analysis[].historical_context.evidence_ids，其他引用欄位只用當期證據。
-historical_context.evolution 寫一至兩句「先前→本次新增或推翻」，evidence_ids 照抄匹配的歷史 ID。
+historical_context.evolution 寫一至兩句來源對照：僅較早報導可寫前情與本次是否新增或推翻，同日寫共同說法或分歧，較晚寫後續報導對照，日期不明不敘述先後；evidence_ids 照抄匹配的歷史 ID。沒有可證明的變化就明說未見新增證據。
 只有標題時不得補出未載明的機制；沒有更正證據，不可宣稱先前說法已被否認。
 research.deep_topics 是 Python 選出的最多三個深入主題；在原有新聞段落深入，不另增重複章節。
 逐題檢視 perspectives/questions：原始承諾與實際進度、公司/客戶/供應商/監管者角度、反證。
@@ -91,6 +94,7 @@ def build(packet: dict, archive: list) -> dict:
         context["evidence_ids"] = [eid for eid in ids if eid in kept]
         context["omitted_for_budget"] = len(ids) - len(context["evidence_ids"])
     packet["historical_sources"] = list(kept.values())
+    temporal.annotate(contexts, news, kept)
     packet["research"] = {"version": 1, "contexts": contexts, "deep_topics": deep,
                           "history_chars": used_chars, "history_char_limit": MAX_HISTORY_CHARS,
                           "archive_observations": len(archive),
@@ -189,7 +193,9 @@ def advisories(obj: dict, packet: dict) -> list:
     for sid, row in rows.items():
         if ((contexts.get(sid) or {}).get("evidence_ids") and
                 not (row.get("historical_context") or {}).get("evolution")):
-            out.append(f"{sid} 有可追溯的跨日報導，請補 historical_context 的前情與本次增量並引用")
+            label = temporal.heading(row, packet, contexts[sid]['evidence_ids'])
+            out.append(f"{sid} {label}請補 historical_context 的來源對照並引用；"
+                       "僅較早來源可說前情，同日比較共同說法與分歧，較晚不可倒作前因，未知日期不排先後。")
     for topic in research.get("deep_topics") or []:
         if topic["cluster_id"] in accepted_dismissals(obj, packet):
             continue
@@ -217,6 +223,7 @@ def metrics(obj: dict, packet: dict) -> dict:
         grounded += bool(block.get("evolution") and ids and all(i in allowed and i in valid_ids for i in ids))
     rendered_ids = {r["source_item_id"] for r in rows}
     return {"analyzed_articles": len(rows), "with_matched_history": len(with_history),
+            "publication_relation_articles": temporal.counts(contexts),
             "with_valid_history_citations": grounded,
             "deep_topics_expected": len(research.get("deep_topics") or []),
             "deep_topics_analyzed": sum(bool(rendered_ids.intersection(t["member_source_ids"]))
@@ -262,13 +269,13 @@ def history_prose(row: dict, packet: dict) -> str:
         if not ids or any(i not in allowed or i not in valid for i in ids):
             return ""  # Direct rendering must not bypass the validation boundary.
     else:
-        ids = sorted(allowed.intersection(valid), key=lambda i: sources[i]["published_at"])
+        ids = sorted(allowed.intersection(valid), key=lambda i: memory.timestamp(sources[i]["published_at"]))
         if not ids:
             return ""
         ids = list(dict.fromkeys([ids[0], ids[-1]]))
-        evolution = '；'.join(sources[i]['published_at'][:10] + ' 曾報導「' +
+        evolution = '；'.join(temporal.display_day(sources[i]) + ' 報導「' +
                              re.sub(r"[\[\]<>*_`#]", '', sources[i]['title'])[:70] + '」' for i in ids)
         evolution += '；以上為當時報導，非今日新進展。'
-    links = [f"[{sources[i]['published_at'][:10]} 原始報導]({quote(sources[i]['url'], safe=':/?=&%')})"
+    links = [f"[{temporal.display_day(sources[i])} 原始報導]({quote(sources[i]['url'], safe=':/?=&%')})"
              for i in ids[:2]]
-    return "前情與變化:" + evolution.rstrip("。") + "。" + " ".join(links)
+    return temporal.heading(row, packet, ids) + evolution.rstrip("。") + "。" + " ".join(links)

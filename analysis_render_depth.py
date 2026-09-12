@@ -133,7 +133,7 @@ def news_subject(n: dict, packet=None) -> dict:
                 continue
             name, blurb = _s(row.get("name")), _blurb(row)
             label = f"{name}（{code}" + (f",{blurb}" if blurb else "") + "）"
-            return {"label": label, "industry": _s(row.get("industry")), "name": name}
+            return {"label": label, "industry": str(row.get("industry") or "").strip(), "name": name}
         # 外國個股:範疇問 registry,別名 = 宣告的顯示名 + 代號本身。
         if _ir is None or _ne is None:
             continue

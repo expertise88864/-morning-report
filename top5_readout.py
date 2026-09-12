@@ -26,6 +26,7 @@ Prompt 改再多也碰不到這裡 —— 這一塊是 Python 直接排版的,�
 """
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 #: 量比門檻。與卡片註腳寫的一致(< 0.8 量縮、> 1.5 放量)——
@@ -40,7 +41,8 @@ def _num(v) -> Optional[float]:
     """數值就回它自己,否則 `None`。**`bool` 不是數值。**"""
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return None
-    return float(v)
+    value = float(v)
+    return value if math.isfinite(value) else None
 
 
 def _chips(foreign_streak, invest_streak, tdcc_wow) -> str:
@@ -56,14 +58,12 @@ def _chips(foreign_streak, invest_streak, tdcc_wow) -> str:
     same_way = (fs > 0) == (is_ > 0) if (abs(fs) >= 3 and abs(is_) >= 2) else True
     line = "、".join(who)
     if not same_way:
-        return f"{line},兩邊方向相反,法人內部沒有共識。"
+        return f"{line},兩者連續買賣方向相反。"
     if wow is not None and abs(wow) >= TDCC_MOVE:
-        # 大戶與法人同向 = 籌碼集中;反向 = 有人在對手邊接
+        # 法人連日買賣與大戶週持股比例不是同一期間或互斥群體。
         holder_up = wow > 0
-        if holder_up == (fs > 0 or is_ > 0):
-            return f"{line},大戶持股同步{'增加' if holder_up else '減少'},籌碼往同一個方向集中。"
-        return (f"{line},但大戶持股反而{'增加' if holder_up else '減少'}"
-                f"{abs(wow):.2f} 個百分點,買盤與大戶站在對邊。")
+        return (f"{line}；大戶持股比例較前週{'增加' if holder_up else '減少'}"
+                f"{abs(wow):.2f} 個百分點。兩者統計期間與對象不同,不能據此判定互為交易對手。")
     return f"{line}。"
 
 
@@ -75,9 +75,9 @@ def _volume(vol_ratio, day_pct) -> str:
     if vr < VOL_QUIET:
         if dp is not None and dp > 0:
             return f"成交量只有近 20 日均量的 {vr:.2f} 倍,漲勢沒有量能跟上。"
-        return f"成交量只有近 20 日均量的 {vr:.2f} 倍,買賣雙方都在觀望。"
+        return f"成交量只有近 20 日均量的 {vr:.2f} 倍。"
     if vr > VOL_HEAVY:
-        return f"成交量放大到近 20 日均量的 {vr:.2f} 倍,追價成本已經墊高。"
+        return f"成交量放大到近 20 日均量的 {vr:.2f} 倍,單憑量比不能判定買賣方向。"
     return ""
 
 
@@ -86,15 +86,15 @@ def _value(per, div_yield, rev_yoy, is_financial: bool = False) -> str:
     p, y, r = _num(per), _num(div_yield), _num(rev_yoy)
     bits = []
     if p is not None and 0 < p < 12:
-        bits.append(f"本益比 {p:.1f} 倍偏低")
+        bits.append(f"本益比 {p:.1f} 倍")
     elif p is not None and p > 25:
-        bits.append(f"本益比 {p:.1f} 倍偏高")
+        bits.append(f"本益比 {p:.1f} 倍")
     if y is not None and y >= 5:
-        bits.append(f"殖利率 {y:.1f}% 有撐")
+        bits.append(f"殖利率 {y:.1f}%")
     if not bits:
         return ""
     if r is not None and not is_financial:
-        grow = "營收仍在成長" if r > 0 else "但營收年減"
+        grow = f"營收年增 {r:.1f}%" if r > 0 else (f"營收年減 {abs(r):.1f}%" if r < 0 else "營收與去年同期持平")
         return "、".join(bits) + f",{grow}。"
     return "、".join(bits) + "。"
 

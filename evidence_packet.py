@@ -440,7 +440,7 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     _prompt_recap = packet["market"].get("ANALYSIS_RECAP")
     if isinstance(_prompt_recap, dict):
         packet["market"]["ANALYSIS_RECAP"] = _rc.prompt_recap(
-            _prompt_recap, str(packet.get("target_session_date") or ""))
+            _prompt_recap, str(packet.get("target_session_date") or ""), _prev_session)
     packet["yesterday_watch"] = _rc.usable_watch(
         packet["market"].get("ANALYSIS_RECAP"),
         str(packet.get("target_session_date") or ""))

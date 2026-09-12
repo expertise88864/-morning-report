@@ -332,9 +332,8 @@ def assess(manifest, *, mode: str = "watchdog",
     # 回 2。誤報是這個模組最該避免的東西(見模組 docstring)。
     problems = _dig(m, "llm", "luna_problems", default=[]) or []
     if problems and not digest and origin != _ao.LUNA_SPECIALIZED:
-        add("luna_rejected", "defect",
-            f"特化輸出被驗證擋下 {len(problems)} 條:"
-            + "；".join(str(p) for p in problems[:3]))
+        from quality_rejection_detail import describe
+        add("luna_rejected", "defect", describe(m.get("llm") or {}))
 
     # ---- 3. prompt 宣告了 registry 生不出來的命名空間
     #
@@ -410,6 +409,8 @@ def assess(manifest, *, mode: str = "watchdog",
     # 都是 `False`,而這裡一律報 defect —— 那句話在資料稀薄的日子是假的。
     # 舊的布林 `False` 仍當成失敗(那是會出聲的那一邊)。
     _recap = _dig(m, "llm", "recap_saved")
+    if _dig(m, "llm", "fallback_recap_saved") == "failed":
+        add("fallback_recap_not_saved", "defect", "備援分析已寄出，但其跨日觀點未能保存。")
     if origin == _ao.LUNA_SPECIALIZED and (
             _recap is False or _recap == _arc.FAILED):
         add("recap_not_saved", "defect",

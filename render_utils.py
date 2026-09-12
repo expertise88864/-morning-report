@@ -1011,7 +1011,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
         "<div><table data-mobile-layout='table' style='width:100%;table-layout:fixed;border-collapse:collapse;'>"
         f"<tr>{head}</tr>{''.join(trs)}</table></div>"
         "<div style='font-size:11px;color:#94a3b8;margin-top:6px;'>"
-        "※ 5 日中位 / 相對大盤 / 上漲檔數＝晨報 universe 成分股口徑（相對 &gt;0＝資金相對流入）；"
+        "※ 5 日中位 / 相對大盤 / 上漲檔數＝晨報 universe 成分股口徑（相對 &gt;0＝股價相對表現較強，不代表資金淨流入）；"
         "今日成交占比・法人淨買賣（估）・成交代表＝全市場口徑；代表股按今日成交金額選取，漲跌為單日。"
         "純參考、非買賣訊號。</div></div>")
 

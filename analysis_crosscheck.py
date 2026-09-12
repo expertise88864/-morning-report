@@ -375,6 +375,8 @@ def event_graph_problems(obj, packet) -> list:
     if not isinstance(graph, dict):
         return out                      # 舊呼叫端沒有這一段,不判
     # ── 2) 共同驅動
+    from analysis_contracts import _driver_matches
+
     used = {str(d.get("cluster_id") or "")
             for d in (obj.get("key_drivers") or []) if isinstance(d, dict)}
     # 第二十五輪 P1-6:**「已處理」的身分是 (驅動, 群集)**,不是驅動名稱。
@@ -387,8 +389,9 @@ def event_graph_problems(obj, packet) -> list:
         if not isinstance(g, dict):
             continue
         hit = sorted(used & {str(c) for c in (g.get("cluster_ids") or [])})
-        _handled = any(d == str(g.get("driver") or "") and len(cs) >= 2
-                       and cs <= {str(c) for c in (g.get("cluster_ids") or [])}
+        # Match the reference gate's declared names and complete membership.
+        _handled = any(_driver_matches(d, g) and len(cs) >= 2
+                       and cs == {str(c) for c in (g.get("cluster_ids") or [])}
                        for d, cs in notes)
         if len(hit) >= 2 and not _handled:
             # **訊息要指名對方真正要的那個集合**(2026-08-28 生產):這裡

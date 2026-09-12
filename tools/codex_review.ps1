@@ -71,6 +71,9 @@ function Build-Flags([string]$EffortValue, [string]$Kind = 'exec') {
     # 明確不使用:--ask-for-approval(exec 無此旗標)、--skip-git-repo-check、--ephemeral、--dangerously-*。
     $f = @('--ignore-user-config', '--model', $Model,
            '-c', "model_reasoning_effort=$EffortValue", '-o', $LastMsg)
+    # User-approved Windows implementation; access remains read-only below.
+    # --ignore-user-config otherwise drops the machine's configured sandbox mode.
+    $f += @('-c', 'windows.sandbox=unelevated')
     if ($Kind -eq 'resume') {
         # `codex exec resume` 不接受 --sandbox / --cd:sandbox 改用 config 鍵覆寫,
         # 工作目錄改由呼叫端 Push-Location 進 $RepoRoot 解決。
@@ -185,6 +188,21 @@ files, run tests, builds, linters, package managers, application code, or ad hoc
 probes, and do not use web search, browser, apps, connectors, or external MCP
 tools. End with exactly APPROVE or REQUEST_CHANGES.
 "@
+    if ((Test-Path $LastMsg) -and
+        ((Get-Content $LastMsg -Raw) -match '(?m)^REVIEW_NOT_COMPLETED\s*$')) {
+        $ResumePrompt = @"
+The previous attempt reported REVIEW_NOT_COMPLETED and did not inspect the code.
+Resume the original requested review in this same session, using its original
+task context, base, scope limits, and verification limitations. Inspect actual
+Git state, staged/unstaged changes, branch diff, and relevant untracked files.
+Also include the Windows review launcher correction. Do not approve only the
+launcher or treat restored tool access as a completed implementation review.
+Remain strictly read-only: do not modify files, run tests, builds, linters,
+package managers, application code, or ad hoc probes. Do not use web search,
+browser, apps, connectors, or external MCP tools. If access is still blocked,
+report REVIEW_NOT_COMPLETED. End with exactly APPROVE or REQUEST_CHANGES.
+"@
+    }
 
     $flags = Build-Flags $ResumeEffort 'resume'
     Write-Host "[codex-review] resume session=$Sid effort=$ResumeEffort (pass $ThisPass)"

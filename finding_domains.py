@@ -87,6 +87,7 @@ _FINDING_DOMAINS = {
     "recap_extraction_dead": DOMAIN_CONTENT,
     "recap_not_previous_session": DOMAIN_CONTENT,
     "recap_not_saved": DOMAIN_CONTENT,
+    "fallback_recap_not_saved": DOMAIN_CONTENT,
     "canary_no_fetch_plan": DOMAIN_CONTENT,
     "canary_no_report_kind": DOMAIN_CONTENT,
     "canary_not_specialized": DOMAIN_CONTENT,

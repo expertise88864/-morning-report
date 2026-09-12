@@ -10,6 +10,7 @@ import analysis_depth as ad
 import analysis_recap as rc
 import evidence_packet as ep
 import fixtures_analysis as fx
+import pytest
 
 
 def _packet(news=None, recap=None, date="2026-08-08"):
@@ -308,9 +309,10 @@ def test_a_corrupt_state_is_distinguishable_and_preserved(tmp_path):
     assert rc.usable(got, "2026-08-08") == []      # 降級行為與「沒有」相同
     obj = fx.valid_analysis()
     obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n2")]
-    assert rc.save(f, obj, _packet(date="2026-08-08")) == rc.SAVED
-    assert (tmp_path / "analysis_recap.json.corrupt").exists(), "壞檔被覆寫掉了"
-    assert rc.load(f)["date"] == "2026-08-08"
+    before = f.read_bytes()
+    assert rc.save(f, obj, _packet(date="2026-08-08")) == rc.FAILED
+    assert f.read_bytes() == before
+    assert not (tmp_path / "analysis_recap.json.corrupt").exists()
 
 
 def test_a_missing_state_leaves_no_corrupt_copy(tmp_path):
@@ -321,6 +323,36 @@ def test_a_missing_state_leaves_no_corrupt_copy(tmp_path):
     obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n2")]
     rc.save(f, obj, _packet(date="2026-08-08"))
     assert not (tmp_path / "analysis_recap.json.corrupt").exists()
+
+
+@pytest.mark.parametrize('raw', ['null', '[]', '0', '{"items":{}}',
+                                     '{"watch":["invalid"]}', '{"items":[null]}'])
+def test_invalid_state_shape_is_never_replaced(tmp_path, raw):
+    path = tmp_path / 'recap.json'
+    path.write_text(raw, encoding='utf-8')
+    assert rc.load(path).get('unreadable') is True
+    assert rc.save(path, fx.valid_analysis(), _packet()) == rc.FAILED
+    assert path.read_text(encoding='utf-8') == raw
+    assert rc.ledger_triggers(path) is None
+
+
+def test_read_permission_failure_preserves_existing_history(tmp_path, monkeypatch):
+    from pathlib import Path
+    path = tmp_path / 'recap.json'
+    path.write_text('{"items":[],"watch":[]}', encoding='utf-8')
+    before = path.read_bytes()
+    original = Path.read_text
+
+    def denied(self, *args, **kwargs):
+        if self == path:
+            raise PermissionError('private diagnostic content')
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_text', denied)
+    assert rc.load(path) == {'unreadable': True, 'items': []}
+    assert rc.save(path, fx.valid_analysis(), _packet()) == rc.FAILED
+    assert path.read_bytes() == before
+    assert not path.with_suffix('.tmp').exists()
 
 
 # ------------------------------------------------------------ 生產接線
@@ -1109,10 +1141,10 @@ def test_an_unreadable_ledger_says_it_does_not_know(tmp_path):
     """
     # 沒有檔案 = 沒有帳本 = 確定什麼都沒在追
     assert rc.ledger_triggers(str(tmp_path / "missing.json")) == set()
-    # 壞 JSON:`load()` 回 `{"unreadable": ...}`,裡面沒有 watch → 空集合
+    # 壞 JSON不能當成確定沒有觀察點。
     bad = tmp_path / "bad.json"
     bad.write_text("{ not json", encoding="utf-8")
-    assert rc.ledger_triggers(str(bad)) == set()
+    assert rc.ledger_triggers(str(bad)) is None
 
 
 def test_a_malformed_ledger_field_does_not_raise(tmp_path):

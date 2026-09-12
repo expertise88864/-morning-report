@@ -51,6 +51,7 @@ docstring 寫著「先量再裁」,而量測函式是死程式碼,所以沒有�
 from __future__ import annotations
 
 import json
+import re
 from typing import Optional
 
 #: `price_forecast` 裡**留下來**的標頭欄位。其餘(model_version、
@@ -104,7 +105,12 @@ def _analyzed_codes(packet: dict) -> set:
             str(e) for e in (n.get("entities") or []))
         for r in rows:
             c = str(r.get("code") or "")
-            if c and c in blob:
+            name = str(r.get("name") or "").strip()
+            # News commonly names companies without tickers. Numeric substring
+            # matching would also mistake an order amount for a stock code.
+            code_mentioned = bool(c and re.search(
+                rf"(?<![A-Za-z0-9]){re.escape(c)}(?![A-Za-z0-9])", blob))
+            if code_mentioned or (len(name) >= 2 and name in blob):
                 keep.add(c)
     return keep - {""}
 
@@ -161,17 +167,16 @@ def compact(packet: Optional[dict], *, limit: int) -> tuple:
         news = [n for n in (pk.get("news") or []) if isinstance(n, dict)]
         info = pk.get("news_clusters") or {}
         need = set(info.get("required_cluster_ids") or ())
+        # Every undismissed macro release is required in all scenario branches;
+        # its evidence must survive even when it is outside the top-event list.
+        graph = pk.get("event_graph") or {}
+        need.update(graph.get("macro_release_cluster_ids") or ())
         keep_ids: set = set()
         for c in (info.get("clusters") or []):
             if str(c.get("cluster_id") or "") in need:
                 keep_ids.update(str(m) for m in (c.get("member_source_ids") or ()))
         # **`top_events` 是 `event_score.rank()` 的回傳 dict**,不是 list ——
         # 它給的是 `top_cluster_ids`,成員要回 `news_clusters` 查。
-        # 上一版把它當 list 迭代:dict 迭代出的是 `"ranked"`、`"weights"`
-        # 這些**字串鍵**,下一行 `t.get(...)` 當場 AttributeError,而
-        # 測試 fixture 自己寫成 list-of-dict,兩邊一起錯、一起綠。
-        # 症狀最惡:只有真正需要第三級壓縮的大日子才走到這裡,
-        # 也就是**最需要壓縮的那天**特化路徑整條失敗(外審 P1-3)。
         top = pk.get("top_events")
         top_ids = set(str(i) for i in ((top or {}).get("top_cluster_ids") or ())
                       ) if isinstance(top, dict) else set()

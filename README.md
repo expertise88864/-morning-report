@@ -250,7 +250,7 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
 # 測試工具(pytest / PyYAML / ruff)已從 production 依賴拆出來,
 # 本機開發裝 dev 這一份(它自己會帶進 requirements.txt)。
 pip install -r requirements-dev.txt
-pytest -q                        # 3,200+ 測試,不連網、不寄信
+pytest -q                        # 3,600+ 測試,不連網、不寄信
 
 # 完整流程預覽(連真實資料,不寄信);PowerShell:
 $env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."

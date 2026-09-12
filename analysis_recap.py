@@ -450,7 +450,7 @@ def ledger_triggers(path):
     # 這個 helper 的契約是「問不到就說不知道」,不是「問不到就毀掉晨報」。
     try:
         rec = load(path)
-        if not isinstance(rec, dict):
+        if not isinstance(rec, dict) or rec.get("unreadable"):
             return None
         return {str(w.get("trigger_key")
                         or trigger_key(w.get("trigger_full") or w.get("trigger")))
@@ -491,6 +491,8 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
     try:
         rec = extract(analysis_obj, packet)
         prior = load(path)
+        if prior.get("unreadable"):
+            raise ValueError("existing recap unreadable; refusing to overwrite history")
         _prior_watch = _watch_ledger(prior)
         _today = str(rec.get("date") or "")
         rec["watch"], rec["watch_seq"], _watch_dropped = carry_watch(
@@ -527,17 +529,6 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
         import pathlib
         p = pathlib.Path(str(path))
         p.parent.mkdir(parents=True, exist_ok=True)
-        # 壞檔先留副本再覆寫(外審補審 F7)—— 覆寫掉就查不出昨天
-        # 為什麼壞了,而那正是隔天要診斷的東西。
-        # **只碰普通檔案**:第一版寫 `p.exists()`,而路徑是目錄時
-        # 「讀不動」也成立 → 直接把那個目錄改名。修 F7 的動作本身
-        # 變成破壞性操作(測試當場把 pytest 的 tmp 目錄搬走)。
-        # 這個 repo 記過:一個修正可能比原本的缺陷更糟。
-        if p.is_file():
-            try:
-                json.loads(p.read_text(encoding="utf-8"))
-            except Exception:               # noqa: BLE001
-                p.replace(p.with_suffix(".json.corrupt"))
         tmp = p.with_suffix(".tmp")
         tmp.write_text(json.dumps(rec, ensure_ascii=False, indent=1),
                        encoding="utf-8")
@@ -553,18 +544,24 @@ def load(path) -> dict:
 
     先前兩者都靜靜回 `{}`,然後今天的 `save()` 把壞檔原子覆寫掉 ——
     連「昨天壞過」都查不到。現在壞檔回 `{"unreadable": ...}`:
-    昨日觀點一樣不可用(降級相同),但 `save()` 會先留一份 `.corrupt`
-    副本,而呼叫端看得出兩者的差別。
+    昨日觀點一樣不可用(降級相同),但 `save()` 必須保留原檔不覆寫,
+    而呼叫端看得出兩者的差別。
     """
     import pathlib
     p = pathlib.Path(str(path))
-    if not p.is_file():
-        return {}          # 不存在、或根本不是檔案 —— 都當成「沒有昨日觀點」
     try:
-        return json.loads(p.read_text(encoding="utf-8")) or {}
+        rec = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(rec, dict):
+            raise ValueError("recap must be an object")
+        for key in ("items", "watch"):
+            rows = rec.get(key, [])
+            if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+                raise ValueError("invalid recap collection")
+        return rec
+    except FileNotFoundError:
+        return {}
     except Exception as e:                  # noqa: BLE001
-        print(f"[recap] 昨日觀點 state 讀不動({e});今日照常產生新的,"
-              f"壞檔會另存 .corrupt", file=sys.stderr)
+        print(f"[recap] 昨日觀點 state 讀不動({type(e).__name__});保留原檔,不覆寫", file=sys.stderr)
         # **不把原始例外字串放進去**(第二輪外審 F5):這個 dict 會進
         # `quotes["ANALYSIS_RECAP"]` → packet → prompt。例外訊息含路徑
         # 與內文片段,既是雜訊也是一條不必要的注入面。
@@ -572,8 +569,13 @@ def load(path) -> dict:
         return {"unreadable": True, "items": []}
 
 
-def prompt_recap(recap: dict, target_session_date: str) -> dict:
+def prompt_recap(recap: dict, target_session_date: str, previous_session: str = "") -> dict:
     """Project an expanded ledger for prompts without changing persisted state."""
+    recap = dict(recap)
+    from fallback_recap import for_prompt
+    legacy = for_prompt(recap.pop("legacy_report", None), previous_session, target_session_date)
+    if legacy.get("items"):
+        recap["legacy_report"] = legacy
     if len(recap.get("watch") or []) <= WATCH_OPEN_MAX:
         return dict(recap)
     selected = {w["watch_id"] for w in usable_watch(recap, target_session_date)}

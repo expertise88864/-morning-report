@@ -36,8 +36,18 @@ def test_plural_and_derived_comment_titles_do_not_displace_research():
 
 
 def test_research_uses_of_correction_and_comments_remain_eligible():
-    titles = ['Correction of myopia after surgery', 'Corrections of refractive errors',
+    titles = ['Correction for ocular magnification', 'Correction in OCT measurements',
+              'Correction of myopia after surgery', 'Corrections of refractive errors',
               'Comments from patients in a randomized trial']
     records = {str(i): {'title': title, 'pubtype': ['Journal Article']}
                for i, title in enumerate(titles)}
-    assert [r['title'] for r in journal_selection.articles(list(records), records, 'AJO', 3)] == titles
+    assert [r['title'] for r in journal_selection.articles(list(records), records, 'AJO', 5)] == titles
+
+
+def test_untyped_bare_and_relational_notices_do_not_displace_research():
+    titles = ['Correction.', 'Commentary', 'Corrigendum', 'Corrigendum: Trial',
+              'Corrigendum to Trial [J 2025;1:1-2]', 'Correction for Smith et al.',
+              'Correction in the reported dose', 'Comment in trial', 'Comments regarding trial',
+              'Correction re trial', 'Original trial']
+    records = {str(i): {'title': title} for i, title in enumerate(titles)}
+    assert [r['title'] for r in journal_selection.articles(list(records), records, 'AJO', 3)] == ['Original trial']

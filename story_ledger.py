@@ -960,6 +960,7 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
     ev_period = _episodic_period(ev)
     subject_grams = _content_bigrams(subject)
     best_key, best_score = "", 0.0
+    same_entities = {}  # Per invocation: alias changes and later calls cannot see stale results.
     for key, story in by_key.items():
         cand_ent = str(story.get("entity") or "")
         # 批#71:**「有掛代號」與「沒掛代號」的同一則新聞必須互相比得到。**
@@ -974,8 +975,11 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
         # 2026-08-20 P1-2:昨天的 story entity=俄羅斯、今天事件 entity=Russia
         # —— 原樣比對會開新 story,續報接不回去。同主體判準只有一份
         # (subject_identity);不同主體照舊擋。
-        if ent and cand_ent and not _si.same_subject(cand_ent, ent):
-            continue
+        if ent and cand_ent:
+            if cand_ent not in same_entities:
+                same_entities[cand_ent] = _si.same_subject(cand_ent, ent)
+            if not same_entities[cand_ent]:
+                continue
         pair_threshold = (threshold if (ent and cand_ent)
                           else STORY_MATCH_THRESHOLD_NO_ENTITY)
         # r1(Codex,P1):**期別型事件跨期不得合併**。「公告本公司115年6月份

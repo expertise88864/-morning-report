@@ -35,7 +35,9 @@ def test_a_rising_price_on_shrinking_volume_is_called_out():
 def test_foreign_buying_against_shrinking_large_holders_is_called_out():
     """**外資買、大戶減** —— 不講出來就會被當成籌碼一致。"""
     out = t5.readout({"foreign_streak": 5, "tdcc_wow_pct": -0.80})
-    assert "站在對邊" in out, out
+    assert "較前週減少0.80 個百分點" in out, out
+    assert "統計期間與對象不同" in out
+    assert "站在對邊" not in out
 
 
 def test_institutions_disagreeing_with_each_other_is_called_out():
@@ -47,8 +49,9 @@ def test_institutions_disagreeing_with_each_other_is_called_out():
 def test_agreement_is_described_without_being_dressed_up():
     """反向:一致時就說一致,不加碼形容。"""
     out = t5.readout(_HUAHANG)
-    assert "籌碼往同一個方向集中" in out
-    assert "追價成本已經墊高" in out, "放量沒有被指出來"
+    assert "較前週增加1.07 個百分點" in out
+    assert "成交量放大到近 20 日均量的 1.80 倍" in out
+    assert "追價成本" not in out
 
 
 # ---------------------------------------------------------------- 不得變成建議
@@ -110,7 +113,7 @@ def test_the_thresholds_match_the_card_footnote():
 def test_it_reads_tdcc_from_either_source():
     """大戶週變化在兩個 dict 裡都可能出現;取不到就當沒有,不得拋。"""
     a = t5.readout({"foreign_streak": 4}, {"tdcc_wow_pct": 0.9})
-    assert "集中" in a, a
+    assert "較前週增加0.90 個百分點" in a, a
     assert t5.readout({"foreign_streak": 4}) == "外資連4天買。"
 
 

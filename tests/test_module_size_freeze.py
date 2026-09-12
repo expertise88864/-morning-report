@@ -193,6 +193,7 @@ MODULE_CEILINGS = {
     "news_memory.py": 330,
     "news_research_context.py": 310,
     "news_temporal_context.py": 65,
+    "podcast_dates.py": 65,
     "news_research_runtime.py": 250,
     "week_review.py": 250,
     # 2026-09-06: candidate delivery gate and offline contract tests are new root

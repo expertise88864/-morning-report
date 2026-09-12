@@ -22064,7 +22064,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     podcast_html = _safe_block(
         "Podcast", _render_podcast_html,
         _pod_eps_init, quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib,
-        max_episodes=max(1, len(_pod_eps_init)))
+        max_episodes=max(1, len(_pod_eps_init)), as_of=report_date)
     weather_html = _safe_block("天氣", _render_weather_html,
                                quotes.get("WEATHER") or [],
                                quotes.get("SUSPENSION_NEWS") or [],
@@ -23196,7 +23196,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                         if _estimated_email_kb(html) <= LIMIT_KB:
                             break
                         podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
-                                                            max_episodes=cap, compact_points=pts)
+                                                            max_episodes=cap, compact_points=pts, as_of=report_date)
                         podcast_shown_n = min(cap, len(podcast_eps))
                         reduced = True
                         html = _assemble()
@@ -23232,7 +23232,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 break
             podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
                                                 max_episodes=podcast_shown_n,
-                                                compact_points=_pts)
+                                                compact_points=_pts, as_of=report_date)
             html = _assemble()
         _pts_floor = _PODCAST_KEEP_COMPACT_STEPS[-1]
         # 一次只減 1 集:減 2 會在「3 集超標、2 集剛好塞得下」時直接跳到 1 集,
@@ -23241,7 +23241,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             podcast_shown_n -= 1
             podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
                                                 max_episodes=podcast_shown_n,
-                                                compact_points=_pts_floor)
+                                                compact_points=_pts_floor, as_of=report_date)
             html = _assemble()
         if _estimated_email_kb(html) > LIMIT_KB:
             print(f"[render] keep 模式已壓到 {podcast_shown_n} 集 × {_pts_floor} 條仍偏長",
@@ -24540,7 +24540,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # 若沿用 renderer 預設 14 集上限卻對 deliver_report 傳入完整 podcast_eps,第 15 集起會被
     # 誤標 shown 卻從未出現在信中;週末信每週僅一次、集在 96h 內過期,等於永久遺失(Codex review)。
     podcast_html = _render_podcast_html(podcast_eps, [], _htmllib,
-                                        max_episodes=max(1, len(podcast_eps)))
+                                        max_episodes=max(1, len(podcast_eps)), as_of=now_tpe)
     journals_html = _render_journals_html(journals or [], _htmllib)
     calendar_html = _render_event_calendar_html(calendar or [])
     local_news_html = _render_local_news_html(local_news or {})

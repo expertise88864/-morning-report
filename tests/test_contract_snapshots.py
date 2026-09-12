@@ -44,6 +44,7 @@ import analysis_schema as sch
 import evidence_packet as ep
 import llm_postprocess as lp
 import prompt_profiles as pp
+import render_utils as ru
 
 # ---------------------------------------------------------------- 固定輸入
 
@@ -592,7 +593,11 @@ def _behaviour() -> dict:
         # 這個 repo 已經栽過同一形狀兩次(legacy prompt 那兩層)。
         "renderer_version": _sha([ar.render(_ANALYSIS),
                                   ar.render(_render_case(pk), pk), _financial_render_probe(),
-                                  _research_probe()["render"]]),
+                                  _research_probe()["render"],
+                                  [ru._episode_age_tag({'published': date}, '2026-09-12 (Sat)')
+                                   for date in ('Tue, 01 Sep 2026 00:00:00 GMT',
+                                                '2026-09-11T18:00:00Z', '',
+                                                '2026-09-13T00:00:00+08:00')]]),
         # **接受契約要用正反案例量**(第十三輪 P1-3)。只餵合格輸入的話,
         # 把規則放寬到全部放行,雜湊照樣不變 —— 那種快照量不到「擋不擋」。
         # v3:接受政策含「深度加深」的觸發條件 —— depth_advisories 的行為
@@ -834,7 +839,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (33, "7c1f4ee0a0a4458f"),  # Taipei dates and actual timestamp ordering.
+    "renderer_version":       (34, "ad73b569fe920936"),  # RSS publication dates with fixed report clock.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

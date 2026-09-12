@@ -1164,8 +1164,9 @@ def test_run_weekend_digest_renders_and_marks_all_loaded_episodes(monkeypatch):
     captured = {}
     _stub_weekend_sources(monkeypatch, podcast=eps)
 
-    def _capture_render(episodes, snapshot, _htmllib, *, max_episodes=14, compact_points=None):
+    def _capture_render(episodes, snapshot, _htmllib, *, max_episodes=14, compact_points=None, as_of=None):
         captured["max_episodes"] = max_episodes
+        captured["as_of"] = as_of
         return "<div>pod</div>"
     monkeypatch.setattr(mr, "_render_podcast_html", _capture_render)
     monkeypatch.setattr(mr, "archive_report_html", lambda *a, **k: None)
@@ -1176,6 +1177,7 @@ def test_run_weekend_digest_renders_and_marks_all_loaded_episodes(monkeypatch):
     monkeypatch.setattr(mr, "_git_commit_and_push_state", lambda *a, **k: None)
 
     rc = mr.run_weekend_digest(dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE))
+    assert captured["as_of"] == dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE)
 
     assert rc == 0
     # renderer 被要求渲染全部 16 集(非預設 14 上限)

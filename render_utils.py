@@ -847,7 +847,7 @@ def _podcast_ticker_crosscheck(t: dict, snapshot: list[dict]) -> str:
     return f"{tag}({'、'.join(facts)})"
 
 
-def _episode_age_tag(ep: dict) -> str:
+def _episode_age_tag(ep: dict, as_of=None) -> str:
     """節目發布日 + 過舊提示。
 
     2026-07-27 實信:財經M平方 EP.208 講「台股創單日最大漲點」「高檔震盪」,
@@ -855,26 +855,13 @@ def _episode_age_tag(ep: dict) -> str:
     這不是 bug(podcast 本來就有時間差,收錄取決於節目排程),但**沒標日期
     就看不出它在講哪一天**。標出發布日;超過一週再加一句提示。
     """
-    import datetime as _dt
-    raw = str(ep.get("published") or "").strip()
-    if not raw:
-        return ""
-    try:
-        d = _dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return ""
-    if d.tzinfo is not None:
-        d = d.astimezone(_dt.timezone(_dt.timedelta(hours=8)))
-    now = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=8)))
-    days = (now.date() - d.date()).days
-    stamp = d.strftime("%m/%d")
-    if days >= 7:
-        return f" ・{stamp} 錄製（約 {days} 天前，內容可能已非當前盤勢）"
-    return f" ・{stamp}"
+    from podcast_dates import age_tag
+    return age_tag(ep, as_of)
 
 
 def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
-                         max_episodes: int = 14, compact_points: Optional[int] = None) -> str:
+                         max_episodes: int = 14, compact_points: Optional[int] = None,
+                         as_of=None) -> str:
     """「Podcast 重點」卡片:每集重點摘要 + 個股觀點與本報資料對照。
     max_episodes / compact_points 供 102KB 超標時「局部縮減」(先減集數/條數)使用,
     預設維持原行為(14 集、台系 15 條)。"""
@@ -925,7 +912,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
             f"{htmllib.escape(str(ep.get('show', '')))}"
             f"<span style='font-weight:400;color:#64748b;font-size:12px;'> ・ "
             f"{htmllib.escape(str(ep.get('title', ''))[:60])}"
-            f"{_episode_age_tag(ep)}</span></div>"
+            f"{_episode_age_tag(ep, as_of)}</span></div>"
             f"<ul style='margin:8px 0;padding-left:20px;font-size:13px;color:#1f2937;"
             f"line-height:1.7;'>{points}</ul>"
             f"{ticker_rows}{extras}</div>")

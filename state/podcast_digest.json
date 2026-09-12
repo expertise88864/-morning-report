@@ -6467,6 +6467,64 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "a089255b-32f1-4957-af7d-4c5b3ab018f4",
+        "title": "AI Kills Everybody or Doomer Psyop? OpenAI's Math Breakthrough, Nike's $200B Collapse",
+        "published": "Fri, 11 Sep 2026 23:32:00 +0000",
+        "processed_at": "2026-09-12T06:31:03Z",
+        "digest": {
+          "summary_points": [
+            "Sacks 主張這位 Anthropic 前研究員的辭職風波是「一場精心策劃的末日論心理戰」：該帳號毫無追蹤者與歷史貼文、WSJ 在推文風暴前幾分鐘就發稿（embargo 洩漏），且貼文在 15 分鐘內被三家遊說團體（Encode AI、AI Policy Network、AI Futures Project）同步放大，而這三家都由 Anthropic A 輪共同領投人 Jaan Tallinn 資助——目的是推聯邦 AI 監管機構（FDA AI），最終目標是禁止開源模型。",
+            "Sacks 認為此事直接衝擊 Anthropic 的 IPO：真正有法律殺傷力的不是離職者的推文，而是仍在職的對齊科學主管 Evan Hubinger 附和並加碼「十年內滅絕機率逾 10%」，等於自家高層承認核心產品未解且可能毀滅文明，形成 S1 揭露與產品責任的兩難；Anthropic 只能二選一：切割此人，或承認其說法而落入 Bernie Sanders 的停止開發立場。",
+            "Chamath 指出整個末日論劇本的核心是「以生存威脅換取集中控制權」——從宗教、核武到 COVID 皆然；而開源是這場權力遊戲的真正標靶，因為開源權重一旦釋出就無法被中央監控與回滾，FDA AI 最終會以「一視同仁的標準」變相禁止開源，造就與政府結盟的雙頭壟斷。",
+            "Friedberg 把 AI 末日論類比為歷史上的群體恐慌（Al Gore 的 IPCC 預測、Fauci 的 COVID、三哩島核災），並列舉末日論者戰績 0 勝 4 敗：GPT-2 太危險、推理模型太危險、AI 將癱瘓銀行系統、白領失業潮與失業率 10-15% 全都沒發生。",
+            "Friedberg 解讀 OpenAI 解出 Navier-Stokes 相關難題的意義：這不是 AI 的神來一筆，而是 1 萬個 agent、1300 億 output token 的暴力窮舉，換算約 5 萬至 50 萬人年的工作量；結論是 AI 是「人類槓桿工具」而非凌駕人類的神，未來飛機機翼、引擎、能源系統設計可從數年壓縮到數秒。",
+            "Chamath 對企業 AI 資料主權提出警告：OpenAI 自己都承認無法排除數學家使用資料（去識別化後）回饋訓練模型，而 ZDR（零資料保留）只是「瑞士起司般漏洞百出」的表面保障；他預測未來一年會有 CIO 因誤簽標準 API 合約、洩漏核心 IP 而被開除，正解是走 on-prem／自有 VPC 的客製化算力（如 AWS、Nebius、Fireworks），並透露大型 AI 應用客戶正從前沿模型撤出，對前沿模型是逆風。",
+            "Sacks 主張 AI 資料隱私法規必須強化：目前 AI 對話資料的保護標準連email 都不如，政府只要傳票或法院命令即可取得，而 email 需搜索令與相當理由；人們已把 AI 當律師、醫生、心理師用，應至少提升到 email 等級甚至更高。",
+            "Nike 被踢出 S&P 100、改由 Palo Alto Networks 遞補。Sacks 稱之為「go woke, go broke」的又一案例，痛批其 Colin Kaepernick 廣告等行銷偏離品牌核心；Chamath 認為真正殺傷力在於 North Star 從「卓越與精通」變成敘事主導、直銷策略摧毀零售夥伴關係、產品品質下滑，但只要回歸卓越主軸，Nike 仍是「壓縮的彈簧」；並以巴菲特旗下的 Brooks（連九年雙位數成長至 16 億美元營收）為產品優先的正例。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為其高層附和滅絕風險說法，造成 IPO 揭露與產品責任的結構性矛盾，短期難以上市。"
+            },
+            {
+              "name": "Nike",
+              "code": "NKE",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "被踢出 S&P 100，品牌 North Star 流失、零售關係與產品品質雙雙受損，股價自高點跌約八成。"
+            },
+            {
+              "name": "On Holding",
+              "code": "ONON",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Chamath 表示因 Roger Federer 代表的卓越形象而從 Nike 轉買 On。"
+            },
+            {
+              "name": "Palo Alto Networks",
+              "code": "PANW",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "遞補 Nike 進入 S&P 100，主持人僅致賀未深入評論基本面。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Jensen 在 Goldman 會議上公開反駁 Coxon 的末日言論，稱其言論離譜且深深不實。"
+            }
+          ],
+          "market_view": "主持人整體不認同 AI 末日論，認為這是誇大的社會恐慌與監管奪權的工具；同時警告 AI 前沿模型正面臨企業客戶因資料外洩疑慮而流失的逆風，並看好開源與地端部署的長期趨勢。",
+          "action_view": "Chamath 建議企業若有敏感 IP，不要簽標準 API 合約，應改採 on-prem 或自有 VPC 的客製化算力（AWS、Nebius、Fireworks 等）；他自己已訂購兩台 Mac Studio 並把大量敏感工作移出雲端。",
+          "notable_quote": "This is a doomer PSYOP, and the ultimate target is open source."
+        }
+      },
+      {
         "guid": "a3cf57b6-0471-4554-a7e1-a41345c06d96",
         "title": "GPT-6 Hits AGI? Tech Euphoria 2.0, SF Mansion Shortage, NYC Bans AI in Schools & Venezuela Oil Deal",
         "published": "Fri, 04 Sep 2026 23:10:00 +0000",
@@ -6842,34 +6900,6 @@
           "notable_quote": "Don't put on leverage. Leverage equals risk of ruin."
         },
         "shown_at": "2026-08-01T22:46:06Z"
-      },
-      {
-        "guid": "a23359d3-8299-49b5-aada-ef230f27193b",
-        "title": "The $1/Hour Worker: Four Robotics CEOs on Humanoids at Home, China's Threat, and the End of Dangerous Jobs",
-        "published": "Tue, 28 Jul 2026 20:21:00 +0000",
-        "processed_at": "2026-07-29T15:38:15Z",
-        "digest": {
-          "summary_points": [
-            "Nibotics 的 NEMO 四足機器人專注於關鍵基礎設施的數據收集與檢測，售價在 10 萬至 30 萬美元之間，電池續航 2 小時，部分客戶每天執行 40 次任務。",
-            "Nibotics 執行長表示其機器人零組件零來自中國，並強調在地採購與客戶對數據安全的顧慮。",
-            "OneX 的 Neo 人形機器人預購在數天內售罄首批 1 萬台，月費 500 美元，目標 2026 年出貨。",
-            "OneX 計劃將 Neo 打造為開放平台，允許第三方開發技能與應用，並支援遠端遙控操作。",
-            "OneX 認為透過網際網路上的大量影像資料進行預訓練是提升機器人智慧的關鍵，並預測硬起飛（hard takeoff）可能在 3 年內發生。",
-            "Boston Dynamics 的 Spot 四足機器人已在 46 個國家超過 500 個客戶部署，主要用於工業檢測與巡邏，ROI 目標在 2 年內。",
-            "Spot 售價依配置從 10 萬到 30 萬美元，電池續航約 90 分鐘，平均每 3,000 小時才需人類干預一次。",
-            "Boston Dynamics 表示其機器人 100% 在美國製造，並反對將機器人武器化，但接受 EOD（爆裂物處理）等非攻擊性軍事應用。",
-            "Boston Dynamics 的 Atlas 人形機器人採用機上與雲端雙腦架構，並將提供機器人即服務（RaaS）模式。",
-            "Agility Robotics 的 Digit 人形機器人專注於倉儲搬運，預計 V5 版本將實現無實體屏障的安全性，可工作 20 小時/天。",
-            "Agility 提供 CAPEX 與 RaaS 兩種商業模式，認為機器人價值將由人力成本定價，長期具備成本優勢。",
-            "Agility 共同創辦人認為機器人產業正處於指數成長階段，主要應用於骯髒、枯燥、危險的工作，並看好未來在零售、醫療、物流等領域的潛力。",
-            "多位執行長一致認為中國的低價機器人構成威脅，但強調完整解決方案、數據安全與在地供應鏈是競爭關鍵。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "We are all in on pre-training our own models on this video data on the internet."
-        },
-        "shown_at": "2026-07-29T22:53:55Z"
       }
     ]
   },

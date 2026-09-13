@@ -19678,6 +19678,8 @@ def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
         try:
             rows = _poly_outright(slug, _POLY_ZH_MAPS.get(zh_key), top=top)
             if rows:
+                if key in ("tennis_m", "tennis_w"):
+                    rows = [{**row, "event_slug": slug} for row in rows]
                 out[key] = _poly_annotate_deltas(key, rows, now_tpe)
         except Exception as e:
             print(f"[poly] {key} 抓取失敗: {e}", file=sys.stderr)
@@ -20604,11 +20606,8 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     combined.sort(key=lambda m: m["_tier"])     # 穩定排序:大滿貫 > 1000 > 其他,同層新→舊
     for m in combined:
         # 賽果附台北日期(使用者反映賽果不知何時打的、區塊混亂)
-        try:
-            iso = str(m["_ts"]).replace("Z", "+00:00")
-            m["date"] = dt.datetime.fromisoformat(iso).astimezone(TPE).strftime("%m/%d")
-        except Exception:
-            m["date"] = ""
+        from tennis_market_context import result_dates
+        m.update(result_dates(m["_ts"]))
         m.pop("_ts", None)
         m.pop("_tier", None)
     out["results"] = combined[:6]

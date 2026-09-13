@@ -1117,6 +1117,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                                   "東", "西"))
 
     def _tennis_poly_div(p, line_fn) -> str:
+        from tennis_market_context import market_has_final
         # 下一個大滿貫(美網)冠軍 futures;球星名以中文為主(批#14:
         # 「EN(中文)」逐名並列讓整行過長難讀),查無對照才保留英文
         def _zh_rows(rows):
@@ -1125,9 +1126,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 return _TENNIS_PLAYER_ZH.get(surname, str(name or ""))
             return [{**r, "name": _short(r.get("name"))} for r in rows or []]
         lines = []
-        if p.get("tennis_m"):
+        if p.get("tennis_m") and not market_has_final(p["tennis_m"], tennis.get("results")):
             lines.append(f"男:{line_fn(_zh_rows(p['tennis_m']))}")
-        if p.get("tennis_w"):
+        if p.get("tennis_w") and not market_has_final(p["tennis_w"], tennis.get("results")):
             lines.append(f"女:{line_fn(_zh_rows(p['tennis_w']))}")
         return _poly_odds_block("美網冠軍盤", lines)
     # Polymarket 冠軍盤本身也是可渲染內容:傳統來源全掛時不可讓整張體育卡消失

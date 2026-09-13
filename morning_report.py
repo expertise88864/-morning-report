@@ -12735,13 +12735,13 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                         model=model)),
                     "stream": False,
                 }
-                # v4-pro / reasoner 思考模式(精簡模式下停用,以排除參數造成的 400)。
+                # v4-flash / pro / reasoner 思考模式(精簡模式下維持既有退讓)。
                 #
                 # 第十一輪 P1-2:**開關與強度是兩個欄位,而且思考預設是開的。**
                 # 原本設 `off` 時兩個都不送 —— 那不是關閉,是沿用預設(開著)。
                 # 翻譯規則集中在 `llm_telemetry.deepseek_thinking`,
                 # workflow 與 README 不再各自手寫一份會漂移的規格。
-                if not slim and ("pro" in model or "reasoner" in model):
+                if not slim and (model == "deepseek-v4-flash" or "pro" in model or "reasoner" in model):
                     _think = _lt.deepseek_thinking(DEEPSEEK_REASONING_EFFORT)
                     if DEEPSEEK_REASONING_EFFORT:
                         payload["thinking"] = _think["thinking"]

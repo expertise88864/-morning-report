@@ -425,7 +425,13 @@ def deepseek_digest(transcript: str, model: str = DEEPSEEK_MODEL) -> dict:
         except Exception as e:
             last_err = e
             log(f"摘要第 {attempt + 1} 次失敗: {str(e)[:100]}")
-            time.sleep(15)
+            # A rejected request will not recover by regenerating in this batch.
+            # Keep transient HTTP/network and output-validation retries bounded.
+            if (isinstance(e, requests.HTTPError) and e.response is not None
+                    and e.response.status_code in (400, 401, 402, 403, 404, 422)):
+                break
+            if attempt < 3:
+                time.sleep(15)
     raise RuntimeError(f"DeepSeek 摘要失敗: {last_err}")
 
 

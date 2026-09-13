@@ -913,7 +913,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
             f"<div style='font-size:14px;font-weight:700;color:#0f172a;'>"
             f"{htmllib.escape(str(ep.get('show', '')))}"
             f"<span style='font-weight:400;color:#64748b;font-size:12px;'> ・ "
-            f"{htmllib.escape(str(ep.get('title', ''))[:60])}"
+            f"{htmllib.escape(str(ep.get('title', '')))}"
             f"{_episode_age_tag(ep, as_of)}</span></div>"
             f"<ul style='margin:8px 0;padding-left:20px;font-size:13px;color:#1f2937;"
             f"line-height:1.7;'>{points}</ul>"

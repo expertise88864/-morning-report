@@ -16216,7 +16216,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">'
-        '醫學文獻速報（近 7 天・JAAD / JEADV / NEJM / AJO）</h2>'
+        '醫學文獻速報（近 7 天）</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;background:#ffffff;">'
         + "".join(blocks) + '</div>')
 

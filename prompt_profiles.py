@@ -46,7 +46,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 26  # Distinguish same-day reporting from earlier context.
+DEEPSEEK_LEGACY_VERSION = 27  # Dated and bounded Podcast opinions, no nested fences.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -83,7 +83,7 @@ DEEPSEEK_LEGACY_VERSION = 26  # Distinguish same-day reporting from earlier cont
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 62  # Publication chronology does not establish causality.
+LUNA_XHIGH_VERSION = 63  # Source-excerpt-backed Podcast opinion comparison.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -407,9 +407,9 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 
 {_wr.LUNA_WRITING + chr(10) + _wr.READER_PROSE}
 """
-
-from news_research_context import RESEARCH_RULES as _RESEARCH_RULES  # noqa: E402
-LUNA_DEVELOPER_INSTRUCTIONS += "\n" + _RESEARCH_RULES
+import news_research_context as _research  # noqa: E402
+import podcast_comparison as _podcast  # noqa: E402
+LUNA_DEVELOPER_INSTRUCTIONS += "\n" + _research.RESEARCH_RULES + "\n" + _podcast.RULES
 def luna_user_payload(packet: dict) -> str:
     """當日證據。**只有證據,沒有任何指令** —— 指令都在穩定前綴裡。
 

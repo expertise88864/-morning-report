@@ -696,6 +696,8 @@ def _news_identity(obj) -> dict:
         }
         if (n.get("historical_context") or {}).get("evolution"):
             out[str(n.get("source_item_id") or "")]["said"].add("historical_context")
+        from podcast_revision import retained
+        out[str(n.get("source_item_id") or "")]["said"].update(retained(n))
     return out
 
 

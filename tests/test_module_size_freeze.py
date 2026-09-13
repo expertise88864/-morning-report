@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_380  # Journal selection extracted; no ceiling increase.
+MAIN_MODULE_LINE_CEILING = 26_365  # Net 15 lines extracted, including repair wiring.
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
@@ -194,6 +194,11 @@ MODULE_CEILINGS = {
     "news_research_context.py": 310,
     "news_temporal_context.py": 65,
     "podcast_dates.py": 65,
+    "podcast_evidence.py": 80,
+    "podcast_comparison.py": 140,
+    "podcast_prompt_context.py": 45,
+    "podcast_revision.py": 40,
+    "podcast_topic.py": 40,
     "news_research_runtime.py": 250,
     "week_review.py": 250,
     # 2026-09-06: candidate delivery gate and offline contract tests are new root

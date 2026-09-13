@@ -47,6 +47,26 @@ def test_relation_fences_cannot_be_closed_by_source_values():
     assert rc.section({}) == ""
 
 
+@pytest.mark.parametrize('empty_slice', [False, True])
+def test_podcast_opinions_survive_stateless_repair_without_fact_privileges(monkeypatch, empty_slice):
+    from test_podcast_comparison import fixture
+    packet, _ = fixture()
+    before = deepcopy(packet)
+    monkeypatch.setattr(mr._ep, 'evidence_ids', lambda p: {'n1'})
+    monkeypatch.setattr(mr._ep, 'evidence_snippets',
+                        lambda *a, **k: {} if empty_slice else {'n1': packet['news'][0]})
+    out, report = mr._repair_request_payload(
+        {'model': 'offline'}, 'x' * pb.MAX_REQUEST_CHARS, 'PROBLEMS', packet)
+    text = out['input']
+    assert 'PODCAST_OPINIONS' in text and 'opinion:one' in text
+    assert '主持人認為訂單將成長' in text
+    assert '看不到新聞內容就移除' in text
+    assert report['visible_ids'] == (set() if empty_slice else {'n1'})
+    assert pb.measure_request(out) <= pb.MAX_REQUEST_CHARS
+    assert text.count('<UNTRUSTED_SOURCE_DATA>') == text.count('</UNTRUSTED_SOURCE_DATA>')
+    assert packet == before
+
+
 @pytest.mark.parametrize('oversized_slice', [False, True])
 def test_format_only_keeps_relations_after_empty_or_shrunk_slice(monkeypatch, oversized_slice):
     packet = {"event_graph": {"shared_driver_groups": [

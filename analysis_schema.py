@@ -28,6 +28,7 @@ schema 裡沒有「逐步推理」欄位,也不存模型的隱藏推理。要的
 from __future__ import annotations
 
 import evidence_namespaces as _ns
+import podcast_comparison as _podcast
 
 #: 輸出契約版本。**改欄位就要進版** —— cohort 以它為身分的一部分,
 #: 悄悄改欄位等於把不同定義的樣本混進同一個平均。
@@ -62,7 +63,7 @@ import evidence_namespaces as _ns
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 29  # Source comparison need not imply chronological evolution.
+ANALYSIS_SCHEMA_VERSION = 30  # Attributed Podcast comparisons are distinct from facts.
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -356,6 +357,7 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "impact": _s("對台股/產業/資金面的影響 —— 你的判斷"),
     }), "台灣政策與主管機關動態;沒有就空陣列,不拿總經數據或公司新聞充數"),
     "top_news_analysis": _arr(_obj({
+        "podcast_comparisons": _podcast.schema(_obj, _arr, _s, _enum),
         "source_item_id": _s(),
         "historical_context": _obj({
             "evolution": _s("一至兩句來源對照：較早報導可比前情與新增證據，同日比較共同說法與分歧，較晚不得倒作前因，日期不明不排先後；無匹配來源時空字串，不得補造"),

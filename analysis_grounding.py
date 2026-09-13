@@ -88,7 +88,7 @@ from __future__ import annotations
 #: (原本報交集,而下一關要求與整組一致 —— 模型照做就被打回,兩關
 #: 合起來讓修補收斂不了);`required_cluster_ids` 保序去重。
 #: 驗證行為變了就要升版,樣本才不混群。
-GROUNDING_VERSION = 43  # Evidence-backed financial coverage is checked, not merely reserved at render.
+GROUNDING_VERSION = 44  # Podcast opinion references and excerpts checked outside fact registry.
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

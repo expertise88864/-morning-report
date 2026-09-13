@@ -140,6 +140,7 @@ def valid_analysis() -> dict:
         "top_news_analysis": [
             {"source_item_id": "n1", "why_it_matters": "費半傳導台股電子",
              "historical_context": {"evolution": "", "evidence_ids": []},
+             "podcast_comparisons": [],
              "direction": "bullish", "materiality": "high",
              "persistence": "數個交易日",
              "mechanism_steps": [
@@ -194,6 +195,7 @@ def valid_analysis() -> dict:
                              "explanation": "都指向台積電的先進製程需求"}]},
             {"source_item_id": "n2", "why_it_matters": "法說會的資本支出指引",
              "historical_context": {"evolution": "", "evidence_ids": []},
+             "podcast_comparisons": [],
              "direction": "neutral", "materiality": "medium",
              "persistence": "延續到法說當週",
              "mechanism_steps": [

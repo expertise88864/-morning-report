@@ -313,6 +313,10 @@ def _news_line(n: dict, packet=None) -> str:
     history = _research.history_prose(n, packet)
     if history:
         parts.append(history)
+    import podcast_comparison
+    comparison = podcast_comparison.prose(n, packet)
+    if comparison:
+        parts.append(comparison)
     chain = _chain_line([st for st in (n.get("mechanism_steps") or [])
                          if isinstance(st, dict)])
     if chain:

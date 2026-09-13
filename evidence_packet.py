@@ -103,7 +103,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: —— 世系是單一契約,recap/origin 同世系直接接、不同世系直接否。
 #: v33(2026-08-14 生產):universe 條目本身可引用(`universe:2317`)
 #: —— 「這檔在今天的上市清單裡」的語意單位是條目,不是它的葉子。
-EVIDENCE_SCHEMA_VERSION = 42  # Publication relations distinguish same-day reporting from earlier context.
+EVIDENCE_SCHEMA_VERSION = 43  # Isolated Podcast opinion context, excluded from fact registry.
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -457,6 +457,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     import news_research_context as _research
     _research.build(packet, ((quotes or {}).get("NEWS_MEMORY") or []) +
                     ((quotes or {}).get("NEWS_RESEARCH_BACKGROUND") or []))
+    # Separate attributed opinions, never registered as market-fact evidence.
+    import podcast_evidence as _podcast
+    packet["podcast_context"] = _podcast.project(
+        (quotes or {}).get("PODCAST_DIGEST", []), as_of=as_of, sanitize=sanitize)
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
     # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。
     # 在算 sha **之前**做 —— 指紋要對應真正送出去的內容。
@@ -542,15 +546,11 @@ def evidence_ids(packet: dict) -> set:
     # **證據圖是唯一的真相來源。** 先前這裡把三個來源聯集起來,
     # 於是「哪些東西引用得到」由三套規則共同決定,而它們互相不知道
     # 對方的存在 —— 幽靈路徑正是從那個縫隙進來的。
-    out = set(evidence_meta(packet))
-    mkt = market_refs(packet.get("market"))
     # 第十八輪 P1-4:**張力給什麼 ref、這裡就收什麼**,於是
     # `market:MACRO.10Y.change_bps`(packet 裡根本沒有這個 leaf)
     # 靜靜變成合法引用 —— 引用檢查在那一刻只證明「名字合法」,
-    # 不再證明「引用了真的存在的資料」。核對責任在這裡:packet
-    # 才知道樹長什麼樣。**幽靈路徑不進 registry**(而且說得出是哪些)。
-    _ = mkt          # 幽靈路徑的核對在 `phantom_market_refs`
-    return out
+    # 不再證明資料存在；核對見 `phantom_market_refs`，幽靈路徑不進 registry。
+    return set(evidence_meta(packet))
 
 
 def unrealizable_namespaces(packet: dict) -> set:

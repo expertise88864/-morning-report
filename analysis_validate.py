@@ -628,8 +628,8 @@ def validate(obj, evidence_ids) -> list:
     known, packet = _registry(evidence_ids)
     if isinstance(packet, dict):
         import news_research_context as _research
-        problems.extend(_research.validate(obj, packet))
-
+        import podcast_comparison as _podcast
+        problems.extend(_research.validate(obj, packet) + _podcast.validate(obj, packet))
     def _check_ids(ids, where):
         for i in (ids or []):
             if str(i) not in known:

@@ -1,5 +1,24 @@
 """Source-status and numeric display helpers; no result inference or network."""
 import re
+import sys
+
+
+def cpbl_result_note(game: dict) -> str:
+    """Flag a short final feed record, without guessing cancellation or rain.
+
+    Shortened official games remain visible. The feed's normal inning count is
+    not a rule for legal completion; without a finish reason we qualify it.
+    """
+    try:
+        inning = float(game.get('current_period_id'))
+        normal = float(game.get('minimum_periods'))
+        if (inning.is_integer() and normal.is_integer() and 0 < inning < normal
+                and game.get('status_type') == 'status.type.final'):
+            print('::warning::CPBL 結束狀態待確認（局數與完賽標記需核對）', file=sys.stderr)
+            return f'來源標示結束，但僅列至第 {int(inning)} 局；結束方式待確認，比分暫列'
+    except (TypeError, ValueError, OverflowError):
+        pass
+    return ''
 
 
 def mlb_summary(stat: dict, group: str) -> str:

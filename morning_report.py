@@ -20631,8 +20631,7 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                              "AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
                "Accept": "application/json"}
-    out = []
-    seen = set()
+    out = {}
     for back in (1, 0):   # 昨日為主,今日已完賽者一併收
         day = (now_tpe - dt.timedelta(days=back)).strftime("%Y-%m-%d")
         try:
@@ -20644,10 +20643,10 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
             games = sb.get("games") or {}
             teams = sb.get("teams") or {}
             for gid, g in games.items():
-                if gid in seen or g.get("status_type") != "status.type.final":
+                if (gid in out and not out[gid]['result_note']) or g.get("status_type") != "status.type.final":
                     continue  # 只列已完賽
                 # 比分缺值不可當 0(會誤報 0:0 或錯判勝方),解析失敗就跳過該場。
-                # 注意:驗證通過才標記 seen —— 否則某桶缺比分的同場會擋掉另一桶有效的版本。
+                # 完整版本才去重；缺比分或暫列版本不能擋住另一桶的完整賽果。
                 a_raw = g.get("total_away_points")
                 h_raw = g.get("total_home_points")
                 if a_raw in (None, "") or h_raw in (None, ""):
@@ -20656,7 +20655,8 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                     a_s, h_s = int(float(a_raw)), int(float(h_raw))
                 except (TypeError, ValueError, OverflowError):
                     continue
-                seen.add(gid)
+                from sports_quality import cpbl_result_note
+                result_note = cpbl_result_note(g)
                 away = str((teams.get(g.get("away_team_id")) or {}).get("display_name") or "?")
                 home = str((teams.get(g.get("home_team_id")) or {}).get("display_name") or "?")
                 # 日期以該場開賽時間(轉台北)為準,而非查詢日期桶
@@ -20668,14 +20668,15 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                     gdate = gdt.astimezone(TPE).strftime("%m/%d")
                 except (ValueError, TypeError):
                     pass
-                out.append({
+                out[gid] = {
                     "away": away, "home": home, "away_score": a_s, "home_score": h_s,
-                    "winner": "away" if a_s > h_s else ("home" if h_s > a_s else ""),
+                    "winner": "" if result_note else ("away" if a_s > h_s else ("home" if h_s > a_s else "")),
+                    "result_note": result_note,
                     "date": gdate,
-                })
+                }
         except Exception as e:
             print(f"[sports] CPBL 比分抓取失敗({day}): {e}", file=sys.stderr)
-    return out[:10]
+    return list(out.values())[:10]
 
 
 CPBL_VENUE_FILE = STATE_ROOT / "cpbl_venues.json"

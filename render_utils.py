@@ -1310,12 +1310,14 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
             f"<span style='color:#94a3b8;'>{htmllib.escape(s.get('date', ''))}</span>　"
-            f"{_side(s['away'], s['away_score'], s.get('winner') == 'away')}"
-            f"　:　{_side(s['home'], s['home_score'], s.get('winner') == 'home')}</div>"
+            f"{_side(s['away'], s['away_score'], s.get('winner') == 'away' and not s.get('result_note'))}"
+            f"　:　{_side(s['home'], s['home_score'], s.get('winner') == 'home' and not s.get('result_note'))}"
+            f"{('　' + htmllib.escape(str(s['result_note']))) if s.get('result_note') else ''}</div>"
             for s in cpbl_scores)
         _mark("中職")
         blocks.append(
-            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 最新賽果</b>"
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>"
+            + ("中華職棒 比分與狀態" if any(s.get('result_note') for s in cpbl_scores) else "中華職棒 最新賽果") + "</b>"
             + rows + "</div>")
     if cpbl_fixtures:
         rows = "".join(

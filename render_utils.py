@@ -822,7 +822,8 @@ def _render_event_calendar_html(events: list[dict]) -> str:
 def _podcast_ticker_crosscheck(t: dict, snapshot: list[dict]) -> str:
     """主持人觀點 vs 本報法人/動能資料的規則式對照(純 Python 查表,零幻覺)。"""
     code = str(t.get("code") or "").strip()
-    direction = t.get("direction")
+    from podcast_stance import direction as attributed_direction
+    direction = attributed_direction(t)
     if t.get("market") == "US" or not code:
         return ""
     row = next((s for s in snapshot or [] if str(s.get("code")) == code), None)
@@ -867,8 +868,9 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
     預設維持原行為(14 集、台系 15 條)。"""
     if not episodes:
         return ""
+    from podcast_stance import direction as attributed_direction
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
-                 "neutral": ("中性", "#64748b")}
+                 "neutral": ("中性", "#64748b"), "unknown": ("未確認投資方向", "#64748b")}
     # 國際快訊壓到 6 條,把版面留給台股(iPhone Gmail 102KB);其餘(含未知/新增節目)維持 15 條
     cards = []
     for ep in episodes[:max(1, max_episodes)]:
@@ -881,7 +883,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
             for p in (d.get("summary_points") or [])[:max_pts])
         ticker_rows = ""
         for t in (d.get("tickers") or [])[:8]:
-            label, color = dir_label.get(str(t.get("direction")), ("—", "#64748b"))
+            label, color = dir_label[attributed_direction(t)]
             name = htmllib.escape(str(t.get("name", "")))
             code = htmllib.escape(str(t.get("code", "")).strip())
             disp = f"{name}（{code}）" if code else name

@@ -5,6 +5,7 @@ import hashlib
 import json
 
 from podcast_dates import published_at
+from podcast_stance import direction as attributed_direction
 
 MAX_CONTEXT_CHARS = 24_000
 MAX_EPISODES = 14
@@ -55,7 +56,7 @@ def project(episodes: list, *, as_of: str, sanitize) -> dict:
                'published_at': stamp.isoformat() if stamp else '',
                'date_known': stamp is not None,
                'summary_points': [text(p, 240) for p in points[:3] if isinstance(p, str)],
-               'tickers': [{k: text(t.get(k), 160 if k == 'reason' else 40)
+               'tickers': [{k: text(attributed_direction(t) if k == 'direction' else t.get(k), 160 if k == 'reason' else 40)
                             for k in ('name', 'code', 'market', 'direction', 'reason')}
                            for t in tickers[:5] if isinstance(t, dict)],
                'market_view': text(digest.get('market_view'), 240)}

@@ -4,6 +4,14 @@ import json
 
 import morning_report as mr
 import pytest
+from podcast_stance import validate_ticker
+
+
+def _supported(ticker):
+    quote = {'bullish': '我看好這家公司的股價後續表現。',
+             'bearish': '我看壞這家公司的股價後續表現。',
+             'neutral': '我對這家公司維持中性的投資看法。'}[ticker['direction']]
+    return validate_ticker(dict(ticker, stance_basis='investment_view', stance_quote=quote), quote)
 
 
 def _digest_state(processed_at: str) -> dict:
@@ -18,10 +26,10 @@ def _digest_state(processed_at: str) -> dict:
                 "digest": {
                     "summary_points": ["看好 AI 伺服器下半年拉貨", "提醒油價回落利多通膨"],
                     "tickers": [
-                        {"name": "雙鴻", "code": "3324", "market": "TW",
-                         "direction": "bullish", "reason": "散熱需求強勁"},
-                        {"name": "特斯拉", "code": "TSLA", "market": "US",
-                         "direction": "neutral", "reason": "估值偏高"},
+                        _supported({"name": "雙鴻", "code": "3324", "market": "TW",
+                         "direction": "bullish", "reason": "散熱需求強勁"}),
+                        _supported({"name": "特斯拉", "code": "TSLA", "market": "US",
+                         "direction": "neutral", "reason": "估值偏高"}),
                     ],
                     "market_view": "大盤短線震盪偏多",
                     "action_view": "拉回找買點,不追高",
@@ -124,8 +132,8 @@ def test_deliver_report_commits_state_after_email(monkeypatch):
 
 def test_podcast_ticker_crosscheck_rules():
     snapshot = [{"code": "3324", "foreign_30d_lot": 5200, "pct_5d": 3.1}]
-    bull = {"name": "雙鴻", "code": "3324", "market": "TW", "direction": "bullish"}
-    bear = {"name": "雙鴻", "code": "3324", "market": "TW", "direction": "bearish"}
+    bull = _supported({"name": "雙鴻", "code": "3324", "market": "TW", "direction": "bullish"})
+    bear = _supported({"name": "雙鴻", "code": "3324", "market": "TW", "direction": "bearish"})
     assert "一致" in mr._podcast_ticker_crosscheck(bull, snapshot)
     assert "分歧" in mr._podcast_ticker_crosscheck(bear, snapshot)
     # 不在追蹤池

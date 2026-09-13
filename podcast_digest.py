@@ -24,6 +24,8 @@ import feedparser
 
 import state_store as _ss
 import requests
+from podcast_input import _external_text, fenced
+from podcast_stance import validate_digest
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
@@ -146,13 +148,19 @@ DIGEST_PROMPT = """你是財經 podcast 重點整理員。以下是一集節目�
                       **不要為湊數塞進無關內容或新聞複述**」],
   "tickers": [{"name": "公司或 ETF 名", "code": "台股代號或美股 ticker,不確定就留空字串",
                "market": "TW 或 US", "direction": "bullish/bearish/neutral",
-               "reason": "主持人對它的看法一句話"}],
+               "reason": "主持人對它的看法一句話",
+               "stance_basis": "investment_view/non_investment/unclear",
+               "stance_quote": "支持這項投資方向的逐字稿原文，8-600 字；沒有就空字串，不可翻譯或改寫"}],
   "market_view": "主持人對大盤/總經的整體看法,1-2 句;沒明確說就寫空字串",
   "action_view": "主持人提到的操作思路(加碼/減碼/觀望/策略),1-2 句;沒有就空字串",
   "notable_quote": "一句最有代表性的原話(可空字串)"
 }
 鐵則:只記錄主持人「真的說過」的內容,嚴禁腦補或外推;聽不清楚/不確定的個股代號留空;
 廣告與閒聊跳過;tickers 最多 8 檔。
+stance_basis 僅在主持人明確討論公司投資價值、股價前景或買賣持有立場時用 investment_view。
+喜歡產品、買鞋、人物發言、反駁 AI 末日論、祝賀入選指數，不等於投資看多或看空，標 non_investment。
+不確定是否有投資立場時標 unclear；不可從正面或負面語氣自行推成股票方向。
+stance_quote 是原文證據，可保留英文，不適用上方翻譯規則；reason 仍須繁體中文。
 tickers 收錄標準:節目中對特定公司(或 ETF)有「方向性討論」就收 —— 分析、看法、
 提及其利多利空都算,不限明確推薦;純粹一筆帶過的新聞播報才略過。
 產業級觀點(如「看好散熱族群」「記憶體循環向上」)請放進 summary_points,不放 tickers。"""
@@ -379,9 +387,10 @@ def _accuracy_settings(cfg: dict) -> dict:
 def deepseek_digest(transcript: str, model: str = DEEPSEEK_MODEL) -> dict:
     """DeepSeek(OpenAI 相容 API)把逐字稿整理成結構化摘要 JSON。
     輸出做語言驗證(簡體/未翻譯英文 → 帶錯誤回饋重試)。"""
+    source = _external_text(transcript[:MAX_TRANSCRIPT_CHARS])
     messages = [
         {"role": "system", "content": DIGEST_PROMPT},
-        {"role": "user", "content": transcript[:MAX_TRANSCRIPT_CHARS]},
+        {"role": "user", "content": fenced(source)},
     ]
     last_err = None
     for attempt in range(4):
@@ -398,17 +407,20 @@ def deepseek_digest(transcript: str, model: str = DEEPSEEK_MODEL) -> dict:
             digest = json.loads(text)
             if not (isinstance(digest, dict) and digest.get("summary_points")):
                 raise RuntimeError("摘要 JSON 缺 summary_points")
+            digest = validate_digest(digest, source)
             violation = _lang_violation(digest)
             if violation:
                 log(f"語言驗證未過(第 {attempt + 1} 次): {violation}")
                 # 把違規回饋進對話,要求重寫(最多重試到迴圈上限)
                 messages = messages[:2] + [
-                    {"role": "assistant", "content": text[:2000]},
                     {"role": "user", "content": f"上一版不合格:{violation}。"
-                     f"請重新輸出完整 JSON,嚴格遵守語言鐵則。"},
+                     f"請重新輸出完整 JSON,嚴格遵守語言鐵則。\n{fenced(text[:2000])}"},
                 ]
                 last_err = RuntimeError(violation)
                 continue
+            quality = digest['direction_quality']
+            if quality['unverified'] or quality['invalid']:
+                log(f"::warning::Podcast 投資方向證據不足或格式異常: {quality}")
             return digest
         except Exception as e:
             last_err = e

@@ -12,6 +12,9 @@ from pathlib import Path
 
 import requests
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from podcast_stance import direction as attributed_direction
+
 PJ = Path(__file__).resolve().parent.parent / "state" / "podcast_digest.json"
 H = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
@@ -57,7 +60,7 @@ def main():
             for t in (ep.get("digest") or {}).get("tickers", []) or []:
                 code = str(t.get("code", "")).strip()
                 mkt = str(t.get("market", "")).upper()
-                direc = str(t.get("direction", "")).lower()
+                direc = attributed_direction(t)
                 if mkt == "TW" and code.isdigit() and len(code) == 4 and direc in ("bullish", "bearish"):
                     if d and d[:4].isdigit():
                         calls.append((d, code, direc))

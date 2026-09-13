@@ -199,6 +199,8 @@ MODULE_CEILINGS = {
     "podcast_prompt_context.py": 45,
     "podcast_revision.py": 40,
     "podcast_topic.py": 40,
+    "podcast_stance.py": 100,
+    "podcast_input.py": 20,
     "news_research_runtime.py": 250,
     "week_review.py": 250,
     # 2026-09-06: candidate delivery gate and offline contract tests are new root

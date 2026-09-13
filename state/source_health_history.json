@@ -1,50 +1,5 @@
 [
  {
-  "date": "2026-08-10",
-  "checks": {
-   "universe": true,
-   "institutional": true,
-   "revenue": true,
-   "liquidity": true,
-   "news": true,
-   "structured_events": true
-  },
-  "feeds": {
-   "search.cnbc.com": true,
-   "feeds.bloomberg.com": true,
-   "finance.yahoo.com": true,
-   "feeds.feedburner.com": true,
-   "www.federalreserve.gov": true,
-   "api.cnyes.com": true,
-   "openapi.twse.com.tw": true,
-   "news.ltn.com.tw": true,
-   "technews.tw": true,
-   "tw.stock.yahoo.com": true,
-   "money.udn.com": true,
-   "udn.com": true,
-   "www.scmp.com": true,
-   "asia.nikkei.com": true,
-   "feeds.bbci.co.uk": true,
-   "news.google.com": true
-  },
-  "queries": {
-   "Google-半導體": 41,
-   "Google-美股科技": 21,
-   "Google-Fed利率": 11,
-   "Google-台股大盤": 20,
-   "Google-地緣": 0,
-   "Google-散熱": 8,
-   "Google-先進封裝": 6,
-   "Google-載板PCB": 4,
-   "Google-光通訊": 1,
-   "世界-國際大事": 100,
-   "世界-災難極端": 100,
-   "世界-科學太空": 100,
-   "世界-AI大事": 41
-  },
-  "drama": 0
- },
- {
   "date": "2026-08-11",
   "checks": {
    "universe": true,
@@ -1358,6 +1313,53 @@
    "世界-災難極端": 100,
    "世界-科學太空": 100,
    "世界-AI大事": 57
+  },
+  "drama": 0
+ },
+ {
+  "date": "2026-09-14",
+  "checks": {
+   "universe": true,
+   "institutional": true,
+   "revenue": true,
+   "liquidity": true,
+   "news": true,
+   "structured_events": true
+  },
+  "feeds": {
+   "search.cnbc.com": true,
+   "feeds.bloomberg.com": true,
+   "finance.yahoo.com": true,
+   "feeds.feedburner.com": true,
+   "www.federalreserve.gov": true,
+   "api.cnyes.com": true,
+   "openapi.twse.com.tw": true,
+   "news.ltn.com.tw": true,
+   "technews.tw": true,
+   "tw.stock.yahoo.com": true,
+   "money.udn.com": true,
+   "udn.com": true,
+   "www.scmp.com": true,
+   "asia.nikkei.com": true,
+   "feeds.bbci.co.uk": true,
+   "news.google.com": true
+  },
+  "queries": {
+   "Google-半導體": 36,
+   "Google-美股科技": 44,
+   "Google-Fed利率": 37,
+   "Google-台股大盤": 34,
+   "Google-地緣": 100,
+   "Google-半導體設備": 2,
+   "Google-能源電網": 43,
+   "Google-散熱": 8,
+   "Google-先進封裝": 13,
+   "Google-載板PCB": 4,
+   "Google-光通訊": 4,
+   "世界-國際大事": 100,
+   "世界-災難極端": 100,
+   "世界-科學太空": 82,
+   "世界-AI大事": 44
   },
   "drama": 0
  }

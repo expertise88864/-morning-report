@@ -1103,8 +1103,7 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
 
 # 兩金控 label 的歸因守門詞(Codex 批#15 P1):OR 查詢的「投資/BOT/人事」子句會
 # 獨立匹配無關新聞,若無條件掛 company_label 會被 extract_structured_events 歸因
-# 進 news_catalyst_score——標題+摘要必須含下列任一公司詞才可標記;其他公司查詢
-# 皆以公司名開頭無此問題,不設守門(行為不變)。
+# 進 news_catalyst_score——下列為既有母子公司收錄範圍;其餘公司也須驗證名稱。
 # 守門詞必須是完整的金控母/子公司實體名(Codex r2:裸「國泰」會放行國泰航空、
 # 裸「中信」會放行中信兄弟——前綴碰撞照樣污染歸因);媒體慣用簡稱「國壽」收錄,
 # 「中壽」是別家(中國人壽)不收。寧漏勿誤掛(漏掛只少一則素材,誤掛進計分)。
@@ -6366,13 +6365,12 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
                     continue
-                # 歸因守門(Codex 批#15 P1):金控 OR 查詢的決策詞子句會獨立命中
-                # 無關新聞,標題/摘要不含公司詞者不得掛 label(掛了會進事件歸因)
-                require = _COMPANY_LABEL_REQUIRE.get(str(label))
-                if require:
-                    hay = f"{entry.get('title', '')} {entry.get('summary', '')}"
-                    if not any(tok in hay for tok in require):
-                        continue
+                from company_ingress import matches
+                hay = f"{entry.get('title', '')} {_rss_summary(entry)}"
+                if not matches(label, hay, required=_COMPANY_LABEL_REQUIRE,
+                               us_names=_US_ENTITY_ALIASES, tw_names=TW0050_CONSTITUENTS,
+                               mentions=_mentions_company, tw_aliases=_TW_ENTITY_EXTRA_ALIASES):
+                    continue
                 source_name, source_url = _tw_entry_source(entry)
                 out.append({
                     "source": f"Google:{label}",

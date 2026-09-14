@@ -1180,13 +1180,13 @@ def test_company_label_gate_blocks_unrelated_decision_word_hits(monkeypatch):
         {"source": "Google:2882", "url": "https://x", "kind": "company",
          "label": "2882"}, cutoff)
     assert [n["title"] for n in out_c] == ["國泰金控投資部位調整"]
-    # 非金控查詢(無守門詞)行為不變
+    # 相同歸因防線也適用非金控:此 feed 沒有任何台積電新聞。
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
                         lambda *a, **k: Feed())
     out2 = mr._process_feed_item(
         {"source": "Google:2330", "url": "https://x", "kind": "company",
          "label": "2330"}, cutoff)
-    assert len(out2) == 4
+    assert out2 == []
 
 
 def test_prompt_has_no_positive_user_references():

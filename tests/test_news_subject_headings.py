@@ -155,7 +155,7 @@ def test_the_item_is_one_prose_paragraph():
     """
     md = ard._news_line(_news("n1", "2330"), _packet())
     assert "\n\n起點 → 終點" in md and "傳導:" not in md, md
-    assert "若什麼情況代表判斷錯了,此判斷不成立" in md, md
+    assert "若什麼情況代表判斷錯了，此判斷不成立" in md, md
     assert "台積電(2330):一階影響、二階影響。" in md, md
 
 

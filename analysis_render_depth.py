@@ -320,7 +320,7 @@ def _news_line(n: dict, packet=None) -> str:
     chain = _chain_line([st for st in (n.get("mechanism_steps") or [])
                          if isinstance(st, dict)])
     if chain:
-        parts.append(f"\n\n{chain}。")
+        parts.append("\n\n" + _join_sentence(chain))
     impact = _impact.readout(n, _s)
     if impact:
         import re
@@ -328,9 +328,10 @@ def _news_line(n: dict, packet=None) -> str:
         # validated horizon/state remain intact. Keep the magnitude reasoning.
         impact = re.sub(r'影響觀察窗：[^。]*。\s*', '', impact)
         parts.append(impact.replace('量級依據：', ''))
-    inval = _s(n.get("invalidation_signal"))
+    inval = _s(n.get("invalidation_signal")).rstrip(_TERMINAL_MARKS + " ,，;；")
     if inval:
-        parts.append(_join_sentence(f"若{inval},此判斷不成立"))
+        prefix = "" if inval.startswith(("若", "如果", "倘若", "一旦")) else "若"
+        parts.append(_join_sentence(f"{prefix}{inval}，此判斷不成立"))
     assets = _assets_prose(n, packet)
     if assets:
         parts.append(assets)

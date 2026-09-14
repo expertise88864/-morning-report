@@ -10,6 +10,21 @@ import reader_prose as rp
 import render_utils as ru
 
 
+@pytest.mark.parametrize('condition,expected', [
+    ('若需求下降。', '若需求下降，此判斷不成立。'),
+    ('需求下降。', '若需求下降，此判斷不成立。'),
+    ('如果需求下降。', '如果需求下降，此判斷不成立。'),
+    ('一旦需求下降', '一旦需求下降，此判斷不成立。'),
+])
+def test_news_invalidation_does_not_duplicate_condition_or_punctuation(condition, expected):
+    card = {'why_it_matters': '需求仍待驗證。', 'invalidation_signal': condition}
+    original = copy.deepcopy(card)
+    text = ard._news_line(card)
+    assert expected in text
+    assert '若若' not in text and '。,' not in text and '。，' not in text
+    assert card == original
+
+
 def test_stance_does_not_become_last_upcoming_field_and_audit_is_private():
     obj = fx.valid_analysis()
     obj['stance']['rationale'] = '抄錄系統計分 STANCE_PY.total = 2（label：中性）。利率壓抑估值。'

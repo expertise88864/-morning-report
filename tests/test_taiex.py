@@ -372,7 +372,8 @@ def test_render_stance_display_prefers_python(monkeypatch):
     #  以 -4 乾淨覆蓋;-8 會誤中 charset=utf-8,此處不重複脆弱檢查)
     # Codex r1 P1 合規防線:LLM 相反立場的結論/方向性建議不得殘留
     assert "偏多操作 00662 逢低加碼" not in html
-    assert "依系統計分" in html
+    assert "今日維持偏空" in html and "留意下行風險" in html
+    assert "依系統計分" not in html
     # 批#26:立場變化歸因卡已自信件移除(仍在後台計算)
     assert "立場變化歸因" not in html
 
@@ -432,12 +433,12 @@ def test_summary_stance_word_also_enforced():
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-07-18 (Sat)", "每日報")
     assert "中性觀望 等待更多資料再進場" not in html   # 總結立場詞不一致 → 移除
-    assert "依系統計分" in html and "資料不足" in html
+    assert "目前資料不足，暫不提供方向性結論" in html
+    assert "依系統計分" not in html
 
 
-def test_summary_stance_word_uses_first_position():
-    """Codex r4:多立場詞句取「字串位置最前」者——「偏空風險升高,偏多仍可
-    加碼」在權威=偏多時必須觸發替換(位置最前的詞是偏空)。"""
+def test_summary_stance_word_catches_a_contrary_claim():
+    """未明確限於背景訊號的相反立場仍須攔截，不因另一個詞一致就放行。"""
     quotes = {
         "QQQ": {"ticker": "QQQ", "close": 720, "prev_close": 718, "change_pct": 0.3,
                 "high": 721, "low": 717, "volume": 1, "date": "2026-07-18"},
@@ -458,7 +459,8 @@ def test_summary_stance_word_uses_first_position():
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-07-18 (Sat)", "每日報")
     assert "偏空風險升高,偏多仍可加碼 00662" not in html
-    assert "依系統計分" in html
+    assert "今日維持偏多" in html and "開盤預測不代表盤中走勢" in html
+    assert "依系統計分" not in html
 
 
 # ═══ 批#34:預測正確性(review findings)═══
@@ -509,7 +511,8 @@ def test_batch34_stance_defense_catches_unparseable_label():
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-06-02", "每日報")
     assert "全面加碼" not in html            # LLM 的反向建議必須被移除
-    assert "依系統計分" in html               # 改用確定性摘要
+    assert "今日維持偏空" in html and "留意下行風險" in html
+    assert "依系統計分" not in html           # 確定性摘要不外露內部說明
     assert "偏空" in html                     # 仍呈現 Python 權威立場
 
 

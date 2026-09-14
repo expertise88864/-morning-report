@@ -101,11 +101,13 @@ def test_the_production_rule_matches_this_one():
 
 
 def test_the_degraded_card_still_says_something_actionable():
-    """真的矛盾時**不再只留一句空話**:系統立場與分析師觀點並列、
-    寫明以何者為準。一封信裡出現兩個立場而**沒有說哪個算數**才是問題,
-    說清楚了就不是。"""
+    """真正矛盾時保留權威立場與保守提醒，不重播被拒絕的方向。"""
     src = _io.open(_SRC, encoding="utf-8").read()
-    assert "分析師觀點為" in src and "本報以系統計分為準" in src
+    from conclusion_guard import fallback
+    assert "conclusion_fallback(_py_label)" in src
+    assert "今日維持中性" in fallback("中性")
+    assert "等待量能" in fallback("中性")
+    assert "分析師觀點為" not in src
     # 舊的空話不得留著
     assert "LLM 摘要與系統立場不一致" not in src, (
         "那句話沒有任何可行動的內容,使用者連著幾天收到的就是它")

@@ -21964,15 +21964,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         # 的 enum,不必也不該從自己剛產生的 markdown 解析回來。
         _llm_stance = _structured_stance() or _extract_stance(analysis_for_render)
         _llm_label = str(_llm_stance.get("label") or "")
-        # 一句話總結也要驗(Codex r2:十二段抄對、十三段仍可能寫出別的立場詞
-        # ——如「資料不足」被寫成「中性」);取 summary 中**字串位置最前**的
-        # 立場詞比對(Codex r4:依 tuple 順序找會被「偏空風險升高,偏多仍可
-        # 加碼」這類多詞句選錯詞)
-        _sum_txt = str(summary_text or "")
-        _sum_hits = [(i, w) for w in ("資料不足", "偏多", "偏空", "中性")
-                     if (i := _sum_txt.find(w)) >= 0]
-        _sum_word = min(_sum_hits)[1] if _sum_hits else ""
+        # 總結另驗整體立場；明確命名的背景訊號不是本報立場。
+        # 任何未排除的相反標籤都須攔截，不能只讀第一個詞。
+        from conclusion_guard import summary_word, fallback as conclusion_fallback
         _py_label = str(_sp_render["label"])
+        _sum_word = summary_word(summary_text, _py_label)
         # 批#34:原本是 `(X and X != Y) or (Z and Z != Y)`——兩個條件都被 `X and`
         # 短路,於是「**無法解析**」被當成合規。實測重現:LLM 把標籤寫成英文
         # (「> **Stance: Bullish**」)且一句話總結不含四個立場詞之一 →
@@ -21984,10 +21980,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         #     就是這樣:LLM 標籤與 Python 都是「中性」,只因總結寫成
         #     「今日以觀望為主」而整張結論卡被抹掉。只有**寫出不同的
         #     立場詞**才算矛盾。
-        #  2. 真的矛盾時**不再只留一句空話**。原本的替代文字沒有任何
-        #     可行動的內容;現在把系統立場與分析師觀點並列、寫明以何者
-        #     為準 —— 一封信裡出現兩個立場而**沒有說哪個算數**才是 PR-2
-        #     要防的事,說清楚了就不是。
+        #  2. 真正矛盾仍替換，但不重播被拒絕的方向或內部計分說明。
+        #     讀者看到權威立場與保守提醒，診斷仍留在 stance-echo。
         _conflict = ((_llm_label and _llm_label != _py_label)
                      or (_sum_word and _sum_word != _py_label))
         _unverifiable = not _llm_label and not _sum_word
@@ -21996,18 +21990,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                   f"總結「{_sum_word}」)未遵守系統標籤「{_py_label}」"
                   f"→ 結論卡改用確定性摘要,立場詳情已移除", file=sys.stderr)
             # 批#26:不外露淨分,只給標籤
-            _why = str(_llm_stance.get("rationale") or "").strip()
-            _why = _why.split("。")[0][:60] if _why else ""
-            if _conflict and _llm_label:
-                summary_text = (f"依系統計分:{_py_label}(以此為準)。"
-                                f"分析師觀點為{_llm_label}"
-                                + (f",理由是{_why}" if _why else "")
-                                + ";兩者不一致時本報以系統計分為準,"
-                                  "價位區間見下方預測表。")
-            else:
-                summary_text = (f"依系統計分:{_py_label}。"
-                                f"本日分析文字未寫出可核對的立場,"
-                                f"已略過其方向性建議;價位區間見下方預測表。")
+            summary_text = conclusion_fallback(_py_label)
             analysis_for_render = _strip_llm_sections(
                 analysis_for_render, ("我的明確立場", "一句話總結"))
     # 批#28(Codex r1/r4):多空交鋒段的計分內部安全網(只過濾該段,不碰八段門檻語言)。

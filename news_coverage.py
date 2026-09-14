@@ -58,19 +58,23 @@ def select(items: list[dict], forced: set, limit: int) -> tuple[list[dict], dict
     kept = [x for x in items if x["source_item_id"] in forced]
     seen = {x["source_item_id"] for x in kept}
     by_bucket = {b: [x for x in items if b in buckets(x)] for b in BUCKETS}
-    tally = Counter(b for x in kept for b in buckets(x))
+    # Material obligations must survive selection, not be derived only afterward.
+    for group in _finance.GROUPS:
+        material = [x for x in by_bucket[group] if group in _finance.material_groups(x)]
+        if material:
+            by_bucket[group] = material
     for floor in range(1, RESERVE_PER_BUCKET + 1):
         for bucket in BUCKETS:
             if bucket in _finance.GROUPS and floor > 2:
                 continue
-            if len(kept) >= limit or tally[bucket] >= floor:
+            covered = sum(x["source_item_id"] in seen for x in by_bucket[bucket])
+            if len(kept) >= limit or covered >= floor:
                 continue
             candidate = next((x for x in by_bucket[bucket]
                               if x["source_item_id"] not in seen), None)
             if candidate is not None:
                 kept.append(candidate)
                 seen.add(candidate["source_item_id"])
-                tally.update(buckets(candidate))
     for item in items:
         if len(kept) >= limit:
             break

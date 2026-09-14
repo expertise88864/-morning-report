@@ -1017,7 +1017,7 @@ def test_archive_fail_closed_sensitive_scan(monkeypatch, tmp_path):
 
 # ===== 地基批#5(2026-07-16):預測 delta / 熱度排名 delta / 健康警示行 =====
 
-def test_prediction_delta_note_vs_yesterday():
+def test_prediction_delta_note_vs_previous_report():
     history = [
         {"date": "2026-07-14", "weighted_final_2330": 2400.0, "pred_taiex": 44000.0,
          "fair_00662": 120.0, "pred_0050": 104.0},
@@ -1027,7 +1027,7 @@ def test_prediction_delta_note_vs_yesterday():
     ]
     note = mr._prediction_delta_note(history, "2026-07-16 (Thu)", {
         "2330": 2452.2, "加權": 44700.0, "00662": 120.5, "0050": 104.5})
-    assert "vs 昨日預測" in note and "基準 2026-07-15" in note
+    assert "較上次報告預測" in note and "基準 2026-07-15" in note
     assert "2330 +0.50%" in note and "加權 +0.45%" in note
     assert "00662 -0.41%" in note and "0050 +0.00%" in note
     # 全部 |Δ|<0.05% → 無變化自動抑制
@@ -1035,6 +1035,14 @@ def test_prediction_delta_note_vs_yesterday():
         "2330": 2440.5, "加權": 44510.0, "00662": 121.02, "0050": 104.51}) == ""
     # 無前日紀錄 → 空
     assert mr._prediction_delta_note([], "2026-07-16", {"2330": 2452.0}) == ""
+
+
+def test_prediction_delta_weekend_baseline_is_not_called_yesterday():
+    history = [{"date": "2026-09-11", "weighted_final_2330": 100.0},
+               {"date": "2026-09-12", "weighted_final_2330": 101.0}]
+    note = mr._prediction_delta_note(history, "2026-09-14", {"2330": 102.0})
+    assert "較上次報告預測" in note and "昨日" not in note
+    assert "基準 2026-09-12" in note and "2330 +0.99%" in note
 
 
 def test_sector_rank_deltas_day_over_day(monkeypatch, tmp_path):

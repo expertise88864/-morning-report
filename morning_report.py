@@ -16813,23 +16813,15 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     逐主題失敗略過(晨報不可斷);回 {label: [{"title","link"}...]}。"""
     del now_tpe   # 介面對齊其他 fetch;cutoff 用 UTC now
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
-    out: dict = {}
-    # 跨主題+同主題模糊去重:同一事件常被兩家媒體改寫不同標題(exact 擋不住),
-    # 也常同時命中房市+建設。seen 元素=_local_seen_entry 三元組
-    # (bigrams, 非年份數字, 正規化字串)。
-    seen_bigrams: list[tuple] = []
+    candidates: list = []
     for row in LOCAL_NEWS_QUERIES:
         label, query = row[0], row[1]
-        topic_limit = row[2] if len(row) > 2 else per_label
         national = bool(row[3]) if len(row) > 3 else False
         try:
             # when=2d:Google 伺服器端 when:1d 只回 24h 內,會吃掉 24-30h 的新聞;
             # 抓寬一天、由下方 cutoff 精確限制 30h(Codex review)
             feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
-            items = []
             for entry in feed.entries:
-                if len(items) >= topic_limit:
-                    break
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
                 # 2026-08-20 使用者回報:在地快訊出現三個月前的舊聞(彰基 AI
                 # 換臉)。原本 `if pub and … < cutoff` 是 fail-open —— RSS 條目
@@ -16851,19 +16843,13 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                 if not national and not any(
                         tok in region_check for tok in _LOCAL_REGION_TOKENS):
                     continue
-                if _local_title_is_dup(title, seen_bigrams):
-                    continue
-                from news_display_quality import relevant
-                if not relevant(label, title):
-                    continue
-                seen_bigrams.append(_local_seen_entry(title))
-                items.append({"title": title,
-                              "link": str(entry.get("link", ""))})
-            if items:
-                out[label] = items
+                candidates.append((label, {"title": title,
+                                           "link": str(entry.get("link", ""))}))
         except Exception as e:
             print(f"[local] 在地快訊 {label} 抓取失敗: {e}", file=sys.stderr)
-    return out
+    from local_news_routing import select
+    return select(candidates, LOCAL_NEWS_QUERIES, per_label,
+                  is_dup=_local_title_is_dup, seen_entry=_local_seen_entry)
 
 
 # ── 批#16:AI 前沿模型動態(2026-07-18 使用者要求)────────────────────
@@ -18977,8 +18963,8 @@ def _stance_attribution(sp: dict, history: list,
 
 def _prediction_delta_note(history: list, report_date: str,
                            current: dict) -> str:
-    """「vs 昨日預測」一行(地基批#5 Delta-first):current 鍵=顯示名、值=今日預測。
-    以 history.json 前一日 entry 為基準;無前日紀錄或全部 |Δ|<0.05% → 回空
+    """「較上次報告預測」一行:current 鍵=顯示名、值=今日預測。
+    以 history.json 先前最後一筆為基準;無紀錄或全部 |Δ|<0.05% → 回空
     (無變化自動抑制,不佔版面)。顯示用,不入模型。"""
     key_map = {"2330": "weighted_final_2330", "加權": "pred_taiex",
                "00662": "fair_00662", "0050": "pred_0050"}
@@ -19002,7 +18988,7 @@ def _prediction_delta_note(history: list, report_date: str,
     if not parts or not any_move:
         return ""
     return (f"<div style='font-size:12px;color:#64748b;margin:2px 0 12px;'>"
-            f"vs 昨日預測:{'・'.join(parts)}"
+            f"較上次報告預測:{'・'.join(parts)}"
             f"<span style='color:#94a3b8;'>(基準 {prev.get('date')})</span></div>")
 
 

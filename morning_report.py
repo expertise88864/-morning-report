@@ -21430,7 +21430,8 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             # when=2d:同在地快訊——伺服器端 1d 過濾會吃掉 24-30h 新聞,cutoff 才是精確閘
             feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
             from sports_news_selection import select as select_sports_news
-            out["news"][label], selection = select_sports_news(feed.entries, now_tpe)
+            out["news"][label], selection = select_sports_news(feed.entries, now_tpe,
+                tennis_results=(out.get("tennis") or {}).get("results") if label == "網球" else None)
             print(f"[sports] {label} selection={selection}", file=sys.stderr)
         except Exception as e:
             print(f"[sports] {label} 新聞抓取失敗: {e}", file=sys.stderr)

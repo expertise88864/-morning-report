@@ -449,6 +449,7 @@ MODULE_CEILINGS = {
     "repair_contract_context.py": 55,
     "quality_rejection_detail.py": 30,
     "sports_news_selection.py": 75,
+    "tennis_news_context.py": 45,
     "fallback_recap.py": 100,
     "fallback_recap_runtime.py": 65,
     # 第二十四輪 P1-1:新聞身分(`source_item_id`)從 `evidence_packet` 搬出來。

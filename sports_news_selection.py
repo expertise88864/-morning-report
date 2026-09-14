@@ -7,6 +7,7 @@ from typing import Any, Iterable, Mapping
 
 from news_display_quality import unique
 from sports_quality import news_allowed
+from tennis_news_context import completed_preview
 
 
 def stale_scorecard(title: str, today: dt.date) -> bool:
@@ -29,7 +30,7 @@ def stale_scorecard(title: str, today: dt.date) -> bool:
 
 
 def select(entries: Iterable[Mapping[str, Any]], now: dt.datetime,
-           limit: int = 3) -> tuple[list[dict[str, str]], dict[str, int]]:
+           limit: int = 3, *, tennis_results=None) -> tuple[list[dict[str, str]], dict[str, int]]:
     if now.tzinfo is None:
         raise ValueError("sports selection requires timezone-aware report time")
     cutoff = now.astimezone(dt.timezone.utc) - dt.timedelta(hours=30)
@@ -39,6 +40,7 @@ def select(entries: Iterable[Mapping[str, Any]], now: dt.datetime,
         report["input"] += 1
         title = str(entry.get("title") or "").strip()
         if (not title or not news_allowed(entry) or stale_scorecard(title, now.date())
+                or completed_preview(title, tennis_results, now)
                 or re.match(r"^\s*[\[【]推薦[\]】]\s*(?:網球|MLB|NBA|中職|棒球)", title, re.I)):
             report["excluded"] += 1
             continue

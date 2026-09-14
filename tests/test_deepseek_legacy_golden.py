@@ -73,7 +73,7 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 # 「仍要 5 條」。逐行 diff 過,只有這兩處字面動了。
 # CR-02 2026-09-05:刻意修正未知模式,禁止 LLM 自算;有 Python 權威時抄錄規則不變。
 LEGACY_PROMPT_SHA256 = (
-    "3e350f1e0d1d55750e26330c030967358642d02c4992c3a65301d10b18a8983b")  # v28: partial watch is not a negative result.
+    "9be5075cd3b397b9f794acaabd8b23fb5acc92e3b4daadab79409b637ab15616")  # Exact48h, not approximate trading days.
 #: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。
@@ -104,6 +104,10 @@ def test_the_legacy_deepseek_prompt_is_byte_frozen():
     改一行不會有任何東西變紅。
     """
     prompt = mr._build_prompt(*legacy_prompt_inputs())
+    before = prompt.replace('自產報時起精確 48 小時內、有明確台北時間的重要行事曆事件',
+                            '未來約 1–2 個交易日的重要行事曆事件')
+    assert hashlib.sha256(before.encode('utf-8')).hexdigest() == (
+        '3e350f1e0d1d55750e26330c030967358642d02c4992c3a65301d10b18a8983b')
     got = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
     assert got == LEGACY_PROMPT_SHA256, (
         "DeepSeek legacy prompt 變了。若是**刻意**要改,請更新 "

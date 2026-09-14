@@ -10735,21 +10735,20 @@ def persist_delivered_report_state(entry: Optional[dict],
 
 def _format_event_scenarios(calendar: Optional[list],
                             now_tpe: Optional[dt.datetime] = None) -> str:
-    """G2:把風險事件日曆篩成「未來約 48 小時(今日～後日)」的重要事件清單文字,
+    """G2:把有明確台北時間的日曆篩成精確未來 48 小時的重要事件清單文字,
     供 prompt 的「事件情境決策表」取材。每列:日期 時間｜標題(含既有的預期/前值 note)。
     只輸出既有日曆事件(供 LLM 判讀),不新增/不編造;無事件回固定提示字串。"""
     now_tpe = now_tpe or dt.datetime.now(TPE)
-    today = now_tpe.date()
-    horizon = today + dt.timedelta(days=2)   # ~48h(含當日),日期粒度、留邊
+    from scenario_window import near_rows
     rows: list[str] = []
-    for e in (calendar or []):
+    for e in near_rows(calendar, now_tpe):
         d = e.get("date")
         # datetime 是 date 的子類:先正規化成 date,否則「date <= datetime」比較會拋 TypeError
         # (財報 adapter 可能保留 datetime/Timestamp 子類)→ 一顆壞事件就讓整份 prompt 降級(Codex review)
         if isinstance(d, dt.datetime):
             d = d.date()
-        if not isinstance(d, dt.date) or not (today <= d <= horizon):
-            continue
+        if isinstance(d, str):
+            d = dt.date.fromisoformat(d)
         note = str(e.get("note") or "").strip()
         t = str(e.get("time") or "").strip()
         # 事件名先翻成「中文（英文）」再進 prompt —— 模型看到什麼就抄什麼,

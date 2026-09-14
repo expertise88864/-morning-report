@@ -335,11 +335,12 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world[:5]))
 
     # 未來 48 小時:每件事一個小段(基準/偏多/偏空/最受影響/失效)。
-    scen_blocks = []
+    from scenario_window import heading as scenario_heading
+    scen_blocks = {}
     for ev in (obj.get("upcoming_event_scenarios") or []):
         if not isinstance(ev, dict) or not _s(ev.get("event")):
             continue
-        from reader_fact_labels import scenario_time
+        from scenario_window import display_time as scenario_time
         when = scenario_time(_s(ev.get("event")), _s(ev.get("when")), packet or {})
         head = "**" + "|".join(x for x in (when, _s(ev.get("event"))) if x) + "**"
         rows = [head]
@@ -350,9 +351,10 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                 prefix = {"bull_case": "若有利條件成立，", "bear_case": "但若風險發生，",
                           "most_affected": "主要牽動", "invalidation": "上述判斷不適用於："}.get(key, "")
                 rows.append(prefix + _sent(ev.get(key)))
-        scen_blocks.append(rows[0] + "\n\n" + " ".join(rows[1:]))
-    if scen_blocks:
-        parts.append(f"## {SECTION_48H}" + chr(10) + (chr(10) * 2).join(scen_blocks))
+        group = scenario_heading(_s(ev.get("event")), packet or {})
+        scen_blocks.setdefault(group, []).append(rows[0] + "\n\n" + " ".join(rows[1:]))
+    for group, blocks in scen_blocks.items():
+        parts.append(f"## {group}" + chr(10) + (chr(10) * 2).join(blocks))
 
     # 敘事變化:昨日觀點 → 強化/升溫/持續/減弱/反轉。
     # **昨日觀點的文字依 ID 取回 Python 保存的 statement**(同批外審 r2):

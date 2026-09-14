@@ -1184,7 +1184,7 @@ def test_git_push_all_missing_returns_early(tmp_path, monkeypatch):
 # ── G2 事件情境決策表(prompt 層) ────────────────────────────────────────────
 def test_format_event_scenarios_filters_window_and_keeps_notes():
     import datetime as dt
-    now = dt.datetime.now(mr.TPE)
+    now = dt.datetime(2026, 9, 14, 6, tzinfo=mr.TPE)
     today = now.date()
     cal = [
         {"date": today, "time": "20:30", "title": "[USD] CPI y/y",
@@ -1196,7 +1196,7 @@ def test_format_event_scenarios_filters_window_and_keeps_notes():
     ]
     out = mr._format_event_scenarios(cal, now_tpe=now)
     assert "CPI" in out and "預期 3.1%" in out       # 視窗內、保留預期/前值
-    assert "NVDA 財報" in out
+    assert "NVDA 財報" not in out  # Unknown local time cannot establish an exact 48h window.
     assert "太遠的事件" not in out                    # 視窗外(>48h)剔除
 
 
@@ -1209,9 +1209,9 @@ def test_format_event_scenarios_accepts_datetime_date_without_typeerror():
     """財報 adapter 可能存入 datetime(date 子類);date<=datetime 比較會 TypeError,
     須先正規化成 date,否則一顆壞事件讓整份 prompt 降級(Codex review)。"""
     import datetime as dt
-    now = dt.datetime.now(mr.TPE)
+    now = dt.datetime(2026, 9, 14, 6, tzinfo=mr.TPE)
     cal = [{"date": dt.datetime(now.year, now.month, now.day, 13, 30),
-            "time": "盤後(美東)", "title": "NVDA 財報", "note": "", "impact": "high"}]
+            "time": "20:30", "title": "NVDA 財報", "note": "", "impact": "high"}]
     out = mr._format_event_scenarios(cal, now_tpe=now)   # 不可拋例外
     assert "NVDA 財報" in out
 

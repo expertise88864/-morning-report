@@ -22,9 +22,10 @@ def medical_terms(text: str) -> str:
 
 def scenario_time(event: str, fallback: str, packet: dict) -> str:
     """Use per-event calendar times only when every identified event matches uniquely."""
-    aliases = {"PPI": r"PPI|Producer Price", "CPI": r"CPI|Consumer Price",
-               "ECB": r"ECB|歐洲央行|Main Refinancing Rate|主要再融資利率",
-               "FOMC": r"FOMC|Federal Funds Rate"}
+    aliases = {"PPI": r"(?<![A-Za-z0-9_])(?:PPI|Producer Price)(?![A-Za-z0-9_])",
+               "CPI": r"(?<![A-Za-z0-9_])(?:CPI|Consumer Price)(?![A-Za-z0-9_])",
+               "ECB": r"(?<![A-Za-z0-9_])ECB(?![A-Za-z0-9_])|歐洲央行|Main Refinancing Rate|主要再融資利率",
+               "FOMC": r"(?<![A-Za-z0-9_])(?:FOMC|Federal Funds Rate)(?![A-Za-z0-9_])"}
     keys = [key for key, pattern in aliases.items() if re.search(pattern, event, re.I)]
     if not keys:
         return fallback

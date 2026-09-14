@@ -12,6 +12,7 @@ import analysis_depth as ad
 import analysis_render as ar
 import analysis_schema as sch
 import fixtures_analysis as fx
+import scenario_window as sw
 
 #: **路徑錨在這個檔案自己身上**,不靠 CWD。
 _ROOT = _Path(mr.__file__).resolve().parent
@@ -191,8 +192,11 @@ def test_the_legacy_skeleton_renders_in_order():
     obj["taiwan_policy"] = [{"source_item_id": "n1", "what": "太陽光電標準第9條",
                              "impact": "需求透過模組與工程訂單傳導。"}]
     out = ar.render(obj)
-    order = [ar.SECTION_WORLD, ar.SECTION_48H, ar.SECTION_DELTA,
+    # No calendar packet: the model's "08/20" cannot establish a 48h window.
+    order = [ar.SECTION_WORLD, sw.UNKNOWN, ar.SECTION_DELTA,
              ar.SECTION_MACRO, ar.SECTION_POLICY]
+    assert ar.SECTION_48H not in out
+    assert "08/20 02:00（時間未核實）" in out
     assert ar.SECTION_LOCAL not in out and '中經院估 GDP 破 10%' in out
     idx = [out.index(t) for t in order]
     assert idx == sorted(idx), [out.index(t) for t in order]
@@ -207,7 +211,7 @@ def test_the_legacy_skeleton_renders_in_order():
 def test_empty_skeleton_fields_add_no_sections():
     """空欄位不出段 —— legacy 骨架不是每天每段都有內容。"""
     out = ar.render(fx.valid_analysis())
-    for t in (ar.SECTION_WORLD, ar.SECTION_48H, ar.SECTION_DELTA,
+    for t in (ar.SECTION_WORLD, sw.NEAR, sw.LATER, sw.MIXED, sw.UNKNOWN, sw.PAST, ar.SECTION_DELTA,
               ar.SECTION_MACRO, ar.SECTION_LOCAL):
         assert t not in out, t
 

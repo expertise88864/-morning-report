@@ -19,7 +19,7 @@ WRITING = """
   不編造「利率升50bp使估值跌3–5%」等彈性，也不自創數據對升息機率的精確換算。
 - 前日跌幅與次日漲幅按複利比對，不能因反彈就說完全收復；1.46+0.59是2.05，
   不把合計寫2.2。歷史來源日期與事件發生月份分開，不能把舊報導日期當新事件日期。
-- 複合觀察條件只有部分完成時維持not_triggered並說明已完成/仍待驗證兩部分；
+- 複合觀察條件只有部分完成時用partially_triggered並說明已完成/仍待驗證兩部分；
   不得因新品發布就把尚無備貨證據的整條觀察結案。市場機率有當期數字時須引用，
   不同來源的機率不能混稱同一序列；沒有數字要指明缺的是哪個來源。
 - 未參與、無直接影響的公司不要硬填affected_assets；用空清單或產業層級敘述。
@@ -30,11 +30,8 @@ WRITING = """
 
 
 def watch_status(row: dict) -> str:
-    status = str(row.get('status') or '')
-    text = str(row.get('what_happened') or '')
-    partial = re.search(r'(?<![不非是])(?:只觸發.{0,35}部分|僅觸發.{0,35}部分|只(?:有|完成)部分|'
-                        r'僅部分(?:成立|完成|觸發)|尚未全部(?:成立|完成|觸發))', text)
-    return 'not_triggered' if status == 'triggered' and partial else status
+    from watch_assessment import status
+    return status(row)
 
 
 def conclusion(sections: list[str], obj: dict) -> str:
@@ -75,7 +72,10 @@ def watch_reviews(obj: dict) -> dict:
     reviewed = {}
     for row in obj.get('watch_review') or []:
         if isinstance(row, dict) and str(row.get('watch_id') or ''):
-            reviewed[str(row['watch_id'])] = watch_status(row)
-            if watch_status(row) != row.get('status'):
-                print('::warning::watch_partial_retained', flush=True)
+            projected = watch_status(row)
+            reviewed[str(row['watch_id'])] = projected
+            if projected != row.get('status'):
+                reason = ('watch_partial_retained' if projected == 'partially_triggered'
+                          else 'watch_evidence_incomplete')
+                print('::warning::' + reason, flush=True)
     return reviewed

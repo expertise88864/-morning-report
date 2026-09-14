@@ -63,7 +63,7 @@ import podcast_comparison as _podcast
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 30  # Attributed Podcast comparisons are distinct from facts.
+ANALYSIS_SCHEMA_VERSION = 31  # Distinguish missing evidence from a negative watch result.
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -525,11 +525,14 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
     # 「已觸發」要引今天的證據 ID —— 不引的話,「觸發了」只是一句話。
     "watch_review": _arr(_obj({
         "watch_id": _s("EVIDENCE.yesterday_watch 的 `watch_id`(例:w1)"),
-        "status": _enum(("triggered", "not_triggered", "no_longer_relevant"),
-                        "triggered=預期的情況今天出現了;not_triggered=還沒;"
+        "status": _enum(("triggered", "not_triggered", "no_longer_relevant",
+                         "insufficient_evidence", "partially_triggered"),
+                        "triggered=全部條件成立;not_triggered=有證據確認條件未達;"
+                        "insufficient_evidence=缺資料無法判定;partially_triggered=有證據確認部分成立;"
                         "no_longer_relevant=前提已消失,不用再盯"),
         "what_happened": _s("triggered/no_longer_relevant:今天發生了什麼;"
-                            "not_triggered:一句話說還在等什麼"),
+                            "not_triggered:未達條件的實際值;insufficient_evidence:缺什麼資料;"
+                            "partially_triggered:已成立與待確認的條件分開說明"),
         "evidence_ids": _EVIDENCE_IDS,
     }), "昨天觀察點的逐條回顧;EVIDENCE 沒給 yesterday_watch 就給空陣列"),
     "claim_audit": _arr(_AUDITED_CLAIM,

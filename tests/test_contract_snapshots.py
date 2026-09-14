@@ -743,7 +743,7 @@ _FROZEN = {
     #     特化 schema 沒有對應欄位,那一段整個消失(使用者連兩天反映)。
     # v21(2026-08-19 第四批):world_events / 48h 情境 / 敘事變化 /
     #     多空交鋒 / 總經環境 / 在地動態 / primary_target。
-    "output_schema_version":  (30, "1e4c83a76023f45f"),  # Source-excerpt-backed opinion comparison.
+    "output_schema_version":  (31, "a8e768b2ea3ff633"),  # Explicit missing/partial watch evidence.
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -792,11 +792,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (63, "41d112de016ac913"),  # Opinion/fact boundaries.
+    "primary_profile_version":  (64, "2b1d80bbc552ba64"),  # Distinct watch outcomes.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (27, "e74a0c8a163ada0a"),  # Dated opinions on legacy path.
+    "fallback_profile_version":  (28, "773c6a3dbd069fd7"),  # Partial outcomes stay open.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。

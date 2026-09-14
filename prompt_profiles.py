@@ -46,7 +46,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 27  # Dated and bounded Podcast opinions, no nested fences.
+DEEPSEEK_LEGACY_VERSION = 28  # Explicit partial watch outcomes, not negative results.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -83,7 +83,7 @@ DEEPSEEK_LEGACY_VERSION = 27  # Dated and bounded Podcast opinions, no nested fe
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 63  # Source-excerpt-backed Podcast opinion comparison.
+LUNA_XHIGH_VERSION = 64  # Missing and partial evidence have distinct watch statuses.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -191,9 +191,9 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   1–4 週的預期會一直帶著，直到觸發、前提消失或到期）——
   每一條都要在 `watch_review` 逐條回顧(用它的 `watch_id`):
   預期的情況今天出現了(triggered,**要引今天的證據 ID**)、
-  還沒出現（not_triggered，一句話說還在等什麼）、或前提已消失
+  未達（not_triggered，引實際值）、資料不足（insufficient_evidence，說缺什麼）、部分成立（partially_triggered，引成立部分的證據並說待驗證條件）、或前提已消失
   （no_longer_relevant，**同樣要引今天的證據** —— 關掉一條預期是
-  今天的事實判斷，不是一句話）。`not_triggered` 的會**留到明天繼續追**，
+  今天的事實判斷，不是一句話）。未達、資料不足與部分成立都會**留到明天繼續追**，
   所以不必為了保住它而在今天的 `watch_triggers` 再寫一次同樣的話；
   **過期由本報判**（每條有自己的 deadline），你不必操心。
   這是回顧**不是證據** —— 昨天的預期不能替今天的判斷背書;

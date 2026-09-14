@@ -177,6 +177,7 @@ MODULE_CEILINGS = {
     "editorial_priority.py": 100,
     "reader_editorial.py": 110,
     "reader_revision.py": 85,
+    "watch_assessment.py": 60,
     "sports_quality.py": 85,
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,

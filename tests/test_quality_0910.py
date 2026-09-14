@@ -53,7 +53,7 @@ def test_partial_compound_watch_stays_open_and_is_labeled(capsys):
     for text in ('不只觸發A部分，B也已完成。', '並非僅部分成立，條件全部觸發。',
                  '不是只觸發A部分，B也已完成。其他議題仍未知。'):
         assert reader_revision.watch_status(dict(row, what_happened=text)) == 'triggered'
-    assert reader_revision.watch_status(dict(row, what_happened='只觸發了推出的部分。')) == 'not_triggered'
+    assert reader_revision.watch_status(dict(row, what_happened='只觸發了推出的部分。')) == 'partially_triggered'
 
 
 def test_sector_readout_only_uses_the_two_visible_representatives():

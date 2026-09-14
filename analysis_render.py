@@ -556,8 +556,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         _wid_text = {str(w.get("watch_id") or ""): _s(w.get("trigger"))
                      for w in ((packet or {}).get("yesterday_watch") or [])
                      if isinstance(w, dict)}
-        _WR_ZH = {"triggered": "已觸發", "not_triggered": "未觸發",
-                  "no_longer_relevant": "不再相關"}
+        from watch_assessment import LABELS as _WR_ZH
         _watch_dates = {str(w.get("watch_id") or ""): str(w.get("date") or "")
                         for w in (packet or {}).get("yesterday_watch", []) if isinstance(w, dict)}
         _wr_lines = []
@@ -572,8 +571,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
             if _watch_dates.get(wid):
                 watch_text = f"{_watch_dates[wid]} 提出的觀察「{watch_text}」"
             from reader_revision import watch_status
-            status = ('部分成立，續追蹤' if watch_status(w) != w.get('status')
-                      else _WR_ZH.get(str(w.get("status") or ""), "?"))
+            status = _WR_ZH.get(watch_status(w), "?")
             what = _s(w.get("what_happened"))
             _wr_lines.append(f"{watch_text}：{status}"
                              + (f"（{what}）" if what else ""))

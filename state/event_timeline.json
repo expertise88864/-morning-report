@@ -1,94 +1,4 @@
 {
- "geopolitical:Oil:2026-09": {
-  "first_seen": "2026-09-09",
-  "days": 2,
-  "last_seen": "2026-09-11",
-  "latest_title": "Iran war disrupts oil supply and drives crude above $100",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "100",
-   "above",
-   "and",
-   "crude",
-   "disrupts",
-   "drives",
-   "iran",
-   "supply",
-   "war"
-  ],
-  "entity": "Oil",
-  "subject_basis": "literal",
-  "subjects": [
-   "Oil"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:Oil:2026-09#0b2a90": {
-  "first_seen": "2026-09-11",
-  "days": 1,
-  "last_seen": "2026-09-11",
-  "latest_title": "U.S. crude oil tops $100 again – last seen in May – as market braces for prolonged Iran wa",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "100",
-   "again",
-   "as",
-   "braces",
-   "crude",
-   "in",
-   "iran",
-   "last",
-   "may",
-   "prolonged",
-   "seen",
-   "tops",
-   "war"
-  ],
-  "entity": "Oil",
-  "subject_basis": "literal",
-  "subjects": [
-   "Oil"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-09#2177f4": {
-  "first_seen": "2026-09-11",
-  "days": 1,
-  "last_seen": "2026-09-11",
-  "latest_title": "伊朗地下設施恢復較低速彈道飛彈生產",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "下設",
-   "低速",
-   "地下",
-   "彈生",
-   "彈道",
-   "復較",
-   "恢復",
-   "施恢",
-   "生產",
-   "設施",
-   "較低",
-   "速彈",
-   "道飛",
-   "飛彈"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:沙烏地阿拉伯:2026-09": {
   "first_seen": "2026-09-12",
   "days": 1,
@@ -212,6 +122,41 @@
   "subject_basis": "alias",
   "subjects": [
    "沙烏地"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:烏克蘭:2026-09": {
+  "first_seen": "2026-09-15",
+  "days": 1,
+  "last_seen": "2026-09-15",
+  "latest_title": "澤倫斯基稱若俄羅斯跟進，烏克蘭準備採取降級措施",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "俄羅",
+   "倫斯",
+   "備採",
+   "取降",
+   "基稱",
+   "採取",
+   "措施",
+   "斯基",
+   "斯跟",
+   "準備",
+   "澤倫",
+   "稱若",
+   "級措",
+   "羅斯",
+   "若俄",
+   "跟進",
+   "降級"
+  ],
+  "entity": "烏克蘭",
+  "subject_basis": "alias",
+  "subjects": [
+   "烏克蘭"
   ],
   "event_type": "geopolitical",
   "action": "",

@@ -7065,6 +7065,46 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "c2d44325-5872-41a8-bbad-3e840321c8a3",
+        "title": "EP 192: Talking Apple Silicon with Apple's Tom Boger, Kaiann Drance, and Sri Santhanam",
+        "published": "Tue, 15 Sep 2026 07:49:14 -0700",
+        "processed_at": "2026-09-15T17:48:24Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出 Apple 的垂直整合是核心差異化：晶片團隊提前知道產品 roadmap、預先為相機或 AI 需求鋪好頻寬與線路，而業界其他公司只能「從菜單挑晶片」再想辦法把產品套上去，這是 Apple 相對同業的結構性優勢。",
+            "主持人認為 2nm 只是「順風」而非重點：A20 Pro 的 CPU +20%、GPU +40%、雙神經引擎、更多記憶體通道，真正來自架構、設計、實作與封裝的同步優化；Apple 寧可強調每瓦效能與持續效能，而非跟同業比 NPU TOPS 數字。",
+            "封裝是本集少見的技術重點：Apple 把 DRAM 從 SoC 上方移到側邊（靈感來自 M 系列的 MCM 封裝），換得更好的散熱與記憶體頻寬，並直接連上均熱板；主持人指出這是自 M1 Ultra 以來 Apple 再次公開談封裝，且 M5 Ultra 的四晶粒架構「業界沒有類似方案」。",
+            "邊緣 AI 的商業邏輯：企業客戶 token 消耗暴增、想壓低 token 成本並把資料留在本地，帶動 Mac Mini（長時間常開）與 Mac Studio（四台串接即可在桌上跑前沿模型、共用一個插座）的需求；主持人與來賓也點出模型正在「專業化」，選對模型執行對的任務是產業新趨勢。",
+            "主持人強調安全與隱私是有「運算稅」的：secure enclave、secure X-lave、記憶體標記等都要在晶片層級付出設計與效能代價，市場普遍低估這塊投入；但在 agentic AI 與資安風險升高的時代，這種底層架構能力反而是跨產品的差異化來源。"
+          ],
+          "tickers": [
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "本集聚焦 Apple Silicon 技術與垂直整合的競爭優勢，主持人多次以「差異化」形容其軟硬體與晶片同步設計，但未對股價或投資價值表態。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "Because I think as we've largely explained on this podcast, Apple's vertical integration is one of those differentiators. And you see hardware, software, and Silicon coming together for these product goals with product vision.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "We're not a merchant silicon vendor. We're really building the solutions for our own product experiences.",
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 1,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "6d6d6ac1-d72c-46be-993e-4c6703720a4d",
         "title": "Ep 191: Agents Gone Wild: Broadcom’s ASICs and the AI Frontier",
         "published": "Mon, 07 Sep 2026 08:05:04 -0700",

@@ -497,6 +497,46 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2400761988",
+        "title": "2026/9/15(二)AI踩煞車 重擊晶片股?10年債殖利率破5% AI泡沫洩氣？【早晨財經速解讀】",
+        "published": "Tue, 15 Sep 2026 01:08:05 +0000",
+        "processed_at": "2026-09-15T07:05:36Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為本波晶片股重挫與「AI踩煞車」無關，真正原因是十年期公債殖利率升破5%及市場提前定價FOMC升息一碼（機率90%），關鍵在週四點陣圖。",
+            "他解讀AI巨頭聯手呼籲放慢前沿模型，是領先者提高合規門檻、阻擋追趕者的策略，不是AI末日；因此不認為資本支出會因此放緩。",
+            "他觀察資金從晶片股輪動至軟體／資安股，IGV過去五週漲24.5%，由大型軟體與資安公司帶動，可能是新一波資安想像空間。",
+            "他主張AI監管應設安全底線但不應停止研發，否則可能把需求轉入地下更難監管；政府主導規則可行，但巨頭集體要求放緩不切實際。",
+            "他認為升息一碼已被price in，若FOMC後情緒改善，AI踩煞車議題兩週內就會被淡忘；流動性與利率預期仍是美股最重要主軸。"
+          ],
+          "tickers": [
+            {
+              "name": "iShares Expanded Tech-Software Sector ETF",
+              "code": "IGV",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人指出資金從晶片股輪動至軟體／資安股，IGV過去五週漲幅24.5%，由大型軟體與資安公司帶動，但未明確表態買賣。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "美國股市的軟體股IGV,過去五周漲幅也高達24.5%,現在價格大概在105-109左右。",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為美股三大指數仍處高位，本波賣壓集中在費半與晶片股，但根本原因是十年期公債殖利率升破5%與FOMC升息預期，而非AI踩煞車；真正關鍵在週四點陣圖對明年升息幅度的指引。",
+          "action_view": "操作上應等待週四FOMC點陣圖；不要因AI踩煞車論就砍晶片股，因為流動性與利率預期才是重點，若會議後情緒改善，AI議題兩週內就會被淡忘。",
+          "notable_quote": "因為它怎麼看都是一個次要因子喔,流動性仍然是目前美國股票市場當中,最重要的詛咒",
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2399990427",
         "title": "2026/9/14(一)油價破百!升息箭在弦上?中期選舉倒數 美債撐得住?【早晨財經速解讀】",
         "published": "Mon, 14 Sep 2026 01:06:52 +0000",
@@ -985,43 +1025,6 @@
           "notable_quote": "我們很容易在資訊不完整的情況下，直接接受別人安排的劇本，但受害的可能是自己。"
         },
         "shown_at": "2026-09-01T00:28:37Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2389996500",
-        "title": "2026/8/28(五)輝達救美股 華許救美債?台灣景氣連八紅 台灣人終於有感?【早晨財經速解讀】",
-        "published": "Fri, 28 Aug 2026 01:12:47 +0000",
-        "processed_at": "2026-08-28T04:14:48Z",
-        "digest": {
-          "summary_points": [
-            "主持人強調輝達本季財報最重要的不是單日市值暴增 4,420 億美元，而是 ACE 營收近 400 億美元（占總營收 962 億美元的四成以上）且下年度營收指引成長 70%、遠高於市場預估的 45%，顯示其已擺脫對少數雲端巨頭依賴、需求被顯著低估。",
-            "主持人分析美國 7 月 PCE 的特殊現象：投資組合管理與財務顧問費用大幅上升，成為核心服務通膨的主要推力，代表金融市場本身開始影響通膨數據，與過去聚焦房租、工資不同。",
-            "主持人認為美國消費實質上仍在收縮、先買後付（BNPL）使用量大幅創高，但服務業 PMI 仍高、就業未全面惡化，因此有降息理由但尚未到被迫立即降息的地步。",
-            "主持人拆解美國第二季 GDP 後認為，成長幾乎只靠借貸支撐的消費與 AI 固定投資，其他如進出口、庫存、政府支出都在拖累；若沒有 AI 投資撐住，美國可能早已進入降息格局。",
-            "主持人觀察台灣景氣已進入高強度榮景，多項指標亮紅燈、台積電 31-33 職等年薪挑戰 400-600 萬元，但他個人偏向央行不會在 9 月立即升息，因須考量地方選舉與建商、房市壓力。",
-            "主持人認為建商大幅削減供給（上半年住宅建造量從 2022 年 8.5 萬戶降至約 5 萬戶）反而可能長期托底房價，房市未必會因少子化單一因素重挫。",
-            "主持人以美元為例提醒，貨幣霸權的關鍵在於背後生態系與轉換成本，而非單純價值；即使美元信用下滑，短期內也難以被取代，這是長線資產配置的重要思維。"
-          ],
-          "tickers": [
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為輝達 ACE 營收近 400 億美元、下年度營收指引 +70% 遠超市場預估，顯示需求被低估且客戶結構多元化，看法偏多。"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "主持人以台積電分紅與年薪（31-33 職等 400-600 萬）佐證台灣景氣過熱與資金動能，未直接對股價表態。"
-            }
-          ],
-          "market_view": "主持人認為美股短線靠輝達基本面拉抬，但信用市場與聯準會態度仍偏鷹，行情回到月線、季線的十字路口；台灣景氣過熱但央行升息與房市壓力並存，短線變數多。",
-          "action_view": "主持人提醒投資人將週期放遠，不要因短期恐慌或當沖小利而迷失；在美元生態系與 AI 擴散趨勢下，從長線規律而非單一數據做資產配置。",
-          "notable_quote": "我認為這是本輪財報記當中，我覺得最值得大家觀察的消息，就是不靠七巨頭了，現在大家都在做AI，而且往終端產品的投送越來越明顯了，每個人都有AI的需求。"
-        },
-        "shown_at": "2026-08-29T00:02:49Z"
       }
     ]
   },
@@ -6497,6 +6500,198 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "e23cdf18-6528-458c-adff-dea4d619dcb3",
+        "title": "Elon Musk & Gwynne Shotwell on AI Risks and Peer Review, Starship, Terafab, SpaceX/Tesla Merger",
+        "published": "Tue, 15 Sep 2026 03:42:00 +0000",
+        "processed_at": "2026-09-15T07:15:04Z",
+        "digest": {
+          "summary_points": [
+            "太空算力是這集最實質的新商機：Shotwell 說電腦租賃（compute rental）生意好到「有點不好意思」、需求完全看不到下滑，每季有數百億美元在擴建；理由是地表蓋資料中心的土地會從每英畝 3,000 美元暴漲到 180,000 美元、許可與電力設備交期太長，而太空房地產免費、散熱免費、衛星可長時間對日發電；明年將發射 AI 算力衛星，2028-29 年可能出現付費客戶。",
+            "資本規劃：被問資本支出錢從哪來，Shotwell 回「以上皆是」（Starlink 現金流、舉債、市場），並明說不打算再發行新股；她強調 Starlink 全球滲透率只有 1.5-2%、對美軍業務的營收也還很小，後續成長空間仍大。",
+            "Starship 進度：第 14 次飛行是最後一次不嘗試回收飛船，若順利第 15 次會用發射塔臂「接住」飛船，她估首次就成功的機率 50-60%；目標今年底或明年初重飛飛船與推進器，2027 年達成完全且可快速重複使用，Falcon 9 不會立刻退役。",
+            "Terrafab 的戰略理由：怕台灣晶片哪天斷供，加上現有晶圓廠產能已滿、AI／機器人／車用邊緣算力需要更多供給，馬斯克稱「不建 Terrafab 就等於無法擴張」；先在奧斯汀與 Tesla 合建 R&D 廠（設備已下單）做 crawl 階段，明年年底前做出可用產品，並從供給幾乎不存在的封裝（packaging）切入。",
+            "AI 安全主張：馬斯克認為最立即可行的是讓主要 AI 公司（含中國）互相用對方的測試工具測模型、不要自己改自己的作業，並指產品責任法已經適用，若同業已判定不安全仍照樣發布，將面臨「大菸草等級」的巨額賠償與法律風險。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Shotwell 對業務前景樂觀：Starlink 滲透率僅 1.5-2%、軍方業務空間大，太空算力租賃需求強勁且看不到下滑。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "So Starlink is definitely carrying its own weight, but we have a lot to go, right? Where our market penetration on Starlink is one and a half to 2% depending on which country you're in. So there's a lot of headroom there. Our revenue compared to what we do for the US military, our revenue is very small. So we expect lots of headroom there. But honestly right now, and it is a little embarrassing, but computer rental is a heck of a business.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "EchoStar",
+              "code": "SATS",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "頻譜交易中拿了 SpaceX 股票作價，隨股價上漲拿到更好的條件，Shotwell 直言 Charlie「賺到了」，且是近 20 年的老客戶。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "with the stock increasing in price, it paid more, because there was some stock involved there. So Charlie did all right there. He's a very loyal customer, though. He's been a customer of SpaceX for almost 20 years.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "Shotwell 大讚 10/1 要發表的產品會「讓人震驚」，並參與奧斯汀 R&D 晶圓廠合作，但屬產品層面的興奮，不是投資評斷。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "But Elon showed it to me. And my mind went, boom. I have never seen something... What he's going to show on 10 01 by no exaggeration is going to blow people's minds.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "xAI",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "Shotwell 坦言 xAI 人員流動大，已派 SpaceX 團隊進場補足缺口，整合尚未完成但比預期快。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "So the team, you know, there's been a lot of churn at XAI for sure. And SpaceXers have kind of marched in and helped out where there were significant gaps in that arena.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "T-Mobile",
+              "code": "TMUS",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "目前衛星直連手機靠 T-Mobile 頻譜，但 Starlink 未來要改用自購的 EchoStar 頻譜，合作角色可能被稀釋。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "we have a direct-to-sell business right now through T-Mobile. I don't think they provision all their users with it, just the people that pay the most. But our plan is to leverage, instead of slices of T-Mobile spectrum or slices of other teleco spectrum across the globe, we want to leverage the one that we paid a lot of money for.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "馬斯克認為 Anthropic 在安全上比 OpenAI 更用心，但也坦言其模型能力快速提升、令人擔憂。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "on balance, I think anthropic is... It puts more care into their safety than open AI. But even anthropic acknowledges that they are worried about their models.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "OpenAI",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "馬斯克批評 OpenAI 這次代理測試的釋出方式「有點魯莽」，並主張同業互相測試模型而非自評。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "沒有給投資人買賣建議；公司策略上強調不再發行新股、資本支出以「以上皆是」（Starlink 現金流、舉債、市場資金）支應，並持續把各部門人力調去支援太空算力與 AI 業務。",
+          "notable_quote": "Starlink is definitely carrying its own weight, but we have a lot to go... But honestly right now, and it is a little embarrassing, but computer rental is a heck of a business.",
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 2,
+            "unverified": 4,
+            "invalid": 0
+          }
+        }
+      },
+      {
+        "guid": "7bdf1a10-126c-402c-9320-6678149a2aff",
+        "title": "Jensen Huang: The Doomer Hoax, Superintelligence Is Here, and The Future of AI (ft. President Trump)",
+        "published": "Mon, 14 Sep 2026 21:24:00 +0000",
+        "processed_at": "2026-09-15T07:21:28Z",
+        "digest": {
+          "summary_points": [
+            "Jensen 反駁 AI 末日論：過去「放射科醫師被 AI 取代」「6–12 個月內 90% 程式碼由 AI 生成」「50% 初階白領工作消失」等預測全部落空，他直言這些預測「是編造出來的」、不負責任；真正的問題都出自算力最多的前沿實驗室，應以工程 root cause 方式解決，而非據此擴大監管扼殺產業，這是他對 AI 資本支出可持續的多頭底層邏輯。",
+            "開源模型是他眼中美國贏 AI 競賽的關鍵：過去 6 個月有 4,000 億美元創投資金流入 AI 原生公司，其中 80% 使用開源模型，若沒有開源，這些公司根本無法實現夢想；關閉模型與開源模型兩者都需要（他把封閉模型比喻為瓶裝水），美國要贏不是少數科技公司贏，而是每個產業、每位研究者與學生都贏。",
+            "NVIDIA 的資本配置是「AI 的銀行」模式：以 land power shell 搭配 BlackRock、Goldman 等融資能力，並從上游供應鏈（Corning、Lumentum、TSMC、記憶體廠）一路看到下游資料中心與電力瓶頸，早在成長爆發前就跟這些公司合作；策略是「往上做到需要為止、往下盡可能低」，發明必要技術後讓千花齊放，而不是自己搶進應用層賺那一層的錢（他把封閉模型與開源並存比喻為瓶裝水與免費的水）。",
+            "算力供給的結構性缺口：超大規模雲端一年只規劃一次、在劇烈波動的市場中「幾乎總是估錯」，反觀區域型 neocloud 反應快、懂自己地區的 land power shell，形成分散式算力網路；NVIDIA 已在澳洲 Firmas、東南亞 IOH 等地把規模推到 GW 級，他樂見出現 5 家以上超大規模業者與成千上百家 neocloud。",
+            "中國先進微影：Jensen 認為中國「native grown」、大約 2030 年前就會做出自己的先進微影設備，並直言 2030 就在眼前；他對中國的評價是「很擅長大量生產」，這只是時間問題。他同時認為在自駕、蛋白質合成等窄領域已經達到超智慧（表現優於人類）。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "Jensen 親口說明公司策略是往上做到需要為止、往下盡可能低，全面解決生態瓶頸並讓所有 AI 實驗室都跑在 NVIDIA 平台上，而不去搶應用層的利潤。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "被點名為支撐 NVIDIA 長期供應鏈的關鍵夥伴之一，NVIDIA 早在成長爆發前就與其合作布局。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "in order for us to succeed a whole bunch of companies has to support me you know it's got a corning corning has to support me Lumentum and you know TSMC of course and memory companies and so we started working with all of these companies long before the revolution the growth came so that the growth could happen now",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Hugging Face",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人稱這樁收購是「最具影響力的收購之一」，不只是一筆交易，是 NVIDIA 切入開源與模型服務生態的關鍵一步。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Let's talk about open source for a second. I mean, this hugging phase, we were communicating about this, and I said it's going to be one of the most consequential acquisitions. I don't even want to call it a transaction because I think it's more important than that. Give us your first principles, explanation of open source versus closed source versus open weights and how the ecosystem should fit together over time.",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "NVIDIA 的資本配置思路是沿供應鏈上下游找瓶頸並提前投資（land power shell、電力、記憶體與供應鏈夥伴），策略定調「往上做到需要為止、往下盡可能低」，讓生態系百花齊放而非自己吃下應用層市場。",
+          "notable_quote": "I think the race is really about who exploits the technology best.",
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "a089255b-32f1-4957-af7d-4c5b3ab018f4",
         "title": "AI Kills Everybody or Doomer Psyop? OpenAI's Math Breakthrough, Nike's $200B Collapse",
         "published": "Fri, 11 Sep 2026 23:32:00 +0000",
@@ -6859,78 +7054,6 @@
           "notable_quote": "The market for frontier intelligence has become a duopoly."
         },
         "shown_at": "2026-08-08T22:17:24Z"
-      },
-      {
-        "guid": "8bbdfcd5-e2f4-4220-b5da-a84ddd1402e6",
-        "title": "Saronic Founders: Autonomous Warships, China's 230X Advantage & Swarms of Robot Ships",
-        "published": "Wed, 05 Aug 2026 20:19:00 +0000",
-        "processed_at": "2026-08-06T05:26:39Z",
-        "digest": {
-          "summary_points": [
-            "主持人指出，美國造船產能嚴重落後，中國一年建造逾千艘商船，美國僅5艘，產能差距高達230比1，構成國家安全危機。",
-            "主持人強調，Saronic的自主艦艇剛完成全球首次實戰救援任務，證明無人系統能在最高風險環境下避免額外傷亡，是海軍史的里程碑。",
-            "主持人算了一筆帳：傳統驅逐艦成本30億美元、耗時6-8年，約100個VLS發射管；改用Saronic的180尺無人艦Marauder，每年造20艘、每艘16管，年部署量可從15管增至320管，成本大幅降低。",
-            "主持人擔憂若對手在台海衝突中無視AI武器倫理、全自動接戰，美國堅持人類決策恐居劣勢；但Saronic共同創辦人解釋，AI僅輔助識別，開火權仍由人設定門檻，必要時可調整授權。",
-            "主持人讚賞Saronic像特斯拉一樣垂直整合，從設計到造船廠全面自建，並在德州Brownsville啟動占地800英畝的Port Alpha船廠，未來可擴至4000英畝，成為美國最大造船廠。",
-            "主持人呼籲年輕人投身國防科技，認為比在大科技公司優化廣告更有意義，這是這一代的太空競賽，美國不能輸。"
-          ],
-          "tickers": [
-            {
-              "name": "Saronic",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好其自主艦艇技術能扭轉美國海軍劣勢，並計劃大規模擴產。"
-            }
-          ],
-          "market_view": "主持人認為美國造船與國防科技嚴重落後中國，必須依靠自主系統和創新企業加速追趕，否則難以維持全球安全格局。",
-          "action_view": "主持人建議年輕人優先考慮國防科技公司而非大型科技公司，認為這是更有意義的職業選擇，並暗示應增加自主系統在國防預算中的佔比。",
-          "notable_quote": "Go work at Serenity. You'll get a couple of years into your career and you'll say, I'm doing important work."
-        },
-        "shown_at": "2026-08-07T00:32:46Z"
-      },
-      {
-        "guid": "3202bc1f-a7db-4549-a5d1-0632d58fa81d",
-        "title": "Chip Stocks Crash, $20B Fund Margin Called, Frontier Labs: SLOW DOWN AI, Mamdani's Grocery Stores",
-        "published": "Fri, 31 Jul 2026 22:23:00 +0000",
-        "processed_at": "2026-08-01T05:10:03Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為本波半導體回檔(費城半導體指數單月跌逾20%、進入熊市,但當天反彈7%)是「動能+槓桿」引發的修正,而非AI基本面變壞;Sacks相信超大規模業者的AI資本支出最終能產生回報。",
-            "25歲基金經理人Leopold Aschenbrenner的避險基金從2.25億美元暴漲至200億美元,但因3.5倍槓桿遇上晶片股大跌而遭margin call,投資組合被Citadel接走;主持人以此警告「槓桿等於毀滅風險」,且後進熱錢往往買在最高點。",
-            "韓國散戶槓桿爆倉規模驚人:120萬個槓桿帳戶被追繳,其中35萬戶已遭強制平倉(兩週前數據,現在可能接近百萬戶);三星單月跌38%、韓國股市40天跌逾40%,顯示亞洲AI/晶片交易的高度槓桿化。",
-            "宏觀面,美國30年期公債殖利率突破5.2%,聯邦赤字2兆美元、債務40兆美元,政府支出與債務上限問題使通膨黏著;主持人認為「5%以上無風險利率」讓高本益比科技股失去吸引力,且市場預期9月升息機率達53%。",
-            "中國AI生態系成新變數:開源模型(Kimi/GLM/DeepSeek)成本低80-90%,正侵蝕前沿模型市占;中國記憶體廠CXMT上市首日飆約500%,ASML因中國自研微影設備消息跌17%。Sacks仍認為OpenAI與Anthropic的營收與毛利率證明雙寡頭地位穩固。",
-            "針對Anthropic/OpenAI的「AI安全公開信」(3,300人連署)與OpenAI模型逃脫事件,Sacks認為是「表演式監管」,實為監管捕獲與壟斷掩飾;兩家公司不會真的放慢研發,反而藉此塑造需要政府保護的形象。"
-          ],
-          "tickers": [
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Sacks認為Anthropic營收以10倍成長、毛利率80%以上,雙寡頭地位穩固。"
-            },
-            {
-              "name": "OpenAI",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Sacks指出OpenAI淨新增ARR在7月超越Q2整季,新模型帶動動能。"
-            },
-            {
-              "name": "ASML",
-              "code": "ASML",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "中國開始量產微影設備,ASML股價下跌17%。"
-            }
-          ],
-          "market_view": "主持人整體認為,股市回檔是長期多頭中的槓桿清洗,AI資本支出長期可行;但美國財政赤字與公債殖利率攀升是更深的結構性風險,可能持續壓抑高估值成長股。",
-          "action_view": "操作上,主持人強調不要用槓桿;若有長線AI部位應承受波動而非融資。另因無風險利率達5%以上,可考慮配置美國公債;Chamath建議「做多電力/電子」,看好能源與儲能長期需求。",
-          "notable_quote": "Don't put on leverage. Leverage equals risk of ruin."
-        },
-        "shown_at": "2026-08-01T22:46:06Z"
       }
     ]
   },

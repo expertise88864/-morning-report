@@ -1,154 +1,4 @@
 {
- "geopolitical:Oil:2026-09": {
-  "first_seen": "2026-09-09",
-  "days": 2,
-  "last_seen": "2026-09-11",
-  "latest_title": "Iran war disrupts oil supply and drives crude above $100",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "100",
-   "above",
-   "and",
-   "crude",
-   "disrupts",
-   "drives",
-   "iran",
-   "supply",
-   "war"
-  ],
-  "entity": "Oil",
-  "subject_basis": "literal",
-  "subjects": [
-   "Oil"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:Oil:2026-09#0b2a90": {
-  "first_seen": "2026-09-11",
-  "days": 1,
-  "last_seen": "2026-09-11",
-  "latest_title": "U.S. crude oil tops $100 again – last seen in May – as market braces for prolonged Iran wa",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "100",
-   "again",
-   "as",
-   "braces",
-   "crude",
-   "in",
-   "iran",
-   "last",
-   "may",
-   "prolonged",
-   "seen",
-   "tops",
-   "war"
-  ],
-  "entity": "Oil",
-  "subject_basis": "literal",
-  "subjects": [
-   "Oil"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-09#2177f4": {
-  "first_seen": "2026-09-11",
-  "days": 1,
-  "last_seen": "2026-09-11",
-  "latest_title": "伊朗地下設施恢復較低速彈道飛彈生產",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "下設",
-   "低速",
-   "地下",
-   "彈生",
-   "彈道",
-   "復較",
-   "恢復",
-   "施恢",
-   "生產",
-   "設施",
-   "較低",
-   "速彈",
-   "道飛",
-   "飛彈"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:沙烏地阿拉伯:2026-09": {
-  "first_seen": "2026-09-12",
-  "days": 1,
-  "last_seen": "2026-09-12",
-  "latest_title": "沙烏地阿拉伯輸油命脈遇襲 東西輸油管預防性關閉",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "命脈",
-   "性關",
-   "東西",
-   "油命",
-   "油管",
-   "管預",
-   "脈遇",
-   "西輸",
-   "輸油",
-   "遇襲",
-   "關閉",
-   "防性",
-   "預防"
-  ],
-  "entity": "沙烏地阿拉伯",
-  "subject_basis": "literal",
-  "subjects": [
-   "沙烏地阿拉伯"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:國際油價:2026-09": {
-  "first_seen": "2026-09-12",
-  "days": 1,
-  "last_seen": "2026-09-12",
-  "latest_title": "中東戰事升溫推升國際油價破每桶100美元",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "100",
-   "中東",
-   "事升",
-   "升溫",
-   "戰事",
-   "推升",
-   "東戰",
-   "每桶",
-   "溫推",
-   "破每",
-   "美元"
-  ],
-  "entity": "國際油價",
-  "subject_basis": "literal",
-  "subjects": [
-   "國際油價"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:hormuz_passage:2026-09": {
   "first_seen": "2026-09-14",
   "days": 1,
@@ -214,6 +64,180 @@
    "沙烏地"
   ],
   "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:烏克蘭:2026-09": {
+  "first_seen": "2026-09-15",
+  "days": 1,
+  "last_seen": "2026-09-15",
+  "latest_title": "澤倫斯基稱若俄羅斯跟進，烏克蘭準備採取降級措施",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "俄羅",
+   "倫斯",
+   "備採",
+   "取降",
+   "基稱",
+   "採取",
+   "措施",
+   "斯基",
+   "斯跟",
+   "準備",
+   "澤倫",
+   "稱若",
+   "級措",
+   "羅斯",
+   "若俄",
+   "跟進",
+   "降級"
+  ],
+  "entity": "烏克蘭",
+  "subject_basis": "alias",
+  "subjects": [
+   "烏克蘭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "cybersecurity:cyberattack:長榮:2026-09": {
+  "first_seen": "2026-09-16",
+  "days": 1,
+  "last_seen": "2026-09-16",
+  "latest_title": "長榮航空遭網攻！急發重訊：員工姓名及公務聯繫資訊被取得 - 財經新聞 - PChome Online 新聞 - news.pchome.com.tw",
+  "latest_summary": "",
+  "object": "長榮",
+  "incident_tokens": [
+   "公務",
+   "務聯",
+   "及公",
+   "取得",
+   "名及",
+   "員工",
+   "姓名",
+   "工姓",
+   "急發",
+   "新聞",
+   "發重",
+   "空遭",
+   "經新",
+   "網攻",
+   "繫資",
+   "聯繫",
+   "航空",
+   "被取",
+   "訊被",
+   "財經",
+   "資訊",
+   "遭網",
+   "重訊"
+  ],
+  "entity": "長榮",
+  "subject_basis": "alias",
+  "subjects": [
+   "長榮"
+  ],
+  "event_type": "cybersecurity",
+  "action": "cyberattack",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:德國:2026-09": {
+  "first_seen": "2026-09-16",
+  "days": 1,
+  "last_seen": "2026-09-16",
+  "latest_title": "Germany plans economic-security measures targeting China, including tariffs and export con",
+  "latest_summary": "",
+  "object": "德國",
+  "incident_tokens": [
+   "and",
+   "china",
+   "controls",
+   "economic",
+   "export",
+   "including",
+   "measures",
+   "plans",
+   "security",
+   "targeting",
+   "tariffs"
+  ],
+  "entity": "德國",
+  "subject_basis": "alias",
+  "subjects": [
+   "德國"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
+  "identity_schema": 14
+ },
+ "geopolitical:輝達:2026-09": {
+  "first_seen": "2026-09-16",
+  "days": 1,
+  "last_seen": "2026-09-16",
+  "latest_title": "Nvidia CEO Huang expected to attend Trump-Xi state dinner",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "attend",
+   "ceo",
+   "dinner",
+   "expected",
+   "huang",
+   "state",
+   "to",
+   "trump",
+   "xi"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:TMUS:2026-09": {
+  "first_seen": "2026-09-16",
+  "days": 1,
+  "last_seen": "2026-09-16",
+  "latest_title": "【即時新聞】Verizon(VZ)與T-Mobile(TMUS)正式撤銷互控訴訟！兩大電信巨頭終結廣告節省金額爭議 - CMoney投資網誌",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "mobile",
+   "verizon",
+   "vz",
+   "互控",
+   "信巨",
+   "兩大",
+   "即時",
+   "告節",
+   "大電",
+   "巨頭",
+   "廣告",
+   "式撤",
+   "控訴",
+   "撤銷",
+   "新聞",
+   "時新",
+   "正式",
+   "爭議",
+   "省金",
+   "節省",
+   "終結",
+   "結廣",
+   "訴訟",
+   "金額"
+  ],
+  "entity": "TMUS",
+  "subject_basis": "code",
+  "subjects": [
+   "TMUS"
+  ],
+  "event_type": "litigation",
   "action": "",
   "identity_schema": 14
  }

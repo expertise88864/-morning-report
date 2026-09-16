@@ -452,6 +452,7 @@ MODULE_CEILINGS = {
     "tennis_news_context.py": 45,
     "fallback_recap.py": 100,
     "fallback_recap_runtime.py": 65,
+    "fallback_delivered.py": 45,
     # 第二十四輪 P1-1:新聞身分(`source_item_id`)從 `evidence_packet` 搬出來。
     # 搬的理由就是那個缺陷的形狀 —— ID 住在 packet 模組裡,就會讓人以為
     # 「那是 packet 階段的事」,而分群/計畫/抓取三個更早的相位全靠它。

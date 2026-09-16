@@ -21,6 +21,9 @@ def delivered(html, context, path, manifest, atomic_write):
         record['items'] = [item for item in record.get('items', [])
                            if _plain(_md_to_html(item['statement'])) in visible
                            and set(item['source_urls']).issubset(links)]
+        if not record['items']:
+            from fallback_delivered import extract
+            record = extract(html, context.get('news') or [], context['date'], context['origin'])
         slot['fallback_recap_items'] = len(record['items'])
         slot['fallback_recap_saved'] = fr.save(path, record, atomic_write)
     except Exception as exc:  # Persistence is optional; delivery has already succeeded.

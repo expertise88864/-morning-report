@@ -7458,6 +7458,76 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "e6dca75c-b07b-11f1-9f2b-eba646bf3464",
+        "title": "The Market Is Mispricing A Correlation Shock | Dean Curnutt",
+        "published": "Wed, 16 Sep 2026 10:00:00 -0000",
+        "processed_at": "2026-09-16T18:38:20Z",
+        "digest": {
+          "summary_points": [
+            "認為個股相關性被嚴重錯價：標普成分股的實現相關性僅約 5-15%，而歷史常態約 35-40%、危機時達 75-90%；這股力量壓低了指數波動與 VIX，也讓 dispersion 這類賣相關性的 carry 交易在毫無安全邊際的價位進場，是他眼中的前瞻風險。",
+            "主張現在該系統性買進波動率保護：VIX 與各資產波動率綜合指標約落在近五年第 10-15 百分位，但 carry 面「最多只能算合理」（VIX 約 16.5 對上一個月實現波動 9），做法是持續掛著買 S&P 波動率、VIX 買權與買權價差，而不是某天突然砸權利金進場。",
+            "點出最大尾端風險是 AI 超大規模雲端族群的「相關性事件」：這 7-8 檔佔標普 35% 以上，目前日報酬互不相關（微軟與其他 Mag7 的相關性甚至一度為負），一旦同時下跌、相關性回歸，依算術就會直接重擊指數。",
+            "債市已成為風險來源而非避風港：10 年期殖利率觸及 5%，美國四個月新增 8,600 億美元債務，卻發生在失業率 4%、股市創新高的和平時期；他直言「10 年期公債才是風險資產」，並批評財長貝森特的言論是不必要的強硬。",
+            "信用成本出現不對稱：7% 房貸利率對家庭偏緊，但 6-7% 的融資成本對超大規模雲端業者便宜到像在買一個 CapEx 的右尾選擇權；這讓 Fed 若沒有財政端配合（如 Simpson-Bowles 式的減赤機制）很難壓通膨，新任主席稱「通膨是政策選擇」他不認同。",
+            "股債負相關的免費避險已消失：2022 年 TLT 與標普同時下跌約 20%，證明沒有正 carry 的避險；2013-17 低波動期成立的純尾部避險基金多已退場，尾部避險必須付費、擇時並控制部位規模，才能在事件後仍有資本加碼。",
+            "這輪地緣政治與過去不同之處在於它直接打在原油上，而原油已進入貨幣政策的通膨討論；供給鏈（塑膠、肥料、油價）的傳導讓 Fed 的政策難度更高。"
+          ],
+          "tickers": [
+            {
+              "name": "Cboe 波動率指數（VIX）",
+              "code": "VIX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "認為相關性被嚴重錯價，一旦 AI 權值股出現相關性事件會直接衝擊指數，因此偏好系統性持有 S&P 波動率、VIX 買權與買權價差。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "That's why I just like owning S&P vol. And I like VIX, I like VIX calls, VIX call spreads. My call for doing it systematically was, listen, just don't wake up one day and fire some premium at a trade. Put it on until further notice, because I see enough things that can go wrong. And again, it just comes back to this idea that correlation is being really mispriced, that these stocks will prove very correlated after the fact.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "iShares 20 年期以上美國公債 ETF",
+              "code": "TLT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "認為長天期公債已變成風險來源、表現不佳，財政赤字政治無解；但也提醒做空殖利率者要小心財政部干預。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "people say the S&P is the risk asset. I said the 10-year note is the risk asset. And it's just not behaving well at a time when the politics of deficits are intractable. And you have a Treasury Secretary that just seems to have, you know, kind of unearned bravado is how I would frame it.",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "以 Meta 為例說明超大規模雲端業者取得 6-7% 資金的成本極低，等於用便宜資金買 CapEx 的右尾選擇權，重點是信用太便宜、而非對股價表態。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "But 7% or 6% funding for meta, that's a joke to meta. That's the cheapest option meta has bought in a long time. And again, that's my other point is that where this is going to be so tricky is that the voracious demand, let's just say it's from hyperscalers, it's from others in the AI ecosystem, but from hyperscalers for credit, the cost of that credit is too low for them. They are using that credit to buy an option to invest in CapEx, which could have such a right tail outcome for them, that money's cheap.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "市場正處於史上罕見的低相關、低波動環境，但他認為這是相關性被嚴重錯價的結果，而不是風險真的變小；不確定性總量仍高（油價與地緣政治、財政赤字、長端殖利率），而且債市已取代股市成為風險來源。",
+          "action_view": "建議系統性地持續買進 S&P 波動率與 VIX 買權／買權價差（「持續掛著直到另行通知」），不要擇時一次進場；同時控制部位規模，讓自己在風險事件爆發、波動率衝高時還有資本加碼。",
+          "notable_quote": "people say the S&P is the risk asset. I said the 10-year note is the risk asset.",
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "fecd7090-ad46-11f1-b991-7f70ab8e99f7",
         "title": "The Bond Market Is Trapping The Fed | Weekly Roundup",
         "published": "Fri, 11 Sep 2026 10:00:00 -0000",

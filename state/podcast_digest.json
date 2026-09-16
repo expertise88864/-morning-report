@@ -534,7 +534,8 @@
             "unverified": 1,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-09-16T00:00:09Z"
       },
       {
         "guid": "tag:soundcloud,2010:tracks/2399990427",
@@ -6621,7 +6622,8 @@
             "unverified": 4,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-09-16T00:00:09Z"
       },
       {
         "guid": "7bdf1a10-126c-402c-9320-6678149a2aff",
@@ -6689,7 +6691,8 @@
             "unverified": 2,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-09-16T00:00:09Z"
       },
       {
         "guid": "a089255b-32f1-4957-af7d-4c5b3ab018f4",
@@ -7102,7 +7105,8 @@
             "unverified": 0,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-09-16T00:00:09Z"
       },
       {
         "guid": "6d6d6ac1-d72c-46be-993e-4c6703720a4d",

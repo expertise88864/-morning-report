@@ -1635,6 +1635,102 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "e0ba1ac6-9a8e-4fa9-b60b-3364095f28ce",
+        "title": "EP337. 微軟的 AI 憲法、PLTR 輝達合作、逆風看法的本質 | M觀點",
+        "published": "Thu, 17 Sep 2026 16:03:26 GMT",
+        "processed_at": "2026-09-17T18:23:46Z",
+        "digest": {
+          "summary_points": [
+            "主持人強烈支持微軟「人文主義AI」準則，認為不應賦予AI人格或權利，批評Anthropic與OpenAI一邊警告AI風險、一邊又發展AI人格是自相矛盾且偽善，並強調可控性比絕對能力重要。",
+            "Palantir與NVIDIA合作對抗前沿模型，主持人看好Palantir後訓練能力，將Nemotron Lightning從17.5%提升至86.7%，並認為企業可用本地開源模型保護機密；但風險在於前沿模型若拉大差距，開源模型可能追不上，惟NVIDIA憑GPU成本優勢（內用成本僅外售20%）可維持開源模型落後前沿模型約三個月。",
+            "主持人以逆風案例說明市場主流常犯錯：7月仍有人稱OpenAI營收增速輸給Anthropic，但實際上OpenAI從5、6月回升、7月爆發已超越，錯誤敘事會害投資人。",
+            "Meta在7月底財報後股價跌8%至539美元，全市場看衰時主持人獨排眾議認為Meta決策正確，因Alice Wang是工程師而非科學家，適合Meta，如今股價漲至673美元（+24%），驗證其判斷。",
+            "主持人反駁SpaceX買XAI是替馬斯克解套的說法，指出XAI營收爆發：Q1 8億、Q2 25億、Q3估60億、Q4估160億美元，將成SpaceX最大營收部門，且Grokbot爆紅，他買SpaceX主因即XAI。"
+          ],
+          "tickers": [
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認同微軟AI憲法方向，認為軟體不會被消滅，微軟與Palantir上半年被錯殺後已回升。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我今年整個上半年包含了科技巨頭節嘛包含了我們的節目都一直跟大家講說沒有啦軟體不會被消滅特別是這兩家應該都可以活得很好啦我市長錯殺了所以現在市長就回來了嘛",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "看好Palantir後訓練開源模型能力，合作NVIDIA具示範效應，但需關注前沿模型進展風險。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "認為NVIDIA憑藉GPU成本優勢（內部成本比外部低80%）和併購人才，有能力讓其開源模型Nemotron持續追趕前沿模型，落後約三個月。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我跟你講Emilia絕對絕對有能力讓他們的開源模型維持在落後前沿模型maybe 三個月左右的實力",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人逆風看好Meta，認為市場錯殺，Alice Wang是工程師適合Meta，MuSpark 1.3很強，股價已回升24%。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "市場認為Meta大錯特錯所以用股價懲罰他但是你如果看懂Meta沒有錯的話那你就不你不會去買單市場給他懲罰嘛",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Sea Limited",
+              "code": "SE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人長線看好SE，電商與Fintech業務沒問題，從40漲到100仍會持續上漲，但若高點套牢需多年解套。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我對他的長線看法完全都沒有改變因為我們長線的觀察SE的所有的業務我認為他電商業務的發展還會非常的長線沒有問題他的Fintech的業務也是很沒有問題遊戲大概就那樣子所以SE當然你說2021年那時候的SE漲到兩三百塊那時候的確是過度高估了可是我只能跟你講啊現在SE大概100塊嘛然後從40塊漲到100塊我認為他未來還是會一直漲上去的",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為聯準會升息一碼影響不大，但預計今年還會再升息一次，限制性利率將更高；美國景氣很熱，Core CPI降速慢，需觀察後續。",
+          "action_view": "主持人提倡以逆風角度看市場，應基於正確事實與邏輯，在市場合因錯誤敘事錯殺時勇於買入；他本人因XAI而買SpaceX，並長期看好SE等。",
+          "notable_quote": "你如果看懂Meta沒有錯的話那你就不你不會去買單市場給他懲罰嘛",
+          "direction_quality": {
+            "attributed": 4,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "9abc2822-8cfe-49e3-a1bc-748fe3a54f44",
         "title": "EP336. 前沿模型該減速嗎、Anthropic 威脅報告、為什麼要一直聊模型 | M觀點",
         "published": "Mon, 14 Sep 2026 06:48:24 GMT",
@@ -2141,36 +2237,6 @@
           "notable_quote": "市場永遠是對的這一句話它有它的重要的地方，但它也不是百分之百正確。"
         },
         "shown_at": "2026-08-07T22:36:11Z"
-      },
-      {
-        "guid": "d28465fa-1a91-4fb4-b781-f692a743b7bb",
-        "title": "EP325. GPT Luna 大降價、特斯拉中國會賣嗎、梁文鋒的流出談話 | M觀點",
-        "published": "Mon, 03 Aug 2026 06:00:13 GMT",
-        "processed_at": "2026-08-03T12:02:11Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 GPT-5.6 Luna 降價 80% 後性價比極高，將打垮多數同級模型，且證明 AI 公司 API 服務根本是高毛利，並非虧錢賣。",
-            "主持人堅信馬斯克為了取得特斯拉過半控制權，一定會讓 SpaceX 併購特斯拉，因此特斯拉中國業務遲早必須切割，否則將成國安風險的巨大炸彈。",
-            "主持人推測特斯拉中國業務最可能以出售工廠加品牌授權模式處理，使特斯拉先回收大部分價值，僅保留部分權利金，降低被中國要脅的風險。",
-            "主持人認同梁文峰的觀點：多模態並非核心智能，只是一種工具使用能力，與搜索類似，非通往 AGI 的關鍵。",
-            "梁文峰透露中國 AI 算力落後美國一個數量級，因此中國廠商只能專注做更小模型、抄襲前沿方向並極致優化效率，主持人認為這是現實下的最佳策略。",
-            "主持人從梁文峰「資料占模型能力一半」的看法中更堅信，擁有大量高品質資料的 Meta 和 XAI 長期在 AI 競賽中必有優勢。",
-            "主持人進一步推論，Agentic Coding 將大幅削弱 NVIDIA CUDA 護城河，因為 AI 能低成本地將加速函式庫移植到其他 GPU 平台，使 AMD 等競爭者有追趕機會。"
-          ],
-          "tickers": [
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好 SpaceX 併購後的絕對控制權整合，且認為特斯拉 Optimus 和 Robotaxi 才是未來核心價值，中國業務切割無損長期遠景。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "我個人認為 SPECES 一定會併購特斯拉，所以我認為華爾街日報這次的報導應該不是空穴來風。"
-        },
-        "shown_at": "2026-08-03T23:01:47Z"
       }
     ]
   },

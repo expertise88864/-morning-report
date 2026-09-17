@@ -566,5 +566,42 @@
    "deadline": "2026-09-19"
   }
  ],
- "watch_seq": 45
+ "watch_seq": 45,
+ "legacy_report": {
+  "date": "2026-09-17",
+  "analysis_origin": "legacy_fallback_after_luna_failure",
+  "status": "unvalidated_model_opinion",
+  "items": [
+   {
+    "statement": "台積電（2330，全球最大晶圓代工廠，AI 先進製程與封裝核心）：延續法人上修 CoWoS（把多顆晶片疊成一大顆、當成一顆用的先進封裝）產能的討論，今日媒體報導 CoWoS 交期已拉長至一年半，科技巨頭開始分散供應商 （techbang）。交期是最直接的供需溫差指標，一年半的排隊遠長於正常數季，代表 2330 先進封裝議價權仍在賣方；但客戶尋求第二來源，會把需求外溢給日月光、Amkor 等封測廠。報導未給擴產片數，對 2330 營收的直接貢獻無法量化，能確認的是瓶頸還卡在封裝端。[B 級・信心:中-低，資訊有限]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMijgFBVV95cUxNU0hLZ2JEZXJiUmVmZHF3b2psSlBBVjNtWkxMNkc3XzgyV0ZOWVBsLXhISGgycHBSZ1NvUTY3WXNCWkUtNVBUNFB1SGpsdFR2Q1pSOXo0UDRWSmszMUpSUDNvaFlFUzVpTGQ3X1Bac3NSdzg5Z0lCcDZuS3BralltaDhnNjEzTGVVMm44c2J3?oc=5"
+    ]
+   },
+   {
+    "statement": "聯發科（2454，全球第二大手機晶片設計商）：vivo 將搶下天璣 9600 Pro 全球首發 （TechNews）。旗艦 SoC 首發通常綁定 2330 最新製程投片，但真正的拉貨量取決於首發機銷售。目前只有「首發」兩字，沒有出貨或投片數字，這則新聞說不出量級；對 IC 設計族群是新品週期啟動的訊號，最快第四季至明年初反映在供應鏈。[B 級・信心:中-低]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMickFVX3lxTE1tQ0JPd0o0V0RvQU9WSy1Mb1JZa1YtUXB6bTg5X2FWU3dRMC1ELVRLeXBqNXZJazBqbzB4blV4aDFvWGVYbXlWa3hYNzFqa1VObzliNlRFN19GRGl6WGphSU5OZEg3YXdqQUNYSVNGSXpnQQ?oc=5"
+    ]
+   },
+   {
+    "statement": "鴻海（2317，全球最大電子代工集團，旗下鴻騰精密負責連接器與光通訊模組）：鴻騰董事長盧松青表示 AI 需求能見度佳、產能相對滿載可延續至明年，光通訊明年進一步放量，但目前最大瓶頸是材料供給（Fiber、Laser、CW Laser 與晶圓都缺）（鉅亨）。光通訊（把電訊號轉成光、在資料中心內高速傳輸）是 AI 機櫃互連升級的關鍵，缺料代表需求大於供給，但走 CPO（共同封裝光學）還是 NPO 仍由雲端商技術路線決定。公司自陳 2026 年光通訊對毛利率影響「非常小」、2027 年放量才明顯，等於自己把量級推到 2027 年初見真章；對 2330 的直接關聯低，除非 CPO 放量把矽光子拉進先進封裝。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6608267"
+    ]
+   },
+   {
+    "statement": "美光（MU，美國記憶體大廠）：發表全球首款 512GB DDR5 RDIMM 模組，單一伺服器記憶體容量可達 12TB （TechNews）。AI 伺服器記憶體含量持續墊高，高容量模組消耗的是先進 DRAM 製程產能，與南亞科的報價循環同向——需求端把產能排擠得更緊。單一產品規格無法換算出貨量，可量化的是報價，第四季 DRAM 漲幅是觀察點；對 2330 關聯低。[B 級・信心:中-低]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMioAFBVV95cUxNUTF3R0xnQmg2ZVFHblJvRUJBOFJUZDlqd3otZGcxZmh1T2ZMUFk2Q2RLUGJOY2tES3JVMzFDTE44eldGemxkMGVRQmU1eWgwV0pubU9xTUh1M29ZUWhEbDc5Y0V2TmtCOFVUcXFtXzZiTXBPMDJtYkRHcmY2UlFiUHBUOVFYSVR0WWdwMTFSNEptN09yZngyazFvYUhaQTdk?oc=5"
+    ]
+   },
+   {
+    "statement": "【重電綠能｜台灣／全球】：AI 算力把電力設備推成新瓶頸，變壓器供給吃緊被指為資料中心新卡點 （CTIMES）；同日亞馬遜取得 Generac 認股權（最多 3.4 億美元）綁定資料中心備援電力，後者股價單日大漲逾 40% （CNBC）。資料中心電力從「配電」升級為「瓶頸」，對應重電三雄（華城、士電、中興電）的變壓器與開關設備在手訂單；亞馬遜用股權綁供應商，等於宣告備援電力是戰略物資。國內廠商實際取單金額未揭露，海外同業的股價反應只能當需求熱度的參考。[B 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE5MY2FjazItSkszaDlGNUdZTmxFb3BiQm4yV1RuV3UxQ2lTaVVIdmJXVnZMWHM4OW1QQlRKd1V5VnBKU0N3dmVNN19kc2dDUDRFSnNIX2MzOXd4NzV6UTYyM3Z4M24?oc=5"
+    ]
+   }
+  ]
+ }
 }

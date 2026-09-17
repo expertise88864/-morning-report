@@ -240,5 +240,81 @@
   "event_type": "litigation",
   "action": "",
   "identity_schema": 14
+ },
+ "geopolitical:亞馬遜:2026-09": {
+  "first_seen": "2026-09-17",
+  "days": 1,
+  "last_seen": "2026-09-17",
+  "latest_title": "AMZN 亞馬遜 - AWS 服務無法恢復，巴林與阿聯酋資料中心遭伊朗攻擊影響嚴重！ - 股市爆料同學會 - CMoney",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "aws",
+   "中心",
+   "伊朗",
+   "務無",
+   "同學",
+   "嚴重",
+   "學會",
+   "巴林",
+   "市爆",
+   "影響",
+   "心遭",
+   "恢復",
+   "擊影",
+   "攻擊",
+   "料中",
+   "料同",
+   "服務",
+   "朗攻",
+   "林與",
+   "法恢",
+   "無法",
+   "爆料",
+   "聯酋",
+   "股市"
+  ],
+  "entity": "亞馬遜",
+  "subject_basis": "alias",
+  "subjects": [
+   "亞馬遜"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:亞馬遜:2026-09#c24e38": {
+  "first_seen": "2026-09-17",
+  "days": 1,
+  "last_seen": "2026-09-17",
+  "latest_title": "伊朗戰爭影響中東資料中心，亞馬遜稱設施仍停擺",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "中心",
+   "中東",
+   "仍停",
+   "伊朗",
+   "停擺",
+   "影響",
+   "戰爭",
+   "料中",
+   "施仍",
+   "朗戰",
+   "東資",
+   "爭影",
+   "稱設",
+   "設施",
+   "資料",
+   "響中"
+  ],
+  "entity": "亞馬遜",
+  "subject_basis": "alias",
+  "subjects": [
+   "亞馬遜"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
  }
 }

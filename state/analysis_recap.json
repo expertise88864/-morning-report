@@ -568,38 +568,44 @@
  ],
  "watch_seq": 45,
  "legacy_report": {
-  "date": "2026-09-17",
+  "date": "2026-09-18",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠，AI 先進製程與封裝核心）：延續法人上修 CoWoS（把多顆晶片疊成一大顆、當成一顆用的先進封裝）產能的討論，今日媒體報導 CoWoS 交期已拉長至一年半，科技巨頭開始分散供應商 （techbang）。交期是最直接的供需溫差指標，一年半的排隊遠長於正常數季，代表 2330 先進封裝議價權仍在賣方；但客戶尋求第二來源，會把需求外溢給日月光、Amkor 等封測廠。報導未給擴產片數，對 2330 營收的直接貢獻無法量化，能確認的是瓶頸還卡在封裝端。[B 級・信心:中-低，資訊有限]",
+    "statement": "台積電（2330，全球最大晶圓代工廠，先進製程與先進封裝核心）：市場傳出公司將調漲代工價 10%，AMD 第四季晶片也傳跟漲 10%，Ryzen 系列尚未確認 （鉅亨）。若成真，漲價直接推升 2330 毛利率，也會加速客戶往先進製程集中以攤平單位成本。這是「傳」字頭消息、公司未證實，涵蓋範圍與上路時間都沒有數字，量級無法估算。[B 級・信心:低-中，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMijgFBVV95cUxNU0hLZ2JEZXJiUmVmZHF3b2psSlBBVjNtWkxMNkc3XzgyV0ZOWVBsLXhISGgycHBSZ1NvUTY3WXNCWkUtNVBUNFB1SGpsdFR2Q1pSOXo0UDRWSmszMUpSUDNvaFlFUzVpTGQ3X1Bac3NSdzg5Z0lCcDZuS3BralltaDhnNjEzTGVVMm44c2J3?oc=5"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBwd1hfUkgybzM2c1htSi0yTVpuWDlWbXFjbFN3c3VOV1BsRGFwRWJwQUJRbHp4NHJQaG9pMU5HZW1JWE4zaXpHU0w0a2ZMc1U?oc=5"
     ]
    },
    {
-    "statement": "聯發科（2454，全球第二大手機晶片設計商）：vivo 將搶下天璣 9600 Pro 全球首發 （TechNews）。旗艦 SoC 首發通常綁定 2330 最新製程投片，但真正的拉貨量取決於首發機銷售。目前只有「首發」兩字，沒有出貨或投片數字，這則新聞說不出量級；對 IC 設計族群是新品週期啟動的訊號，最快第四季至明年初反映在供應鏈。[B 級・信心:中-低]",
+    "statement": "創意（3443，台積電轉投資的 IC 設計服務商，主攻客製化 ASIC）：延續台積電月營收突破 5,000 億元的供應鏈熱度，創意股價衝上台股第三高價，媒體指其獲台積電奧援、握有雲端服務商大單，2026 年營收力拚翻倍 （鏡週刊）。雲端商自研晶片幾乎都在 2330 先進製程與先進封裝投產，等於 AI 訂單由 GPU 擴散到客製晶片。「拚翻倍」是媒體說法、不是公司財測，實際貢獻要看後續月營收，短線說不出量級。[B 級・信心:低-中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMickFVX3lxTE1tQ0JPd0o0V0RvQU9WSy1Mb1JZa1YtUXB6bTg5X2FWU3dRMC1ELVRLeXBqNXZJazBqbzB4blV4aDFvWGVYbXlWa3hYNzFqa1VObzliNlRFN19GRGl6WGphSU5OZEg3YXdqQUNYSVNGSXpnQQ?oc=5"
+     "https://news.google.com/rss/articles/CBMiaEFVX3lxTE5WcjJIZ0p0a3A2WjF0M2plMlpUa2tmQkQ5OTFqZVl0QmMyOXhnb2NCeWdHcFNRbVFTdk83dzYyVDRNLWRwdkZnb0F5Z0ZZcFRhZDRMYmJRVUtHaUhQdVBaQkNzWmw3LTVx0gFoQVVfeXFMTlZyMkhnSnRrcDZaMXQzamUyWlRra2ZCRDk5MWplWXRCYzI5eGdvY0J5Z0dwU1FtUVN2Tzd3NjJUNE0tZHB2RmdvQXlnRllwVGFkNExiYlFVS0dpSFB1UFpCQ3NabDctNXE?oc=5"
     ]
    },
    {
-    "statement": "鴻海（2317，全球最大電子代工集團，旗下鴻騰精密負責連接器與光通訊模組）：鴻騰董事長盧松青表示 AI 需求能見度佳、產能相對滿載可延續至明年，光通訊明年進一步放量，但目前最大瓶頸是材料供給（Fiber、Laser、CW Laser 與晶圓都缺）（鉅亨）。光通訊（把電訊號轉成光、在資料中心內高速傳輸）是 AI 機櫃互連升級的關鍵，缺料代表需求大於供給，但走 CPO（共同封裝光學）還是 NPO 仍由雲端商技術路線決定。公司自陳 2026 年光通訊對毛利率影響「非常小」、2027 年放量才明顯，等於自己把量級推到 2027 年初見真章；對 2330 的直接關聯低，除非 CPO 放量把矽光子拉進先進封裝。[A 級・信心:中]",
+    "statement": "鴻海（2317，全球最大電子代工集團）：宣布集團攜手德國 Quantron 與宏景智駕，切入新能源商用車 （DIGITIMES）。商用車是電動車事業的新出海口，但合作屬初期階段，沒有訂單金額與出貨時程，量級無法判斷，對 2330 也無直接關聯。[B 級・信心:低-中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6608267"
+     "https://news.google.com/rss/articles/CBMijgFBVV95cUxNUXkxeG5sS1VnN1AwUUMzZ0l3VzMzSHRZdDU5UlpOX3I0YlQ4QVdpcXBZZG1ITU9ibzhKU1JQYkU2MGRrREp5bVNpbXBhdFd0TmJZS2lUOVdmZTRHMlBKX1lGMzFLZENsRm93eXgxTndoRFRVR3l2NUR4SUkyM1VBRVlUcVczUUJQbkFZSGh3?oc=5"
     ]
    },
    {
-    "statement": "美光（MU，美國記憶體大廠）：發表全球首款 512GB DDR5 RDIMM 模組，單一伺服器記憶體容量可達 12TB （TechNews）。AI 伺服器記憶體含量持續墊高，高容量模組消耗的是先進 DRAM 製程產能，與南亞科的報價循環同向——需求端把產能排擠得更緊。單一產品規格無法換算出貨量，可量化的是報價，第四季 DRAM 漲幅是觀察點；對 2330 關聯低。[B 級・信心:中-低]",
+    "statement": "聯發科（2454，全球第二大手機晶片設計商）：宣布與愛立信突破 5G 定位精準度，可加速自駕車、無人機與智慧製造應用 （鉅亨）。定位精度升級是把 5G 從通訊推向工業應用的門檻，晶片最終仍在 2330 投片。這是技術里程碑、沒有出貨或訂單數字，量級說不出來。[B 級・信心:低-中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMioAFBVV95cUxNUTF3R0xnQmg2ZVFHblJvRUJBOFJUZDlqd3otZGcxZmh1T2ZMUFk2Q2RLUGJOY2tES3JVMzFDTE44eldGemxkMGVRQmU1eWgwV0pubU9xTUh1M29ZUWhEbDc5Y0V2TmtCOFVUcXFtXzZiTXBPMDJtYkRHcmY2UlFiUHBUOVFYSVR0WWdwMTFSNEptN09yZngyazFvYUhaQTdk?oc=5"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1XMlUzT2p6YlV1ejRKakpRdFZQWWxlZVdhNjFkdHFXN09xcEExZG1JQndQVTZmZ0tmb2dJNDYxZ05JVGRVN3dMTVVIOGlLWTg?oc=5"
     ]
    },
    {
-    "statement": "【重電綠能｜台灣／全球】：AI 算力把電力設備推成新瓶頸，變壓器供給吃緊被指為資料中心新卡點 （CTIMES）；同日亞馬遜取得 Generac 認股權（最多 3.4 億美元）綁定資料中心備援電力，後者股價單日大漲逾 40% （CNBC）。資料中心電力從「配電」升級為「瓶頸」，對應重電三雄（華城、士電、中興電）的變壓器與開關設備在手訂單；亞馬遜用股權綁供應商，等於宣告備援電力是戰略物資。國內廠商實際取單金額未揭露，海外同業的股價反應只能當需求熱度的參考。[B 級・信心:中]",
+    "statement": "大立光（3008，手機鏡頭龍頭，正切入 CPO 共同封裝光學）：6 月底以來接連在台中獵地後，昨日再以 11.72 億元取得精密機械園區土地廠房擴充產能 （鉅亨）。市場解讀為 CPO 新事業暖身——光學耦合是矽光子（用光在晶片之間傳資料）封裝的關鍵環節，若能接上台積電矽光子平台，等於把手機鏡頭的精密光學搬進 AI 資料中心。這筆是資本支出、不是訂單，營收貢獻尚無時程。[B 級・信心:低-中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE5MY2FjazItSkszaDlGNUdZTmxFb3BiQm4yV1RuV3UxQ2lTaVVIdmJXVnZMWHM4OW1QQlRKd1V5VnBKU0N3dmVNN19kc2dDUDRFSnNIX2MzOXd4NzV6UTYyM3Z4M24?oc=5"
+     "https://news.cnyes.com/news/id/6609411"
+    ]
+   },
+   {
+    "statement": "騰輝-KY（6672，銅箔基板廠，AI 與 HDI 材料供應商）：董事會通過承租昆山廠房、砸 15 億元分三期擴產，主因高階銅箔基板嚴重短缺、訂單外溢；8 月營收 8.1 億元創新高，前 8 月已超越去年全年 （鉅亨）。銅箔基板是 AI 伺服器與高速交換器的關鍵材料，缺料漲價直接改善毛利結構。擴產以租廠改建壓縮時程，但投產日未揭露；這條線與台達電、日月光同屬 AI 硬體擴產。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6609386"
     ]
    }
   ]

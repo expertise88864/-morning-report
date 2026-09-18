@@ -1,72 +1,4 @@
 {
- "geopolitical:hormuz_passage:2026-09": {
-  "first_seen": "2026-09-14",
-  "days": 1,
-  "last_seen": "2026-09-14",
-  "latest_title": "伊朗與波斯灣國家擬於阿曼會談荷姆茲海峽議題",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "國家",
-   "姆茲",
-   "家擬",
-   "峽議",
-   "擬於",
-   "斯灣",
-   "於阿",
-   "曼會",
-   "會談",
-   "波斯",
-   "海峽",
-   "灣國",
-   "與波",
-   "茲海",
-   "荷姆",
-   "談荷",
-   "議題",
-   "阿曼"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "hormuz_passage",
-  "identity_schema": 14
- },
- "geopolitical:沙烏地:2026-09": {
-  "first_seen": "2026-09-14",
-  "days": 1,
-  "last_seen": "2026-09-14",
-  "latest_title": "沙烏地阿拉伯主要原油管線遭攻擊後關閉",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "主要",
-   "伯主",
-   "原油",
-   "後關",
-   "拉伯",
-   "擊後",
-   "攻擊",
-   "油管",
-   "管線",
-   "線遭",
-   "要原",
-   "遭攻",
-   "關閉",
-   "阿拉"
-  ],
-  "entity": "沙烏地",
-  "subject_basis": "alias",
-  "subjects": [
-   "沙烏地"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:烏克蘭:2026-09": {
   "first_seen": "2026-09-15",
   "days": 1,
@@ -312,6 +244,105 @@
   "subject_basis": "alias",
   "subjects": [
    "亞馬遜"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:META:2026-09": {
+  "first_seen": "2026-09-18",
+  "days": 1,
+  "last_seen": "2026-09-18",
+  "latest_title": "AI造假影片鎖定女性攻擊 監督委員會痛批Meta防範不足 - 民視新聞網",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "ai",
+   "不足",
+   "假影",
+   "員會",
+   "女性",
+   "委員",
+   "定女",
+   "影片",
+   "性攻",
+   "攻擊",
+   "會痛",
+   "片鎖",
+   "痛批",
+   "監督",
+   "督委",
+   "範不",
+   "造假",
+   "鎖定",
+   "防範"
+  ],
+  "entity": "META",
+  "subject_basis": "alias",
+  "subjects": [
+   "META"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:玻利維亞:2026-09": {
+  "first_seen": "2026-09-18",
+  "days": 1,
+  "last_seen": "2026-09-18",
+  "latest_title": "玻利維亞與巴拉圭完成共同邊界最終劃定",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "共同",
+   "劃定",
+   "同邊",
+   "圭完",
+   "完成",
+   "巴拉",
+   "成共",
+   "拉圭",
+   "最終",
+   "界最",
+   "終劃",
+   "與巴",
+   "邊界"
+  ],
+  "entity": "玻利維亞",
+  "subject_basis": "literal",
+  "subjects": [
+   "玻利維亞"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:巴拉圭:2026-09": {
+  "first_seen": "2026-09-18",
+  "days": 1,
+  "last_seen": "2026-09-18",
+  "latest_title": "玻利維亞與巴拉圭完成共同邊界最終劃定",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "亞與",
+   "共同",
+   "利維",
+   "劃定",
+   "同邊",
+   "完成",
+   "成共",
+   "最終",
+   "玻利",
+   "界最",
+   "終劃",
+   "維亞",
+   "邊界"
+  ],
+  "entity": "巴拉圭",
+  "subject_basis": "literal",
+  "subjects": [
+   "巴拉圭"
   ],
   "event_type": "geopolitical",
   "action": "",

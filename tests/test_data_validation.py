@@ -1201,8 +1201,8 @@ def test_format_event_scenarios_filters_window_and_keeps_notes():
 
 
 def test_format_event_scenarios_empty_returns_placeholder():
-    assert "無重大排程事件" in mr._format_event_scenarios([])
-    assert "無重大排程事件" in mr._format_event_scenarios(None)
+    assert "不代表期間沒有重大事件" in mr._format_event_scenarios([])
+    assert "不代表期間沒有重大事件" in mr._format_event_scenarios(None)
 
 
 def test_format_event_scenarios_accepts_datetime_date_without_typeerror():
@@ -1234,7 +1234,7 @@ def test_build_prompt_event_scenario_section_present_when_no_events():
     """無事件時段落仍在(帶佔位提示),指引 LLM 寫「無重大排程事件」一行。"""
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
     assert "七之三" in p
-    assert "未來 48 小時無重大排程事件" in p
+    assert "目前日曆未提供可核實時間" in p
 
 
 # ── G3 世界證據門檻警示 ──────────────────────────────────────────────────────

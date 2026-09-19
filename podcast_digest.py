@@ -120,7 +120,11 @@ JOB_BUDGET_SECONDS = float(os.getenv("PODCAST_JOB_BUDGET_MIN", "95")) * 60
 TRANSCRIBE_REALTIME_FACTOR = float(os.getenv("PODCAST_TRANSCRIBE_REALTIME_FACTOR", "0.30"))
 
 DIGEST_PROMPT = """你是財經 podcast 重點整理員。以下是一集節目的逐字稿(機器轉錄,可能有錯字,
-請依上下文自行校正,尤其公司名與數字)。
+只有上下文足以確認的錯字才可校正；公司名、數字、政策範圍不確定就略去該細節，
+不可猜測補完，也不可把疑似錯詞原樣當成可靠術語。
+每條政策與市場判斷明示「主持人認為／預測」，不可轉成已核實新聞。
+「全面鬆綁」「一定升息」等強斷言保留為主持人的說法，不替其背書。
+notable_quote 與 stance_quote 必須逐字取自轉錄；含疑似辨識錯誤就留空，不能改寫成引言)。
 
 【語言鐵則(最重要)】所有輸出欄位一律使用**台灣繁體中文(zh-TW)**:
 - 嚴禁簡體字(寫「臺/台、與、產業、訊號」,不寫「与、产业、信号」)

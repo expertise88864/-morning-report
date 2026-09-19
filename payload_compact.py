@@ -84,10 +84,12 @@ def _thin_forecast(fc):
     """`price_forecast` 去掉模型內部管線,留標頭數字。"""
     if not isinstance(fc, dict):
         return fc
-    out = {k: fc[k] for k in _FORECAST_TOP_KEEP if k in fc}
+    metadata = {"model_version", "training_rows", "model_method", "quality"}
+    out = {k: v for k, v in fc.items()
+           if k not in metadata and not isinstance(v, (dict, list))}
     for k, v in fc.items():
-        if isinstance(v, dict) and any(x in v for x in _FORECAST_KEEP):
-            out[k] = {kk: v[kk] for kk in _FORECAST_KEEP if kk in v}
+        if k not in metadata and isinstance(v, dict):
+            out[k] = {kk: vv for kk, vv in v.items() if kk not in metadata}
     return out
 
 
@@ -122,7 +124,7 @@ def _num(v) -> float:
         return float("-inf")
 
 
-def compact(packet: Optional[dict], *, limit: int) -> tuple:
+def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False) -> tuple:
     """`(壓縮後的 packet, 報告)`。**不改變輸入**;只在超標時逐級啟動。
 
     回報 `{applied: [...], chars_before, chars_after, over_budget}` ——
@@ -148,7 +150,7 @@ def compact(packet: Optional[dict], *, limit: int) -> tuple:
              "detail": f"{len(thinned)} 檔只留預測標頭數字"})
 
     # ── 第二級:非分析標的降為骨架(**列全部保留**,代號白名單不受影響)──
-    if _size(pk) > limit and rows:
+    if not plumbing_only and _size(pk) > limit and rows:
         keep_full = _analyzed_codes(pk)
         skeletal = [r if str(r.get("code") or "") in keep_full
                     else {k: r[k] for k in _SKELETON if k in r}
@@ -163,7 +165,7 @@ def compact(packet: Optional[dict], *, limit: int) -> tuple:
                            f"{len(keep_full)} 檔保留完整(代號全數保留)"})
 
     # ── 第三級:低重要性新聞的摘要縮短(**不刪則數**,ID 不會指空)──
-    if _size(pk) > limit:
+    if not plumbing_only and _size(pk) > limit:
         news = [n for n in (pk.get("news") or []) if isinstance(n, dict)]
         info = pk.get("news_clusters") or {}
         need = set(info.get("required_cluster_ids") or ())

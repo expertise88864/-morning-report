@@ -821,9 +821,9 @@ def assess(manifest, *, mode: str = "watchdog",
                     if str(s).startswith("recap:not_previous_session:")]
     if _stale_recap:
         add("recap_not_previous_session", "degraded",
-            "昨日觀點不是上一個交易日,整段未進 EVIDENCE:"
+            "已驗證的昨日觀點不是上一個交易日,未進權威 EVIDENCE:"
             + "、".join(x.split(":", 2)[-1] for x in _stale_recap)
-            + "(通常代表前一班主分析落回 legacy,recap 沒有更新)")
+            + "（備援模型觀點另行保存與引用，不等於已驗證 recap；需恢復特化分析）")
     unknown = [s for s in (m.get("degraded_steps") or [])
                if str(s) not in KNOWN_DEGRADED
                and not str(s).startswith(OPEN_FAMILIES)]

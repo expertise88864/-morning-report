@@ -5,6 +5,10 @@ from difflib import SequenceMatcher
 
 
 def relevant(label: str, title: str) -> bool:
+    if re.match(r"^\s*討論牆\s*[|｜]", title):
+        return False
+    if label == "建商動態" and re.search(r"[【\[].*分享[】\]]", title):
+        return False
     required = {
         "醫界追蹤": r"醫院|醫療|急診|醫師|護理|衛福|健保|病患|病床|等床",
         "學區/文教": r"學校|學區|中學|高中|國中|國小|教育|招生|入學|校園|明道|葳格",
@@ -25,6 +29,9 @@ def title_key(title: str) -> str:
 def unique(rows: list[dict]) -> list[dict]:
     out, seen = [], set()
     for row in rows:
+        # A discussion wrapper is not a second independent news source.
+        if re.match(r"^\s*討論牆\s*[|｜]", str(row.get("title") or "")):
+            continue
         key = title_key(str(row.get("title") or ""))
         if key and not any(duplicate(key, old) for old in seen):
             out.append(row)

@@ -259,7 +259,13 @@ def apply(packet: Optional[dict], manifest: Optional[dict] = None) -> dict:
     """
     import sys as _sys
     import payload_compact as _pc
+    # Compress repeated forecast plumbing before sacrificing historical evidence.
+    # Keep this first pass lossless for news: its limit only permits tier 1.
+    original_chars = _size(packet or {})
+    packet, precompact = _pc.compact(packet, limit=MAX_PAYLOAD_CHARS,
+                                   plumbing_only=True)
     packet, budget = trim(packet)
+    budget["chars_before"] = original_chars
     if manifest is not None:
         manifest.setdefault("llm", {})["payload_budget"] = budget
     if budget["trimmed"]:
@@ -269,6 +275,8 @@ def apply(packet: Optional[dict], manifest: Optional[dict] = None) -> dict:
     # **第二層**(第二十四輪 P1-2):2026-08-06 裁完仍 910K,而剩下的全在
     # 不可裁清單裡 —— gate 每天正確地擋,特化路徑卻沒有一天可能成功。
     packet, cmp_rep = _pc.compact(packet, limit=budget["limit"])
+    cmp_rep["applied"] = precompact["applied"] + cmp_rep["applied"]
+    cmp_rep["chars_before"] = original_chars
     if manifest is not None:
         manifest.setdefault("llm", {})["payload_compact"] = cmp_rep
         # **量測要是活的**:`block_sizes()` 先前從未被呼叫 —— 模組寫著

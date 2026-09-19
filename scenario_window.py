@@ -11,6 +11,7 @@ LATER = "七之三、後續排程事件情境（超過 48 小時）"
 MIXED = "七之三、跨時段事件情境（含 48 小時內與後續排程）"
 UNKNOWN = "七之三、事件情境（時間待確認）"
 PAST = "七之三、已公布事件情境回顧"
+NO_VERIFIED_EVENTS = "目前日曆未提供可核實時間的未來 48 小時事件；不代表期間沒有重大事件"
 
 
 def clock(value) -> dt.datetime | None:

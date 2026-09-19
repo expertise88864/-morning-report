@@ -10,6 +10,13 @@ import scenario_window as sw
 NOW = dt.datetime(2026, 9, 14, 7, 32, tzinfo=sw.TPE)
 
 
+def test_unknown_clock_is_not_evidence_of_no_events():
+    rows = [dict(date=NOW.date(), time="美股收盤", title="三巫日")]
+    output = mr._format_event_scenarios(rows, now_tpe=NOW)
+    assert sw.NO_VERIFIED_EVENTS in output
+    assert "無重大排程事件" not in output
+
+
 def test_prompt_exact_boundary_no_elapsed_unknown_or_54_hour_event():
     rows = [dict(date=NOW.date(), time="06:00", title="已公布"),
             dict(date=dt.date(2026, 9, 16), time="07:32", title="精確邊界"),

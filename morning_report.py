@@ -10739,7 +10739,7 @@ def _format_event_scenarios(calendar: Optional[list],
     供 prompt 的「事件情境決策表」取材。每列:日期 時間｜標題(含既有的預期/前值 note)。
     只輸出既有日曆事件(供 LLM 判讀),不新增/不編造;無事件回固定提示字串。"""
     now_tpe = now_tpe or dt.datetime.now(TPE)
-    from scenario_window import near_rows
+    from scenario_window import near_rows, NO_VERIFIED_EVENTS
     rows: list[str] = []
     for e in near_rows(calendar, now_tpe):
         d = e.get("date")
@@ -10762,7 +10762,7 @@ def _format_event_scenarios(calendar: Optional[list],
                     + (f"〔{_why}〕" if _why else ""))
         if len(rows) >= 6:
             break
-    return "\n".join(rows) if rows else "（未來 48 小時無重大排程事件）"
+    return "\n".join(rows) if rows else f"（{NO_VERIFIED_EVENTS}）"
 
 
 def _format_narrative_delta(history: Optional[list], today: Optional[str] = None) -> str:

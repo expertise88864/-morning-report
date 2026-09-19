@@ -24,9 +24,7 @@ from __future__ import annotations
 from news_impact import WRITING as NEWS_IMPACT_WRITING
 from finance_editorial import WRITING as FINANCE_WRITING
 from reader_fact_labels import WRITING as FACT_WRITING
-
 from reader_editorial import READER_PROSE as READER_PROSE, WRITING as EDITORIAL_WRITING
-
 #: DeepSeek legacy 單段 prompt 的寫作鐵律 R1–R16b。
 LEGACY_RULES = """R1. **零客套**：不寫「親愛的投資人」「以下是」「希望這份報告有幫助」這類話
 R2. **必須單一立場**：禁止「樂觀/中性/悲觀」三選一並陳，必須選邊
@@ -339,7 +337,9 @@ QQQ／ADR 漲等等),我要的是真正國際上昨夜三大發生的重大事�
 自產報時起精確 48 小時內、有明確台北時間的重要行事曆事件（**僅以下清單為準**,不可自行新增事件、不可編造未列出的數字）：
 {event_scenario_lines}
 
-若上方清單為「無重大排程事件」,則本段只寫一行「未來 48 小時無重大排程事件」即可。"""
+若清單指出未提供可核實時間的事件，照實說明日曆涵蓋限制；不得改寫成「無重大事件」。
+七天行事曆或新聞提到的事件若只有「盤後／收盤」等時間，列為時間待確認，
+不可自訂時刻塞進精確 48 小時情境，也不可因未入清單就宣稱不存在。"""
 LEGACY_RULES += NEWS_IMPACT_WRITING
 LEGACY_RULES += FINANCE_WRITING
 LEGACY_RULES += FACT_WRITING

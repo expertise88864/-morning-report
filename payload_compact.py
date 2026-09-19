@@ -57,9 +57,6 @@ from typing import Optional
 #: `price_forecast` 裡**留下來**的標頭欄位。其餘(model_version、
 #: training_rows、model_method、quality、fallback_enabled…)是模型內部
 #: 管線,分析模型引用不到也不該引用。
-_FORECAST_KEEP = ("expected_price", "expected_return_pct", "lower", "upper",
-                  "horizon_days", "label")
-_FORECAST_TOP_KEEP = ("method", "regime", "confidence")
 
 #: 非分析標的保留的骨架欄位。**代號一定在裡面**(白名單完整性)。
 _SKELETON = ("code", "name", "industry", "close", "day_pct", "pct_5d",
@@ -124,7 +121,8 @@ def _num(v) -> float:
         return float("-inf")
 
 
-def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False) -> tuple:
+def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False,
+            always_plumbing: bool = False) -> tuple:
     """`(壓縮後的 packet, 報告)`。**不改變輸入**;只在超標時逐級啟動。
 
     回報 `{applied: [...], chars_before, chars_after, over_budget}` ——
@@ -134,7 +132,7 @@ def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False) 
     before = _size(pk)
     report = {"chars_before": before, "limit": limit, "applied": [],
               "chars_after": before, "over_budget": False}
-    if before <= limit:
+    if before <= limit and not always_plumbing:
         return pk, report
 
     # ── 第一級:price_forecast 去管線(零證據損失)──
@@ -143,11 +141,12 @@ def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False) 
         thinned = [dict(r, price_forecast=_thin_forecast(r["price_forecast"]))
                    if "price_forecast" in r else r for r in rows]
         saved = _size(rows) - _size(thinned)
-        pk["tw_universe"] = thinned
-        rows = thinned
-        report["applied"].append(
-            {"tier": "universe.price_forecast_plumbing", "chars_saved": saved,
-             "detail": f"{len(thinned)} 檔只留預測標頭數字"})
+        if saved > 0:
+            pk["tw_universe"] = thinned
+            rows = thinned
+            report["applied"].append(
+                {"tier": "universe.price_forecast_plumbing", "chars_saved": saved,
+                 "detail": f"{len(thinned)} 檔去除預測管線欄位、保留數字與錯誤"})
 
     # ── 第二級:非分析標的降為骨架(**列全部保留**,代號白名單不受影響)──
     if not plumbing_only and _size(pk) > limit and rows:
@@ -202,7 +201,7 @@ def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False) 
                  "detail": f"{len(news) - len(keep_ids & {str(n.get('source_item_id')) for n in news})}"
                            f" 則非必分析新聞的摘要縮到 {COMPACT_SUMMARY_CHARS} 字元"})
 
-    if report["applied"]:
+    if report["applied"] and before > limit:
         # **壓過的東西要說出來** —— 與 trim 的缺口揭露同一個理由。
         pk["required_disclosures"] = dict(
             pk.get("required_disclosures") or {},

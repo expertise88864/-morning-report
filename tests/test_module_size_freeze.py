@@ -210,6 +210,7 @@ MODULE_CEILINGS = {
     "news_identity_guards.py": 50,
     "headline_amounts.py": 60,
     "calendar_uncertainty.py": 45,
+    "numeric_evidence_audit.py": 65,
     "podcast_input.py": 20,
     "news_research_runtime.py": 250,
     "week_review.py": 250,

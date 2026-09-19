@@ -263,11 +263,13 @@ def apply(packet: Optional[dict], manifest: Optional[dict] = None) -> dict:
     # Keep this first pass lossless for news: its limit only permits tier 1.
     original_chars = _size(packet or {})
     packet, precompact = _pc.compact(packet, limit=MAX_PAYLOAD_CHARS,
-                                   plumbing_only=True)
+                                   plumbing_only=True, always_plumbing=True)
     packet, budget = trim(packet)
     budget["chars_before"] = original_chars
     if manifest is not None:
         manifest.setdefault("llm", {})["payload_budget"] = budget
+        from numeric_evidence_audit import summarize
+        manifest["llm"]["numeric_evidence_audit"] = summarize(packet)
     if budget["trimmed"]:
         print(f"[llm] payload {budget['chars_before']} 字元超出預算,裁掉 "
               f"{len(budget['trimmed'])} 個背景區塊 → {budget['chars_after']}",

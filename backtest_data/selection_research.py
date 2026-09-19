@@ -94,7 +94,7 @@ def summarize(rows):
     return result
 
 
-def evaluate(days, horizon, fee_bps, sell_tax_bps, slippage_bps):
+def evaluate(days, horizon, fee_bps, sell_tax_bps, slippage_bps, *, start_date=None):
     if isinstance(horizon, bool) or not isinstance(horizon, int) or horizon < 1:
         raise ValueError('horizon must be a positive integer')
     costs = [number(v) for v in (fee_bps, sell_tax_bps, slippage_bps)]
@@ -115,6 +115,9 @@ def evaluate(days, horizon, fee_bps, sell_tax_bps, slippage_bps):
     # First 60% is excluded from performance reporting, not used for tuning.
     # Fixed chronological research folds; all history remains exploratory.
     start = math.ceil(len(ordered) * .60)
+    if start_date is not None:
+        datetime.strptime(start_date, '%Y-%m-%d')
+        start = next((i for i, day in enumerate(dates) if day >= start_date), len(ordered))
     for i in range(start, len(ordered) - horizon, horizon):
         day, entry, end = ordered[i], ordered[i + 1], ordered[i + horizon]
         if not available_before_open(day, entry):

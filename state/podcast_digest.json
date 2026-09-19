@@ -3,6 +3,74 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "fd5c07ef-4122-424e-8567-baad5d2b8b7d",
+        "title": "EP698 | 🎮",
+        "published": "Sat, 19 Sep 2026 01:59:59 GMT",
+        "processed_at": "2026-09-19T07:16:35Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出市場傳聞 AMD 因台積電漲價 10% 而轉嫁成本,但他認為 MSRP 參考價值不高,實際板卡價格上漲的主因是記憶體,台積電漲價只是背鍋的『偽刀』,且 NVIDIA 以套裝(set)出貨、AIC 早已反映成本,根本無需對外宣布漲價。",
+            "針對近日 AI 供應鏈出現的降規聲浪(記憶體改 4hi/8hi、power rack 遞延、CCL 傳降 M4),主持人判斷這些是因缺貨與成本壓力出現的短期替代方案,長期仍會往更高規格升級,不構成結構性利空。",
+            "主持人以銅箔基板(CCL)降規事件為例,指出晶片旁轉光只消除部分長距銅線,但 CPU 到 GPU 的 PCIe Gen6、CX9 NIC、CXL 等仍須高速板材,僅用 M4 跑不動,因此降規不會全面發生;這類鬼故事常在短期內造成大逃殺,但後續往往被推翻。",
+            "主持人觀察大盤在新高附近卻出現一堆人轉空、短線動能交易者跌破七月低點,認為這是缺乏連續性的盤面;他引用財報狗 Jeff 的說法,這類『扭盤』可能是常態,AI 大潮後市場可能長期如此,不應過度聚焦短線取消或延遲消息。",
+            "主持人明確表態操作上不再因這類降規/遞延傳聞先 sell the rumor,因為即使部分環節降規但用量持續放大,且最終仍會升級;他選擇以長線持有為主,避免在短線利空中被洗出。"
+          ],
+          "tickers": [
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 AMD 被台積電漲價而轉嫁是表面原因,實際板卡漲價主因是記憶體,MSRP 參考價值不高。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人指出 NVIDIA 以 GPU 搭配 GDDR 成套出貨給 AIC,成本上漲直接反映在終端,因此無需對外宣布漲價。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人提及台積電漲價 10% 傳聞,並認為漲價合理且可能對所有客戶,但非板卡漲價主因。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "大盤在新高附近卻有一堆人轉空,主持人認為這是短線缺乏連續性、個股被洗所致;他提醒這可能是常態,應以自身交易週期看待,長期趨勢並未改變。",
+          "action_view": "主持人表示不再追逐短線鬼故事、不在降規傳聞中先賣出,因用量持續放大且終究會升級;策略上以長線持有為主,避免因短線利空被洗出。",
+          "notable_quote": "反正你終究是要往這個地方去,所以我也懶得在過程之中先sell the rumor",
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "eb3399a6-5fd2-4191-a7ae-b7ab77ec2358",
         "title": "EP697 | 🔥",
         "published": "Wed, 16 Sep 2026 05:53:21 GMT",
@@ -428,63 +496,6 @@
           "notable_quote": "算力它就是數位時代的鐵路跟電網，它就是某種非常重要的 infrastructure。"
         },
         "shown_at": "2026-08-12T22:52:00Z"
-      },
-      {
-        "guid": "0e0b7654-dec7-479d-8edd-b5d51f76126d",
-        "title": "EP686 | 🕸️",
-        "published": "Sat, 08 Aug 2026 06:40:06 GMT",
-        "processed_at": "2026-08-08T08:59:36Z",
-        "digest": {
-          "summary_points": [
-            "七月修正為籌碼面屠殺，產業基本面未變，應視為未來更大修正的「演習」，需調整配置降低傷害。",
-            "主持人開始反思滿倉科技股的風險，認為保本優於追求極大報酬，未來可能納入股債配置或Long/Short對沖來平滑波動。",
-            "美股資金明顯轉向軟體股（如Palantir、Cloudflare），光通訊族群最先轉強，散熱跟進，台股可望依序輪動。",
-            "台股光通、散熱等反彈強勢，但需觀察是否突破歷史新高才能確認新主流，在此之前保守因應。",
-            "被動元件、功率元件漲價趨勢未變，回檔後若原物料再漲有機會輪動再起；記憶體報價趨緩不代表需求轉差。",
-            "Power族群受惠美系大廠800V訂單，ASP提升數倍，光寶財報強勁，有機會帶動台達電等相關公司。"
-          ],
-          "tickers": [
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報後股價噴出，資金轉向軟體股，主持人認為軟體族群成美股強勢主軸。"
-            },
-            {
-              "name": "Cloudflare",
-              "code": "NET",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報後股價大漲，與Palantir同為軟體轉強指標。"
-            },
-            {
-              "name": "光寶科",
-              "code": "2301",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "財報後股價噴出，可能帶動台灣Power族群，為潛在領頭羊。"
-            },
-            {
-              "name": "台達電",
-              "code": "2308",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "雖線型偏弱，但受惠800V電源訂單趨勢，若光寶帶動有機會跟漲。"
-            },
-            {
-              "name": "健策",
-              "code": "3653",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "因MCL利空傳聞被錯殺，主持人認為優質公司遭利空是進場良機。"
-            }
-          ],
-          "market_view": "他認為大盤要崩下去的機率偏低，除非出現國際事件；美股指數已創新高，希望台股也能跟進，但需觀察強勢族群能否突破歷史新高來確認多頭延續。",
-          "action_view": "操作上不再追逐短線動能，而是等族群或個股突破歷史新高再進場；長期資產配置則考慮降低科技股集中度，加入對沖或股債配置以平滑波動、保護本金。",
-          "notable_quote": "我就會開始去懂一些 hedge fund 為什麼它會存在...原來有些人他的思維是，其實我的保本是大於我去賺更多的錢。"
-        },
-        "shown_at": "2026-08-08T22:17:24Z"
       }
     ]
   },

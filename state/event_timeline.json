@@ -1,39 +1,4 @@
 {
- "geopolitical:烏克蘭:2026-09": {
-  "first_seen": "2026-09-15",
-  "days": 1,
-  "last_seen": "2026-09-15",
-  "latest_title": "澤倫斯基稱若俄羅斯跟進，烏克蘭準備採取降級措施",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "俄羅",
-   "倫斯",
-   "備採",
-   "取降",
-   "基稱",
-   "採取",
-   "措施",
-   "斯基",
-   "斯跟",
-   "準備",
-   "澤倫",
-   "稱若",
-   "級措",
-   "羅斯",
-   "若俄",
-   "跟進",
-   "降級"
-  ],
-  "entity": "烏克蘭",
-  "subject_basis": "alias",
-  "subjects": [
-   "烏克蘭"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "cybersecurity:cyberattack:長榮:2026-09": {
   "first_seen": "2026-09-16",
   "days": 1,
@@ -343,6 +308,44 @@
   "subject_basis": "literal",
   "subjects": [
    "巴拉圭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:亞馬遜:2026-09#004bab": {
+  "first_seen": "2026-09-19",
+  "days": 1,
+  "last_seen": "2026-09-19",
+  "latest_title": "巴林阿聯酋數據中心遇襲 亞馬遜證實客戶數據因攻擊永久丟失 - Singtaousa",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "singtaousa",
+   "丟失",
+   "中心",
+   "久丟",
+   "因攻",
+   "客戶",
+   "巴林",
+   "心遇",
+   "戶數",
+   "擊永",
+   "據中",
+   "據因",
+   "攻擊",
+   "數據",
+   "林阿",
+   "永久",
+   "聯酋",
+   "遇襲",
+   "酋數",
+   "阿聯"
+  ],
+  "entity": "亞馬遜",
+  "subject_basis": "alias",
+  "subjects": [
+   "亞馬遜"
   ],
   "event_type": "geopolitical",
   "action": "",

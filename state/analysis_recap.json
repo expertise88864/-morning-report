@@ -568,44 +568,44 @@
  ],
  "watch_seq": 45,
  "legacy_report": {
-  "date": "2026-09-18",
+  "date": "2026-09-21",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠，先進製程與先進封裝核心）：市場傳出公司將調漲代工價 10%，AMD 第四季晶片也傳跟漲 10%，Ryzen 系列尚未確認 （鉅亨）。若成真，漲價直接推升 2330 毛利率，也會加速客戶往先進製程集中以攤平單位成本。這是「傳」字頭消息、公司未證實，涵蓋範圍與上路時間都沒有數字，量級無法估算。[B 級・信心:低-中，資訊有限]",
+    "statement": "世芯-KY（3661，ASIC 設計服務商）：秀出 2 奈米設計平台並升級先進封裝布局 （MoneyDJ）。客製化 AI 晶片跨入 N2 世代後，投片與封裝只能走 2330 的路線；不過世芯近 5 日股價仍跌 3.01%、落後同業，市場顯然在等訂單實際落到財報上。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBwd1hfUkgybzM2c1htSi0yTVpuWDlWbXFjbFN3c3VOV1BsRGFwRWJwQUJRbHp4NHJQaG9pMU5HZW1JWE4zaXpHU0w0a2ZMc1U?oc=5"
+     "https://news.google.com/rss/articles/CBMikgFBVV95cUxOQnFVVHZBYXNDVkVxNDhzbGtabGVTV3VnenNJSWh1TGJaNVdZNkNwT0lLME4tQTZOaVJGU2diaEJFWXdQQ1lDM3VXcVZqUExDZjFLQVdlS1lhRnJMdmdmeUY1NW1iVWFrb3hHOHRibC1ZOWw5VmFidV9jNVhUWEtzSkNnc29LU3ZSdDVuamFJNF9hQQ?oc=5"
     ]
    },
    {
-    "statement": "創意（3443，台積電轉投資的 IC 設計服務商，主攻客製化 ASIC）：延續台積電月營收突破 5,000 億元的供應鏈熱度，創意股價衝上台股第三高價，媒體指其獲台積電奧援、握有雲端服務商大單，2026 年營收力拚翻倍 （鏡週刊）。雲端商自研晶片幾乎都在 2330 先進製程與先進封裝投產，等於 AI 訂單由 GPU 擴散到客製晶片。「拚翻倍」是媒體說法、不是公司財測，實際貢獻要看後續月營收，短線說不出量級。[B 級・信心:低-中]",
+    "statement": "環宇-KY（4991，三五族光通訊廠）：200G 光電探測器完成測試、第 3 季進入量產，8 月營收 2.62 億元年增 45.6%，公司目標毛利率維持 44% 至 48% （鉅亨）。PD 是 800G 與 1.6T 光模組的關鍵零件，算力擴張正從晶片延伸到光連結，環宇屬 2330 矽光子平台的周邊生態；缺料緩解已反映在營收，2027 年才是放量年，訂單金額未揭露、絕對量級說不出來。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiaEFVX3lxTE5WcjJIZ0p0a3A2WjF0M2plMlpUa2tmQkQ5OTFqZVl0QmMyOXhnb2NCeWdHcFNRbVFTdk83dzYyVDRNLWRwdkZnb0F5Z0ZZcFRhZDRMYmJRVUtHaUhQdVBaQkNzWmw3LTVx0gFoQVVfeXFMTlZyMkhnSnRrcDZaMXQzamUyWlRra2ZCRDk5MWplWXRCYzI5eGdvY0J5Z0dwU1FtUVN2Tzd3NjJUNE0tZHB2RmdvQXlnRllwVGFkNExiYlFVS0dpSFB1UFpCQ3NabDctNXE?oc=5"
+     "https://news.cnyes.com/news/id/6610423"
     ]
    },
    {
-    "statement": "鴻海（2317，全球最大電子代工集團）：宣布集團攜手德國 Quantron 與宏景智駕，切入新能源商用車 （DIGITIMES）。商用車是電動車事業的新出海口，但合作屬初期階段，沒有訂單金額與出貨時程，量級無法判斷，對 2330 也無直接關聯。[B 級・信心:低-中]",
+    "statement": "智邦（2345，網通交換器廠）：FactSet 調查將今年 EPS 由 87.47 元下修至 86.43 元、目標價維持 3,500 元 （鉅亨）。下修幅度約 1.2%，屬微調而非趨勢反轉，但它與第五條的光通訊擴產方向相反：一個是需求端共識降溫、一個是供給端加速開出，AI 網通內部開始出現分歧，後續要看交換器出貨與光模組拉貨誰先鬆動。[B 級・信心:低-中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMijgFBVV95cUxNUXkxeG5sS1VnN1AwUUMzZ0l3VzMzSHRZdDU5UlpOX3I0YlQ4QVdpcXBZZG1ITU9ibzhKU1JQYkU2MGRrREp5bVNpbXBhdFd0TmJZS2lUOVdmZTRHMlBKX1lGMzFLZENsRm93eXgxTndoRFRVR3l2NUR4SUkyM1VBRVlUcVczUUJQbkFZSGh3?oc=5"
+     "https://news.cnyes.com/news/id/6610539"
     ]
    },
    {
-    "statement": "聯發科（2454，全球第二大手機晶片設計商）：宣布與愛立信突破 5G 定位精準度，可加速自駕車、無人機與智慧製造應用 （鉅亨）。定位精度升級是把 5G 從通訊推向工業應用的門檻，晶片最終仍在 2330 投片。這是技術里程碑、沒有出貨或訂單數字，量級說不出來。[B 級・信心:低-中]",
+    "statement": "台達電（2308，電源與散熱龍頭）：市場聚焦 Vera Rubin 平台、高壓直流與液冷三項規格升級 （經濟日報），股價 5 日累積上漲 7.10%。AI 機櫃功率密度提高，電源與散熱規格必須同步升級，台達電的出貨單價與內涵價值跟著墊高；這是算力擴張在電力端的必然配套，機制清楚，但報導未給訂單數字，量級只能說優於產業平均、無法量化。[B 級・信心:低-中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1XMlUzT2p6YlV1ejRKakpRdFZQWWxlZVdhNjFkdHFXN09xcEExZG1JQndQVTZmZ0tmb2dJNDYxZ05JVGRVN3dMTVVIOGlLWTg?oc=5"
+     "https://news.google.com/rss/articles/CBMigAFBVV95cUxPdE0wZjE1T2M3LUFTSXk1UlVPMm1ZdUltV0VteVM0SmMtcXl1TW1LMXN5SnpZNWdpQ09fLWRnZkNnbzY5RF96SjZ6V3pwci1kVGJ2Y2RSbzAyTWJyanlqLWtnbGVzM1kySE1rTnFzOW40UUU4RldqeFdWVm1PSTRkTA?oc=5"
     ]
    },
    {
-    "statement": "大立光（3008，手機鏡頭龍頭，正切入 CPO 共同封裝光學）：6 月底以來接連在台中獵地後，昨日再以 11.72 億元取得精密機械園區土地廠房擴充產能 （鉅亨）。市場解讀為 CPO 新事業暖身——光學耦合是矽光子（用光在晶片之間傳資料）封裝的關鍵環節，若能接上台積電矽光子平台，等於把手機鏡頭的精密光學搬進 AI 資料中心。這筆是資本支出、不是訂單，營收貢獻尚無時程。[B 級・信心:低-中]",
+    "statement": "矽光子產業政策：國科會主委吳誠文指出台積電矽光子晶圓平台技術已具全球領先地位，政府要組國家隊串聯產業鏈、納入 AI 新十大建設 （鉅亨）。政策資源往矽光子傾斜，與第五條的環宇及整體光通訊族群形成同一條主線；但政策成形到訂單落地通常以年計，短期影響停留在題材層。[B 級・信心:低-中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6609411"
+     "https://news.cnyes.com/news/id/6610459"
     ]
    },
    {
-    "statement": "騰輝-KY（6672，銅箔基板廠，AI 與 HDI 材料供應商）：董事會通過承租昆山廠房、砸 15 億元分三期擴產，主因高階銅箔基板嚴重短缺、訂單外溢；8 月營收 8.1 億元創新高，前 8 月已超越去年全年 （鉅亨）。銅箔基板是 AI 伺服器與高速交換器的關鍵材料，缺料漲價直接改善毛利結構。擴產以租廠改建壓縮時程，但投產日未揭露；這條線與台達電、日月光同屬 AI 硬體擴產。[A 級・信心:中]",
+    "statement": "【金融｜台灣】中信金（2891，大型金控）：前 8 月稅後純益 539 億元、加計處分利益突破千億元、雙創歷史新高 （自由時報）；另公告將參加 BofA 亞太投資人說明會 （MOPS）。銀行主體的淨利息與財富管理收入是本業底盤，處分利益屬一次性；說明會若釋出海外布局或資本配置方向，會是法人重新評價的觀察點。[A 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6609386"
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9ZWjIweFEzTFo3UGpZWGF6Y3ExcF82NWpBUkpWY29QeW1YX3d2aWhKMlJmckptY1dha0VTUzIxSFR5MGplQkxYakhGSTBMMXJiR0pQdWlvTC0?oc=5"
     ]
    }
   ]

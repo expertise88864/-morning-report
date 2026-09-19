@@ -7520,6 +7520,48 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "30df4538-b2fe-11f1-a223-33e58f5060aa",
+        "title": "The Fed Is Hiking Into A Growth Slowdown | Weekly Roundup",
+        "published": "Fri, 18 Sep 2026 10:00:00 -0000",
+        "processed_at": "2026-09-19T12:12:14Z",
+        "digest": {
+          "summary_points": [
+            "華許（Kevin Warsh）任內首次升息且委員會全體一致通過，Vincent 坦承自己原本預期「鴿派升息」是錯的；主持人認為市場對 10 月再升一碼定價不足（僅約五成），但利率市場到明年中的升息路徑（約四碼）又比 Fed 點陣圖更鷹，這種矛盾意味利率市場波動會更大。",
+            "財政端有一筆約 3,000-4,000 億美元的「期中選舉隱形刺激」——SPR 釋出、關稅退稅、個人退稅，加上加速資本支出造成企業稅收少收約 1,000 億；Vincent 估計其中約 2,000 億直接轉成企業獲利，這塊正在消退且明年不會續，是支撐當前美股獲利的重要來源。",
+            "三位主持人都站到「停滯性通膨」這一邊：實質薪資已連續約六個月負成長、就業市場仍緊，Vincent 擔心戰爭與關稅帶來的成本衝擊終將傳導到薪資與服務通膨，讓 Fed 的路徑更難走。",
+            "對「Fed 現在啟動升息是不是政策錯誤」，Vincent 的結論是「被迫的錯誤」——市場沒給 Fed 選擇；他認為貨幣政策本身不是重點，真正關鍵是結束戰爭，戰爭一結束通膨與股債的變數才會鬆開。",
+            "Vincent 的大宏觀：歐洲今天就像 2012 年的日本，最終得走上貨幣貶值一途（日圓已貶逾 50%、計入通膨差近 65%），而日本已把財政修好（R<G、初級預算平衡、稅收成長 6%），歐洲尤其法國 G 近零、R 4% 且上升；交易上做空歐元／做多日圓（利差崩跌使 carry 成本極低），並可加入做多美元兌歐元、做多巴西里爾兌歐元來收 carry。",
+            "反手看多英國股票：英國私部門確定給付退休基金的英股配置從 50% 掉到 5%，極度低配又便宜，指數正好集中在能源、醫療、金融三個他偏好的類股，且英國比歐陸更早經歷這類危機、單一央行政策彈性大，是他對沖歐洲風險「高度相關但更好」的首選。",
+            "三大前沿 AI 實驗室 CEO 同時支持監管，Vincent 用 Adam Smith 解讀為監管俘獲（三巨頭很快會形成壟斷共識），因為模型愈來愈貴、IPO 在即，前沿放慢對在位者有利；主持人提醒若前沿真的放慢，對整個經濟目前最依賴的 AI 資本支出並非好事。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人只在討論三大前沿實驗室為何同時支持監管時提到它，推測與監管俘獲及 IPO 前的成本考量有關，並未對其投資價值表態。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "running running this model is increasingly costly and tropic IPO stress around the corner which by the way I think is an argument to keep this going is there is a three trillion dollar prize and so close you can almost touch it",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人整體偏停滯性通膨：通膨高於 2% 已持續數年、實質薪資轉負、房市幾乎停滯，AI 資本支出是唯一還在的成長動能但增速在放緩，加上財政刺激退場、Fed 轉鷹推高實質利率，他們認為未來三到六個月的數據會讓市場意外，目前市場低估了風險。",
+          "action_view": "Vincent 的核心操作是做空歐元／做多日圓、做多美元並做多巴西里爾兌歐元（用利差收 carry），做多英國股票，並看多以歐元計價的黃金；Quinn 也說自己仍看多黃金。",
+          "notable_quote": "So I mean, you present that menu of option to any economies and say, well, yeah, stuck at the end of a very long expansion, you would expect stagflation.",
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "e6dca75c-b07b-11f1-9f2b-eba646bf3464",
         "title": "The Market Is Mispricing A Correlation Shock | Dean Curnutt",
         "published": "Wed, 16 Sep 2026 10:00:00 -0000",

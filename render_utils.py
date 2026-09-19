@@ -903,7 +903,8 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
             if val:
                 extras += (f"<div style='font-size:13px;color:#334155;margin-top:6px;'>"
                            f"<b>{label}：</b>{htmllib.escape(val)}</div>")
-        quote = str(d.get("notable_quote") or "").strip()
+        from podcast_quotes import display_quote
+        quote = display_quote(d)
         if quote:
             extras += (f"<div style='font-size:12px;color:#64748b;margin-top:6px;"
                        f"font-style:italic;'>「{htmllib.escape(quote)}」</div>")

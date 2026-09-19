@@ -1196,7 +1196,9 @@ def test_format_event_scenarios_filters_window_and_keeps_notes():
     ]
     out = mr._format_event_scenarios(cal, now_tpe=now)
     assert "CPI" in out and "預期 3.1%" in out       # 視窗內、保留預期/前值
-    assert "NVDA 財報" not in out  # Unknown local time cannot establish an exact 48h window.
+    exact, uncertain = out.split("日期已知、時間待確認", 1)
+    assert "NVDA 財報" not in exact  # Unknown time never establishes exact-window membership.
+    assert "NVDA 財報（時間待確認）" in uncertain and "盤後(美東)" in uncertain
     assert "太遠的事件" not in out                    # 視窗外(>48h)剔除
 
 

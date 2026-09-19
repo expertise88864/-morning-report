@@ -106,6 +106,20 @@ def test_no_deepseek_key_means_no_specialized_path(monkeypatch):
     assert "照舊" in mr._call_llm_analysis_impl(*_ARGS)
 
 
+def test_user_approved_high_reaches_specialized_request(luna_on, monkeypatch):
+    monkeypatch.setattr(mr, '_PRIMARY_EFFORT', 'high')
+    sent = []
+    def offline(payload):
+        sent.append(payload)
+        return _response(_GOOD, effort='high')
+    monkeypatch.setattr(mr, '_call_deepseek_responses', offline)
+    monkeypatch.setattr(mr, '_call_llm_text', lambda p: pytest.fail('unexpected fallback'))
+    assert '我的明確立場' in mr._call_llm_analysis_impl(*_ARGS)
+    assert sent[0]['reasoning']['effort'] == 'high'
+    assert sent[0]['max_output_tokens'] == mr._lt.output_cap(
+        'high', mr.LLM_REPORT_MAX_TOKENS, model=mr.DEEPSEEK_MODEL)
+
+
 def test_the_legacy_profile_override_is_a_working_escape_hatch(monkeypatch):
     """**逃生門要真的可用**(2026-08-08):設 deepseek_legacy_v1 即回舊 prompt,
     不必 revert 程式碼 —— workflow 註解對使用者做了這個承諾。"""

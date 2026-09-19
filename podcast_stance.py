@@ -65,7 +65,8 @@ def direction(ticker: dict) -> str:
 
 def validate_digest(digest: dict, transcript: str) -> dict:
     """Keep commentary, expose missing evidence, and never request regeneration."""
-    result = deepcopy(digest)
+    from podcast_quotes import validate as validate_quotes
+    result = validate_quotes(digest, transcript)
     tickers = digest.get('tickers') or []
     counts = {'attributed': 0, 'non_investment': 0, 'unverified': 0, 'invalid': 0}
     if not isinstance(tickers, list):

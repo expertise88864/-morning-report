@@ -214,11 +214,9 @@ jobs:
           # 主分析 provider:deepseek / openai / gemini / anthropic
           # 改用 repo variable 覆寫(Settings → Variables),不必動 workflow 檔
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
-          # DeepSeek 的推理強度。官方文件(2026-08-01):v4-pro 的映射是
-          # low→high、high→high、xhigh→max、max→max —— 先前一直用的 `high`
-          # **其實只到中段**(那時我照的是 repo 裡一行過時的註解,不是文件)。
-          # 改用 `max` 取最高推理;仍可由 repo variable 覆寫退回。
-          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'max' }}
+          # 使用者 2026-09-19 同意 high：9/17–19 max 連續耗盡 112k 輸出。
+          # 不增加輸出額度；實際分析品質等正常晨報驗收，保留顯式覆寫入口。
+          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'high' }}
           LLM_EVENT_EXTRACTION: "1"
 
           # DeepSeek（推薦）— 走 OpenAI 相容 API

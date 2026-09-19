@@ -26,7 +26,9 @@ def test_prompt_exact_boundary_no_elapsed_unknown_or_54_hour_event():
     original = copy.deepcopy(rows)
     output = mr._format_event_scenarios(rows, now_tpe=NOW)
     assert "精確邊界" in output
-    assert all(text not in output for text in ("已公布", "台指期結算", "未定時", "無效時鐘"))
+    exact, uncertain = output.split("日期已知、時間待確認", 1)
+    assert "未定時" not in exact and "未定時（時間待確認）" in uncertain
+    assert all(text not in output for text in ("已公布", "台指期結算", "無效時鐘"))
     assert rows == original
 
 

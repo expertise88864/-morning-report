@@ -423,6 +423,8 @@ def deepseek_digest(transcript: str, model: str = DEEPSEEK_MODEL) -> dict:
                 last_err = RuntimeError(violation)
                 continue
             quality = digest['direction_quality']
+            if digest.get('quote_evidence', {}).get('status') == 'unverified':
+                log('::warning::Podcast 金句無逐字稿依據，已略過引言；摘要保留')
             if quality['unverified'] or quality['invalid']:
                 log(f"::warning::Podcast 投資方向證據不足或格式異常: {quality}")
             return digest

@@ -390,7 +390,7 @@ CONFIG_SOURCE_SPEC = {
     # 實驗已整批拆除 —— 開關表跟著縮,而不是留一排永遠為空的鍵。
     "LLM_PROVIDER":               ("variable", "deepseek"),
     "EXTRACTOR_PROVIDER":         ("variable", ""),
-    "DEEPSEEK_REASONING_EFFORT":  ("variable", "max"),
+    "DEEPSEEK_REASONING_EFFORT":  ("variable", "high"),
     "LLM_TOTAL_TIMEOUT_SECONDS":  ("variable", ""),
     "LLM_REQUEST_TIMEOUT_SECONDS": ("variable", ""),
     #: 空 = 依 provider 自動選(deepseek → 特化;見 _DEFAULT_PROFILE_BY_PROVIDER)。

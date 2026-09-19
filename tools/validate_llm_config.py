@@ -549,7 +549,7 @@ def probe_one_provider(provider: str) -> int:
     elif provider == "deepseek":
         model = (shadow_model if shadow_only and shadow_model
                  else _env("DEEPSEEK_MODEL", "deepseek-v4-pro"))
-        raw = _env("DEEPSEEK_REASONING_EFFORT", "max")
+        raw = _env("DEEPSEEK_REASONING_EFFORT", "high")
         think = lt.deepseek_thinking(raw)
         extra = {}
         if raw:

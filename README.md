@@ -99,7 +99,7 @@
 | Variable | 預設 | 說明 |
 |---|---|---|
 | `LLM_PROVIDER` | `deepseek` | `deepseek` / `openai` / `gemini` / `anthropic` |
-| `DEEPSEEK_REASONING_EFFORT` | `max` | v4-pro 的映射是 low/high→high、xhigh/max→**max**;送 `high` 只到中段 |
+| `DEEPSEEK_REASONING_EFFORT` | `high` | 2026-09-19 使用者核可：優先恢復完整特化分析，降低推理耗盡輸出預算的風險；品質與成本以正常晨報驗收 |
 | `OPENAI_MODEL` | `gpt-5.6-terra` | 主分析模型 |
 | `OPENAI_REASONING_EFFORT` | `medium` | **支援值依 model + endpoint 為準,先跑 Validate LLM Config**;額度與 timeout 會一起放大 |
 | `EXTRACTOR_PROVIDER` | 空 | 事件抽取器可獨立指定;空 = 跟隨主分析 |

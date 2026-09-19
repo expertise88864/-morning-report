@@ -417,13 +417,10 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_EXTRACTOR_MODEL = os.environ.get("DEEPSEEK_EXTRACTOR_MODEL", "deepseek-v4-flash")
-# 思考模式強度。**官方支援 none/low/high/xhigh/max**(2026-08-01 文件)。
-# 這行原本寫「high / medium / low」而且被當成事實用了很久 —— 實際上 v4-pro
-# 的映射是 low→high、high→high、xhigh→max、max→max,也就是說先前一直用的
-# `high` 其實只到中段。要最高推理必須送 `xhigh` 或 `max`。
-# 僅對 v4-pro / reasoner 生效。
+# 2026-09-19 使用者核可主分析預設 high，優先避免推理耗盡輸出預算。
+# provider 參數映射以 llm_transport.deepseek_thinking 為準；不影響 Claude 審查。
 DEEPSEEK_REASONING_EFFORT = os.environ.get(
-    "DEEPSEEK_REASONING_EFFORT", "max").strip().lower()
+    "DEEPSEEK_REASONING_EFFORT", "high").strip().lower()
 LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "7000"))
 
 # 批#89:OpenAI(相容 chat completions)。加這個 provider 是為了能把 GPT-5.6
@@ -10762,7 +10759,8 @@ def _format_event_scenarios(calendar: Optional[list],
                     + (f"〔{_why}〕" if _why else ""))
         if len(rows) >= 6:
             break
-    return "\n".join(rows) if rows else f"（{NO_VERIFIED_EVENTS}）"
+    from calendar_uncertainty import format_uncertain
+    return ("\n".join(rows) if rows else f"（{NO_VERIFIED_EVENTS}）") + format_uncertain(calendar, now_tpe, _et.annotate)
 
 
 def _format_narrative_delta(history: Optional[list], today: Optional[str] = None) -> str:

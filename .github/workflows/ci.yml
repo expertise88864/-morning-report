@@ -143,7 +143,7 @@ jobs:
           # 要是生產真的會跑的那個模型。
           DEEPSEEK_MODEL: deepseek-v4-flash
           DEEPSEEK_EXTRACTOR_MODEL: deepseek-v4-flash
-          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'max' }}
+          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'high' }}
           EXTRACTOR_PROVIDER: ${{ vars.EXTRACTOR_PROVIDER || '' }}
           LLM_TOTAL_TIMEOUT_SECONDS: ${{ vars.LLM_TOTAL_TIMEOUT_SECONDS }}
           LLM_REQUEST_TIMEOUT_SECONDS: ${{ vars.LLM_REQUEST_TIMEOUT_SECONDS }}

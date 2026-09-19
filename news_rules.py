@@ -139,6 +139,7 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
     import re as _re
     import news_coverage as _coverage
     import finance_editorial as _finance
+    from news_identity_guards import static_stock_page, merge_compatible
 
     def _norm(t: str) -> str:
         t = (t or "").lower().strip()
@@ -167,7 +168,11 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
     # 每個保留項「已合併的發布者身分集合」,與 kept/kept_norms 同步索引;merged_n = 其基數。
     kept_pubs: list[set] = []
     dropped = 0
+    static_pages = 0
     for n in news:
+        if static_stock_page(str(n.get('title') or '')):
+            static_pages += 1
+            continue
         nt = _norm(n.get("title", ""))
         if not nt:
             # 無標題者不參與比對,但三個平行陣列仍同步 append(空 norm 永不匹配),
@@ -179,6 +184,9 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
         dup_index = None
         for index, kn in enumerate(kept_norms):
             if not kn:
+                continue
+            if not merge_compatible(str(n.get('title') or ''),
+                                    str(kept[index].get('title') or '')):
                 continue
             if nt == kn:
                 dup_index = index
@@ -233,6 +241,9 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
         kept_norms.append(nt)
         kept_pubs.append(_pub_set(n))
     print(f"[news] 去重：{len(news)} → {len(kept)} 則（移除 {dropped} 則重複）")
+    if static_pages:
+        import sys
+        print(f'[news] excluded static_pages={static_pages}', file=sys.stderr)
     return kept
 
 

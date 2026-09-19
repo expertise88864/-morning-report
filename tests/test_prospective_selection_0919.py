@@ -7,7 +7,8 @@ from backtest_data import prospective_selection as study
 
 
 def test_registered_implementation_and_future_window_are_fixed():
-    source = Path('backtest_data/selection_research.py').read_bytes()
+    source = (Path(__file__).resolve().parents[1]
+              / 'backtest_data/selection_research.py').read_bytes()
     got = study.run([], source, today=date(2026, 9, 19))
     assert got['decision'] == 'NO_REPLACEMENT'
     assert got['start_date'] > '2026-09-19'

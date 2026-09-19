@@ -1218,8 +1218,9 @@ def test_format_event_scenarios_accepts_datetime_date_without_typeerror():
 
 def test_build_prompt_has_event_scenario_section_with_injected_events():
     import datetime as dt
-    today = dt.datetime.now(mr.TPE).date()
-    cal = [{"date": today, "time": "20:30", "title": "[USD] CPI y/y",
+    # Tomorrow at 20:30 remains inside the next 48 hours even in evening CI.
+    tomorrow = dt.datetime.now(mr.TPE).date() + dt.timedelta(days=1)
+    cal = [{"date": tomorrow, "time": "20:30", "title": "[USD] CPI y/y",
             "note": "預期 3.1%、前值 3.2%", "impact": "high"}]
     p = mr._build_prompt(_empty_quotes(EVENT_CALENDAR=cal),
                          {"error": "x"}, {"error": "x"}, [], [], "")

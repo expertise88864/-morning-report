@@ -2983,6 +2983,11 @@
     "void": true,
     "reason": "corpact_coverage_gap",
     "session": "2026-08-31"
+   },
+   "20": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-09-20"
    }
   },
   "entry": {
@@ -4936,7 +4941,13 @@
   ],
   "excluded": [],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-09-20"
+   }
+  },
   "entry": {
    "2412": 141.0,
    "3702": 106.0,
@@ -5527,9 +5538,9 @@
   "type": "top5",
   "created": "2026-09-21",
   "ledger_schema_version": 2,
-  "created_at": "2026-09-21T07:09:17.240261+08:00",
+  "created_at": "2026-09-21T07:42:12.828318+08:00",
   "target_session": "2026-09-21",
-  "base_session": "2026-09-18",
+  "base_session": "2026-09-20",
   "codes": [
    "2615",
    "3702",
@@ -5561,7 +5572,7 @@
   "question": "2330_open_up",
   "label": "2330 開盤高於昨收",
   "created": "2026-09-21",
-  "created_at": "2026-09-21T07:09:17.240261+08:00",
+  "created_at": "2026-09-21T07:42:12.828318+08:00",
   "target": "2026-09-21",
   "threshold": 2460.0,
   "pred_pct": 0.646,
@@ -5578,15 +5589,15 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "90225a3e3428"
+   "git_sha": "8ddfaab06fa6"
   },
-  "git_sha": "90225a3e3428"
+  "git_sha": "8ddfaab06fa6"
  },
  {
   "question": "taiex_open_up",
   "label": "加權指數開盤高於昨收",
   "created": "2026-09-21",
-  "created_at": "2026-09-21T07:09:17.240261+08:00",
+  "created_at": "2026-09-21T07:42:12.828318+08:00",
   "target": "2026-09-21",
   "threshold": 47180.75,
   "pred_pct": 0.269,
@@ -5603,14 +5614,14 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "90225a3e3428"
+   "git_sha": "8ddfaab06fa6"
   },
-  "git_sha": "90225a3e3428"
+  "git_sha": "8ddfaab06fa6"
  },
  {
   "type": "mz_shadow",
   "created": "2026-09-21",
-  "created_at": "2026-09-21T07:09:17.240261+08:00",
+  "created_at": "2026-09-21T07:42:12.828318+08:00",
   "target": "2026-09-21",
   "raw": 2475.9,
   "shadow": 2472.6,
@@ -5628,8 +5639,8 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "90225a3e3428"
+   "git_sha": "8ddfaab06fa6"
   },
-  "git_sha": "90225a3e3428"
+  "git_sha": "8ddfaab06fa6"
  }
 ]

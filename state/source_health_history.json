@@ -1357,21 +1357,21 @@
    "news.google.com": true
   },
   "queries": {
-   "Google-半導體": 38,
+   "Google-半導體": 40,
    "Google-美股科技": 14,
-   "Google-Fed利率": 19,
-   "Google-台股大盤": 25,
+   "Google-Fed利率": 17,
+   "Google-台股大盤": 21,
    "Google-地緣": 100,
-   "Google-半導體設備": 10,
-   "Google-能源電網": 39,
+   "Google-半導體設備": 11,
+   "Google-能源電網": 40,
    "Google-散熱": 9,
-   "Google-先進封裝": 14,
+   "Google-先進封裝": 15,
    "Google-載板PCB": 1,
    "Google-光通訊": 4,
    "世界-國際大事": 100,
    "世界-災難極端": 100,
-   "世界-科學太空": 88,
-   "世界-AI大事": 40
+   "世界-科學太空": 91,
+   "世界-AI大事": 39
   },
   "drama": 0
  }

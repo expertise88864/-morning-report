@@ -1,12 +1,12 @@
 {
- "date": "2026-09-20 06:52",
+ "date": "2026-09-21 07:42",
  "delivery": {
   "attempted": true,
   "success": true,
-  "delivered_at": "2026-09-20T06:56:27+08:00",
-  "first_delivered_at": "2026-09-20T06:56:27+08:00",
-  "run_kind": "schedule",
+  "delivered_at": "2026-09-21T08:03:37+08:00",
+  "first_delivered_at": "2026-09-21T08:03:37+08:00",
+  "run_kind": "workflow_dispatch",
   "receipt_publish": "deferred"
  },
- "github_run_id": "35474549426"
+ "github_run_id": "35545402375"
 }

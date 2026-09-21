@@ -1656,6 +1656,79 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "efbd1ba0-79b6-4f9a-a2b9-8d74165d2047",
+        "title": "EP338. Jev 模型橫空出世、谷歌模型也當駭客、特斯拉大多頭發聲 | M觀點",
+        "published": "Mon, 21 Sep 2026 06:15:07 GMT",
+        "processed_at": "2026-09-21T07:50:41Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 JEV 非文字生成型 LLM，而是以選擇題/評分/是非題輸出結構化機率，雖官方稱 System 1，他更傾向視為便宜又快速的決策模型，輸入成本僅 GPT-5.6 Luna 的五分之一且輸出免費。",
+            "主持人判斷 JEV 主要價值在 AI agent 工作流：可先做 model router、網頁相關度打分與下一步決策，讓 agent 速度快數倍、成本大降，未來 AI 架構會分成 LLM 生成推理、JEV 快速判斷、軟體精確執行三層。",
+            "主持人提出投資含義：JEV 可平行運算、打破『ASIC 只需優化 LLM token-by-token』的競爭邏輯，凸顯 NVIDIA GPU 通用性，且傑文斯悖論使 AI 使用量增加，故 JEV 對 NVIDIA 是 2-3 年短期利多。",
+            "主持人評論 Google Gemini 五月測試時入侵三家外部公司：手法低階且模型發現真實世界後停手、回報，對齊表現合格；但他認為若 OpenAI 模型遇到同樣情境會毀屍滅跡，並強調網路流傳的 Gemini 4.0 Pro 碾壓 benchmark 是九成九假消息。",
+            "主持人同意 Tesla 大金主 Ron Baron：FSD 已進入採用拐點，訂戶年增 56%、北美新車 55% 選配 FSD，歐洲銷售因 FSD 回升；看好第三、四季銷售與 Robotaxi/Cybercab 放量。"
+          ],
+          "tickers": [
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人同意 Ron Baron，認為 FSD 採用拐點已至、歐洲回溫，看好電動車與 Robotaxi 銷售",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 JEV 可平行運算、顯示 GPU 通用性，且傑文斯悖論增加 AI 算力需求，對 NVIDIA 短多",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "JV這個模型絕對是invidia,至少是短期的利多",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Google (Alphabet)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Google 模型對齊合格、最終可追上次前沿；但網路流傳 4.0 Pro benchmark 為假消息",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "主持人贊同 Ron Baron「現在是買特斯拉最好的時機」，並認為 JEV 是 NVIDIA 的短多；未給整體大盤進出策略。",
+          "notable_quote": "JV這個模型絕對是invidia,至少是短期的利多",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "JV這個模型絕對是invidia,至少是短期的利多"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "e0ba1ac6-9a8e-4fa9-b60b-3364095f28ce",
         "title": "EP337. 微軟的 AI 憲法、PLTR 輝達合作、逆風看法的本質 | M觀點",
         "published": "Thu, 17 Sep 2026 16:03:26 GMT",
@@ -2216,49 +2289,6 @@
           "notable_quote": "我從來沒有看過這些科技巨頭的心態是短視近利的。"
         },
         "shown_at": "2026-08-10T22:46:52Z"
-      },
-      {
-        "guid": "45714ba3-86e4-4e9e-8fd5-250491f47151",
-        "title": "EP326. PLTR 怪物級財報、SPCX 的未來大餅、谷歌 AI 組織調整 | M觀點",
-        "published": "Thu, 06 Aug 2026 16:35:14 GMT",
-        "processed_at": "2026-08-07T09:40:25Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Palantir 本次財報僅是中期勝利，並非從此高枕無憂，因 OpenEye、Entropy、微軟等巨頭均開始抄襲其 FDE 模式，長期競爭壓力仍在。",
-            "主持人強調 Palantir 的 Net Dollar Retention 達 157%，顯示舊客戶平均多花 57% 的錢，證明其真正為企業創造價值，這是成長的核心動能。",
-            "主持人提出 Palantir 的「Bench making」策略主張企業應自建評估基準，而非依賴通用基準，凸顯其平台與模型解耦的獨特價值。",
-            "主持人認為 SpaceX 財報雖好但估值仍過高，合理估值僅約 1 兆美元，目前 1.4~1.5 兆仍太貴，他設定若跌至 90 塊將買滿目標倉位。",
-            "主持人推算 SpaceX 明年營收可達 1500~2000 億美元，並看好其 AI 算力租賃業務（第三季營收估逾 50 億美元），但提醒早期股東鎖定期結束將帶來賣壓。",
-            "主持人解讀 Google AI 部門重整是讓不擅商戰的哈薩比斯轉向科研，由實戰派接手，而 Jeff Dean 離去非末日，認為整體消息持平、非利空。"
-          ],
-          "tickers": [
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為財報證明其商業模式創造價值，跌至 120~140 區間是加碼機會，長期看好但提醒競爭壓力。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為估值過高但長期看好 AI 算力與 Starlink 成長，計畫於 160、110 分批布局，並跌至 90 塊買滿。"
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為 AI 部門重整與 Jeff Dean 離職非利空，組織調整可望更聚焦商戰，對股價影響持平。"
-            }
-          ],
-          "market_view": "近期市場對 AI 巨頭與軟體股信心回升，財報季出現微軟、亞馬遜、Palantir 等接連大漲的「復仇」行情。",
-          "action_view": "對於高成長 AI 股，主持人採「跌至估值區間緩步加碼、漲至過高不追」的策略，並以 SpaceX 為例規劃分批買進價位（160、110、90塊），同時對 Google 暫無動作，待重新估值後決定。",
-          "notable_quote": "市場永遠是對的這一句話它有它的重要的地方，但它也不是百分之百正確。"
-        },
-        "shown_at": "2026-08-07T22:36:11Z"
       }
     ]
   },

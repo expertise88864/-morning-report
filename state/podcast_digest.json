@@ -7120,6 +7120,93 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "66396c1f-3abf-4944-a99a-afc2818e43c1",
+        "title": "Conversation with Ayar Labs CEO Mark Wade on Silicon Photonics, Co-Packaged Optics, and Next-Gen AI Infrastructure",
+        "published": "Mon, 21 Sep 2026 09:27:52 -0700",
+        "processed_at": "2026-09-21T18:59:28Z",
+        "digest": {
+          "summary_points": [
+            "主持人 Ben 認為 AI 資料中心的關鍵瓶頸在互連：GPU 甚至記憶體的擴展速度都已快於互連，interconnect 是一道必須跨過的「牆」，這也是節目重心從算力轉向網路與光連結的原因。",
+            "主持人 Jay 形容光通訊這個領域歷來就是「痛」（pain），技術橫跨材料、元件、製造與供應鏈多個領域、難倒過許多人；他並認為業界想把巨型叢集整合成「一台電腦」的 compute domain 距離實現還很遠，整體仍在極早期。",
+            "來賓 Mark 認為矽光子晶圓製程本身其實不難，勝負在於要與領先製程 CMOS、先進封裝與 OSAT 整合成可量產的產品，因此選擇台積電平台是公司的核心賭注，他並反駁外界對台積電矽光子進度落後的質疑。",
+            "市場規模與導入時程：主持人引述多數機構估計這塊到 2030 年約 300 億至 500 億美元，來賓則認為把 scale-up 光學連結算進來是數百億、甚至接近 1,000 億美元等級；導入節奏預期是 2028～2029 年由領先 GPU 客戶率先採用，2029～2030 年才會擴散到其他加速器業者，而後進者要等到光學引擎「像整合 HBM 一樣」被視為零風險才會跟進。",
+            "資本與 IPO 布局：IR Labs 的 Series D 有 Nvidia、AMD、Intel、台積電策略投資，Series E 由大型長線基金領投並有 QIA、GIC 等主權基金與 crossover 投資人參與，今年以來帳上增加 6.5 億美元，另有 Reuters 報導的二級交易，公司把 IPO 時點與 2028～2029 年的互連導入時程綁在一起。"
+          ],
+          "tickers": [
+            {
+              "name": "IR Labs",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "未上市；執行長認為光學連結切入 scale-up 會是數百億美元等級的市場，並已把 IPO 時點與 2028～2029 年導入時程綁定。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "來賓認為矽光子晶圓製程本身不難，勝負在於領先 CMOS 加上先進封裝與 OSAT 的整合，因此選擇台積電平台並反駁外界對其矽光子進度的質疑。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "同時是 IR Labs 多輪策略投資人與其鎖定的生態系，黃仁勳在 GTC 端出 CPO 交換器路線圖被來賓視為這個領域的重要催化。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "IR Labs 的策略合作夥伴，來賓提到聯發科在台積電製程拿下推論用 TPU 專案，是 CPO 後段整合與擴散到非領先 GPU 客戶的通路之一。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為 AI 基礎建設的關鍵瓶頸在互連：GPU 與記憶體的擴展速度已快於互連，而業界想把巨型叢集整合成「一台電腦」的 compute domain 距離實現還很遠，整體仍在極早期。",
+          "action_view": "",
+          "notable_quote": "the race is really to build compute domains, right, so that you've got these giant clusters that function as one computer network together. And I just, like we're so far away from that really happening, which boggles my mind because the models necessitate that, like to serve a giant model at scale, you need a big compute domain.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "the race is really to build compute domains, right, so that you've got these giant clusters that function as one computer network together. And I just, like we're so far away from that really happening, which boggles my mind because the models necessitate that, like to serve a giant model at scale, you need a big compute domain."
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 4,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "c2d44325-5872-41a8-bbad-3e840321c8a3",
         "title": "EP 192: Talking Apple Silicon with Apple's Tom Boger, Kaiann Drance, and Sri Santhanam",
         "published": "Tue, 15 Sep 2026 07:49:14 -0700",

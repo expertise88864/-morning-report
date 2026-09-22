@@ -457,5 +457,48 @@
    "deadline": "2026-09-22"
   }
  ],
- "watch_seq": 49
+ "watch_seq": 49,
+ "legacy_report": {
+  "date": "2026-09-22",
+  "analysis_origin": "legacy_fallback_after_luna_failure",
+  "status": "unvalidated_model_opinion",
+  "items": [
+   {
+    "statement": "台積電（2330，全球晶圓代工龍頭，先進製程市佔逾九成）：延續 9 月初的高雄白埔布局，台積電與日月光帶頭進駐全台首座先進封裝專區，專家解讀是為了跟上 AI 迭代速度 （中央社）。先進封裝是把多顆晶片疊在一起、當成一顆用的製程（CoWoS 屬此類），目前仍是 AI 晶片的產能瓶頸，因此這座基地的意義在於替 2330 擴充中長期封裝產能。不過建廠到量產屬多年期工程，今年不改變 CoWoS 吃緊的現況，今天先動的是產能能見度。[A 級・信心:中-高]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiXkFVX3lxTE8zekI4Qm9XSXNpY3pGR0phX2xGU1hrd0lVeEpranJsdlNyNml4U0JVSHdkWFc5eW1yV0plaE4wWU43N2dKZ0tYcjlGVXROQ2o3ekNWOHY5QWU5MFdJclE?oc=5"
+    ]
+   },
+   {
+    "statement": "三星電子（Samsung，全球第二大晶圓代工廠）：南韓媒體報導，三星美國德州泰勒廠已啟動 2 奈米產線良率驗證，並開始試產特斯拉 AI5 原型晶片 （自由財經）。若特斯拉真把 AI5 交給三星量產，2330 在 AI 客製晶片的獨家地位就會出現第二供應商。但原型試產到量產通常需一年以上，且本次沒有揭露良率數字，短期對 2330 訂單的實際侵蝕有限，殺的是評價的「唯一性溢價」而不是今天的訂單。[B 級・信心:中]",
+    "source_urls": [
+     "https://ec.ltn.com.tw/article/breakingnews/5581686"
+    ]
+   },
+   {
+    "statement": "聯發科（2454，全球第二大 IC 設計廠，主力天璣手機晶片）：股價一舉衝破 5,000 元、市值突破 8 兆元，市場聚焦 AI ASIC 量產進入倒數 （風傳媒）。ASIC 是替雲端客戶量身訂做的 AI 晶片，同樣要吃台積電 3 奈米與 CoWoS 產能，等於替 2330 的先進封裝再添一張訂單。值得注意的是它與上一條三星 AI5 指向同一段先進封裝產能，兩者是排擠關係，不是相加。[B 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiTkFVX3lxTE5HeUMxeVpCTnAwYXRud2Y3dzZVVU1tdEFwa24wVjlteFdXcFhYV0tPRXBYSy0zNVlnTkRPUkszSXFXMnFULWZUU1RrRHgyQQ?oc=5"
+    ]
+   },
+   {
+    "statement": "友達（2409，面板廠，近年轉型先進封裝）：市場傳出英特爾有意與友達合作 Micro LED 基板先進封裝，加上台積電也傳出有意取得友達中科廠房，雙題材帶動股價鎖上漲停 （自由財經）。這是昨日台股科技最強的一條資金線，外資單日買超 23.6 萬張。但兩項都還在「傳出」階段、尚無公司正式公告，屬題材而非訂單，量級要等公告才判斷得出來；它與台積電白埔擴產是同一件事的兩面：2330 在先進封裝上確實在找地。[B 級・信心:低-中]",
+    "source_urls": [
+     "https://ec.ltn.com.tw/article/paper/1771693"
+    ]
+   },
+   {
+    "statement": "**【生技｜台灣】康霈*（6919，新藥開發商）：公告新藥 CBL-514 注射劑用於治療竇根氏症的二期臨床試驗取得最終統計結果，主要療效指標達統計顯著 （GeneOnline）。二期達標是往三期與授權談判推進的門檻，對單一小型新藥股屬重大里程碑；但距離藥證與專利獨占期營收仍有長路，昨日股價反而下跌 3.1%，顯示市場把利多當成兌現。[A 級・信心:中]**",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiswJBVV95cUxPeXVVbkN0cWVnN09YTE9lcnNiTGRDdllua3JhN3ZXdXV5cXhKVGVvWExjbU1IQWltUENrS1l5eVE1eFhieGpTbE4xZXR6M3g3ZGppcXo1MVdaSlJZZGJCMGRBbmY0bXkyczltSDZtLXJnQW9mU1RCTVZEWnVBRUcyUVQ1U0wtYS0wdndDQnJraVhBQWJ1aWJiVWIyVFAySGV5TG1YSjZJelF5ekNjMzhuX195REEzdXZBRkQxb2twOHRRTE1mWnVGcXg3eDBIYkM4ekRCR29DUzEyXzBGanF1clgzTVE1NFVwOGh3ckk0RDN2QldVOUdHNnc1UWp0Q2pBVS1mbDEtX2cxSTJNWC1ubDdfYjdUaG96emdrWlhJNW5odGVYMU5PZ3Bzdm5VS2tzMExz?oc=5"
+    ]
+   },
+   {
+    "statement": "**【生技｜台灣】國邑*（6875，藥械組合長效吸入新藥廠）：旗下 L608 獲美國 FDA 核准進行二期臨床試驗，鎖定硬皮症指端潰瘍，預計年底啟動收案、力拚 2028 年初完成 （自由時報）。FDA 核可二期是臨床路徑的實質推進，但尚未進入療效驗證階段，對營收與授權價值仍屬早期，量級要等收案速度與期中分析才看得出。[A 級・信心:中]**",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9rN3Fzdm16Z19VdWE3VjR1ckJPcmZ0ZWhNNUgtb2xpRW5RVVRZSzk2WmtnbkF3eUJMdXp2aHNfY0ZfNVRIOExDOVZvV2dWblNGTkhOR2ljZW8?oc=5"
+    ]
+   }
+  ]
+ }
 }

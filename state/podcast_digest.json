@@ -3,6 +3,51 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "07a93403-e26a-4a8b-a53a-497aa4e9ca20",
+        "title": "EP699 | 🪻",
+        "published": "Wed, 23 Sep 2026 07:47:36 GMT",
+        "processed_at": "2026-09-23T13:24:10Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為大盤並未轉空：加權指數與NQ已創高，盤面結構持續改善、弱勢族群（如功率元件）回神，他維持八九成持股，判斷台灣人因連假觀望才讓指數較扭，連假後資金與FOMO有機會回籠。",
+            "主持人把Meta Muse視為Agentic AI的第二波CPU催化，而非全新題材；他反駁市場流傳的CPU對GPU 40:1誇張比例，指無機構支持，合理共識應在1:4至1:2，1:1已是最樂觀情境，短線FOMO噴出後要留意回檔。",
+            "主持人反駁宏碁陳俊勝「AI元件不缺」的說法，認為宏碁在AI時代明顯落隊、產品線與股價均未跟上，短期AI元件供需改善沒那麼簡單，過早預測（如CCL降規）即使喊中意義也不大。",
+            "主持人認為DSP漲價15-20%合理，反映400G/800G升級階段的缺貨現實；他提醒CPO/LPO取代DSP是未來的零和思維，現階段DSP仍有表現空間，美系Marvell、MaxLinear及台系DSP廠後續說法值得留意。",
+            "主持人以自身創投視角指出AI正在改變遊戲開發（如加速修bug、小團隊槓桿），他們偏好小成本、有財務紀律與說故事能力的indie game，單筆投資約50萬至100萬美元並持續尋找標的。"
+          ],
+          "tickers": [
+            {
+              "name": "宏碁",
+              "code": "2353",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人認為宏碁在AI時代明顯落隊，產品線與股價均未跟上，其AI元件不缺的評論可信度低。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為大盤尚未轉空，指數創高與結構改善支持維持高持股；短線連假觀望造成扭捏，他預期連假後資金與FOMO回籠。",
+          "action_view": "主持人自己維持八九成以上持股，不因短線難做或連假觀望而空手；眼見為憑等真正破底才考慮轉空，並等待連假後類股輪動與FOMO回籠。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "fd5c07ef-4122-424e-8567-baad5d2b8b7d",
         "title": "EP698 | 🎮",
         "published": "Sat, 19 Sep 2026 01:59:59 GMT",
@@ -447,56 +492,6 @@
           "notable_quote": "你不可能會百分之百完美的抓到底部……我們能夠知道的是相對位置，但是絕對位置真的太難了。"
         },
         "shown_at": "2026-08-15T22:10:34Z"
-      },
-      {
-        "guid": "63275cd6-e7a5-4ece-8432-e39884d94ae2",
-        "title": "EP687 | 🐧",
-        "published": "Wed, 12 Aug 2026 07:27:46 GMT",
-        "processed_at": "2026-08-12T09:36:54Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Google 人事大搬風並非退出 AI 競賽，而是策略轉向：將更多資源投入雲端基建，成為 AI 時代的「房東」與數位基礎設施供應商，類似數位時代的鐵路與電網。",
-            "結合波克夏大買 Google 的行動，主持人推測巴菲特正是看上其從前沿模型轉向租金收入穩定的事業，符合其偏好重資產、寡占、穩定現金流的投資邏輯。",
-            "主持人指出 Meta 也在做類似的事，朝向算力租賃發展，試圖成為 CoreWeave 加 AWS 的綜合體，這兩家公司可能都是未來基礎設施的贏家。",
-            "短線上市場可能因 Google 失去前沿模型門票而給予 lower re-rate，但主持人提醒，Apple 不大量投資 AI 股價卻創新高，因此市場未必會懲罰 Google，甚至可能因現金流更快轉正而重新上調評價。",
-            "台股方面，主持人認為雖然短線存在利多出貨、互搞的「咒詩法則崩壞」，但族群已逐漸匯聚成形，不少中小型成長股創歷史新高，整體大盤仍相對樂觀可操作。",
-            "主持人分享自己降低槓桿、從指數轉買個股的操作思路，挑選有明確 2026-2027 年 EPS 上修、股價尚未回到高點的標的，如光通、散熱、AI 電源、AI 基建等族群。"
-          ],
-          "tickers": [
-            {
-              "name": "Alphabet Inc.",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Google 轉向雲端基建成為 AI 時代的房東，市場可能重新評價甚至上調估值，並非利空。"
-            },
-            {
-              "name": "Meta Platforms Inc.",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人觀察 Meta 也朝向算力租賃與基礎設施發展，有機會成為另一個贏家。"
-            },
-            {
-              "name": "Apple Inc.",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "僅用作例證市場對 AI 投資保守的公司仍可獲得資本買單，未明確表示多空。"
-            },
-            {
-              "name": "Berkshire Hathaway Inc.",
-              "code": "BRK.B",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "以巴菲特買入 Google 為例，看好其轉向基礎設施的策略符合價值投資邏輯。"
-            }
-          ],
-          "market_view": "主持人對台股大盤看法相對樂觀，雖然短線存在消息面利多出貨的互搞現象，但族群已逐漸成型，中小型成長股創高，拉長看型態正在轉好，是可以操作的盤。",
-          "action_view": "主持人降低槓桿，將部分指數部位轉向個股，偏好有明確獲利上修、股價尚未完全回到高點的中小型成長股，如光通、散熱、AI 電源等族群。",
-          "notable_quote": "算力它就是數位時代的鐵路跟電網，它就是某種非常重要的 infrastructure。"
-        },
-        "shown_at": "2026-08-12T22:52:00Z"
       }
     ]
   },

@@ -504,6 +504,123 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2405724486",
+        "title": "2026/9/23(三)5%殖利率也擋不住FOMO？AI狂潮推那指再創新高【早晨財經速解讀】",
+        "published": "Wed, 23 Sep 2026 01:07:42 +0000",
+        "processed_at": "2026-09-23T06:48:14Z",
+        "digest": {
+          "summary_points": [
+            "主持人判斷納指創高但追價意願低，是FOMO下的「半信半疑」行情；他認為油價、殖利率、AI資本支出、資金退潮四大壓力仍在，但基本面良好，若回調至低基期且本益比快速下滑，就會是買點。",
+            "主持人指出輝達杯柄型態接近完成，若順勢站上創高，對大盤拉抬力道會更大；但他也提醒輝達潛在擔保與採購承諾約3000億美元、廣義債務可能快速膨脹，風險會累積。",
+            "主持人以軟銀為反例警告AI過度投資：軟銀為OpenAI籌資發行殖利率8.2%至8.6%的高利美元債、CDS創3年高，財務狀況接近垃圾債，直言投資過頭市場也會教訓。",
+            "主持人認為美光、SanDisk已突破套牢壓力區、上方賣壓不大，收復跌幅不難；台積電、聯發科同樣上方無壓力，但權值大，需外資流動性全面回升才能有效推升。",
+            "主持人分析Meta Muse AI登上App Store免費下載榜首，帶動Meta單週漲11%、擺脫下行通道；亞馬遜封鎖Muse代表AI代理正在爭奪網路入口與消費數據，AI潛力仍大。",
+            "主持人認為油價回跌是風險情緒改善的關鍵，但仍在9字頭偏貴；沙烏地紅海管線重啟與美伊談判僅屬緩解，成品油供給仍不足，後續取決於川習會能否釋出利多。",
+            "主持人判斷期中選舉前川普無意引爆新關稅戰，只想救民調與緩和局勢；美中在AI安全／治理共同準則上最有可能達成共識，有助降低地緣風險。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為Muse AI帶動股價單週大漲、突破下行通道，今年回到正報酬。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "兩週的行情瞬間就站回去了,今年又回到正報酬了。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為杯柄型態接近完成，若突破創高對大盤拉抬更大；但提醒風險累積。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "如果能夠順勢站上,那輝達能夠創高,對於整個大盤的動力肯定影響來得更大",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為已站穩、突破盤整壓力區，上方無太大賣壓，收復跌幅不難。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "美光是已經站穩了,就是上方其實是沒有什麼太大賣壓的。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "SanDisk",
+              "code": "SNDK",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為已突破1750-1800美元壓力區，上方無太大壓力。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以從數據上來做觀察,現在已經剛剛好正式突破前波的密集套牢區了。上方其實也沒有什麼太大的壓力",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "軟銀",
+              "code": "SFTBY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為軟銀為OpenAI籌資背負高利債，財務狀況接近垃圾債，投資過頭會被市場教訓。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "投資過頭,市場也會教訓你,軟銀就是很明顯的",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為AI代理繞過電商平台入口與資料掌控，對亞馬遜等平台構成壓力。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "如果最後變成AI助理的公司掌握了這項數據,壓力就很大了。",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "主持人認為目前股市創高但追價意願弱，屬「半信半疑」行情；油價、殖利率、AI資本支出、資金退潮是四大壓力，但基本面良好，除非AI算力供給過剩，否則只是中期回調而非泡沫破滅。",
+          "action_view": "主持人傾向不追高：股價創高時不追，等回調至基期偏低、本益比快速下滑再考慮進場；操作上依本益比或周乖離情緒擇時。",
+          "notable_quote": "只要沒有迎來泡沫破滅的前兆,也就是供給過剩。AI算力過剩。什麼殖利率的問題、油價的問題、美中貿易戰的問題、市場估值、建置延後的問題,那個都是估值回調。那個都是中期回調,那個都不是泡沫破滅。這是我給予市場的態度",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "只要沒有迎來泡沫破滅的前兆,也就是供給過剩。AI算力過剩。什麼殖利率的問題、油價的問題、美中貿易戰的問題、市場估值、建置延後的問題,那個都是估值回調。那個都是中期回調,那個都不是泡沫破滅。這是我給予市場的態度"
+          },
+          "direction_quality": {
+            "attributed": 6,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2405125638",
         "title": "2026/9/22(二)那指創新高!個股沒跟上?美股重新押注AI 不怕高利率了？【早晨財經速解讀】",
         "published": "Tue, 22 Sep 2026 01:07:00 +0000",
@@ -945,57 +1062,6 @@
           "notable_quote": "重點不是外資的賣超，重點是內資現在外匯流入的速度到底有多快"
         },
         "shown_at": "2026-09-08T23:48:52Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2395748769",
-        "title": "2026/9/7(一)非農超強 美債失守 AI股卻悄悄轉多?美股Q4還有戲?【早晨財經速解讀】",
-        "published": "Mon, 07 Sep 2026 01:09:48 +0000",
-        "processed_at": "2026-09-07T07:04:07Z",
-        "digest": {
-          "summary_points": [
-            "主持人對8月非農16.2萬人明顯存疑，認為可能校正回歸，但市場已把9月升息機率推升至58%；他提醒同一數據多空各自解讀，勿硬選立場。",
-            "他認為美股陷入量縮整理，缺乏大跌清理籌碼導致散戶不進場；若出現一場大跌反而可能激發量能、開啟新多頭。",
-            "他觀察到軟體股與費半背離（6月底以來軟體漲25%、費半跌20%），但台股走出頭肩底、費半為頭尖頂，判斷台股結構較強、有機會挑戰新高。",
-            "他強調晶片股估值已大幅修正，例如ASML前瞻EV/EBITDA從28倍降至20倍，左側投資人可留意費半/晶片股，而七巨頭已收復、空間有限。",
-            "他認為輝達以129億美元收購Hugging Face，是從賣GPU擴展至AI軟體/平台生態，屬戰略利多，並為AI多頭核心之一。",
-            "他警告韓國股市目前靠三星、SK海力士庫藏股撐盤，高盛預估9月底至10月中回購買盤結束，屆時需觀察支撐；散戶資金已轉向定存。",
-            "他指出美伊衝突升級推升柴油價格年增58%，油價若無法突破95美元將進入平台整理，但能源通膨黏著將持續壓抑利率與股市。"
-          ],
-          "tickers": [
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "看好其以129億美元收購Hugging Face、從GPU擴展至AI軟體平台，為AI多頭核心"
-            },
-            {
-              "name": "艾司摩爾",
-              "code": "ASML",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "前瞻EV/EBITDA已降至20倍，估值壓縮，左側可留意"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Cybercab缺乏細節，Waymo商業化領先，市場評價謹慎"
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "長期生態系與毛利率強，但短期AI落後、股價高檔震盪"
-            }
-          ],
-          "market_view": "大盤量縮整理，缺乏大跌清洗籌碼，短期難有大量散戶進場；台股頭肩底結構優於費半，但需留意殖利率與油價壓力。",
-          "action_view": "左側投資人宜聚焦修正已久的晶片/費半，勿追高七巨頭；保持資產配置，等待量能出現或回調後再行動。",
-          "notable_quote": "投資最危險的未必是判斷錯誤，是有時候我們硬要找一個立場"
-        },
-        "shown_at": "2026-09-07T23:53:51Z"
       }
     ]
   },

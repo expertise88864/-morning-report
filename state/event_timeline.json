@@ -739,5 +739,39 @@
   "event_type": "geopolitical",
   "action": "",
   "identity_schema": 14
+ },
+ "litigation:META:2026-09": {
+  "first_seen": "2026-09-24",
+  "days": 1,
+  "last_seen": "2026-09-24",
+  "latest_title": "涉違詐防條例挨罰千萬　Meta：逾99%時限內處置完成",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "99",
+   "例挨",
+   "內處",
+   "千萬",
+   "完成",
+   "挨罰",
+   "時限",
+   "條例",
+   "涉違",
+   "置完",
+   "罰千",
+   "處置",
+   "詐防",
+   "違詐",
+   "防條",
+   "限內"
+  ],
+  "entity": "META",
+  "subject_basis": "alias",
+  "subjects": [
+   "META"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
  }
 }

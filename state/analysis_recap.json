@@ -569,5 +569,48 @@
    "deadline": "2026-10-21"
   }
  ],
- "watch_seq": 54
+ "watch_seq": 54,
+ "legacy_report": {
+  "date": "2026-09-24",
+  "analysis_origin": "legacy_fallback_after_luna_failure",
+  "status": "unvalidated_model_opinion",
+  "items": [
+   {
+    "statement": "台積電（2330，全球晶圓代工龍頭，3nm/5nm 市佔逾九成）：台股總市值昨日衝上 5.3 兆美元、首度超越印度成為全球第 4 大股市，台積電單日貢獻逾 1 兆元市值、股價收 2,500 元 （鉅亨）。傳導機制是被動式資金的機械買盤——0050、006208 等市值型 ETF 因權重膨脹被迫加碼，反過來替 2330 現貨價格做地板。量級上，昨天這 1 兆元市值增幅是單日事件，無法外推，但要留意同一批被動資金在台積電回檔時的反向賣壓會同樣機械化。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6614281"
+    ]
+   },
+   {
+    "statement": "貿聯-KY（3665，連接線束與資料中心互連廠）：完成 9 億美元收購新加坡 Interplex 集團資料通訊業務，9 月 23 日起正式併表 （鉅亨）。這筆交易讓貿聯直接取得資料中心客製化互連與精密金屬加工能力，並串連中國、越南、泰國、馬來西亞產能。傳導路徑是 AI 伺服器機櫃 Busbar（匯流排）與高速互連需求，但它對 2330 的拉動是間接的——真正的瓶頸仍在先進封裝產能；下一個可驗證點是 10 月營收揭露的月增幅度。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6614333"
+    ]
+   },
+   {
+    "statement": "聯發科（2454，全球第二大 IC 設計，主力天璣手機晶片與 AI 邊緣晶片）：發布最新 AI PC 處理器「天璣 CX C10 Max」，並宣布與 Google 合作拓展 Googlebook 市場 （TechNews）。這顆晶片若採台積電 N3 或 N2 製程，對 2330 的拉貨是正向的，但這則新聞說不出量級——沒有出貨目標、沒有品牌導入時程、沒有 ASP（平均售價），只能當方向。可留意下季法說是否揭露 AI PC 產品線的營收佔比。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMijgFBVV95cUxNU2ZrUFRidnE4N2NiZk5tUXZLYy1lNnhUc1pMeGF3VzBwMTROQUcxbGlsbzNHZTJTanRTTlpUSzltcUtqQzc5NUZZa0VtMUdzX0ozeVpaWkFoZ2Rab2NFdktEaTFINFZ4NWtvV09DVUwwbENmR2lYaU5NLUFnejVaTTVVeDJKT3RzbkFuYU9n?oc=5"
+    ]
+   },
+   {
+    "statement": "記憶體族群（南亞科、華邦電、旺宏、力積電）：美光 9 月 30 日財報倒數計時，市場對 AI 帶動的 HBM 需求偏樂觀 （ETtoday）。南亞科最新月營收年增率達 +560.9%，是族群中動能最強的一檔，反映 DRAM 報價回升與 AI 伺服器拉貨。不過這條線與今日大盤方向相反——當整體科技股因美債殖利率破 5.1% 承壓時，記憶體報價循環是否能獨立走，要看美光財報的實際指引，那是下週最直接的驗證點。[B 級・信心:中-低,資訊有限]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiUkFVX3lxTE82X3dKWUJlUXRIUzJ1dUw4c0RteHhablB5MG1zeGROUEJYQ3laQ0p5eUk1VTl2WDg2Z0IzbnpMU1lTakRnMUpTeWhGRzVoTFQ0eFHSAVBBVV95cUxORTFNbXF0M1ZBUXhmREVzaEIxVjBvMXNOc3lidElBSTVEUU1kUnJ4WVM0cjZpbGZydk9HUTZpNTJzYTFXQXktdndtM3N1Vkc1Yw?oc=5"
+    ]
+   },
+   {
+    "statement": "【金融｜台灣】玉山金（2884，民營金控，銀行+證券）：公平會核准玉山金併購三商美邦人壽案，認定無限制競爭疑慮 （UDN）。玉山金取得壽險牌照後可擴大經常性保費收入，但真正的財務影響要看併購價格與三商美邦的責任準備金缺口；短期對玉山金每股盈餘是中性，對整體金融指數權重影響有限。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE5Va1ZheFAtVl80Y29CenU0cUN3aWI4bFhDU3g0Wi0wdjhkUXhQTFJ5OWsxVVc5NElIc056UUU0UEo2a2otalNkb0U1V1ZMNml00gFWQVVfeXFMUE5PWmR0RER3d3JtM2kxa0RWVGo1MERtWGtWM25TZWg3UUJicnZxUzNIOXFzLUpQdEVEVWd3TXB5STVmTmVPcHZWTXBfbmJFTkx6bXp4ZHc?oc=5"
+    ]
+   },
+   {
+    "statement": "【金融｜台灣】壽險業：前 8 月百億神單累計 16 張、壽險資金 206 億元買下南港商辦「潤泰玉成廣場」創全台單一商辦最高紀錄 （工商時報）。這條傳導鏈是保費收入強勁 → 壽險可運用資金擴大 → 商用不動產與美公司債配置增加；但要注意 10 年期美債殖利率昨日破 5.1%，債券評價利益將部分回吐，對國泰金、富邦金的淨值影響會在第三季財報揭露時反映。[B 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE13ZXV3SEtVN2lWRjk3cEtkRmk0NEhvM1YyQ1pQNGpGbkhRM1JlV3MwcTBEWTZxZVZjR2RyOGY5bk9ZUGJyXzJPRnpzLU5JbDZaUFZYYklFTVd1T2tqV3pn?oc=5"
+    ]
+   }
+  ]
+ }
 }

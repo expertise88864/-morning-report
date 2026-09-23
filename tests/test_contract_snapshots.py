@@ -458,11 +458,13 @@ def _versionless(obj):
 def _legacy_prompt() -> str:
     """生產真的會送給 DeepSeek 的那份 prompt(固定輸入)。
 
-    與 `test_deepseek_legacy_golden` 釘的是同一個東西 —— 那個檔負責
-    「改了要看得見」,這裡負責「改了就必須升版」。兩者角度不同,都要有。
+    與 `test_deepseek_legacy_golden` 同樣檢查真實 prompt；這裡另餵
+    TAIFEX 部位，讓條件式資料註記變動也必須升版。
     """
     import morning_report as mr
-    return mr._build_prompt({"QQQ": {"close": 500.0}}, {"fair_value": 100.0},
+    quotes = {"QQQ": {"close": 500.0}, "TAIFEX_OI": {
+        "foreign_oi_net": -66772, "date": "2026-09-23"}}
+    return mr._build_prompt(quotes, {"fair_value": 100.0},
                             {"model1": 1000.0}, _NEWS, [], "")
 
 
@@ -810,7 +812,7 @@ _FROZEN = {
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (34, "4c5da2f136c401a2"),  # Sept24 qualify TAIFEX OI inference.
+    "fallback_profile_version":  (35, "7701db371393b117"),  # Sept24 OI size is not directional evidence.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。

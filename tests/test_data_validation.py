@@ -876,6 +876,8 @@ def test_taifex_prompt_does_not_claim_hedge_or_open_direction():
     assert "台指期未平倉（聚合部位資料）" in p
     assert "台指期未平倉（領先指標）" not in p
     assert "比現貨買賣超更領先" not in p
+    assert "絕對淨額逾 2 萬口僅標記規模，不能單憑此預測開盤" in p
+    assert "口為強訊號" not in p
 
 
 def test_data_quality_flags_flat_2330_prediction_with_adr_move():

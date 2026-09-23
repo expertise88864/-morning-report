@@ -11698,7 +11698,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         taifex_block = (
             f"  日期: {taifex.get('date','—')}\n"
             f"  外資台指期未平倉淨額: {taifex.get('foreign_oi_net',0):+d} 口"
-            f"（正=偏多、負=偏空，>±2 萬口為強訊號）\n"
+            f"（正=淨多部位、負=淨空部位；絕對淨額逾 2 萬口僅標記規模，不能單憑此預測開盤）\n"
             f"  投信淨額: {taifex.get('invest_oi_net',0):+d} 口\n"
             f"  自營商淨額: {taifex.get('dealer_oi_net',0):+d} 口"
         )

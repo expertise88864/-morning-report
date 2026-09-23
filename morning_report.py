@@ -2891,8 +2891,8 @@ def fetch_twse_institutional() -> dict[str, dict]:
           f"投信={t_over or (t_buy, t_sell)} 自營={d_over or (d_buy, d_sell)} "
           f"代號={code_key}")
 
-    if not code_key:
-        print(f"[twse] 找不到代號欄位，sample_keys={sample_keys}", file=sys.stderr)
+    if not code_key or not (f_over or (f_buy and f_sell and f_buy != f_sell)):
+        print(f"[twse] 缺代號或外資買賣欄位，sample_keys={sample_keys}", file=sys.stderr)
         return {}
 
     result: dict[str, dict] = {}
@@ -9956,39 +9956,39 @@ def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi:
                        f"小衝擊易全面擴散;Kritzman 實證此訊號常領先大盤回檔,操作宜降槓桿、提防多殺多。"),
         })
 
-    # 3. 外資台指期淨空 —— 看「方向(日變化)+ 現貨對照」而非只看「水位」。
-    #    重要:外資現貨大買時的期貨淨空多為「避險」,不是看空(故大淨空也可能上漲);
-    #    只有空單『較前日新增』且現貨同步調節,才是真正的偏空壓力。
+    # 3. 外資台指期淨空：日變化與現貨對照是相異指標。
+    #    不知是否同一交易人，不能由方向相反推出避險；保留原警示分級。
     foreign_oi = taifex_oi.get("foreign_oi_net")
     oi_chg = taifex_oi.get("foreign_oi_chg")            # 日變化(口),負=空單增加
-    spot_net = taifex_oi.get("foreign_spot_net_lot")    # 外資現貨買超合計(張)
+    spot_net = taifex_oi.get("foreign_spot_net_lot")    # 追蹤股票池外資買超合計(張)
     if foreign_oi is not None:
         if foreign_oi < -20000:
             chg_str = f"、較前日 {oi_chg:+,.0f} 口" if isinstance(oi_chg, (int, float)) else ""
             increasing = isinstance(oi_chg, (int, float)) and oi_chg <= -5000   # 空單明顯增加
-            hedge = isinstance(spot_net, (int, float)) and spot_net > 3000        # 現貨明顯買超
-            if increasing and not hedge:
+            spot_buy = isinstance(spot_net, (int, float)) and spot_net > 3000  # 現貨合計買超
+            if increasing and not spot_buy:
                 alerts.append({
                     "level": "red",
-                    "title": "外資台指期淨空『再增』(實空壓)",
-                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str}(空單較前日新增),"
-                               f"且現貨未見明顯買超 → 偏空壓力較實,今日易開低或盤中下殺。"),
+                    "title": "外資台指期淨空明顯增加",
+                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str}(空單較前日新增)；"
+                               f"{'追蹤股票池未見明顯外資買超' if isinstance(spot_net,(int,float)) else '追蹤股票池現貨資料不足'}；"
+                               "不能單憑此預測今日開盤。"),
                 })
-            elif hedge:
+            elif spot_buy:
                 alerts.append({
                     "level": "yellow",
-                    "title": "外資台指期淨空(多為避險,方向參考性低)",
-                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str},但外資現貨同步買超 "
-                               f"{spot_net:+,.0f} 張 → 期貨淨空多為『避險現貨多單』而非看空,"
-                               f"不宜單憑此判定開低(近期同樣大淨空但台股上漲即為此故)。"),
+                    "title": "外資台指期淨空與現貨買超並存",
+                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str}；追蹤股票池外資現貨合計買超 "
+                               f"{spot_net:+,.0f} 張；兩項資料不能證明同一批人避險或抵銷，"
+                               "方向仍待後續價格與部位變化確認。"),
                 })
             else:
                 alerts.append({
                     "level": "orange",
-                    "title": "外資台指期淨空(既有部位,非新增壓力)",
-                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str},水位雖大但"
-                               f"{'大致持平' if isinstance(oi_chg,(int,float)) else '日變化不明'}"
-                               f" → 屬既有空單,方向訊號偏弱,僅供參考。"),
+                    "title": "外資台指期淨空(未見明顯再增)",
+                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str}；"
+                               f"{'日變化未達明顯再增條件' if isinstance(oi_chg,(int,float)) else '日變化資料不足'}；"
+                               "淨空水位本身不能預測開盤方向。"),
                 })
         elif foreign_oi > 30000:
             alerts.append({
@@ -12103,9 +12103,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 {mops_block}
 ※ MOPS（公開資訊觀測站）是台灣上市公司法定即時揭露的重大訊息來源；任何具體事件（合約、財報、人事、配股、訴訟）都會在此公告
 
-【TAIFEX 三大法人台指期未平倉（領先指標）】
+【TAIFEX 三大法人台指期未平倉（聚合部位資料）】
 {taifex_block}
-※ 外資台指期未平倉是「外資對今日台股方向的最直接表態」，比現貨買賣超更領先
+※ 外資台指期淨未平倉是交易類別的聚合部位；不得推斷同一交易人避險、今日開盤方向，或宣稱比現貨訊號更領先。先核對資料日期與日變化；缺資料就說不確定。
 
 【TWSE 融資融券（散戶情緒，Opt 4）】
 {margin_block}
@@ -25494,8 +25494,8 @@ def _phase_events_and_models(ctx) -> None:
         print(f"[midterm] 整體失敗: {e}", file=sys.stderr)
     quotes["MIDTERM"] = midterm
 
-    # 6.55 外資台指期「日變化」+ 外資現貨買超 → 讓淨空警告判讀「方向」而非只看「水位」。
-    #   (外資現貨大買 + 期貨淨空 = 多為避險,非看空;只有空單『新增』且現貨同步調節才是實空壓)
+    # 6.55 外資台指期日變化與現貨買超分開列示；跨市場對照不推定同一人避險。
+    #      保留原警示分級與門檻，方向仍需更多證據。
     try:
         if isinstance(taifex_oi, dict) and taifex_oi.get("foreign_oi_net") is not None:
             prev_oi = next((h.get("taifex_foreign_oi") for h in reversed(history)
@@ -25503,7 +25503,7 @@ def _phase_events_and_models(ctx) -> None:
             if prev_oi is not None:
                 taifex_oi["foreign_oi_prev"] = prev_oi
                 taifex_oi["foreign_oi_chg"] = taifex_oi["foreign_oi_net"] - prev_oi
-            if tw0050:
+            if tw0050 and "universe:institutional_missing" not in _DEGRADED_STEPS:
                 taifex_oi["foreign_spot_net_lot"] = round(
                     sum(_safe_number(s.get("foreign_lot")) for s in tw0050), 0)
     except Exception as e:

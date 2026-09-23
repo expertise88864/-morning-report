@@ -308,7 +308,8 @@ def _news_line(n: dict, packet=None) -> str:
         lead = _join_sentence(display_head + attribution)
     else:
         lead = ""
-    parts = [lead + '\n\n' + body if lead else body]
+    interpretation = "本報解讀：" + body
+    parts = [lead + '\n\n' + interpretation if lead else interpretation]
     import news_research_context as _research
     history = _research.history_prose(n, packet)
     if history:
@@ -351,9 +352,10 @@ def _news_line(n: dict, packet=None) -> str:
         except Exception:               # noqa: BLE001 - 判準失敗不毀渲染
             weak = False
         if weak:
-            parts.append("\n\n" + _join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}"))
-    # 同一段:`_md_to_html` 會把相鄰的非空行併進同一個 <p>,
-    # 這裡直接用空格接起來,語意與排版一致。
+            # Keep the small-print caveat as its own paragraph, adjacent to the
+            # interpretation rather than after the impact and other sections.
+            parts[0] += "\n\n" + _join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}") + "\n\n"
+    # 一般句子以空格接起來；保留段落已有雙換行，維持獨立小字樣式。
     return " ".join(parts)
 
 

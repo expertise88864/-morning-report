@@ -795,6 +795,31 @@ def test_deepseek_request_respects_shared_wall_clock_budget(monkeypatch):
 
 # === 外資台指期淨空警告:看「方向(日變化)+ 現貨對照」而非只看水位 ===
 
+def test_twse_institutional_missing_foreign_column_is_not_zero(monkeypatch):
+    """外資欄缺失不能默默填 0，否則現貨訊號會把未知當賣超。"""
+    rows = [{"證券代號": "2330", "投信買賣超股數": "1000",
+             "自營商買賣超股數": "2000"}]
+    monkeypatch.setattr(mr, "_twse_main_api", lambda _date: rows)
+    assert mr.fetch_twse_institutional() == {}
+
+
+def test_twse_institutional_observed_zero_foreign_still_valid(monkeypatch):
+    """外資欄明確為 0 與缺欄不同，仍保留有效的其他法人資料。"""
+    rows = [{"證券代號": "2330", "外陸資買賣超股數": "0",
+             "投信買賣超股數": "1000", "自營商買賣超股數": "2000"}]
+    monkeypatch.setattr(mr, "_twse_main_api", lambda _date: rows)
+    result = mr.fetch_twse_institutional()
+    assert result["2330"]["foreign"] == 0
+    assert result["2330"]["total"] == 3000
+
+
+def test_twse_institutional_same_buy_sell_column_is_missing(monkeypatch):
+    """含 buy/sell 字樣的單一欄位不能同時當買進與賣出自減為零。"""
+    rows = [{"code": "2330", "foreign_buy_sell": "1000",
+             "investment_trust_over": "200", "dealer_over": "300"}]
+    monkeypatch.setattr(mr, "_twse_main_api", lambda _date: rows)
+    assert mr.fetch_twse_institutional() == {}
+
 def _short_oi_alert(oi, chg, spot):
     alerts = mr.detect_market_alerts(
         {"MACRO": {}}, {}, {},
@@ -802,25 +827,37 @@ def _short_oi_alert(oi, chg, spot):
     return next((a for a in alerts if "台指期淨空" in a["title"]), None)
 
 
-def test_short_oi_hedge_downgrades_to_yellow():
-    """大淨空但外資現貨大買 → 多為避險,降為 yellow、不喊開低(對應『昨天同樣淨空卻漲』)。"""
+def test_short_oi_spot_buy_is_mixed_signal_not_hedge_proof():
+    """期現方向並存不能證明同一批人避險；維持既有 yellow 分級。"""
     a = _short_oi_alert(-66772, -2000, 86505)
     assert a and a["level"] == "yellow"
-    assert "避險" in a["title"] or "避險" in a["detail"]
+    assert "並存" in a["title"]
+    assert "不能證明同一批人避險" in a["detail"]
+    assert "追蹤股票池" in a["detail"]
+    assert "張" in a["detail"] and "口" in a["detail"]
 
 
 def test_short_oi_increasing_is_red():
-    """空單較前日明顯新增 + 現貨未買超 → 真實空壓,red。"""
+    """空單較前日明顯新增且現貨未買超，維持 red 但不保證開低。"""
     a = _short_oi_alert(-66772, -12000, -5000)
     assert a and a["level"] == "red"
-    assert "再增" in a["title"] or "新增" in a["detail"]
+    assert "明顯增加" in a["title"]
+    assert "不能單憑此預測今日開盤" in a["detail"]
+
+
+def test_short_oi_increasing_with_missing_spot_reports_gap():
+    a = _short_oi_alert(-66772, -12000, None)
+    assert a and a["level"] == "red"
+    assert "現貨資料不足" in a["detail"]
+    assert "未見明顯外資買超" not in a["detail"]
 
 
 def test_short_oi_stable_is_orange():
-    """水位大但日變化持平、無明顯現貨買超 → 既有部位,orange、方向訊號弱。"""
+    """未達明顯再增條件仍是 orange，不把水位當開盤預測。"""
     a = _short_oi_alert(-66772, -800, -500)
     assert a and a["level"] == "orange"
-    assert "既有" in a["title"] or "方向訊號偏弱" in a["detail"]
+    assert "未見明顯再增" in a["title"]
+    assert "不能預測開盤方向" in a["detail"]
 
 
 def test_short_oi_no_change_data_still_warns():
@@ -828,6 +865,17 @@ def test_short_oi_no_change_data_still_warns():
     a = mr.detect_market_alerts({"MACRO": {}}, {}, {}, {"foreign_oi_net": -66772})
     hit = next((x for x in a if "台指期淨空" in x["title"]), None)
     assert hit is not None
+    assert hit["level"] == "orange" and "日變化資料不足" in hit["detail"]
+
+
+def test_taifex_prompt_does_not_claim_hedge_or_open_direction():
+    p = mr._build_prompt(
+        _empty_quotes(TAIFEX_OI={"foreign_oi_net": -66772, "date": "2026-09-23"}),
+        {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "不得推斷同一交易人避險、今日開盤方向" in p
+    assert "台指期未平倉（聚合部位資料）" in p
+    assert "台指期未平倉（領先指標）" not in p
+    assert "比現貨買賣超更領先" not in p
 
 
 def test_data_quality_flags_flat_2330_prediction_with_adr_move():

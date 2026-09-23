@@ -73,7 +73,7 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 # 「仍要 5 條」。逐行 diff 過,只有這兩處字面動了。
 # CR-02 2026-09-05:刻意修正未知模式,禁止 LLM 自算;有 Python 權威時抄錄規則不變。
 LEGACY_PROMPT_SHA256 = (
-    "512add192d9e61fe0b6491e4545bd5cdade7140df7776fd746c848ba313a6735")  # 09/22: authorized forecast/rotation inference boundaries.
+    "fd84a845685fa4ed9659da601b43064eca2015b968a39cad03511345dcb5cd79")  # 09/24: qualify TAIFEX aggregate OI inference.
 #: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。

@@ -11,6 +11,9 @@ RELATIONS = ('agreement', 'disagreement', 'not_comparable')
 RULES = """Podcast 比對規則：podcast_context 是主持人意見，不是市場事實。
 僅在新聞與節目討論同一可辨識命題時填 podcast_comparisons，每則至多兩項；
 只有同公司但不同事件不可硬比。opinion_id 只能填此區，禁止放入任何 evidence_ids。
+裁員與融資壓力是不同命題：若摘錄只各自談其中一項，不得因同公司便填「觀點相近」
+或寫成裁員證明資金受限；沒有可比較的同一命題就留空陣列。若來源另有獨立的
+融資事實，需分開標明來源與日期，不從裁員推導兩者的因果。
 opinion_excerpt 與 news_excerpt 各逐字摘錄對應來源 8–240 字，不可自行補字。
 relation 僅描述觀點相同、分歧或不可比，不代表主持人預測已驗證；
 comparison 說明同一命題的差異與適用条件，open_question 說明尚缺證據與後續驗證。

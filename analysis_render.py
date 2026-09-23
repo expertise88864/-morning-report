@@ -485,7 +485,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                   for tag, key in (("A", "us_rates_fx_vix"), ("B", "fed_policy"),
                                    ("C", "geopolitics")) if _macro_text(key)]
     from reader_editorial import integrate_macro
-    macro_rows = integrate_macro(macro_rows + macro_news)
+    # De-duplicate the three macro summaries, but keep each news card intact.
+    # Paragraph-level deduplication could leave a headline without its analysis.
+    macro_rows = integrate_macro(macro_rows) + macro_news
     if macro_rows:
         parts.append(f"## {SECTION_MACRO}" + chr(10) + (chr(10) * 2).join(macro_rows))
 

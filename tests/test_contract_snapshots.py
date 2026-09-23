@@ -479,6 +479,19 @@ def _stance_authority_probes() -> list:
     return out
 
 
+def _macro_news_render_probe() -> str:
+    """Freeze complete cards when distinct macro headlines share an interpretation."""
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"] = [
+        {"source_item_id": sid, "why_it_matters": "通膨壓力回升。"}
+        for sid in ("macro-a", "macro-b")]
+    packet = {"news": [
+        {"source_item_id": "macro-a", "title": "美國通膨第一則消息"},
+        {"source_item_id": "macro-b", "title": "歐洲通膨第二則消息"},
+    ]}
+    return ar.render(obj, packet)
+
+
 def _financial_render_probe() -> str:
     """Exercise actual financial-card ordering; old fixtures were tech only."""
     obj = fx.valid_analysis()
@@ -594,6 +607,7 @@ def _behaviour() -> dict:
         # 這個 repo 已經栽過同一形狀兩次(legacy prompt 那兩層)。
         "renderer_version": _sha([ar.render(_ANALYSIS),
                                   ar.render(_render_case(pk), pk), _financial_render_probe(),
+                                  _macro_news_render_probe(),
                                   _research_probe()["render"], _podcast_render(),
                                   [ru._episode_age_tag({'published': date}, '2026-09-12 (Sat)')
                                    for date in ('Tue, 01 Sep 2026 00:00:00 GMT',
@@ -792,11 +806,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (67, "859016e456dec48b"),  # Sept22 compact output and inference boundaries.
+    "primary_profile_version":  (68, "56b93ab0c7c9c8a5"),  # Sept24 separate layoffs and financing.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (32, "101fdd941e1bbeaa"),  # Sept22 forecast/rotation boundaries.
+    "fallback_profile_version":  (34, "4c5da2f136c401a2"),  # Sept24 qualify TAIFEX OI inference.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -841,7 +855,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (37, "185ba009936dccbb"),  # Company/source heading and sentence boundaries.
+    "renderer_version":       (38, "a5a023abe2b012b7"),  # Labels, adjacent caveats, complete macro cards.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

@@ -177,9 +177,13 @@ MODULE_CEILINGS = {
     "editorial_priority.py": 100,
     "reader_editorial.py": 110,
     "reader_revision.py": 85,
+    "reader_evidence_writing.py": 45,
+    "news_heading.py": 40,
+    "prose_join.py": 25,
     "watch_assessment.py": 60,
     "conclusion_guard.py": 45,
     "local_news_routing.py": 50,
+    "local_news_event_dates.py": 30,
     "company_ingress.py": 35,
     "scenario_window.py": 85,
     "sports_quality.py": 85,
@@ -214,6 +218,7 @@ MODULE_CEILINGS = {
     "podcast_input.py": 20,
     "news_research_runtime.py": 250,
     "week_review.py": 250,
+    "weekend_quality.py": 130,
     # 2026-09-06: candidate delivery gate and offline contract tests are new root
     # modules. Freeze their measured initial sizes; no existing cap is raised.
     "_delivery.py": 329,

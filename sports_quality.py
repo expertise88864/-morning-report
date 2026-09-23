@@ -60,7 +60,7 @@ def tennis_note(comp: dict) -> str:
 def news_allowed(entry: dict) -> bool:
     title = str(entry.get('title') or '')
     # Promotional programme schedules are not result/news reports, even if freshly reposted.
-    return not re.search(r'轉播預告|轉播表|直播連結|無廣告.*體育|免費直播', title)
+    return not re.search(r'轉播預告|轉播表|直播連結|無廣告.*體育|免費直播|回饋列車.*小球員|特別感謝.*支持與陪伴', title)
 
 
 def tennis_score(win: dict, lose: dict) -> str:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Claude Opus 5 diff gate: exact model, read-only, and fail-closed wiring."""
+"""Claude Opus 5.5 diff gate: exact model, read-only, and fail-closed wiring."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ sys.modules[SPEC.name] = GATE
 SPEC.loader.exec_module(GATE)
 
 
-def _result(message: str, *, model: str = "claude-opus-5", error: bool = False) -> str:
+def _result(message: str, *, model: str = "claude-opus-5-5", error: bool = False) -> str:
     return json.dumps(
         {
             "type": "result",
@@ -33,10 +33,10 @@ def _result(message: str, *, model: str = "claude-opus-5", error: bool = False) 
     )
 
 
-def test_command_pins_exact_opus5_and_exposes_no_write_or_fallback_tools():
+def test_command_pins_exact_opus55_and_exposes_no_write_or_fallback_tools():
     command = GATE.build_command("claude")
     assert "review" not in command
-    assert command[command.index("--model") + 1] == "claude-opus-5"
+    assert command[command.index("--model") + 1] == "claude-opus-5-5"
     assert command[command.index("--effort") + 1] == "high"
     assert command[command.index("--permission-mode") + 1] == "dontAsk"
     assert "--restricted" in command
@@ -58,6 +58,8 @@ def test_result_requires_model_evidence_and_an_exact_terminal_verdict():
 
     with pytest.raises(GATE.ReviewError, match="cannot prove"):
         GATE.parse_review_output(_result("APPROVE", model="claude-opus-4-8"))
+    with pytest.raises(GATE.ReviewError, match="cannot prove"):
+        GATE.parse_review_output(_result("APPROVE", model="claude-opus-5"))
     with pytest.raises(GATE.ReviewError, match="exact APPROVE"):
         GATE.parse_review_output(_result("Looks good"))
     with pytest.raises(GATE.ReviewError, match="Not logged in"):
@@ -349,7 +351,7 @@ def test_agent_policies_require_every_diff_and_forbid_bypass_or_model_fallback()
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     claude = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     for text in (agents, claude):
-        assert "claude-opus-5" in text
+        assert "claude-opus-5-5" in text
         assert "所有 diff" in text
         assert "不得 fallback" in text
         assert "--no-verify" in text

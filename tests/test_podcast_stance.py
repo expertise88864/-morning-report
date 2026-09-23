@@ -73,7 +73,7 @@ def test_legacy_comment_is_preserved_without_alignment_or_bullish_label():
     output = render._render_podcast_html([
         {'show': '節目', 'title': '一集', 'digest': {'tickers': [row]}}], snapshot, html)
     assert '[看多]' not in output
-    assert '未確認投資方向' in output and row['reason'] in output
+    assert '提及，未確認多空表態' in output and row['reason'] in output
 
 
 def test_evidence_projection_cannot_reintroduce_legacy_bullish():

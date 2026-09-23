@@ -26,7 +26,7 @@ def test_missing_entities_still_get_named_company_and_separate_link():
     card = {'source_item_id': 'n', 'why_it_matters': '訂單延續。'}
     original = copy.deepcopy(card)
     text = depth._news_line(card, packet)
-    assert '**輝達' in text and '**\n\n' in text
+    assert '**輝達（NVDA）**｜[輝達展望成長]' in text
     assert '](' in text and '\n\n訂單延續' in text
     assert card == original
 

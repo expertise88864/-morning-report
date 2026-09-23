@@ -17,7 +17,7 @@
 - HsiaoEye 視覺基準只能由 Ubuntu 產生並人工確認，不自動接受差異；保留 CMS 新修改，衝突停止，不 force-push。CMS 存檔不等於正式發佈完成。
 - 晨報候選 CI 不得寄信、寫回正式 state 或觸發正式排程；變更產報/LLM/外部資料關鍵路徑時另做不寄信 dry-run。既有正式寄信排程不得因候選驗證中斷。
 - CI 失敗持續診斷並修正可確認缺陷，修正後重跑完整遠端驗證；取消、逾時、缺失、讀不到及應跑卻跳過皆不通過。禁止 skip-ci、降門檻或繞 hook 製造全綠。
-- Claude 固定 claude-opus-5 / high / read-only；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
+- Claude 固定 claude-opus-5-5 / high / read-only；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
 - main 發佈後還要驗證 exact-SHA 正式 CI／部署及適用 smoke checks，才可宣告交付；純文件與空 audit commit 也走候選流程。
 - 詳細入口、範圍與限制見 REMOTE_CI_DELIVERY.md。不得把本機快速檢查說成完整 CI，也不得把候選 CI 綠燈當作正式部署成功。
 
@@ -90,18 +90,18 @@
 - 本機必要檢查無法執行時回報並取得決定；禁止跳過 hook、加 skip-CI、停用測試／job
   或放寬門檻來製造全綠。CI 真缺陷修正後以新 commit 走同一流程，不改寫已發佈歷史。
 
-### Claude Opus 5 強制 diff review
+### Claude Opus 5.5 強制 diff review
 
 - **所有 diff 都要審,沒有文件/tests/cosmetic 例外。** commit 或 push 前執行
   `python tools/claude_diff_review.py worktree`。取得精確 `APPROVE` 才可稱審查通過;
   使用者 2026-09-05 定案:僅額度不足可先推送已驗證的 task-owned 變更並補審。
-- reviewer 固定使用完整模型 ID `claude-opus-5`、effort `high`、唯讀工具白名單;
+- reviewer 固定使用完整模型 ID `claude-opus-5-5`、effort `high`、唯讀工具白名單;
   **不得 fallback** 到 alias、Sonnet、舊 Opus 或其他模型。未登入、模型證據缺失、
   非明確裁決仍阻擋;只有可確認的 provider 額度／限流錯誤可延後。
 - 遇到 Claude 額度或限流時,wrapper 必須在被忽略的
   `.claude-review/pending_review.json` 以 atomic write 記錄 `PENDING`、diff fingerprint
   與可安全解析的 reset 時間,不得保存 diff 或完整錯誤輸出。代理必須在同一 task 建立／更新
-  reset 後的自動補審排程;補審仍須使用 `claude-opus-5`、effort `high`。
+  reset 後的自動補審排程;補審仍須使用 `claude-opus-5-5`、effort `high`。
   commit-msg hook 為內容變更加入 `Claude-Opus-5-Review: pending` 與
   `Claude-Opus-5-Review-Effort: high`。**PENDING 是未審,不是 APPROVE**。
   `python tools/claude_diff_review.py pending` 掃描所有本機／遠端追蹤分支的未審 commit;

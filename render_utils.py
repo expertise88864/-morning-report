@@ -862,7 +862,7 @@ def _episode_age_tag(ep: dict, as_of=None) -> str:
 
 def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
                          max_episodes: int = 14, compact_points: Optional[int] = None,
-                         as_of=None) -> str:
+                         as_of=None, related_sources=None) -> str:
     """「Podcast 重點」卡片:每集重點摘要 + 個股觀點與本報資料對照。
     max_episodes / compact_points 供 102KB 超標時「局部縮減」(先減集數/條數)使用,
     預設維持原行為(14 集、台系 15 條)。"""
@@ -870,7 +870,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
         return ""
     from podcast_stance import direction as attributed_direction
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
-                 "neutral": ("中性", "#64748b"), "unknown": ("未確認投資方向", "#64748b")}
+                 "neutral": ("中性", "#64748b"), "unknown": ("提及，未確認多空表態", "#64748b")}
     # 國際快訊壓到 6 條,把版面留給台股(iPhone Gmail 102KB);其餘(含未知/新增節目)維持 15 條
     cards = []
     for ep in episodes[:max(1, max_episodes)]:
@@ -890,6 +890,13 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
             check = _podcast_ticker_crosscheck(t, snapshot)
             check_html = (f"<div style='font-size:12px;color:#0369a1;margin-top:2px;'>"
                           f"對照:{htmllib.escape(check)}</div>") if check else ""
+            for source in (related_sources or {}).get(str(t.get('name') or '').strip(), []):
+                link = htmllib.escape(safe_href(source.get('url')), quote=True)
+                if link:
+                    date = htmllib.escape(str(source.get('published_at') or '')[:10])
+                    title = htmllib.escape(str(source.get('title') or ''))
+                    check_html += (f"<div style='font-size:12px;color:#64748b;'>相關報導 {date}："
+                                   f"<a href='{link}'>{title}</a>（標題含此名稱，未核對公司身分或證實觀點）</div>")
             ticker_rows += (
                 f"<div style='padding:6px 0;border-bottom:1px dashed #e2e8f0;'>"
                 f"<b style='color:{color};'>[{label}]</b> "
@@ -900,7 +907,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
         extras = ""
         for key, label in (("market_view", "大盤觀點"), ("action_view", "操作思路")):
             val = str(d.get(key) or "").strip()
-            if val:
+            if val and val not in (d.get("summary_points") or [])[:max_pts]:
                 extras += (f"<div style='font-size:13px;color:#334155;margin-top:6px;'>"
                            f"<b>{label}：</b>{htmllib.escape(val)}</div>")
         from podcast_quotes import display_quote
@@ -1306,6 +1313,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         _mark("MLB")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 台灣旅外球員（近期出賽）</b>"
+            + "<div style='font-size:12px;color:#64748b;'>MLB Stats API 單場紀錄；日期為來源比賽日，非台北新聞發布日。下方消息可能為不同場次。</div>"
             + rows + "</div>")
     if cpbl_scores:
         def _side(name, score, is_win):
@@ -1607,6 +1615,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             # 舊格式純字串(state 殘留/降級)→ 純文字,不崩
             if isinstance(t, dict):
                 title = htmllib.escape(str(t.get("title", "")))
+                published = htmllib.escape(str(t.get("published_at") or ""))
+                title += f"（發布 {published}）" if published else "（發布時間未提供）"
                 link = htmllib.escape(safe_href(t.get("link")), quote=True)
                 if link:
                     return (f"<li style='margin:3px 0;'><a href='{link}' "

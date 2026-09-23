@@ -112,7 +112,7 @@ def test_hook_exit_policy_distinguishes_quota_from_defects(repo, monkeypatch):
 
 def test_mixed_model_evidence_is_not_accepted():
     payload = {"type": "result", "is_error": False, "result": "APPROVE",
-               "modelUsage": {"claude-opus-5": {}, "claude-sonnet-5": {}}}
+               "modelUsage": {"claude-opus-5-5": {}, "claude-sonnet-5": {}}}
     with pytest.raises(gate.ReviewError, match="cannot prove"):
         gate.parse_review_output(json.dumps(payload))
 

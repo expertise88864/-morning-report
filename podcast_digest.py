@@ -155,8 +155,8 @@ notable_quote 與 stance_quote 必須逐字取自轉錄；含疑似辨識錯誤�
                "reason": "主持人對它的看法一句話",
                "stance_basis": "investment_view/non_investment/unclear",
                "stance_quote": "支持這項投資方向的逐字稿原文，8-600 字；沒有就空字串，不可翻譯或改寫"}],
-  "market_view": "主持人對大盤/總經的整體看法,1-2 句;沒明確說就寫空字串",
-  "action_view": "主持人提到的操作思路(加碼/減碼/觀望/策略),1-2 句;沒有就空字串",
+  "market_view": "主持人對大盤/總經的整體看法,1-2 句;沒明確說或已在 summary_points 完整表達就寫空字串",
+  "action_view": "主持人提到的操作思路(加碼/減碼/觀望/策略),1-2 句;沒有或已在 summary_points 完整表達就空字串",
   "notable_quote": "一句最有代表性的原話(可空字串)"
 }
 鐵則:只記錄主持人「真的說過」的內容,嚴禁腦補或外推;聽不清楚/不確定的個股代號留空;

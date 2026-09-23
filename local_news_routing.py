@@ -2,6 +2,12 @@
 import re
 
 from news_display_quality import relevant
+from weekend_quality import award_key
+
+
+def region_relevant(title: str, tokens: tuple[str, ...]) -> bool:
+    probe = re.sub(r"中科院|最大里|十大里", "", title)
+    return any(token in probe for token in tokens)
 
 
 def destination(label: str, title: str) -> str:
@@ -26,15 +32,18 @@ def select(candidates: list, queries: list, per_label: int, *, is_dup, seen_entr
         if target not in buckets or not relevant(target, title):
             continue
         buckets[target].append(item)
-    out, seen = {}, []
+    out, seen, awards = {}, [], set()
     for label, items in buckets.items():
         kept = []
         for item in items:
             if len(kept) >= limits[label]:
                 break
-            if is_dup(item["title"], seen):
+            award = award_key(item["title"])
+            if is_dup(item["title"], seen) or (award is not None and award in awards):
                 continue
             kept.append(item)
+            if award is not None:
+                awards.add(award)
             seen.append(seen_entry(item["title"]))
         if kept:
             out[label] = kept

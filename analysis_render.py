@@ -624,7 +624,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
             stance_lines.append(f"風險:{_s(r)}")
     inval = [_s(t) for t in (tree.get("invalidation_triggers") or []) if _s(t)]
     if inval:
-        stance_lines.append("失效條件:" + "、".join(inval))
+        from prose_join import sentences
+        stance_lines.append("失效條件:" + sentences(inval))
     parts.append(f"## {SECTION_STANCE}\n" + "\n".join(stance_lines))
 
     parts.append(f"## {SECTION_SUMMARY}\n{summary}")

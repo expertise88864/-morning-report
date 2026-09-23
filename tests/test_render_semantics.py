@@ -219,13 +219,23 @@ def test_a_chain_that_the_validator_accepts_is_not_drawn_as_broken():
 
 def test_two_effect_sentences_do_not_collide():
     """兩段影響接進散文時不得接出「。、」(2026-08-17 生產信裡看得到)。
-    2026-08-19 改散文之後由 `_assets_prose` 負責:效果去尾再用「、」接。"""
+    完整影響句各自保留句界，不以頓號串接。"""
     import analysis_render_depth as ard
     prose = ard._assets_prose({"affected_assets": [
         {"asset_id": "2330", "first_order_effect": "折現率上升。",
          "second_order_effect": "折價可能擴大"}]})
     assert prose and "。、" not in prose, prose
-    assert prose.strip() == "2330:折現率上升、折價可能擴大。", prose
+    assert prose.strip() == "2330:折現率上升。 折價可能擴大。", prose
+
+
+def test_each_speculative_effect_sentence_remains_conditional():
+    import analysis_render_depth as ard
+    packet = {'news': [{'source_item_id': 'n', 'title': '美債殖利率走高', 'entities': []}],
+              'tw_universe': [{'code': '2408', 'name': '南亞科'}]}
+    entry = {'source_item_id': 'n', 'affected_assets': [
+        {'asset_id': '2408', 'first_order_effect': '折現率上升',
+         'second_order_effect': '估值受壓'}]}
+    assert '可能折現率上升。 可能估值受壓。' in ard._assets_prose(entry, packet)
 
 
 def test_the_counterevidence_flag_survives_without_a_cluster():

@@ -55,7 +55,8 @@ def select(entries: Iterable[Mapping[str, Any]], now: dt.datetime,
             continue
         if published is None:
             report["undated"] += 1
-        candidates.append({"title": title, "link": str(entry.get("link") or "")})
+        candidates.append({"title": title, "link": str(entry.get("link") or ""),
+                           "published_at": published.astimezone(dt.timezone(dt.timedelta(hours=8))).strftime('%m/%d %H:%M 台北') if published else ''})
     distinct = unique(candidates)
     report["duplicates"] = len(candidates) - len(distinct)
     chosen = distinct[:max(0, limit)]

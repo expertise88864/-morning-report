@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Opus 5 review gate with explicitly marked quota deferral.
+"""Claude Opus 5.5 review gate with explicitly marked quota deferral.
 
 The reviewer inspects Git state in place. Diff content is never copied into the
 prompt or command line, and the Claude process receives only read/search tools.
@@ -29,7 +29,7 @@ if str(ROOT) not in sys.path:
 from tools import claude_review_queue as queue  # noqa: E402
 
 STATE_DIR = ROOT / ".claude-review"
-MODEL = "claude-opus-5"
+MODEL = "claude-opus-5-5"
 EFFORT = "high"
 PENDING_PATH = STATE_DIR / "pending_review.json"
 
@@ -389,7 +389,7 @@ def build_prompt(scope: str, ranges: Sequence[PushRange],
     snapshot_name = (snapshot_path or STATE_DIR / "review.patch").as_posix()
     return f"""You are the mandatory independent diff reviewer for this repository.
 
-MODEL REQUIREMENT: this run must use Claude Opus 5 (`{MODEL}`).
+MODEL REQUIREMENT: this run must use Claude Opus 5.5 (`{MODEL}`).
 REVIEW SCOPE: {_scope_details(scope, ranges)}
 
 Operate strictly read-only. Do not modify, create, delete, rename, format,
@@ -475,7 +475,7 @@ def parse_review_output(raw: str) -> tuple[str, str, dict]:
 
     model_usage = payload.get("modelUsage")
     if not isinstance(model_usage, dict) or not model_usage or not all(
-        name == MODEL or name.startswith(f"{MODEL}-") for name in model_usage
+        name == MODEL for name in model_usage
     ):
         used = ", ".join(sorted(model_usage)) if isinstance(model_usage, dict) else "unavailable"
         raise ReviewError(f"cannot prove that {MODEL} ran (reported models: {used or 'none'})")

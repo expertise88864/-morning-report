@@ -17,7 +17,7 @@
 - HsiaoEye 視覺基準只能由 Ubuntu 產生並人工確認，不自動接受差異；保留 CMS 新修改，衝突停止，不 force-push。CMS 存檔不等於正式發佈完成。
 - 晨報候選 CI 不得寄信、寫回正式 state 或觸發正式排程；變更產報/LLM/外部資料關鍵路徑時另做不寄信 dry-run。既有正式寄信排程不得因候選驗證中斷。
 - CI 失敗持續診斷並修正可確認缺陷，修正後重跑完整遠端驗證；取消、逾時、缺失、讀不到及應跑卻跳過皆不通過。禁止 skip-ci、降門檻或繞 hook 製造全綠。
-- Claude 固定 claude-opus-5 / high / read-only；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
+- Claude 固定 claude-opus-5-5 / high / read-only；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
 - main 發佈後還要驗證 exact-SHA 正式 CI／部署及適用 smoke checks，才可宣告交付；純文件與空 audit commit 也走候選流程。
 - 詳細入口、範圍與限制見 REMOTE_CI_DELIVERY.md。不得把本機快速檢查說成完整 CI，也不得把候選 CI 綠燈當作正式部署成功。
 
@@ -44,7 +44,7 @@
 
 ## 1. 開工儀式(每次固定)
 1. 先 `git status --short`,再 `git fetch`。若已有任何本機 diff,必須保留並先走
-   Claude Opus 5 review;**不得**用 `git reset --hard`、checkout 或 clean 把尚未審查的 diff 消掉。
+   Claude Opus 5.5 review;**不得**用 `git reset --hard`、checkout 或 clean 把尚未審查的 diff 消掉。
    只有使用者明確指定要放棄的精確變更才可另行處理。
 2. `python -m pytest -q` 確認基準全綠(2026-07-04 基準:**476 passed**;之後以
    OPTIMIZATION_PLAN.md 頂部進度區記載的最新數為準——**只能增、不能減**)。
@@ -57,21 +57,21 @@ push 後繼續驗證該 SHA 的 GitHub CI 全綠，才可宣告交付完成。**
 不豁免 CI；不得加入 skip-CI 或放寬測試以製造綠燈。
 
 ruff → `python -m py_compile <改過的檔>` → `python -m pytest`(全套)→
-動渲染則 DRY_RUN 預覽 → **Claude Opus 5 diff 閘門** → **Codex 推送閘門** → push。
+動渲染則 DRY_RUN 預覽 → **Claude Opus 5.5 diff 閘門** → **Codex 推送閘門** → push。
 一主題一 commit;繁中 commit message;結尾 `Co-Authored-By: Claude <當前模型名> <noreply@anthropic.com>`。
 
-### Claude Opus 5 mandatory diff review
+### Claude Opus 5.5 mandatory diff review
 
 **所有 diff 都必須審,包括 docs-only、comment-only、tests-only 與 cosmetic。** 在宣告完成、
 commit 或 push 前執行 `python tools/claude_diff_review.py worktree`。額度不足時可先推送已驗證
 變更並標記 `Claude-Opus-5-Review: pending`,未審不得聲稱 `APPROVE`。
-wrapper 固定完整模型 ID `claude-opus-5`、effort `high`、唯讀工具白名單;**不得 fallback**
+wrapper 固定完整模型 ID `claude-opus-5-5`、effort `high`、唯讀工具白名單;**不得 fallback**
 到 alias、Sonnet、舊 Opus 或其他模型。未登入、無法證明實際模型、或沒有明確裁決時
 一律 fail closed,回報使用者,不得把「review 沒跑成」解讀為通過。
 
 若因額度／限流未取得裁決,wrapper 會把該 diff fingerprint 以 `PENDING` 寫入被 Git 忽略的
 `.claude-review/pending_review.json`;代理必須依 CLI 回報的 reset 時間,在同一 task 建立或更新
-自動補審排程。補審仍固定 `claude-opus-5` + effort `high`,不得降級。使用者 2026-09-05
+自動補審排程。補審仍固定 `claude-opus-5-5` + effort `high`,不得降級。使用者 2026-09-05
 明確允許額度不足時先 commit/push 並標記未審。以 `pending` 子命令列出尚未補審 SHA,
 逐筆執行 `commit --commit <SHA>`;通過後用空 audit commit 記錄 `passed` 與
 `Claude-Opus-5-Reviewed-Commit: <SHA>`。不得改寫已 push 的歷史,詳見 AGENTS.md。

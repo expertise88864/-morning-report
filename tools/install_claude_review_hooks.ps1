@@ -34,4 +34,4 @@ if ($Actual -ne '.githooks') {
 }
 
 Write-Host '[claude-review] Review hooks installed (quota-only marked deferral).'
-Write-Host '[claude-review] Exact reviewer: claude-opus-5, effort=high.'
+Write-Host '[claude-review] Exact reviewer: claude-opus-5-5, effort=high.'

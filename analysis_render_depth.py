@@ -288,20 +288,20 @@ def _news_line(n: dict, packet=None) -> str:
     body = _s(n.get("why_it_matters"))
     if not body:
         return ""
-    subject = news_subject(n, packet)
-    headline = _headline_of(n, packet, subject.get("name") or "")
+    headline = _headline_of(n, packet)
     attribution = _attribution(n, packet)
     from render_utils import safe_href
     from urllib.parse import quote
     item = next((x for x in ((packet or {}).get("news") or [])
                  if isinstance(x, dict) and x.get("source_item_id") == n.get("source_item_id")), {})
+    from news_heading import companies
+    company_label = companies(item, packet or {})
     href = safe_href(str(item.get("url") or item.get("link") or ""), max_chars=2048)
+    headline = headline.rstrip(_TERMINAL_MARKS)
     if headline and href:
         headline = f"[{headline.replace('[', '（').replace(']', '）')}]({quote(href, safe=':/?=&%#@+;,$!-_~')})"
-    if subject.get("label"):
-        lead = (f"**{subject['label']}**\n\n"
-                + (_join_sentence(headline.rstrip(_TERMINAL_MARKS) + attribution)
-                   if headline else ""))
+    if company_label:
+        lead = _join_sentence(f"**{company_label}**｜" + headline + attribution)
     elif headline:
         # 沒有公司主體(總經/利率/油價…):**新聞標題就是小標題**。
         display_head = headline if href else f"**{headline.rstrip(_TERMINAL_MARKS)}**"
@@ -379,15 +379,15 @@ def _assets_prose(n: dict, packet=None) -> str:
                     spec = "〔推測性傳導〕"
             except Exception:           # noqa: BLE001
                 spec = ""
-        effects = "、".join(x.rstrip("。") for x in
-                            (_s(a.get("first_order_effect")),
-                             _s(a.get("second_order_effect"))) if x)
+        from prose_join import sentences
+        raw_effects = (_s(a.get("first_order_effect")),
+                       _s(a.get("second_order_effect")))
+        effects = sentences(("可能" if spec and not text.startswith("可能") else "") + text
+                            for text in raw_effects if text)
         row = _universe_index(packet).get(aid) or {}
         import company_profiles
         name = _s(row.get('name')) or company_profiles.display_name(aid)
         label = f'{name}({aid})' if name and name != aid else aid
-        # Preserve uncertainty in ordinary language rather than a schema label.
-        effects = ('可能' if spec else '') + effects
         rows.append(f"{label}:{effects}" if effects else label)
     return '\n\n' + '\n\n'.join(_join_sentence(r) for r in rows) if rows else ""
 
@@ -400,4 +400,4 @@ _TERMINAL_MARKS = "。." + chr(65281) + chr(65311) + "!?" + chr(65294)
 def _join_sentence(text: str) -> str:
     """接成句子:自己有句末標點就不再補一個。"""
     t = str(text or "").strip()
-    return t if (not t or t[-1] in "。！？;;") else t + "。"
+    return t if (not t or t[-1] in _TERMINAL_MARKS + ";;") else t + "。"

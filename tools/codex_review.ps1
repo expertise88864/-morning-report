@@ -204,6 +204,17 @@ report REVIEW_NOT_COMPLETED. End with exactly APPROVE or REQUEST_CHANGES.
 "@
     }
 
+    if ($TaskContextFile) {
+        if (-not (Test-Path -LiteralPath $TaskContextFile -PathType Leaf)) { Die 'resume task-context file missing' }
+        $ResumeContext = Get-Content -LiteralPath $TaskContextFile -Raw -Encoding UTF8
+        if ($ResumeContext -match '(?m)^[ \t]*(diff --git[ \t]|@@|index [0-9a-f]+\.\.|(?:---|\+\+\+)[ \t]+\S)') {
+            Die 'resume task-context must not contain a diff'
+        }
+        $ResumePrompt += "`nThe user authorized the additional scope below in this same task. " +
+            "For that scope, also inspect current staged/unstaged and relevant untracked files; " +
+            "the corrections-only restriction above does not exclude these changes. " +
+            "All original read-only restrictions and scope limits still apply.`n" + $ResumeContext
+    }
     $flags = Build-Flags $ResumeEffort 'resume'
     Write-Host "[codex-review] resume session=$Sid effort=$ResumeEffort (pass $ThisPass)"
     # 必須是「真正 0 位元組」:PS 5.1 的 `'' | Out-File -Encoding utf8` 會寫 BOM+CRLF(5 bytes),
@@ -240,13 +251,13 @@ if ($LASTEXITCODE -ne 0) { Die "base-ref '$BaseRef' 不存在或無法解析為 
 if ($TaskContextFile) {
     if (-not (Test-Path $TaskContextFile)) { Die "task-context 檔不存在:$TaskContextFile" }
     $ctx = Get-Content $TaskContextFile -Raw
-    if ($ctx -match '(?m)^(diff --git |@@ |index [0-9a-f]+\.\.)') {
+    if ($ctx -match '(?m)^[ \t]*(diff --git[ \t]|@@|index [0-9a-f]+\.\.|(?:---|\+\+\+)[ \t]+\S)') {
         Die 'task-context 檔看起來含有 diff。task-context 只能放任務摘要/驗收標準/預期行為/non-goals/本機測試結果/已知限制。'
     }
 } else { $ctx = '(no task context supplied)' }
 if ($env:CODEX_REVIEW_VERIFICATION) {
     # verification 同樣進 prompt → 套用與 task-context 相同的 diff 攔截(理由同 .sh;Codex re-review P1)。
-    if ($env:CODEX_REVIEW_VERIFICATION -match '(?m)^(diff --git |@@ |index [0-9a-f]+\.\.)') {
+    if ($env:CODEX_REVIEW_VERIFICATION -match '(?m)^[ \t]*(diff --git[ \t]|@@|index [0-9a-f]+\.\.|(?:---|\+\+\+)[ \t]+\S)') {
         Die 'CODEX_REVIEW_VERIFICATION 看起來含有 diff。驗證摘要只放本機 lint/type/test/build 結果,不得貼 diff。'
     }
     $ver = $env:CODEX_REVIEW_VERIFICATION

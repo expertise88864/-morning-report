@@ -67,16 +67,16 @@ def test_the_heading_names_the_company_and_what_happened():
     獨立一行,而他要的是舊信那種一段到底的寫法。
     """
     line = ard._news_line(_news("n1", "2330"), _packet())
-    assert line.startswith("**台積電（2330,晶圓代工龍頭）**\n\n"), line
+    # Sept21: company/code and intact source title share one heading line.
+    assert line.startswith("**台積電（2330）**｜台積電 CoWoS"), line
     assert "CoWoS 產能明年再擴一倍。" in line, line
     assert "這件事之所以重要的一段敘述。" in line, line
 
 
-def test_the_company_name_is_not_printed_twice():
-    """標題開頭與公司同名時只削開頭 —— 「台積電(2330,…):**台積電** CoWoS…」
-    是同一個名字印兩次。"""
+def test_company_label_keeps_full_source_title():
+    """Sept21: 前綴加識別資訊，不削來源標題以免截錯較長公司名。"""
     md = ard._news_line(_news("n1", "2330"), _packet())
-    assert md.count("台積電") == 2 and '台積電(2330):' in md, md
+    assert md.count("台積電") == 3 and '台積電(2330):' in md, md
 
 
 def test_a_short_remainder_keeps_the_whole_headline():
@@ -91,7 +91,7 @@ def test_the_fallback_blurb_does_not_repeat_the_name():
     """`desc` 查不到時是「<名稱> — <產業別>」的退化字串 ——
     放進括號會排成「鴻海(2317,鴻海 — 其他電子業)」。"""
     head = ard._news_line(_news("n4", "2317"), _packet()).splitlines()[0]
-    assert head == "**鴻海（2317,其他電子業）**", head
+    assert head == "**鴻海（2317）**｜鴻海 AI 伺服器機櫃出貨上修。", head
 
 
 def test_a_macro_news_headline_is_its_own_heading():
@@ -156,7 +156,7 @@ def test_the_item_is_one_prose_paragraph():
     md = ard._news_line(_news("n1", "2330"), _packet())
     assert "\n\n起點 → 終點" in md and "傳導:" not in md, md
     assert "若什麼情況代表判斷錯了，此判斷不成立" in md, md
-    assert "台積電(2330):一階影響、二階影響。" in md, md
+    assert "台積電(2330):一階影響。 二階影響。" in md, md
 
 
 def test_no_direction_words_per_asset():
@@ -263,13 +263,12 @@ def test_a_foreign_company_gets_its_declared_profile():
                                        "entities": ["MTD"]}]})["label"] == "MTD"
 
 
-def test_the_display_name_is_not_printed_twice():
-    """主體是代號(MSFT)而標題寫「Microsoft Q4 財報」——
-    只比對代號的話會排成「Microsoft（MSFT,…）:Microsoft Q4 財報…」。"""
+def test_display_name_label_keeps_full_english_source_title():
+    """Sept21: 英文來源標題完整保留，代號只在前綴出現。"""
     pk = {"news": [{"source_item_id": "f1", "title": "Microsoft Q4 財報優於預期",
                     "entities": ["MSFT"]}]}
     line = ard._news_line(_news("f1", "MSFT"), pk).splitlines()[0]
-    assert line.count("Microsoft") == 1, line
+    assert line.startswith("**Microsoft（MSFT）**｜Microsoft Q4"), line
 
 
 def test_the_publisher_is_named():

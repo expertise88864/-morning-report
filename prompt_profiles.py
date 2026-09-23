@@ -22,9 +22,7 @@
 
 ## DeepSeek legacy 為什麼沒有 developer 段
 
-它的既有設計就是一整段 user prompt,而使用者明說要保留。硬拆成兩段會改變
-送出的內容,`tests/test_deepseek_legacy_golden.py` 的逐位元組凍結會紅 ——
-那條測試就是為了擋這種「順手改進」而存在的。
+既有單段 user prompt 由 golden 保護；使用者授權的共享品質規則須同步升版。
 """
 from __future__ import annotations
 
@@ -46,7 +44,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 30  # Calendar coverage and evidence/inference boundaries.
+DEEPSEEK_LEGACY_VERSION = 32  # Sept22: forecast and rotation inference boundaries.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -83,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 30  # Calendar coverage and evidence/inference boundar
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 65  # Evidence/inference boundaries shared with fallback.
+LUNA_XHIGH_VERSION = 67  # Sept22: bounded repair and compact complete JSON.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -410,6 +408,8 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 import news_research_context as _research  # noqa: E402
 import podcast_comparison as _podcast  # noqa: E402
 LUNA_DEVELOPER_INSTRUCTIONS += "\n" + _research.RESEARCH_RULES + "\n" + _podcast.RULES
+from reader_evidence_writing import COMPACT_JSON  # noqa: E402
+LUNA_DEVELOPER_INSTRUCTIONS += COMPACT_JSON
 def luna_user_payload(packet: dict) -> str:
     """當日證據。**只有證據,沒有任何指令** —— 指令都在穩定前綴裡。
 

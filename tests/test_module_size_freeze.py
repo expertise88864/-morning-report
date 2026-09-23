@@ -181,6 +181,7 @@ MODULE_CEILINGS = {
     "news_heading.py": 40,
     "prose_join.py": 25,
     "watch_assessment.py": 60,
+    "fallback_watch_gap.py": 90,
     "conclusion_guard.py": 45,
     "local_news_routing.py": 50,
     "local_news_event_dates.py": 30,
@@ -228,6 +229,7 @@ MODULE_CEILINGS = {
     "news_impact.py": 100,
     "email_mobile.py": 200,
     "email_content_audit.py": 110,
+    "email_quality_findings.py": 60,  # 最終 HTML 品質診斷；不讓 run_quality 再膨脹。
     # 2026-08-22 repo-wide 外審 P1-3:持久 state 的四態讀取政策(單一出口)。
     "state_store.py": 110,
     "news_events.py": 1_450,  # 2026-08-22 外審 P2-3:兩條入口共用 action→event_type;現況 1425  # 2026-08-22 外審 P1-2:別名/literal 共用 _usable_alias(裸數字不算指名);現況 1409

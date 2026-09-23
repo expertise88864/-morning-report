@@ -114,8 +114,18 @@ def test_unreviewed_expiry_has_telemetry(tmp_path):
     manifest = {}
     assert rc.save(path, {}, {"target_session_date": "2026-09-09"}, manifest) == rc.SAVED
     assert manifest["llm"]["watch_expired_unreviewed"] == 1
+    assert manifest["llm"]["watch_expired_unreviewed_cases"] == [
+        {"watch_id": "w1", "created": "2026-09-07", "deadline": "2026-09-08"}]
+    assert "昨日到期" not in str(manifest)
     import run_quality
-    assert any(f["code"] == "watch_expired_unreviewed" for f in run_quality.assess(manifest))
+    finding = next(f for f in run_quality.assess(manifest)
+                   if f["code"] == "watch_expired_unreviewed")
+    assert "w1(期限 2026-09-08)" in finding["detail"]
+    assert "特化／備援" in finding["detail"]
+    malformed = {"llm": {"watch_expired_unreviewed": 1,
+                         "watch_expired_unreviewed_cases": {"watch_id": "w1"}}}
+    assert any(f["code"] == "watch_expired_unreviewed"
+               for f in run_quality.assess(malformed))
 
 
 def test_finance_obligations_reach_packet_and_crosscheck():

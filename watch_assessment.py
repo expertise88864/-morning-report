@@ -31,3 +31,23 @@ def status(row: dict) -> str:
         if _MISSING.search(text) or (declared == 'not_triggered' and not row.get('evidence_ids')):
             return 'insufficient_evidence'
     return declared
+
+
+def expiry_diagnostic(rows: list[dict], today: str) -> tuple[int, list[dict]]:
+    """Count unreviewed expiries; expose only IDs and dates, never trigger text."""
+    expired = [w for w in rows if not w.get('last_reviewed') and w.get('deadline')
+               and today and today > str(w['deadline'])]
+    cases = [{'watch_id': str(w.get('watch_id') or ''),
+              'created': str(w.get('created') or ''),
+              'deadline': str(w.get('deadline') or '')} for w in expired[:8]]
+    return len(expired), cases
+
+
+def expiry_detail(count: int, cases: object) -> str:
+    """Point the alert to dated work, including when the model used a fallback."""
+    rows = cases if isinstance(cases, list) else []
+    examples = [f"{str(c.get('watch_id') or '?')}(期限 {str(c.get('deadline') or '?')})"
+                for c in rows[:3] if isinstance(c, dict)]
+    return (f'{count} 條觀察點到期前未獲回顧'
+            + ('：' + '、'.join(examples) if examples else '')
+            + '；請核對期限內的特化／備援分析、證據與每日回顧容量，勿事後改寫期限')

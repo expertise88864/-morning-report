@@ -6,7 +6,9 @@ import pytest
 
 import analysis_render as ar
 import email_content_audit as audit
+import email_quality_findings as email_findings
 import email_mobile as mobile
+import finding_domains
 import morning_report as mr
 import run_quality
 
@@ -38,6 +40,7 @@ def test_mobile_stacks_wide_table_preserving_content_links_and_classes():
     assert 'class="original mail-reading"' in out
     assert 'class="s0 mail-data mail-stack"' in out
     assert out.count('class="mail-label"') == 10
+    assert 'mail-cell' not in out  # no unused class repeated on every data cell
     for r in range(2):
         for i in range(5):
             assert out.count(f'值{r}-{i}') == 1
@@ -80,6 +83,36 @@ def test_finalization_errors_keep_mail_and_make_quality_defect(monkeypatch):
     assert m["llm"]["email_html"]["mobile_error"] == "ValueError"
     assert "private" not in str(m)
     assert "email_finalization_failed" in {f["code"] for f in run_quality.assess(m)}
+
+
+def test_final_email_over_gmail_limit_is_reported_without_removing_content():
+    payload = "字" * 35000
+    html = page(payload)
+    manifest = {}
+    delivered = audit.finalize("", html, manifest)
+    assert payload in delivered
+    record = manifest["llm"]["email_html"]
+    assert record["html_bytes"] == len(delivered.encode("utf-8"))
+    assert record["html_bytes"] > 102 * 1024
+    findings = run_quality.assess(manifest)
+    assert any(f["code"] == "email_gmail_clipping_risk" and f["severity"] == "degraded"
+               for f in findings)
+
+
+def test_final_email_at_gmail_limit_has_no_clipping_finding():
+    manifest = {"llm": {"email_html": {"html_bytes": 102 * 1024}}}
+    assert "email_gmail_clipping_risk" not in {f["code"] for f in run_quality.assess(manifest)}
+
+
+def test_final_email_findings_are_content_domain_and_malformed_record_is_safe():
+    codes = {code for code, _, _ in email_findings.assess({
+        "missing_sections": ["段落"], "mobile_error": "ValueError",
+        "html_bytes": 120_000})}
+    assert codes == {"email_content_lost", "email_finalization_failed",
+                     "email_gmail_clipping_risk"}
+    assert all(finding_domains.finding_domain(code) == finding_domains.DOMAIN_CONTENT
+               for code in codes)
+    assert email_findings.assess({"html_bytes": {"bad": "shape"}}) == []
 
 
 def test_heading_in_css_is_not_a_visible_section_and_card_loss_is_detected():

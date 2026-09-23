@@ -91,9 +91,10 @@ def enhance(html: str) -> str:
     parser.feed(html)
     edits = []
 
-    def decorate(node, classes, suffix=""):
+    def decorate(node, classes="", suffix=""):
         edits.append((node["offset"], len(node["raw"]),
-                      _add_class(node["raw"], classes) + suffix))
+                      (_add_class(node["raw"], classes) if classes else node["raw"])
+                      + suffix))
 
     if parser.body:
         decorate(parser.body, "mail-reading")
@@ -124,7 +125,10 @@ def enhance(html: str) -> str:
             for cell, label in zip(row["cells"], labels):
                 suffix = ('<span class="mail-label" style="display:none">'
                           + escape(label) + "</span>")
-                decorate(cell, "mail-cell", suffix)
+                # The label is the mobile affordance. A `mail-cell` class is
+                # never selected by CSS, so repeating it on every data cell
+                # only enlarges the delivered HTML (and Gmail clipping risk).
+                decorate(cell, suffix=suffix)
     for offset, size, value in sorted(edits, reverse=True):
         html = html[:offset] + value + html[offset + size:]
     return html.replace("</head>", _CSS + "</head>", 1)

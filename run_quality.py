@@ -73,6 +73,9 @@ from delivery_sla import (          # noqa: F401
 import analysis_origin as _ao
 import analysis_recap as _arc
 import llm_telemetry as _lt
+import email_quality_findings as _eqf
+import fallback_watch_gap as _fwg
+import watch_assessment as _wa
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
@@ -307,6 +310,9 @@ def assess(manifest, *, mode: str = "watchdog",
     # 開始忽略這封信,連真的那天也一起忽略。
     digest = is_weekend_digest(m)
     origin = _ao.normalize(_dig(m, "llm", "analysis_origin"))
+    for _code, _severity, _detail in _fwg.findings(
+            _dig(m, "llm", "watch_due_at_start"), origin, digest=digest):
+        add(_code, _severity, _detail)
     # 失敗原因跟著**會發出的那一筆**走(2026-08-22 生產 + 外審 r1 P2):
     # 例外名先前只從 unknown_degradation 漏出來,該家族在第 11 條列為
     # 已知之後,原因必須騎在真的會發出的 finding 上 —— 而 emergency 也是
@@ -507,7 +513,7 @@ def assess(manifest, *, mode: str = "watchdog",
     _expired_watch = _safe_int(_dig(m, "llm", "watch_expired_unreviewed"))
     if _expired_watch > 0:
         add("watch_expired_unreviewed", "degraded",
-            f"{_expired_watch} 條觀察點到期前未獲回顧，請檢查每日回顧排程與積壓")
+            _wa.expiry_detail(_expired_watch, _dig(m, "llm", "watch_expired_unreviewed_cases")))
     if _wd > 0:
         add("watch_dropped_capacity", "degraded",
             f"觀察點帳本已滿,今天有 {_wd} 條新觀察點沒被記住 ——"
@@ -701,13 +707,8 @@ def assess(manifest, *, mode: str = "watchdog",
             + "、".join(f"{d.get('sid')}({d.get('section')})" for d in _dropped[:8])
             + (f" …另 {len(_dropped) - 8} 則" if len(_dropped) > 8 else ""))
 
-    _email = _dig(m, "llm", "email_html", default={}) or {}
-    if _email.get("missing_sections") or _safe_int(_email.get("lost_cards")):
-        add("email_content_lost", "defect",
-            "最終寄信 HTML 遺失分析內容：" + "、".join(_email.get("missing_sections") or [])
-            + f"；少 {_safe_int(_email.get('lost_cards'))} 張新聞傳導卡")
-    if _email.get("audit_error") or _email.get("mobile_error"):
-        add("email_finalization_failed", "defect", "最終郵件排版或內容檢查失敗，已保留原信")
+    for _code, _severity, _detail in _eqf.assess(_dig(m, "llm", "email_html")):
+        add(_code, _severity, _detail)
 
     # ---- 9f. 分析文字撞到保險絲(2026-09-05):`_cap_analysis_text` 截了就把
     # `{chars, limit, kept, lost_sections}` 記進 `llm.analysis_cap`。整段消失是

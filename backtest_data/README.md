@@ -56,6 +56,9 @@ python backtest_data/selection_research.py --horizon 20 --fee-bps 15 --sell-tax-
 不得依結果挑選持有期或滑價來宣稱勝出。它仍固定 NO_REPLACEMENT，並非已通過
 真正樣本外驗證：還欠已驗證交易日曆、公司行動、成交限制及基準資料。
 正式封存時間以本規格首次提交的Git紀錄為準；未來修改必須另設未使用的起點。
+重現特定截止日可用 `python backtest_data/prospective_selection.py --as-of 2026-09-23`；
+結果另列 `as_of_date` 與 `observed_sha256`，未指定時使用執行當日，未來日期會拒絕。
+如果後來的 state 回補使同一截止日的輸入雜湊改變，須標示為不同資料版本。
 
 9/19的歷史探索使用255份快照；20期、15/30/10bps假設僅有1組配對可用，
 另4組因無法證明訊號在進場前可用而排除。原排名成本後約-9.06%，避過熱約-3.13%；

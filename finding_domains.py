@@ -78,6 +78,7 @@ _FINDING_DOMAINS = {
     "news_cards_dropped": DOMAIN_CONTENT,
     "email_content_lost": DOMAIN_CONTENT,
     "email_finalization_failed": DOMAIN_CONTENT,
+    "email_gmail_clipping_risk": DOMAIN_CONTENT,
     # 2026-09-05:分析文字撞到保險絲,整段(九、十…)沒進信 —— 內容損失。
     "analysis_capped": DOMAIN_CONTENT,
     "analysis_emergency": DOMAIN_CONTENT,
@@ -107,6 +108,8 @@ _FINDING_DOMAINS = {
     "phantom_refs": DOMAIN_CONTENT,
     "watch_dropped_capacity": DOMAIN_CONTENT,
     "watch_expired_unreviewed": DOMAIN_CONTENT,
+    "watch_due_unreviewed": DOMAIN_CONTENT,
+    "watch_due_scan_failed": DOMAIN_CONTROL_PLANE,
     # ---- `_ALARMING` 家族(**動態產生**,不是字面 `add("...")`)
     # r10 外審:守衛只掃字面 code,這三個因此從來沒被檢查過,
     # 全部落到「沒登記 → 預設控制面」。前兩個當控制面是對的,

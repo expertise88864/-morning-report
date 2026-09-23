@@ -114,6 +114,9 @@ def prose(row, packet):
     news, opinions = _sources(row, packet)
     def safe(value):
         return re.sub(r'[\[\]<>*_`#]', '', str(value)).strip()
+    def sentence(value):
+        text = safe(value)
+        return text if text.endswith(('。', '！', '？', '.', '!', '?')) else text + '。'
     labels = {'agreement': '觀點相近', 'disagreement': '觀點分歧', 'not_comparable': '暫不可比'}
     dates = {'earlier_reporting': '節目較早發布', 'same_day_reporting': '同日發布',
              'later_reporting': '節目較晚發布', 'unknown': '日期不足，不排先後'}
@@ -122,6 +125,6 @@ def prose(row, packet):
         source = opinions[item['opinion_id']]
         lines.append(f"Podcast 觀點對照（非事實佐證）：{safe(source['show'])}「{safe(source['title'])}」"
                      f"，{display_day(source)}，{dates[relation(news, source)]}；"
-                     f"{labels[item['relation']]}：{safe(item['comparison'])}。"
-                     f"待驗證：{safe(item['open_question'])}。")
+                     f"{labels[item['relation']]}：{sentence(item['comparison'])}"
+                     f"待驗證：{sentence(item['open_question'])}")
     return '\n\n'.join(lines)

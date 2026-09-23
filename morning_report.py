@@ -54,6 +54,7 @@ import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
 import analysis_origin as _ao
+import fallback_watch_gap as _fwg
 import run_quality as _rq
 import analysis_validate as _av
 import evidence_registry as _reg
@@ -21855,6 +21856,9 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
         while "render:analysis_capped" in _DEGRADED_STEPS:
             _DEGRADED_STEPS.remove("render:analysis_capped")
     body = _md_to_html(analysis) if analysis else "<p>（分析未產出）</p>"
+    notice = _fwg.reader_notice((_RUN_MANIFEST.get("llm") or {}).get("watch_due_at_start") or {},
+                                _analysis_origin())
+    body = notice + body
     return _finalize_email(analysis, (
         "<div style=\"font-family:-apple-system,'Noto Sans TC',sans-serif;"
         "max-width:680px;margin:0 auto;padding:16px;color:#1f2937;\">"
@@ -22919,6 +22923,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_html = _link_source_citations(
         analysis_html, quotes.get("NEWS_LINK_INDEX") or [])
     analysis_html = _wrap_stance(analysis_html)
+    analysis_html = (_fwg.reader_notice(
+        (_RUN_MANIFEST.get("llm") or {}).get("watch_due_at_start") or {}, _analysis_origin()) + analysis_html)
     # (llm_label 已隨信尾三行移除而不再需要,2026-07-14)
 
     # === 個股開盤預測(2330 / 00662 / 0050 三合一精簡表,置於加權預測下方)===
@@ -25319,6 +25325,8 @@ def _phase_events_and_models(ctx) -> None:
         print(f"[main] 事件 timeline 失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["EVENT_TIMELINE"] = []
     _recap_state = _arc.load(ANALYSIS_RECAP_FILE)
+    ctx.recorder.data.setdefault("llm", {})["watch_due_at_start"] = _fwg.due_cases(
+        _recap_state, now_tpe.strftime("%Y-%m-%d"), target_session_date)
     if _recap_state.get("unreadable"):
         # **壞檔要進正式的降級管道**(第二輪外審 F5)—— 只印 stderr 的話,
         # 生產監控分不出「昨天沒跑成」與「state 壞了」。

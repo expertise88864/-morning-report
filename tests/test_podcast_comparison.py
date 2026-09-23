@@ -27,6 +27,16 @@ def test_comparison_has_attribution_and_does_not_claim_verification():
     assert (packet, row) == before
 
 
+def test_comparison_does_not_duplicate_existing_terminal_punctuation():
+    packet, row = fixture()
+    row['podcast_comparisons'][0]['comparison'] += '。'
+    row['podcast_comparisons'][0]['open_question'] += '？'
+    text = pc.prose(row, packet)
+    assert '方向相近，但訂單成長不等於量產已完成。待驗證：' in text
+    assert text.endswith('後續量產及出貨是否兑现？')
+    assert '。。' not in text and '？。' not in text
+
+
 def test_wrong_episode_news_or_excerpt_cannot_render():
     for key, value in [('opinion_id', 'opinion:fake'), ('news_excerpt', '不存在的新聞原文資料'),
                        ('opinion_excerpt', '其他節目的意見不能引用'), ('open_question', ''),

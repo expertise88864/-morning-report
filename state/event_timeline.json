@@ -1,42 +1,4 @@
 {
- "geopolitical:亞馬遜:2026-09#004bab": {
-  "first_seen": "2026-09-19",
-  "days": 1,
-  "last_seen": "2026-09-19",
-  "latest_title": "巴林阿聯酋數據中心遇襲 亞馬遜證實客戶數據因攻擊永久丟失 - Singtaousa",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "singtaousa",
-   "丟失",
-   "中心",
-   "久丟",
-   "因攻",
-   "客戶",
-   "巴林",
-   "心遇",
-   "戶數",
-   "擊永",
-   "據中",
-   "據因",
-   "攻擊",
-   "數據",
-   "林阿",
-   "永久",
-   "聯酋",
-   "遇襲",
-   "酋數",
-   "阿聯"
-  ],
-  "entity": "亞馬遜",
-  "subject_basis": "alias",
-  "subjects": [
-   "亞馬遜"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:sanction:國際刑事法院:2026-09": {
   "first_seen": "2026-09-21",
   "days": 1,
@@ -463,6 +425,316 @@
   "subject_basis": "literal",
   "subjects": [
    "美中"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:烏克蘭:2026-09": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "Zelensky says Ukraine ready for energy truce with Russia",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "energy",
+   "ready",
+   "russia",
+   "truce",
+   "with",
+   "zelensky"
+  ],
+  "entity": "烏克蘭",
+  "subject_basis": "alias",
+  "subjects": [
+   "烏克蘭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:烏克蘭:2026-09#15bad0": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "澤倫斯基稱若俄羅斯停手 烏克蘭準備暫停攻擊能源設施",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "俄羅",
+   "倫斯",
+   "停手",
+   "停攻",
+   "備暫",
+   "基稱",
+   "擊能",
+   "攻擊",
+   "斯停",
+   "斯基",
+   "暫停",
+   "源設",
+   "準備",
+   "澤倫",
+   "稱若",
+   "羅斯",
+   "能源",
+   "若俄",
+   "設施"
+  ],
+  "entity": "烏克蘭",
+  "subject_basis": "alias",
+  "subjects": [
+   "烏克蘭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:歐盟:2026-09": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "歐盟挺台參與國際組織 強調2758號決議未提台灣",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "2758",
+   "參與",
+   "台參",
+   "國際",
+   "挺台",
+   "提台",
+   "未提",
+   "決議",
+   "組織",
+   "與國",
+   "號決",
+   "議未",
+   "際組"
+  ],
+  "entity": "歐盟",
+  "subject_basis": "alias",
+  "subjects": [
+   "歐盟"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:strait_tension:2026-09": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "美日韓聯合重申 維持台海和平",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "台海",
+   "合重",
+   "和平",
+   "持台",
+   "海和",
+   "維持",
+   "聯合",
+   "重申"
+  ],
+  "entity": "美日韓",
+  "subject_basis": "literal",
+  "subjects": [
+   "美日韓"
+  ],
+  "event_type": "geopolitical",
+  "action": "strait_tension",
+  "identity_schema": 14
+ },
+ "geopolitical:巴西:2026-09": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "巴西總統魯拉在聯合國支持中國和平倡議 稱巴西不是任何人的後院",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "不是",
+   "中國",
+   "人的",
+   "任何",
+   "何人",
+   "倡議",
+   "合國",
+   "和平",
+   "國和",
+   "國支",
+   "在聯",
+   "平倡",
+   "後院",
+   "拉在",
+   "持中",
+   "支持",
+   "是任",
+   "的後",
+   "統魯",
+   "總統",
+   "聯合",
+   "魯拉"
+  ],
+  "entity": "巴西",
+  "subject_basis": "alias",
+  "subjects": [
+   "巴西"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:川普:2026-09": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "川普稱解決俄烏戰爭速度比想像快 必要時加大經濟施壓",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "俄烏",
+   "像快",
+   "加大",
+   "大經",
+   "度比",
+   "必要",
+   "想像",
+   "戰爭",
+   "施壓",
+   "時加",
+   "比想",
+   "決俄",
+   "濟施",
+   "烏戰",
+   "爭速",
+   "稱解",
+   "經濟",
+   "要時",
+   "解決",
+   "速度"
+  ],
+  "entity": "川普",
+  "subject_basis": "literal",
+  "subjects": [
+   "川普"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:美中:2026-09#bc064c": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "美中分歧多 川習仍尋求穩定關係",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "仍尋",
+   "分歧",
+   "定關",
+   "尋求",
+   "川習",
+   "歧多",
+   "求穩",
+   "穩定",
+   "習仍",
+   "關係"
+  ],
+  "entity": "美中",
+  "subject_basis": "literal",
+  "subjects": [
+   "美中"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:俄烏戰爭:2026-09": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "川普稱解決俄烏戰爭速度比想像快",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "像快",
+   "川普",
+   "度比",
+   "想像",
+   "普稱",
+   "比想",
+   "稱解",
+   "解決",
+   "速度"
+  ],
+  "entity": "俄烏戰爭",
+  "subject_basis": "literal",
+  "subjects": [
+   "俄烏戰爭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-09#871a49": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "伊朗與美國在聯合國大會就結束戰爭發聲",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "合國",
+   "國在",
+   "國大",
+   "在聯",
+   "大會",
+   "就結",
+   "戰爭",
+   "會就",
+   "束戰",
+   "爭發",
+   "發聲",
+   "結束",
+   "美國",
+   "聯合",
+   "與美"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:歐元:2026-09": {
+  "first_seen": "2026-09-23",
+  "days": 1,
+  "last_seen": "2026-09-23",
+  "latest_title": "德國政局風險拖累歐元下跌",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "下跌",
+   "國政",
+   "局風",
+   "德國",
+   "拖累",
+   "政局",
+   "險拖",
+   "風險"
+  ],
+  "entity": "歐元",
+  "subject_basis": "literal",
+  "subjects": [
+   "歐元"
   ],
   "event_type": "geopolitical",
   "action": "",

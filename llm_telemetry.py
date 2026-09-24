@@ -234,7 +234,7 @@ _PRICING_FIELDS = ("pricing_tier", "pricing_schema", "effective_input_rate",
 def build_record(provider: str, model: str, *, requested_effort: str = "",
                  applied_effort: str = "", usage: Optional[dict] = None,
                  finish_reason: str = "", error: str = "",
-                 elapsed: float = 0.0) -> dict:
+                 elapsed: Optional[float] = None) -> dict:
     """把一次呼叫整理成紀錄。**requested 與 applied 分開**(第九輪 P1-1)。
 
     400 退讓會移除 `reasoning_effort`,那次呼叫用的是 provider 預設。
@@ -267,7 +267,7 @@ def build_record(provider: str, model: str, *, requested_effort: str = "",
         # 然後把那些欄位留在 `estimate_cost()` 的回傳值裡沒有帶出來 ——
         # 宣稱與實作又差一層,而差的那一層正好是宣稱要解決的問題。
         rec.update({k: cost[k] for k in _PRICING_FIELDS if k in cost})
-    if elapsed:
+    if elapsed is not None:
         # **失敗的呼叫也要有耗時。** 逾時是本 repo 最常見的 LLM 失敗模式,
         # 而「花了幾秒才逾時」是判斷 timeout 該不該調的唯一依據。
         rec["elapsed_seconds"] = round(float(elapsed), 1)

@@ -112,6 +112,16 @@ def test_current_flash_alias_is_not_falsely_unpriced_in_run_summary(monkeypatch)
     assert "incomplete" not in summary
 
 
+def test_zero_elapsed_is_measured_not_missing():
+    """An immediate mocked transport error may take exactly zero clock ticks."""
+    import llm_telemetry as lt
+
+    measured = lt.build_record("deepseek", "deepseek-v4-flash", elapsed=0.0)
+    unmeasured = lt.build_record("deepseek", "deepseek-v4-flash")
+    assert measured["elapsed_seconds"] == 0.0
+    assert "elapsed_seconds" not in unmeasured
+
+
 def test_the_offpeak_price_is_higher_than_today_not_lower():
     """**這不是「離峰打折」** —— 離峰價本身就比現價貴,把它讀成
     「調價後有便宜時段」會低估帳單。"""

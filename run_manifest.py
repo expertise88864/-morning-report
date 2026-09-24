@@ -258,7 +258,7 @@ class ManifestRecorder:
                         requested_effort: str = "", applied_effort: str = "",
                         usage: Optional[dict] = None, accepted: bool = False,
                         finish_reason: str = "", error: str = "",
-                        elapsed: float = 0.0, **extra) -> None:
+                        elapsed: Optional[float] = None, **extra) -> None:
         """記錄一次 LLM 呼叫。**依角色分槽**(第九輪 P0-2)。
 
         批#90d 的第一版把 primary / extractor / shadow 寫進**同一個槽位**,

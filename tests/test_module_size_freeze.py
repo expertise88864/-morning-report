@@ -172,6 +172,8 @@ MAIN_MODULE_LINE_CEILING = 26_336  # Exact calendar window moved into a leaf hel
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
+    "reader_causality_guard.py": 90,  # Narrow incident guard, not a generic fact checker.
+    "sector_rotation.py": 80,  # Pure aggregation extracted from the main module.
     "reader_prose.py": 132,  # Conclusion projection extracted; do not reabsorb it.
     "reader_selection.py": 60,  # Editorial priority moved into its own module.
     "editorial_priority.py": 100,

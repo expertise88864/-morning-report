@@ -132,6 +132,44 @@ def _full_quotes():
     }
 
 
+def test_delivered_html_corrects_the_known_etf_flow_inference(monkeypatch):
+    """9/24 legacy prose passed structural checks but inferred trades from cap."""
+    monkeypatch.setattr(mr, "_RUN_MANIFEST", {})
+    analysis = (
+        "## 八、科技板塊脈動\n"
+        "台積電市值增加（鉅亨）。傳導機制是被動式資金的機械買盤——"
+        "0050、006208 等市值型 ETF 因權重膨脹被迫加碼，"
+        "反過來替 2330 現貨價格做地板。\n"
+        "## 十二、我的明確立場\n**立場：中性**\n"
+        "## 十三、一句話總結\n市場仍待交易資料驗證。"
+    )
+    out = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+                         analysis, "2026-09-24", "每日報")
+    assert "台積電市值增加" in out and "鉅亨" in out
+    assert "被迫加碼" not in out and "價格做地板" not in out
+    assert "申贖與交易資料" in out
+    assert mr._RUN_MANIFEST["llm"]["causality_guard_rules"] == [
+        "etf_forced_buy_from_market_cap"]
+
+
+def test_minimal_fallback_corrects_the_known_etf_flow_inference(monkeypatch):
+    """The renderer's final safety path receives the uncorrected analysis."""
+    monkeypatch.setattr(mr, "_RUN_MANIFEST", {})
+    analysis = (
+        "## 八、科技板塊脈動\n"
+        "台積電市值增加（鉅亨）。傳導機制是被動式資金的機械買盤——"
+        "0050 等市值型 ETF 因權重膨脹被迫加碼，"
+        "反過來替 2330 現貨價格做地板。"
+    )
+    out = mr._render_minimal_html(_full_quotes(), {}, {}, analysis,
+                                  "2026-09-24", "每日報")
+    assert "極簡版" in out and "台積電市值增加" in out
+    assert "被迫加碼" not in out and "價格做地板" not in out
+    assert "申贖與交易資料" in out
+    assert mr._RUN_MANIFEST["llm"]["causality_guard_rules"] == [
+        "etf_forced_buy_from_market_cap"]
+
+
 def test_render_html_size_guard_truncates_low_priority(monkeypatch):
     """trim 模式:超標時依優先序移除;體育在政策/醫界/文獻/五檔之後才砍。"""
     monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")

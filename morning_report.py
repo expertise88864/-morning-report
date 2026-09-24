@@ -40,6 +40,7 @@ import finance_editorial as _finance_editorial
 import llm_http as _lh
 import payload_budget as _pb
 import sector_readout as _sr
+from sector_rotation import sector_rotation as _sector_rotation
 import prompt_profiles as _pp
 import evidence_packet as _ep
 import evidence_serialize as _es
@@ -13039,7 +13040,7 @@ def _record_llm_call(role: str, provider: str, model: str, *,
                      requested_effort: str = "", applied_effort: str = "",
                      usage: Optional[dict] = None, accepted: bool = False,
                      finish_reason: str = "", error: str = "",
-                     elapsed: float = 0.0, **extra) -> None:
+                     elapsed: Optional[float] = None, **extra) -> None:
     """委派給 `ManifestRecorder.record_llm_call`(第十輪 P1-12)。
 
     邏輯已經搬進 `run_manifest.py`(可單獨測、不碰 state 隔離);
@@ -21775,49 +21776,19 @@ def _audit_dramatic_macro_claims(analysis: str, macro: dict, threshold: float = 
     return flags
 
 
-def _sector_rotation(snapshot: list, min_members: int = 3, top_n: int = 4) -> dict:
-    """從 universe snapshot 聚合各類股近 5 日中位漲幅,算相對大盤的資金輪動方向。
-    借鏡 daily_stock_analysis 的 sector rotation;純聚合既有 industry+pct_5d,無新增抓取。
-    回 {"market_median", "strong":[(類股,中位%,相對大盤%,檔數)...], "weak":[...]}(類股不足則回 {})。"""
-    def _med(xs: list) -> float:
-        sv = sorted(xs)
-        n = len(sv)
-        return sv[n // 2] if n % 2 else (sv[n // 2 - 1] + sv[n // 2]) / 2
-    by_ind: dict[str, list] = {}
-    all_p5: list = []
-    for e in snapshot:
-        p5 = e.get("pct_5d")
-        if isinstance(p5, (int, float)):
-            ind = str(e.get("industry") or "").strip()
-            if ind and ind != "未分類":
-                by_ind.setdefault(ind, []).append(p5)
-                all_p5.append(p5)
-    if not all_p5:
-        return {}
-    mkt = _med(all_p5)
-    ranked = [(ind, round(_med(xs), 2), round(_med(xs) - mkt, 2), len(xs))
-              for ind, xs in by_ind.items() if len(xs) >= min_members]
-    if len(ranked) < 3:                      # 類股太少不具輪動意義
-        return {}
-    ranked.sort(key=lambda r: r[1], reverse=True)
-    weak = [r for r in ranked[::-1][:2] if r not in ranked[:top_n]]   # 最弱 2 類,排除與強勢重疊
-    # **完整的表**(2026-09-04 使用者:「希望能夠清楚、詳細看到資金輪動狀況」):
-    # 先前只給前 4 強 / 後 2 弱的膠囊。每一類股都列:近 5 日中位、相對大盤、
-    # 5 日內上漲的檔數 / 成分檔數 —— 由 `render_utils._render_sector_rotation_table`
-    # 與當日類股熱度(全市場口徑的成交占比 / 法人 / 領漲)合成一張表。
-    table = [{"industry": ind, "median_5d": med, "relative": rel, "members": n,
-              "up_5d": sum(1 for p in by_ind[ind] if p > 0)}
-             for ind, med, rel, n in ranked]
-    return {"market_median": round(mkt, 2), "strong": ranked[:top_n], "weak": weak,
-            "table": table}
-
-
 def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
                          analysis: str, report_date: str, mode: str) -> str:
     """批#32:主渲染失敗時的極簡信(最後防線)。只用最基本的字串拼接與 escape,
     不碰任何可能是例外來源的卡片邏輯——目標是「一定寄得出去」而非好看。"""
     import html as _h
     analysis = public_sections(str(analysis or ""))
+    # 主渲染任何後續例外都會把原始 analysis 交給此最後防線，
+    # 因此不能只在 render_html 修正已知無證據因果敘述。
+    from reader_causality_guard import correct_etf_flow_inferences as _guard_etf_flow
+    analysis, _causal_rules = _guard_etf_flow(analysis)
+    if _causal_rules:
+        _RUN_MANIFEST.setdefault("llm", {})["causality_guard_rules"] = list(_causal_rules)
+        print(f"[render] 極簡版修正 {len(_causal_rules)} 條 ETF 資金流向推論", file=sys.stderr)
 
     if (quotes.get("STANCE_PY") or {}).get("total") is None:
         analysis = _strip_llm_sections(str(analysis or ""), ("我的明確立場", "一句話總結"))
@@ -21901,6 +21872,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 七之五「多空交鋒」已從 prompt 刪除(2026-09-03),但模型會照舊習慣把它
     # 吐回來 —— prompt 不再要求 ≠ 模型不再寫。渲染端確定性移除(Codex r1)。
     analysis_for_render = _strip_llm_sections(analysis_for_render, ("多空交鋒",))
+    # 9/24 實信把市值上升直接寫成 ETF 被迫買入及現貨支撐；來源只有
+    # 市值變化，沒有資金流向的證據。兩條已確認的推論在最終寄信邊界修正，
+    # 不把此窄範圍守衛誤稱為通用事實查核；兩條分析路徑共用此出口。
+    from reader_causality_guard import correct_etf_flow_inferences as _guard_etf_flow
+    analysis_for_render, _causal_rules = _guard_etf_flow(analysis_for_render)
+    if _causal_rules:
+        _RUN_MANIFEST.setdefault("llm", {})["causality_guard_rules"] = list(_causal_rules)
+        print(f"[render] 已修正 {len(_causal_rules)} 條未獲交易資料支持的 ETF 資金流向推論",
+              file=sys.stderr)
     # 數字健全性最後防線:把 LLM 誤植的 2330「美元 ADR 價」改回新台幣中樞值
     analysis_for_render = _sanitize_llm_2330_prices(analysis_for_render, predictions)
     # 一般畸形數字(如「3,2424」逗號後 4+ 位)全文遮蔽——2330 專用修正管不到的其它段落(如科技脈動目標價)

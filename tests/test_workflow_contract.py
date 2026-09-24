@@ -525,7 +525,8 @@ def test_the_state_contract_gates_the_push_not_the_other_way_round():
                       if (s.get("with") or {}).get("name") == "state-to-publish"), None)
     assert handoff_i is not None, f"沒有交棒步驟:{names}"
     receipt_i = next((i for i, s in enumerate(steps)
-                      if (s.get("with") or {}).get("name") == "delivery-receipt"), None)
+                      if str((s.get("with") or {}).get("name") or "").startswith(
+                          "delivery-receipt-")), None)
     assert receipt_i is not None and receipt_i < contract_i, (
         f"收據交棒必須早於契約:{receipt_i}/{contract_i}")
     assert "always" in str(steps[receipt_i].get("if") or ""), \

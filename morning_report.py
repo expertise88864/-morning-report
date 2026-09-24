@@ -23662,7 +23662,8 @@ def _publish_delivery_receipt(date_str, delivery: dict) -> None:
         if _first:
             _dv["first_delivered_at"] = _first
     payload = {"date": str(date_str or ""), "delivery": _dv,
-               "github_run_id": os.environ.get("GITHUB_RUN_ID") or ""}
+               "github_run_id": os.environ.get("GITHUB_RUN_ID") or "",
+               "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT") or ""}
     try:
         DELIVERY_RECEIPT_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(DELIVERY_RECEIPT_FILE,
@@ -23694,7 +23695,6 @@ def _publish_delivery_receipt(date_str, delivery: dict) -> None:
         print("::warning title=delivery-receipt-unpublished::"
               "寄送收據沒能推上 main;備援班可能因此重複寄信")
         _DEGRADED_STEPS.append("delivery_receipt_publish")
-
 
 # 收據發佈的原語住在 `state_publish`(只用 stdlib)—— 有寫入權限的發佈 job
 # 不必安裝任何第三方套件就能呼叫它(外審 2026-09-04 P2)。這裡 re-export,

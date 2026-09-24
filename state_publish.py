@@ -19,6 +19,9 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
+from receipt_handoff import filter_batch_allowlist, receipt_belongs_to_run
+from receipt_freshness import may_replace_receipt_file
+
 
 #: 收據在 repo 裡的路徑(git 用的 POSIX 相對路徑,與磁碟路徑分開)。
 RECEIPT_REPO_PATH = "state/delivery_receipt.json"
@@ -32,7 +35,9 @@ RECEIPT_PUSH_BACKOFF_SEC = (5, 15)
 
 def publish_receipt_from_remote_base(local_file: str | Path, *,
                                      cwd: str | Path | None = None,
-                                     branch: str = "main") -> bool:
+                                     branch: str = "main",
+                                     expected_run_id: str | None = None,
+                                     expected_run_attempt: str | None = None) -> bool:
     """把收據**單獨**推上 `branch`,完全不碰工作區的 HEAD / index / 檔案。
 
     r7 外審 P1:第一版是「`git add` 收據 → `git commit` → `push_committed_state()`」。
@@ -56,6 +61,14 @@ def publish_receipt_from_remote_base(local_file: str | Path, *,
     回傳 True = 真的推了;False = 內容與遠端相同,不需要推。
     """
     import tempfile
+
+    # Defense in depth: the compute job checks before artifact upload, but the
+    # privileged publish job must independently reject a stale or forged handoff.
+    if expected_run_attempt is not None and expected_run_id is None:
+        raise ValueError("有指定 run attempt 卻未指定 run ID")
+    if expected_run_id is not None and not receipt_belongs_to_run(
+            local_file, expected_run_id, expected_run_attempt):
+        raise ValueError("收據不是本班的終局結果，拒絕覆寫遠端寄送證據")
 
     def _git(*args: str, **kw: Any) -> subprocess.CompletedProcess[str]:
         env = dict(os.environ, **kw.pop("env_extra", {}))
@@ -94,6 +107,11 @@ def publish_receipt_from_remote_base(local_file: str | Path, *,
         if cur.returncode == 0 and cur.stdout.strip() == blob:
             print("[receipt] 遠端收據已是最新,不重複發佈")
             return False
+        if expected_run_id is not None and cur.returncode == 0:
+            if not may_replace_receipt_file(
+                    local_file, _out("show", f"{base}:{RECEIPT_REPO_PATH}")):
+                print("::warning title=newer-delivery-receipt::遠端已有較新的寄送證據，舊班次不覆寫")
+                return False
         with tempfile.TemporaryDirectory() as tmp:
             idx = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
             _out("read-tree", base, env_extra=idx)
@@ -198,14 +216,26 @@ def _cli(argv: Sequence[str]) -> int:
               file=sys.stderr)
         return 2
     mode, paths_file = argv[1], argv[2]
-    allow_lines = open(paths_file, encoding="utf-8").read().splitlines()
+    allow_lines = Path(paths_file).read_text(encoding="utf-8").splitlines()
     try:
+        # The privileged GitHub job supplies these trusted values, not the
+        # untrusted handoff file.  Use the same filtered list for additions and
+        # deletions so a stale receipt cannot return through either path.
+        allow = validated_allowlist(allow_lines)
+        if "RECEIPT_RUN_ID" in os.environ or "RECEIPT_RUN_ATTEMPT" in os.environ:
+            try:
+                allow = filter_batch_allowlist(
+                    allow, run_id=os.environ.get("RECEIPT_RUN_ID", ""),
+                    run_attempt=os.environ.get("RECEIPT_RUN_ATTEMPT", ""),
+                    remote_receipt_file=os.environ.get("REMOTE_RECEIPT_FILE") or None)
+            except ValueError as exc:
+                raise UnsafePublishPath(str(exc)) from exc
         if mode == "paths":
-            rows = validated_allowlist(allow_lines)
+            rows = allow
         elif mode == "deletions":
-            del_lines = (open(argv[3], encoding="utf-8").read().splitlines()
+            del_lines = (Path(argv[3]).read_text(encoding="utf-8").splitlines()
                          if len(argv) > 3 and os.path.exists(argv[3]) else [])
-            rows = validated_deletions(del_lines, allow_lines)
+            rows = validated_deletions(del_lines, allow)
         else:
             print(f"未知模式:{mode}", file=sys.stderr)
             return 2

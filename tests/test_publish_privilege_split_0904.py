@@ -106,15 +106,17 @@ def test_the_receipt_survives_a_timeout_after_the_mail_went_out(monkeypatch):
     contract 約 3 分鐘、job 上限 50 分;SMTP 成功後撞上逾時的話,舊設計
     (交棒排在契約之後)會讓收據永遠到不了發佈 job —— workflow 結束、
     concurrency 釋放、下一班讀不到遠端收據就再寄一封(守衛是 fail-open)。
-    三件事一起才成立:交棒緊接在晨報之後、用 `always()`、發佈 job 不因上游
-    失敗而被跳過。
+    三件事一起才成立:收據檢核與交棒緊接在晨報之後、用 `always()`、
+    發佈 job 不因上游失敗而被跳過。檢核不能讓 checkout 舊檔被交棒。
     """
     wf = _wf()
     send = wf["jobs"]["send-report"]["steps"]
     report_i = next(i for i, s in enumerate(send) if "morning_report.py" in str(s.get("run") or ""))
     receipt_i = next(i for i, s in enumerate(send)
-                     if (s.get("with") or {}).get("name") == "delivery-receipt")
-    assert receipt_i == report_i + 1, "收據交棒要緊接在晨報之後,中間不得插入會卡住的步驟"
+                     if str((s.get("with") or {}).get("name") or "").startswith(
+                         "delivery-receipt-"))
+    assert send[report_i + 1].get("id") == "fresh_receipt"
+    assert receipt_i == report_i + 2, "收據檢核與交棒要緊接在晨報之後"
     assert "always()" in str(send[receipt_i].get("if") or "")
     assert (send[receipt_i].get("with") or {}).get("if-no-files-found") == "ignore"
 
@@ -297,19 +299,25 @@ def test_the_credentialed_job_calls_the_interpreter_that_is_guaranteed_to_exist(
 
 
 def test_the_publish_primitive_needs_no_third_party_package():
-    """發佈 job 不 `pip install`,所以那支原語只能用 stdlib —— 機械確認。"""
+    """發佈 job 不安裝依賴；含收據判準的本地 import 鏈也只能用 stdlib。"""
     import ast
-    src = (_ROOT / "state_publish.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    imported = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported.update(a.name.split(".")[0] for a in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            imported.add(node.module.split(".")[0])
     stdlib = set(getattr(__import__("sys"), "stdlib_module_names", ()))
-    assert imported, "掃不到任何 import 就是判準壞了"
-    assert imported <= stdlib | {"__future__"}, imported - stdlib
+    local = {"state_publish": {"receipt_handoff", "receipt_freshness"},
+             "receipt_handoff": {"delivery_contract", "receipt_freshness"},
+             "receipt_freshness": {"delivery_contract"},
+             "delivery_contract": set()}
+    for name, allowed_local in local.items():
+        tree = ast.parse((_ROOT / f"{name}.py").read_text(encoding="utf-8"))
+        imported = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(a.name.split(".")[0] for a in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported.add(node.module.split(".")[0])
+        if name != "delivery_contract":
+            assert imported, f"{name}:掃不到任何 import 就是判準壞了"
+        assert imported <= stdlib | {"__future__"} | allowed_local, (
+            name, imported - stdlib - allowed_local)
     # morning_report 仍 re-export,既有呼叫端不必改寫
     import state_publish as sp
     assert mr.publish_receipt_from_remote_base is sp.publish_receipt_from_remote_base

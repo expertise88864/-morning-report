@@ -17,14 +17,13 @@ state 在不同 consumer 說不同的話。這個模組是那份 canonical contr
 排在 9/2 自然證據之後)。
 """
 
-
 #: 一份 manifest/收據能不能證明「寄出去了」—— **三態,不是布林**。
 DELIVERY_SUCCEEDED = "succeeded"      #: `success is True`
 DELIVERY_NOT_SUCCEEDED = "not_yet"    #: `success is False`,或還沒有結論
 DELIVERY_SUCCESS_INVALID = "invalid"  #: 有這個欄位,但型別不是 bool
 
 
-def delivery_success(dv) -> str:
+def delivery_success(dv: object) -> str:
     """`delivery.success` 的**三態**判定(單一定義,三個模組共用)。
 
     2026-09-01 r7 外審:先前每個消費端各自寫 `if dv.get("success")` ——
@@ -65,7 +64,7 @@ DEFECT_ATTEMPTED_VS_DELIVERED = "attempted_false_but_delivered"
 DEFECT_ATTEMPTED_VS_SKIPPED = "attempted_true_but_skipped"
 
 
-def _skip_reason(dv):
+def _skip_reason(dv: dict[str, object]) -> str | bool | None:
     """`skipped_reason` 的三態:`None`(沒有)/ 字串 / `False`(型別壞掉)。
 
     r9 外審:先前寫 `bool(str(dv.get("skipped_reason") or "").strip())`
@@ -85,7 +84,7 @@ def _skip_reason(dv):
     return raw.strip() or None
 
 
-def delivery_verdict(dv):
+def delivery_verdict(dv: object) -> tuple[str, tuple[str, ...]]:
     """→ `(結局, 契約瑕疵 tuple)` —— **兩個維度,不要壓成一個字串**。
 
     r9 外審:「有沒有寄出」與「這份紀錄本身是否完全合法」是兩件事。
@@ -126,7 +125,7 @@ def delivery_verdict(dv):
     return OUTCOME_INCOMPLETE, tuple(defects)
 
 
-def delivery_outcome(dv) -> str:
+def delivery_outcome(dv: object) -> str:
     """`delivery_verdict()` 的結局那一維(既有呼叫端沿用這支)。
 
     不變量(r8 外審給的表,r9 補上 `attempted` 與 `skipped_reason` 的型別):

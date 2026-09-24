@@ -329,6 +329,8 @@ MODULE_CEILINGS = {
     "delivery_contract.py": 200,   # 現況 144(r9:兩維度 verdict + skip 型別契約)
     # 2026-09-02 r9:1000 行閘門**第二次**擋下「再加一點」,逼出兩個邊界。
     "state_publish.py": 250,   # 2026-09-04 外審 P2:收據發佈原語 + 交棒清單的詞法路徑驗證(Codex r2 P1);只用 stdlib,好讓有寫入權限的發佈 job 不必安裝第三方套件;現況 215
+    "receipt_handoff.py": 100,  # 收據交棒的 run/attempt 歸屬判定;依賴鏈須維持 stdlib-only
+    "receipt_freshness.py": 100,  # 新舊終局收據比較;避免舊班次重跑覆蓋新寄送證據
     "finding_domains.py": 150,     # 現況 99 —— finding 的分類登記表
     "degradation_registry.py": 130,  # 2026-09-03 全案審查 TC-2:KNOWN_DEGRADED / OPEN_FAMILIES 從 run_quality 抽出(1000 行閘門要的是推出邊界,不是調高數字);現況約 92
     "delivery_sla.py": 320,        # 2026-09-05 第二批搬出:SLA 判準本體(assess_delivery)也住進來了,這是工單指定的抽出目標;現況 288  # 前值 150:期限原語

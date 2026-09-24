@@ -255,6 +255,7 @@ MODULE_CEILINGS = {
     # 實測 191 行。
     # 2026-08-14:DeepSeek 峰谷計價(單價是時間的函數)
     "llm_pricing.py": 300,
+    "deepseek_calendar.py": 40,  # 官方假期表與離峰判定;新模組 34 行
     # DeepSeek Responses 的專屬 adapter(外審 P1-2)。契約釘在實機
     # 捕獲的 fixture 上,說明佔了近半 —— 那是這個模組的重點:
     # 「DeepSeek 實際回什麼」必須是寫下來、測得到的東西。
@@ -530,6 +531,9 @@ MODULE_CEILINGS = {
     # 而判準看的是 packet 層的 over_budget → canary 照樣 exit 0)。
     # 實測 293。
     "payload_budget.py": 313,
+    # LLM-only ten-record historical projection; state and Python history stay full.
+    "payload_history_context.py": 170,
+    "payload_history_dates.py": 60,
     # 第二十輪 P2-5:**段落→主張的對照表只有一份。** 先前四個消費者
     # (驗證器、飽和率、加深保存、渲染)各自維護,schema 加了新段落之後
     # 只有驗證器知道。

@@ -3,12 +3,8 @@
 
 ## 這個模組存在的理由
 
-2026-08-05 的實機紀錄:
-
-    estimated_input_tokens = 1,110,589
-    error = "429 Client Error: Too Many Requests"
-    stage = analysis
-    elapsed = 2.7s
+2026-08-05 實機:1,110,589 estimated input tokens,分析階段
+2.7 秒即被 429 Too Many Requests 拒收。
 
 先前兩天的 `TypeError` 已經修掉了 —— packet 組得起來、sha 算得出來、
 請求送得出去。**新的擋路石是請求本身太大**:約 2.0 MB 文字、
@@ -45,6 +41,9 @@ from typing import Optional
 #: (2026-08-07 E2E:2.26M 裁到 500K)—— 放寬後只有 HISTORY 這類
 #: 巨型序列出局,其餘背景區塊進得了特化 prompt。
 MAX_PAYLOAD_CHARS = 1_000_000
+
+# 9/24:900,803 chars/358,298 input tokens still exhausted 70K output.
+SOFT_UNIVERSE_CHARS = 850_000
 
 #: 可以裁的區塊,**由裁的先後順序排列**。全部是背景與診斷 ——
 #: 行情數字(QQQ/TAIFEX/BREADTH/SECTOR_HEAT…)、新聞、張力**不在此列**,
@@ -258,12 +257,13 @@ def apply(packet: Optional[dict], manifest: Optional[dict] = None) -> dict:
     超標時 raise `PayloadBudgetExceeded`,呼叫端落回 legacy(晨報不可斷)。
     """
     import sys as _sys
+    import payload_history_context as _history_context
     import payload_compact as _pc
-    # Compress repeated forecast plumbing before sacrificing historical evidence.
-    # Keep this first pass lossless for news: its limit only permits tier 1.
+    # Strip repeated forecast plumbing first; keep this pass lossless for news.
     original_chars = _size(packet or {})
     packet, precompact = _pc.compact(packet, limit=MAX_PAYLOAD_CHARS,
                                    plumbing_only=True, always_plumbing=True)
+    packet = _history_context.slice_history(packet, manifest)
     packet, budget = trim(packet)
     budget["chars_before"] = original_chars
     if manifest is not None:
@@ -276,7 +276,8 @@ def apply(packet: Optional[dict], manifest: Optional[dict] = None) -> dict:
               file=_sys.stderr)
     # **第二層**(第二十四輪 P1-2):2026-08-06 裁完仍 910K,而剩下的全在
     # 不可裁清單裡 —— gate 每天正確地擋,特化路徑卻沒有一天可能成功。
-    packet, cmp_rep = _pc.compact(packet, limit=budget["limit"])
+    packet, cmp_rep = _pc.compact(packet, limit=budget["limit"],
+                                  soft_skeleton_limit=SOFT_UNIVERSE_CHARS)
     cmp_rep["applied"] = precompact["applied"] + cmp_rep["applied"]
     cmp_rep["chars_before"] = original_chars
     if manifest is not None:

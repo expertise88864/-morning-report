@@ -3,12 +3,7 @@
 
 ## 為什麼需要第二層
 
-2026-08-06 生產:
-
-    chars_before = 2,263,832
-    limit        =   600,000
-    chars_after  =   910,312      ← 背景區塊全裁光之後
-    over_budget  = true
+2026-08-06 生產:2,263,832 字元,背景裁完仍 910,312 > 600,000 上限。
 
 `payload_budget.trim()` 把九個背景區塊(HISTORY 776K、STRUCTURED_NEWS_EVENTS
 504K…)整整 135 萬字元全裁掉,仍然超出 51.7%。原因是**剩下的都在它的
@@ -54,9 +49,6 @@ import json
 import re
 from typing import Optional
 
-#: `price_forecast` 裡**留下來**的標頭欄位。其餘(model_version、
-#: training_rows、model_method、quality、fallback_enabled…)是模型內部
-#: 管線,分析模型引用不到也不該引用。
 
 #: 非分析標的保留的骨架欄位。**代號一定在裡面**(白名單完整性)。
 _SKELETON = ("code", "name", "industry", "close", "day_pct", "pct_5d",
@@ -100,8 +92,10 @@ def _analyzed_codes(packet: dict) -> set:
     for n in (packet.get("news") or []):
         if not isinstance(n, dict):
             continue
-        blob = str(n.get("title") or "") + " " + " ".join(
-            str(e) for e in (n.get("entities") or []))
+        blob = " ".join(str(n.get(k) or "") for k in ("title", "summary", "fulltext")) + " " + " ".join(
+            str(e) for e in (n.get("entities") or [])) + " " + " ".join(
+            str(h.get("title") or "") for h in (n.get("finance_headlines") or [])
+            if isinstance(h, dict))
         for r in rows:
             c = str(r.get("code") or "")
             name = str(r.get("name") or "").strip()
@@ -122,7 +116,8 @@ def _num(v) -> float:
 
 
 def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False,
-            always_plumbing: bool = False) -> tuple:
+            always_plumbing: bool = False,
+            soft_skeleton_limit: Optional[int] = None) -> tuple:
     """`(壓縮後的 packet, 報告)`。**不改變輸入**;只在超標時逐級啟動。
 
     回報 `{applied: [...], chars_before, chars_after, over_budget}` ——
@@ -132,7 +127,8 @@ def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False,
     before = _size(pk)
     report = {"chars_before": before, "limit": limit, "applied": [],
               "chars_after": before, "over_budget": False}
-    if before <= limit and not always_plumbing:
+    if (before <= limit and not always_plumbing
+            and (soft_skeleton_limit is None or before <= soft_skeleton_limit)):
         return pk, report
 
     # ── 第一級:price_forecast 去管線(零證據損失)──
@@ -149,7 +145,10 @@ def compact(packet: Optional[dict], *, limit: int, plumbing_only: bool = False,
                  "detail": f"{len(thinned)} 檔去除預測管線欄位、保留數字與錯誤"})
 
     # ── 第二級:非分析標的降為骨架(**列全部保留**,代號白名單不受影響)──
-    if not plumbing_only and _size(pk) > limit and rows:
+    # Near-limit soft tier removes only non-analysis details, not stocks/news.
+    soft_exceeded = (soft_skeleton_limit is not None
+                     and _size(pk) > soft_skeleton_limit)
+    if not plumbing_only and (_size(pk) > limit or soft_exceeded) and rows:
         keep_full = _analyzed_codes(pk)
         skeletal = [r if str(r.get("code") or "") in keep_full
                     else {k: r[k] for k in _SKELETON if k in r}

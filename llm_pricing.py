@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from deepseek_calendar import UnknownPricingCalendar, is_offpeak_day
+
 # ---------------------------------------------------------------- 成本估算
 
 #: 每 100 萬 token 的官方牌價(USD)。**只收錄有出處的。**
@@ -36,13 +38,8 @@ MODEL_PRICING = {
     "gpt-5.6-sol": {"input": 5.00, "cached_input": 0.50, "output": 30.00},
     "gpt-5.6-terra": {"input": 2.00, "cached_input": 0.20, "output": 12.00},
     "gpt-5.6-luna": {"input": 0.20, "cached_input": 0.02, "output": 1.20},
-    # DeepSeek 官方 pricing 頁(2026-08-01 查證)。**先前刻意留空**,理由是
-    # 「我手上沒有官方單價,寧可回報未收錄」—— 現在查到了,所以補上。
-    # 十天實驗要比成本,而「未收錄」在那個情境等於整半邊沒有數字。
-    # ⚠ DeepSeek 已公告 2026-08-16 16:00 UTC 起改峰谷計價(離峰半價:
-    # pro 離峰 $0.66/$0.022/$1.98、尖峰 $1.32/$0.044/$3.96)——
-    # 生效後本表要換 schema(峰谷是**時間函數**,單一費率表不成立)。
-    # 本報排程 06:00 台北 = 22:00 UTC,屬離峰。
+    # DeepSeek 歷史基準價(2026-08-16 16:00 UTC 前)。後續峰谷價與
+    # V4.1 Flash 價格依呼叫時刻由下方的時間表選擇。
     "deepseek-v4-pro": {"input": 0.435, "cached_input": 0.003625, "output": 0.87},
     "deepseek-v4-flash": {"input": 0.14, "cached_input": 0.0028, "output": 0.28},
 }
@@ -76,6 +73,14 @@ DEEPSEEK_PEAK_PRICING = {
     },
 }
 
+# 2026-09-10 04:00 UTC: V4.1 Flash price covers the old alias; Pro unchanged, older Flash rates retained for history.
+DEEPSEEK_V41_FLASH_PRICING = {
+    "effective_from_utc": (2026, 9, 10, 4, 0),
+    "rates": {
+        "offpeak": {"input": 0.15, "cached_input": 0.003, "output": 0.60},
+        "peak": {"input": 0.30, "cached_input": 0.006, "output": 1.20},
+    },
+}
 
 def deepseek_window(at) -> str:
     """這個時刻落在 DeepSeek 的哪個計價時段:`peak` / `offpeak`。
@@ -88,7 +93,7 @@ def deepseek_window(at) -> str:
     h = beijing.hour
     for lo, hi in DEEPSEEK_PEAK_PRICING["peak_hours_beijing"]:
         if lo <= h < hi:
-            return "peak"
+            return "offpeak" if is_offpeak_day(beijing) else "peak"
     return "offpeak"
 
 
@@ -119,15 +124,15 @@ LONG_CONTEXT_TIERS = {"gpt-": {"threshold": 272_000,
                                "input": 2.0, "cached_input": 2.0,
                                "output": 1.5}}
 PRICING_SOURCE = "developers.openai.com + api-docs.deepseek.com"
-#: 2026-08-14 重查:峰谷費率(2026-08-17 生效)取自同兩頁的中英文版,
-#: 兩版數字一致(¥/$ 換算約 6.8-7.1)。
-PRICING_AS_OF = "2026-08-14"
+#: 2026-09-24:V4.1 Flash 新價;早期費率仍留作歷史估值,OpenAI 未調整。
+PRICING_AS_OF = "2026-09-24"
 #: schema 4:加入 `>272K` long-context 費率層,每筆多帶 `pricing_tier`
 #: 與生效費率 —— 舊 schema 的資料**不可與新的相加**。
 #: schema 5(2026-08-14):DeepSeek 改**峰谷計價**(2026-08-17 生效)——
 #: 單價從此是時間的函數,而且**離峰價本身就比舊價貴**(pro 輸出 2.3×)。
 #: 舊 schema 的成本資料不可與新的相加。
-PRICING_SCHEMA = 5
+# schema 6: V4.1 Flash 9/10 04:00 UTC 生效,舊版別名也適用;不可混加 schema 5。
+PRICING_SCHEMA = 6
 
 
 def pricing_source_for(model: str) -> str:
@@ -175,7 +180,10 @@ def price_of(model: str, at=None) -> Optional[dict]:
     回**那個時段**的費率 —— 單價從此是**時間的函數**,不再是一張表。
     """
     m = (model or "").strip().lower()
-    peaked = _deepseek_price_at(m, at)
+    try:
+        peaked = _deepseek_price_at(m, at)
+    except UnknownPricingCalendar:
+        return None  # Do not silently bill a later year's holiday as peak.
     if peaked:
         return peaked
     if m in MODEL_PRICING:
@@ -198,6 +206,12 @@ def _deepseek_price_at(model: str, at) -> Optional[dict]:
             return None
     except (AttributeError, TypeError, ValueError):
         return None                 # 時間形狀不對 → 退回單一費率表,不猜
+    if model == "deepseek-flash" or model.startswith("deepseek-v4-flash"):
+        v41_from = _dt.datetime(
+            *DEEPSEEK_V41_FLASH_PRICING["effective_from_utc"],
+            tzinfo=_dt.timezone.utc)
+        if at.astimezone(_dt.timezone.utc) >= v41_from:
+            return DEEPSEEK_V41_FLASH_PRICING["rates"][deepseek_window(at)]
     rates = DEEPSEEK_PEAK_PRICING["rates"]
     for name, byw in rates.items():
         if model == name or model.startswith(name):

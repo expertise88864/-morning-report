@@ -25,11 +25,91 @@ def test_the_peak_window_follows_the_official_beijing_hours():
         assert lp.deepseek_window(_at(h)) == "offpeak", h
 
 
+def test_weekends_and_chinese_public_holidays_are_offpeak_all_day():
+    # Beijing 10:00 falls inside the usual weekday peak window.
+    def _at(month, day):
+        return (_dt.datetime(2026, month, day, 10, 0,
+                             tzinfo=_dt.timezone.utc)
+                - _dt.timedelta(hours=8))
+
+    assert lp.deepseek_window(_at(9, 20)) == "offpeak"  # Sunday make-up workday
+    assert lp.deepseek_window(_at(9, 25)) == "offpeak"  # Mid-Autumn Friday
+    assert lp.deepseek_window(_at(10, 5)) == "offpeak"  # National Day Monday
+    assert lp.deepseek_window(_at(9, 24)) == "peak"     # Ordinary Thursday
+    assert lp.price_of("deepseek-flash", _at(9, 25))["output"] == 0.60
+
+
+def test_unverified_future_holidays_do_not_silently_use_peak_or_old_rates():
+    at = _dt.datetime(2027, 1, 1, 2, 0, tzinfo=_dt.timezone.utc)
+    assert lp.price_of("deepseek-flash", at) is None
+    assert lp.estimate_cost("deepseek-flash", {
+        "prompt_tokens": 1000, "completion_tokens": 1000}, at=at)["usd"] is None
+    assert lp.price_of("deepseek-flash", at + _dt.timedelta(days=1)) == {
+        "input": 0.15, "cached_input": 0.003, "output": 0.60}
+    assert lp.price_of("deepseek-flash", at - _dt.timedelta(hours=4)) == {
+        "input": 0.15, "cached_input": 0.003, "output": 0.60}
+
+
+def test_recorded_historical_cost_does_not_depend_on_todays_calendar(monkeypatch):
+    import llm_telemetry as lt
+
+    monkeypatch.setattr(lt, "price_of", lambda *_args: (_ for _ in ()).throw(
+        AssertionError("a recorded cost must not be repriced")))
+    rec = {"model": "deepseek-flash", "prompt_tokens": 1000,
+           "completion_tokens": 500, "estimated_cost_usd": 0.001}
+    summary = lt.run_cost_summary({"primary": rec})
+    assert summary["total_usd"] == 0.001
+    assert "incomplete" not in summary
+    unpriced = lt.run_cost_summary({"primary": dict(rec, estimated_cost_usd=None)})
+    assert "有用量但成本未估" in unpriced["incomplete"]
+
+
 def test_rates_switch_only_after_the_effective_moment():
     """生效前用舊的單一費率表 —— 提前套新價會**高估**帳單。"""
     assert lp.price_of("deepseek-v4-pro", _BEFORE)["output"] == 0.87
     assert lp.price_of("deepseek-v4-pro", _OFFPEAK)["output"] == 1.98
     assert lp.price_of("deepseek-v4-pro", _PEAK)["output"] == 3.96
+
+
+def test_v41_flash_rates_begin_at_the_documented_september_10_instant():
+    before = _dt.datetime(2026, 9, 10, 3, 59, tzinfo=_dt.timezone.utc)
+    after = _dt.datetime(2026, 9, 10, 4, 0, tzinfo=_dt.timezone.utc)
+    assert lp.price_of("deepseek-v4-flash", before) == {
+        "input": 0.44, "cached_input": 0.014, "output": 1.32}
+    assert lp.price_of("deepseek-v4-flash", after) == {
+        "input": 0.15, "cached_input": 0.003, "output": 0.60}
+    assert lp.price_of("deepseek-flash", after) == lp.price_of(
+        "deepseek-v4-flash", after)
+    assert lp.price_of("deepseek-v4-pro", after) == {
+        "input": 0.66, "cached_input": 0.022, "output": 1.98}
+
+
+def test_retired_flash_alias_uses_v41_cost_for_a_normal_morning():
+    at = _dt.datetime(2026, 9, 23, 23, 54, tzinfo=_dt.timezone.utc)
+    usage = {"prompt_tokens": 100_000, "completion_tokens": 20_000,
+             "prompt_tokens_details": {"cached_tokens": 10_000}}
+    result = lp.estimate_cost("deepseek-v4-flash", usage, at=at)
+    assert result["usd"] == 0.02553
+    assert result["effective_input_rate"] == 0.15
+    assert result["effective_cached_rate"] == 0.003
+    assert result["effective_output_rate"] == 0.60
+    assert result["pricing_schema"] == 6
+
+
+def test_current_flash_alias_is_not_falsely_unpriced_in_run_summary(monkeypatch):
+    import llm_telemetry as lt
+
+    at = _dt.datetime(2026, 9, 23, 23, 54, tzinfo=_dt.timezone.utc)
+    real_estimate = lt.estimate_cost
+    monkeypatch.setattr(lt, "estimate_cost",
+                        lambda model, usage: real_estimate(model, usage, at=at))
+    rec = lt.build_record(
+        "deepseek", "deepseek-flash",
+        usage={"prompt_tokens": 100_000, "completion_tokens": 20_000})
+    summary = lt.run_cost_summary({"primary": rec})
+    assert rec["estimated_cost_usd"] > 0
+    assert summary["total_usd"] == rec["estimated_cost_usd"]
+    assert "incomplete" not in summary
 
 
 def test_the_offpeak_price_is_higher_than_today_not_lower():

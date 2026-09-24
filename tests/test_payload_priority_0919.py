@@ -7,7 +7,11 @@ import payload_compact as pc
 
 def test_plumbing_is_removed_before_history():
     packet = {
-        "market": {"HISTORY": [{"date": "2026-09-18", "text": "昨日證據" * 100}]},
+        "target_session_date": "2026-09-19",
+        "as_of": "2026-09-19T06:00:00+08:00",
+        "market": {"HISTORY": [{"date": "2026-09-18",
+                               "critical_news": ["昨日證據" * 100],
+                               "model_debug": "不進模型"}]},
         "tw_universe": [{"code": "2330", "name": "台積電", "price_forecast": {
             "training_rows": "x" * pb.MAX_PAYLOAD_CHARS,
             "one_day": {"expected_price": 100, "lower": 90, "upper": 110}}}],
@@ -16,7 +20,9 @@ def test_plumbing_is_removed_before_history():
     original = deepcopy(packet)
     manifest = {}
     out = pb.apply(packet, manifest)
-    assert out["market"]["HISTORY"] == original["market"]["HISTORY"]
+    assert out["market"]["HISTORY"][0]["critical_news"] == (
+        original["market"]["HISTORY"][0]["critical_news"])
+    assert "model_debug" not in out["market"]["HISTORY"][0]
     assert out["news"] == original["news"]
     assert out["tw_universe"][0]["price_forecast"]["one_day"]["expected_price"] == 100
     assert packet == original

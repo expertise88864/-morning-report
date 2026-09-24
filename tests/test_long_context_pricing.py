@@ -132,9 +132,8 @@ def test_the_published_prices_are_what_we_verified():
         "input": 0.20, "cached_input": 0.02, "output": 1.20}
     assert lp.MODEL_PRICING["gpt-5.6-terra"] == {
         "input": 2.00, "cached_input": 0.20, "output": 12.00}
-    # schema 5(2026-08-14):DeepSeek 改峰谷計價,單價成為時間的函數
-    # —— 舊資料一樣不可與新的相加,所以這條照樣要跟著動。
-    assert lp.PRICING_SCHEMA == 5, "加了費率層就要升 schema,舊資料不可相加"
+    # schema 6(2026-09-24):V4.1-Flash 新費率與舊費率不可直接相加。
+    assert lp.PRICING_SCHEMA == 6, "加了費率層就要升 schema,舊資料不可相加"
 
 
 def test_the_long_context_tier_still_wins_after_the_peak_pricing_starts():

@@ -335,17 +335,17 @@ def run_cost_summary(slot: Optional[dict]) -> dict:
     **成本估算如果只在成功時準確,它在最該看的時候(一直逾時的那幾天)最不準。**
     """
     slot = slot or {}
-    total, measured, models = 0.0, 0, set()
+    total, measured, unpriced_models = 0.0, 0, set()
     for role in _ROLE_SLOTS:
         rec = slot.get(role)
         if not isinstance(rec, dict):
             continue
-        models.add(str(rec.get("model") or ""))
         if isinstance(rec.get("estimated_cost_usd"), (int, float)):
             total += rec["estimated_cost_usd"]
             measured += int(rec.get("calls") or 1)
         elif rec.get("prompt_tokens"):
             measured += int(rec.get("calls") or 1)
+            unpriced_models.add(str(rec.get("model") or "(未知模型)"))
     # 第十輪 P1-2:**失敗但有 usage 的嘗試同樣計費。**
     # `finish_reason=length`、結構化輸出不合格、報告層驗收未過 —— 這些呼叫
     # API 都已經生成內容並收費,原本完全不進總額,成本因此系統性低估。
@@ -355,6 +355,9 @@ def run_cost_summary(slot: Optional[dict]) -> dict:
                                               (int, float)):
             failed_measured += a["estimated_cost_usd"]
             measured += 1
+        elif isinstance(a, dict) and a.get("prompt_tokens"):
+            measured += 1
+            unpriced_models.add(str(a.get("model") or "(未知模型)"))
     total += failed_measured
     billed_unknown = [a for a in (slot.get("attempts") or [])
                       if isinstance(a, dict) and a.get("billable_unmeasured")]
@@ -366,9 +369,9 @@ def run_cost_summary(slot: Optional[dict]) -> dict:
     if billed_unknown:
         notes.append(f"另有 {len(billed_unknown)} 次呼叫已送出但沒有 usage"
                      "(逾時/連線中斷)—— 那些仍會計費,**不在總額內**")
-    unknown_price = sorted(m for m in models if m and price_of(m) is None)
-    if unknown_price:
-        notes.append(f"未收錄單價:{'、'.join(unknown_price)}")
+    # Never rejudge historical estimates against today's time-dependent rates.
+    if unpriced_models:
+        notes.append(f"有用量但成本未估:{'、'.join(sorted(unpriced_models))}")
     if notes:
         out["incomplete"] = ";".join(notes)
     return out

@@ -71,6 +71,15 @@ def finalize(analysis: str, html: str, manifest: dict) -> str:
         record["mobile_error"] = type(exc).__name__
         print("::warning::Mobile email enhancement failed; original HTML retained", file=sys.stderr)
     try:
+        from email_syntax_compact import compact as compact_syntax
+        before_syntax = len(html.encode("utf-8"))
+        html = compact_syntax(html)
+        record["syntax_bytes_saved"] = before_syntax - len(html.encode("utf-8"))
+    except Exception as exc:  # noqa: BLE001 - optional final pass must not block delivery
+        record["syntax_error"] = type(exc).__name__
+        print("::warning::Final email syntax compaction failed; original HTML retained",
+              file=sys.stderr)
+    try:
         record.update(audit(analysis, html))
         if record["missing_sections"] or record["lost_cards"]:
             print("::warning::Final email HTML lost analysis sections/cards", file=sys.stderr)

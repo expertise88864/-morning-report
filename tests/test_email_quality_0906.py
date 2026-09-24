@@ -85,6 +85,22 @@ def test_finalization_errors_keep_mail_and_make_quality_defect(monkeypatch):
     assert "email_finalization_failed" in {f["code"] for f in run_quality.assess(m)}
 
 
+def test_optional_syntax_failure_is_visible_in_quality_report(monkeypatch):
+    import email_syntax_compact
+
+    def fail(_):
+        raise ValueError("private error text")
+
+    monkeypatch.setattr(email_syntax_compact, "compact", fail)
+    manifest = {}
+    raw = page("完整正文")
+    assert "完整正文" in audit.finalize("", raw, manifest)
+    assert manifest["llm"]["email_html"]["syntax_error"] == "ValueError"
+    assert "private" not in str(manifest)
+    assert "email_finalization_failed" in {
+        finding["code"] for finding in run_quality.assess(manifest)}
+
+
 def test_final_email_over_gmail_limit_is_reported_without_removing_content():
     payload = "字" * 35000
     html = page(payload)

@@ -1333,6 +1333,139 @@ def test_compacting_styles_is_a_no_op_when_there_is_nothing_to_gain():
     assert compact_inline_styles("<div style='a:b;'>x</div>") == "<div style='a:b;'>x</div>"
 
 
+def test_compacting_short_repeated_styles_uses_actual_byte_savings():
+    from render_utils import compact_inline_styles
+
+    repeated = "".join("<span style='border-bottom:1px solid #e2e8f0;'>日期</span>"
+                       for _ in range(42))
+    html = f"<html><head></head><body>{repeated}</body></html>"
+    out = compact_inline_styles(html)
+
+    assert out.count("border-bottom:1px solid #e2e8f0;") == 1
+    assert out.count("<span class=\"s0\">") == 42
+    assert out.count("日期") == 42
+    assert len(out.encode()) < len(html.encode())
+
+
+def test_three_repeated_styles_keep_critical_mobile_fallbacks_inline():
+    from render_utils import compact_inline_styles
+
+    style = ("padding:7px 12px;border-bottom:1px solid #e2e8f0;"
+             "border-left:4px solid #64748b;border-radius:6px;"
+             "text-align:right;font-size:12px;color:#64748b;")
+    repeated = "".join(f'<td style="{style}">數字 {i}</td>' for i in range(3))
+    unique = '<div style="border:1px solid #e2e8f0;background:#fff;">獨特卡</div>' * 2
+    html = f"<html><head></head><body><table><tr>{repeated}</tr></table>{unique}</body></html>"
+    out = compact_inline_styles(html)
+
+    assert len(out.encode()) < len(html.encode())
+    assert out.count("數字 ") == 3 and out.count("獨特卡") == 2
+    assert out.count('style="text-align:right;font-size:12px;color:#64748b;"') == 3
+    assert out.count('style="border:1px solid #e2e8f0;background:#fff;"') == 2
+
+
+def test_three_valuation_card_labels_keep_contrast_and_layout_inline():
+    from render_utils import compact_inline_styles
+
+    label_style = ("padding:14px;background:#0284c7;"
+                   "background:linear-gradient(135deg,#0284c7,#0ea5e9);"
+                   "color:#fff;font-weight:700;border-radius:6px 0 0 6px;")
+    cards = "".join(
+        f'<td style="{label_style}">★ {name} 今日合理價</td>'
+        for name in ("0050", "00662", "2330")
+    )
+    html = f"<html><head></head><body><table><tr>{cards}</tr></table></body></html>"
+    out = compact_inline_styles(html)
+
+    # A client may remove the head stylesheet. These cells must remain legible
+    # with the original background, white foreground, padding and emphasis.
+    assert out.count(f'style="{label_style}"') == 3
+    assert "★ 0050 今日合理價" in out
+    assert "★ 00662 今日合理價" in out
+    assert "★ 2330 今日合理價" in out
+
+
+def test_light_foreground_on_dark_parent_remains_inline():
+    from render_utils import compact_inline_styles
+
+    label_style = "font-size:12px;color:rgba(255,255,255,0.60);line-height:1.2;"
+    labels = "".join(f'<span style="{label_style}">指標 {i}</span>' for i in range(5))
+    html = f'<html><head></head><body><div style="background:#0c4a6e;">{labels}</div></body></html>'
+    out = compact_inline_styles(html)
+
+    assert out.count(f'style="{label_style}"') == 5
+
+
+def test_positive_kpi_color_remains_visible_without_stylesheet():
+    from render_utils import compact_inline_styles
+
+    style = "font-size:12px;color:#fb7185;line-height:1.2;margin-top:3px;"
+    cells = "".join(f'<span style="{style}">+{i}%</span>' for i in range(4))
+    html = f'<html><head></head><body><div style="background:#0c4a6e;">{cells}</div></body></html>'
+    out = compact_inline_styles(html)
+
+    assert out.count("color:#fb7185;") == 4
+
+
+def test_compacting_styles_does_not_grow_html_for_boundary_case():
+    from render_utils import compact_inline_styles
+
+    html = ("<html><head></head><body>"
+            + "<p style='margin:0;'>x</p>" * 4
+            + "</body></html>")
+    assert compact_inline_styles(html) == html
+
+
+def test_compacting_styles_preserves_existing_classes_without_collision():
+    from bs4 import BeautifulSoup
+    from render_utils import compact_inline_styles
+
+    html = ("<html><head></head><body><span class='s0'>existing</span>"
+            + "<span class = 'keep' style='border-bottom:1px solid #e2e8f0;'>x</span>" * 42
+            + "<span style='border-bottom:1px solid #e2e8f0;'>y</span>" * 42
+            + "</body></html>")
+    out = compact_inline_styles(html)
+    doc = BeautifulSoup(out, "html.parser")
+    assert doc.span["class"] == ["s0"]
+    for tag in doc.find_all("span")[1:43]:
+        assert tag["class"] == ["keep"]
+        assert tag["style"] == "border-bottom:1px solid #e2e8f0;"
+    for tag in doc.find_all("span")[43:]:
+        assert tag["class"] == ["s1"]
+        assert not tag.has_attr("style")
+    assert out.count(".s1{border-bottom:1px solid #e2e8f0;}") == 1
+    assert len(out.encode()) < len(html.encode())
+
+
+def test_compacting_styles_leaves_ambiguous_class_text_untouched():
+    from render_utils import compact_inline_styles
+
+    tag = '<span title="class=\'hint\'" style=\'color:#94a3b8;\'>x</span>'
+    html = "<html><head></head><body>" + tag * 42 + "</body></html>"
+    assert compact_inline_styles(html) == html
+
+
+def test_compacting_styles_handles_empty_class_without_crashing():
+    from render_utils import compact_inline_styles
+
+    tag = "<span class='' style='color:#94a3b8;'>x</span>"
+    html = "<html><head></head><body>" + tag * 42 + "</body></html>"
+    assert compact_inline_styles(html) == html
+
+
+def test_compacting_styles_keeps_hidden_text_hidden_without_stylesheet():
+    from bs4 import BeautifulSoup
+    from render_utils import compact_inline_styles
+
+    tag = "<span style='display:none;'>hidden</span>"
+    html = "<html><head></head><body>" + tag * 42 + "</body></html>"
+    doc = BeautifulSoup(compact_inline_styles(html), "html.parser")
+    for sheet in doc.find_all("style"):
+        sheet.decompose()
+    assert all("display:none" in span.get("style", "")
+               for span in doc.find_all("span"))
+
+
 # ===== 使用者 2026-08-10:結論卡與總經表的三項調整 =====
 
 def test_the_conclusion_card_drops_the_prompt_scaffolding():

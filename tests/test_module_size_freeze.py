@@ -204,6 +204,7 @@ MODULE_CEILINGS = {
     "fomc_calendar.py": 25,
     "event_clock.py": 30,
     "email_markup.py": 25,
+    "email_syntax_compact.py": 130,
     "reader_fact_labels.py": 65,
     "news_display_quality.py": 65,
     "news_memory_selection.py": 60,

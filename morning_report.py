@@ -24328,7 +24328,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
         sports_html,
         journals_html,
     ) if s)
-    return _finalize_email("", f"""<!DOCTYPE html>
+    return _finalize_email("", compact_inline_styles(f"""<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="utf-8">
@@ -24358,7 +24358,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
     </tr>
   </table>
 </body>
-</html>""", _RUN_MANIFEST)
+</html>"""), _RUN_MANIFEST)
 
 
 def run_weekend_digest(now_tpe: dt.datetime) -> int:

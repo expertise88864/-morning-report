@@ -1722,10 +1722,12 @@ def _fmt_fact(raw) -> str:
 #: 版面)會留在 inline —— 萬一某個客戶端剝掉 `<style>`,信裡最關鍵、最獨特的
 #: 部分仍然有樣式;被 class 化的是重複幾十次的內文與表格,那些即使失去樣式
 #: 也只是變樸素,不會讀不懂。
-_STYLE_CLASS_MIN_USES = 4
+_STYLE_CLASS_MIN_USES = 3
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _STYLE_ATTR_RE = re.compile(r"""\sstyle=(['"])(.*?)\1""", re.S)
+_CLASS_ATTR_RE = re.compile(
+    r"""(?<![\w-])class\s*=\s*(?:(['"])(.*?)\1|([^\s>]+))""", re.S | re.I)
 
 
 def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> str:
@@ -1746,27 +1748,119 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
     if not html or "<head>" not in html:
         return html
     counts: dict = {}
+    existing_classes = set()
     for tag in _TAG_RE.findall(html):
+        class_match = _CLASS_ATTR_RE.search(tag)
+        if class_match:
+            # A class-like token inside another attribute is ambiguous to this
+            # regex-only pass. Leave the entire tag untouched rather than risk
+            # deleting its inline style or creating duplicate class attributes.
+            existing_classes.update((class_match.group(2) or class_match.group(3) or "").split())
+            continue
         for _q, value in _STYLE_ATTR_RE.findall(tag):
             counts[value] = counts.get(value, 0) + 1
     # 依「省下的位元組」排序才會先處理長而重複的;同分時用字串排序保證輸出穩定
     # (輸出穩定 = 兩封信的 diff 有意義,而不是每天 class 編號都在跳)。
-    # Font size and numeric alignment must survive clients discarding classes.
-    # Keep short styles inline when the fallback would erase the byte saving.
-    def retained(value):
-        return "".join(p.strip() + ";" for p in value.split(";")
-                       if p.partition(":")[0].strip().lower() in
-                       {"font-size", "text-align", "line-height"})
+    # Keep legibility-critical fallbacks when a client drops the head sheet.
+    # Dark text on the mail's light reading surface can safely fall back to
+    # black, while a foreground/background contrast pair stays together.
+    # Font size, numeric alignment and hidden/whitespace behavior stay inline.
+    dark_on_light = {"#0f172a", "#1f2937", "#0c4a6e", "#334155", "#0369a1"}
 
-    worth = sorted((v for v, n in counts.items() if n >= min_uses
-                    and n * (len(v) - len(retained(v)) - 18) > len(v) + 12),
-                   key=lambda v: (-len(v) * counts[v], v))
+    def owns_contrast_pair(value):
+        properties = {name.strip().lower(): val.strip().lower()
+                      for part in value.split(";") if ":" in part
+                      for name, _, val in (part.partition(":"),)}
+        return "color" in properties and bool(
+            properties.keys() & {"background", "background-color", "background-image"})
+
+    def needs_full_inline(value):
+        # White-on-colored valuation badges must keep their spacing and
+        # emphasis as well as contrast when a client strips the head sheet.
+        properties = {name.strip().lower(): val.strip().lower()
+                      for part in value.split(";") if ":" in part
+                      for name, _, val in (part.partition(":"),)}
+        return (owns_contrast_pair(value)
+                and properties.get("color") in {"#fff", "#ffffff", "white"}
+                and any(name.startswith("padding") for name in properties))
+
+    def retained(value):
+        paired = owns_contrast_pair(value)
+        # The regular 13px table-muted text is on a light cell; if the head
+        # sheet disappears, the default dark text remains readable. Keep the
+        # smaller 12px label color inline, where contrast is less forgiving.
+        table_muted_on_light = "font-size:13px" in value and "color:#64748b" in value
+        declarations = [(name.strip().lower(), val.strip())
+                        for p in value.split(";") if ":" in p
+                        for name, _, val in (p.partition(":"),)]
+        properties = dict(declarations)
+        # The analysis headings have dark ink on an explicitly pale backdrop.
+        # If a client drops the sheet, the backdrop stays inline and default
+        # dark ink remains legible.  Never apply this to white-on-color cards.
+        safe_heading_pair = (
+            properties.get("color") in {"#0f172a", "#92400e"}
+            and properties.get("background") in {
+                "#e0f2fe", "linear-gradient(90deg,#fef3c7,#fde68a)"}
+        )
+        solid_background = any(
+            name in {"background", "background-color"}
+            and re.fullmatch(r"#[0-9a-fA-F]{3,8}", val)
+            for name, val in declarations)
+        result = []
+        for name, val in declarations:
+            if name in {"font-size", "text-align", "line-height", "display",
+                        "visibility", "opacity", "height", "max-height",
+                        "overflow", "mso-hide", "white-space"}:
+                result.append(f"{name}:{val};")
+            elif name == "color" and ((paired and not safe_heading_pair)
+                                      or (not paired and val.lower() not in dark_on_light
+                                          and not table_muted_on_light)):
+                result.append(f"{name}:{val};")
+            elif paired and name in {"background", "background-color", "background-image"}:
+                if name == "background" and val.startswith("linear-gradient("):
+                    if solid_background:
+                        continue
+                    # A plain first stop is a readable fallback if the mail
+                    # client strips the sheet.  Use background-color, not the
+                    # background shorthand: the latter would override the
+                    # class's gradient in normal clients.
+                    first_stop = re.search(r"#[0-9a-fA-F]{3,8}\b", val)
+                    if first_stop:
+                        result.append(f"background-color:{first_stop.group(0)};")
+                        continue
+                result.append(f"{name}:{val};")
+        return "".join(result)
+
+    # Compare the actual UTF-8 bytes, including the generated rule and the
+    # inline font/alignment fallback.  The old fixed 18-byte replacement
+    # estimate rejected short repeated declarations such as muted text color
+    # even when converting them to a class saves hundreds of bytes.
+    candidates = sorted((v for v, n in counts.items()
+                         if n >= min_uses and not needs_full_inline(v)),
+                        key=lambda v: (-len(v) * counts[v], v))
+    worth = []
+    names = {}
+    next_index = 0
+    for value in candidates:
+        while f"s{next_index}" in existing_classes:
+            next_index += 1
+        name = f"s{next_index}"
+        fallback = retained(value)
+        old_attr = f' style="{value}"'
+        new_attr = f' class="{name}"' + (f' style="{fallback}"' if fallback else '')
+        rule = f'.{name}{{{value}}}'
+        saved = counts[value] * (len(old_attr.encode()) - len(new_attr.encode()))
+        if saved > len(rule.encode()):
+            worth.append(value)
+            names[value] = name
+            next_index += 1
     if not worth:
         return html
-    names = {value: f"s{i}" for i, value in enumerate(worth)}
 
     def _rewrite(m):
         tag = m.group(0)
+        if _CLASS_ATTR_RE.search(tag):
+            return tag
 
         def _sub(sm):
             value = sm.group(2)
@@ -1780,4 +1874,7 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
 
     out = _TAG_RE.sub(_rewrite, html)
     sheet = "".join(f".{names[v]}{{{v}}}" for v in worth)
-    return out.replace("</head>", f"<style>{sheet}</style></head>", 1)
+    out = out.replace("</head>", f"<style>{sheet}</style></head>", 1)
+    # The per-rule calculation cannot amortize the one-time <style> wrapper.
+    # Guard the actual final payload, including quote/whitespace variations.
+    return out if len(out.encode()) < len(html.encode()) else html

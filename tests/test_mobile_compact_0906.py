@@ -67,3 +67,53 @@ def test_weekend_final_html_preserves_both_cpbl_tables(monkeypatch):
     assert all("mail-stack" not in t.get("class", "") for t in tables)
     assert "中華職棒戰績（下半季）" in final and "中華職棒戰績（全年）" in final
     assert mr._RUN_MANIFEST["llm"]["email_html"]["html_bytes"] == len(final.encode("utf-8"))
+
+
+def test_weekend_compaction_preserves_text_links_and_cpbl_tables(monkeypatch):
+    """The Sunday path must compact its final body without omitting content."""
+    monkeypatch.setattr(mr, "_RUN_MANIFEST", {})
+    repeated = "".join(
+        '<div style="padding:10px 14px;background:#f0fdf4;'
+        'border-left:5px solid #16a34a;border-radius:4px;">'
+        f'<a href="https://example.com/news/{i}">消息 {i}</a></div>'
+        for i in range(24)
+    )
+    sports = render._render_sports_html(standings(), html)
+    with monkeypatch.context() as patch:
+        patch.setattr(mr, "compact_inline_styles", lambda markup: markup)
+        original = mr.render_weekend_digest_html(
+            "2026-09-06", repeated, sports, "", "", "")
+    compacted = mr.render_weekend_digest_html(
+        "2026-09-06", repeated, sports, "", "", "")
+
+    class Content(HTMLParser):
+        def __init__(self, markup):
+            super().__init__(convert_charrefs=True)
+            self.words, self.links, self.tables = [], [], 0
+            self.in_style = False
+            self.feed(markup)
+
+        def handle_data(self, data):
+            if not self.in_style:
+                self.words.append(data)
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "style":
+                self.in_style = True
+            elif tag == "a":
+                self.links.append(dict(attrs).get("href"))
+            elif tag == "table":
+                self.tables += 1
+
+        def handle_endtag(self, tag):
+            if tag == "style":
+                self.in_style = False
+
+    before, after = Content(original), Content(compacted)
+    assert len(compacted.encode("utf-8")) < len(original.encode("utf-8"))
+    assert before.words == after.words
+    assert before.links == after.links
+    assert before.tables == after.tables
+    assert len(after.links) == 24
+    assert compacted.count('data-mobile-layout="table"') == 2
+    assert mr._RUN_MANIFEST["llm"]["email_html"]["html_bytes"] == len(compacted.encode("utf-8"))

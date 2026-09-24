@@ -16,7 +16,8 @@ def assess(record: dict) -> list[tuple[str, str, str]]:
         findings.append(("email_content_lost", "defect",
                          "最終寄信 HTML 遺失分析內容：" + "、".join(str(s) for s in missing)
                          + f"；少 {lost} 張新聞傳導卡"))
-    if record.get("audit_error") or record.get("mobile_error"):
+    if (record.get("audit_error") or record.get("mobile_error")
+            or record.get("syntax_error")):
         findings.append(("email_finalization_failed", "defect",
                          "最終郵件排版或內容檢查失敗，已保留原信"))
     try:

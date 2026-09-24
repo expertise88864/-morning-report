@@ -45,8 +45,20 @@ def test_supporting_conditions_move_out_of_conclusion_without_loss():
                             '## 我的明確立場\n立場：中性\n\n## 一句話總結\n等待數據')
     stance = md.split('## 我的明確立場')[1].split('## 一句話總結')[0]
     assert '通膨降溫' not in stance and 'CPI低於預期' not in stance
-    outlook = md.split('## 七之五、情境推演與後續觀察')[1].split('## 我的明確立場')[0]
+    outlook = md.split('## 情境推演與後續觀察')[1].split('## 我的明確立場')[0]
     assert '通膨降溫' in outlook and 'CPI低於預期' in outlook
+
+
+def test_reader_outlook_after_policy_does_not_reuse_monday_section_number():
+    md = rp.public_sections(
+        '## 七之五、近期預測檢討與本週假設\n前次預測待驗。\n\n'
+        '## 十之二、重大政策深度解析\n政策仍待公告。\n\n'
+        '## 情境與觸發條件\n- 若資料改善，重新評估。\n\n'
+        '## 我的明確立場\n立場：中性\n')
+    assert md.count('## 七之五、') == 1
+    assert md.index('## 十之二、') < md.index('## 情境推演與後續觀察')
+    assert md.index('## 情境推演與後續觀察') < md.index('## 我的明確立場')
+    assert '若資料改善，重新評估。' in md
 
 
 def test_categories_limit_and_technology_without_registry_subject():

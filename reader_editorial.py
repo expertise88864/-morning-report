@@ -27,7 +27,8 @@ READER_PROSE = """
 
 
 MACRO_HEADING = '十、總體經濟與政策環境'
-OUTLOOK_HEADING = '七之五、情境推演與後續觀察'
+# This late projection is not Monday's numbered 七之五 review.
+OUTLOOK_HEADING = '情境推演與後續觀察'
 _MACRO = re.compile(r'聯準會|央行|日銀|升息|降息|關稅|通膨|殖利率|匯率|日圓|新台幣|'
                     r'\b(?:Fed|ECB|BOJ|CPI|PPI|tariffs?|inflation|interest rates?)\b', re.I)
 

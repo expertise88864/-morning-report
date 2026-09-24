@@ -1681,6 +1681,81 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "7dc2a5f2-a116-4884-801e-28e756635e3a",
+        "title": "EP339. Grok 4.7 失敗了嗎、模型大戰趨勢觀察、Muse 爆紅後影響 | M觀點",
+        "published": "Thu, 24 Sep 2026 17:44:17 GMT",
+        "processed_at": "2026-09-24T23:41:24Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Grok 4.7 整體令人失望：智能僅微幅進步、成本倍增，但在 Agentic Coding 與知識型工作兩領域明顯強化，且僅在 Grok Build/Cursor 環境有效，因此較像防守自家生態系。",
+            "主持人解讀 OpenAI 新模型為價格戰而非智力突破：GPT-6 Soul/Luna 能力幾乎持平前代，但 GPT-6 Luna 成本僅 DeepSeek V4.1 Flash 四分之一，實質是砍掉 Terra 這階。",
+            "主持人指出 Anthropic Opus 5.5 在評測上領先 5 分、為現役最強，但社群認為 Fable 5.1 在未知難題上仍較聰明；此發表主要是為 IPO 衝刺企業市場。",
+            "主持人觀察到模型競爭正從單一模型轉向「模型+開發環境」產品化，且各模型走向專業分工，企業會同時採用多個模型。",
+            "主持人分析亞馬遜封殺 Meta Muse 的真實原因是商業利益：AI 代理購物會削弱推薦、衝動購買與廣告收入，長期動搖「上亞馬遜購物」習慣。",
+            "主持人預期 Meta 最終會對亞馬遜讓步，並可能與廣告整合/分潤；亞馬遜的物流與 Prime 會員是 AI 難以取代的實體護城河。",
+            "主持人重申看好 AI 趨勢與美股，今年 AI 股修正時他主張抱住，低檔應持有；他也認為 Google 被看衰但其實還行。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人長期看好 Meta 在 AI 追趕的能力，認為 Meta Muse 成功、股價上漲，且 Amazon 封殺應可透過談判讓步解決，不影響長期。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Meta逆風的時候我們Meta很黑的時候我們在這裡說說Meta沒問題",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Google 被市場看衰但其實還行，不應看空。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得Google還行啦,大家不要看碎Google",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人強調亞馬遜電商競爭力、物流與 Prime 會員的實體護城河在 AI 時代難以取代，能對 Meta 等外部 AI 代理讓步並維持主導。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "亞馬遜在電商的競爭力是真的非常強特別是在美國",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人整體仍看好 AI 趨勢與美股，認為今年以來 AI 股修正只是暫時，低檔應抱住；他的美股部位今年創新高，並重申不要因短期雜音看空。",
+          "action_view": "操作上，主持人傾向在 AI 股修正時守住持倉而非賣出，並點名對 Meta、Google 等個股仍可持有。",
+          "notable_quote": "AI這個趨勢還是沒有問題啦,所以我自己還是會抱住AI股",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "AI這個趨勢還是沒有問題啦,所以我自己還是會抱住AI股"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "efbd1ba0-79b6-4f9a-a2b9-8d74165d2047",
         "title": "EP338. Jev 模型橫空出世、谷歌模型也當駭客、特斯拉大多頭發聲 | M觀點",
         "published": "Mon, 21 Sep 2026 06:15:07 GMT",
@@ -2257,64 +2332,6 @@
           "notable_quote": "我雖然覺得太貴,可是市場覺得ok啊,那就ok嘛"
         },
         "shown_at": "2026-08-17T22:30:06Z"
-      },
-      {
-        "guid": "c9b5a32c-d698-4e94-b69d-8e9fe1f51ca9",
-        "title": "EP327. 谷歌會放棄模型嗎、我低估了 SPCX、美股來到歷史新高 | M觀點",
-        "published": "Mon, 10 Aug 2026 05:52:03 GMT",
-        "processed_at": "2026-08-10T09:38:01Z",
-        "digest": {
-          "summary_points": [
-            "主持人反駁 Semi-Analysis 稱 Google 會放棄前沿模型的說法，認為單一模型落後是兵家常事，Google 資源龐大且絕不會短視近利，應會持續研發並追上前沿水準。",
-            "提出將前沿模型分為「最前沿、次前沿、後前沿」三個層級，並推測 Google 在年底前至少能推出次前沿等級的 Gemini 4.0，足以在市場競爭。",
-            "從三大公有雲的算力分配邏輯分析，自有模型是長期競爭關鍵，且 Google 執行長在第二季電話會議已明確表示 TPU 算力以內部模型研發為第一優先。",
-            "主持人因 All-In Podcast 及最新財報資訊，認為先前低估了 SpaceX 的價值，將 XAI 模型與資料資產估值從 2,500 億調升至 3,500 億美元，地面算力中心估值從 1,500 億調升至 4,000 億美元，整體估值由 1.05 兆拉高至 1.4 兆美元。",
-            "調高 SpaceX 估值的主因是 Grok 4.5 推出後 Token 用量翻三倍、Cursor 年底 ARR 上看 100 億美元，以及地面算力中心明年底目標 8GW 電力容量，即使保守計算年營收仍可達 1,440 億美元以上。",
-            "美股 S&P 500 創歷史新高，主持人強調投資需要深入研究和堅定信念，避免因市場波動而頻繁交易，並以自身長期持有 SEA 與 Palantir 為例，說明股價高低不影響其長期看法。",
-            "提醒若市場再次進入瘋狂，下一波修正勢必更大，投資人應做好風險控管，避免過高槓桿，才能在修正時穩健渡過。"
-          ],
-          "tickers": [
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Google 有能力且會繼續研發前沿模型，不認同市場認為它將放棄模型、只賣算力的悲觀看法。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "基於算力中心擴張與 XAI 業務進展，主持人認為先前估值太低，調高合理估值至 1.4 兆美元，看好其創造價值的能力。"
-            },
-            {
-              "name": "XAI",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Grok 4.5 用量飆升、Cursor 成長快速，且算力業務潛力龐大，主持人認為 XAI 整體資產價值被低估。"
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人長期持有並有堅定信念，認為公司在之前幾季就已證明自己，股價波動不影響其長線價值判斷。"
-            },
-            {
-              "name": "Sea Limited",
-              "code": "SE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人以自身持有為例，強調無論股價高低，對其前景看法未曾改變，展現對該公司的長線 conviction。"
-            }
-          ],
-          "market_view": "美股 S&P 500 雖創歷史新高，但市場熱度不減，主持人提醒若再次走向瘋狂，下一波修正將更劇烈，投資人應謹慎控管風險，避免追高。",
-          "action_view": "以長期持有為核心，在修正時適度用剩餘現金加碼，但絕不開過高槓桿，強調深入研究和堅定信念是穩健投資的關鍵。",
-          "notable_quote": "我從來沒有看過這些科技巨頭的心態是短視近利的。"
-        },
-        "shown_at": "2026-08-10T22:46:52Z"
       }
     ]
   },

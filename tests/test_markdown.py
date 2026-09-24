@@ -170,6 +170,47 @@ def test_minimal_fallback_corrects_the_known_etf_flow_inference(monkeypatch):
         "etf_forced_buy_from_market_cap"]
 
 
+def test_both_mail_renderers_qualify_delivered_price_risk_claim(monkeypatch):
+    analysis = (
+        "## 十、風險觀察\n"
+        "利率與科技股評價風險:科技股昨天照樣創新高，說明市場目前願意忽略 "
+        "4.968% 的殖利率；但殖利率已在一年 98.4 百分位、距 5% 僅一步，"
+        "這是尚未被反映的風險，而不是已被否證的風險。"
+        "兩邊都成立，差別在時間尺度：即日由風險偏好主導，"
+        "1 到 4 週由折現率主導。"
+    )
+    expected_rules = ["price_gain_does_not_prove_rate_risk_ignored",
+                      "single_day_price_does_not_prove_future_driver"]
+    for render in (mr.render_html, mr._render_minimal_html):
+        monkeypatch.setattr(mr, "_RUN_MANIFEST", {})
+        out = render(_full_quotes(), {"error": "x"}, {"error": "x"},
+                     analysis, "2026-09-23", "每日報")
+        assert "4.968%" in out and "98.4 百分位" in out
+        assert "願意忽略" not in out and "尚未被反映的風險" not in out
+        assert "未來 1 到 4 週" in out
+        assert mr._RUN_MANIFEST["llm"]["causality_guard_rules"] == expected_rules
+
+
+def test_both_mail_renderers_qualify_delivered_hedge_attribution(monkeypatch):
+    analysis = (
+        "## 今日結論\n外資台指期淨空 75,568 口（現貨同步大買，多為避險），"
+        "而台股上漲家數為 30.7%。\n"
+        "## 觀察點\n外資現貨大買但期貨淨空是今天的核心矛盾；"
+        "若現貨轉賣且淨空擴大，避險的解釋就不成立。"
+    )
+    for render in (mr.render_html, mr._render_minimal_html):
+        monkeypatch.setattr(mr, "_RUN_MANIFEST", {})
+        out = render(_full_quotes(), {"error": "x"}, {"error": "x"},
+                     analysis, "2026-09-23", "每日報")
+        assert "75,568 口" in out and "30.7%" in out
+        assert "多為避險" not in out and "避險的解釋就不成立" not in out
+        assert "彙總數據不能判定" in out
+        assert mr._RUN_MANIFEST["llm"]["causality_guard_rules"] == [
+            "cash_futures_aggregate_does_not_prove_hedge",
+            "watch_hedge_hypothesis_not_established",
+        ]
+
+
 def test_render_html_size_guard_truncates_low_priority(monkeypatch):
     """trim 模式:超標時依優先序移除;體育在政策/醫界/文獻/五檔之後才砍。"""
     monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")

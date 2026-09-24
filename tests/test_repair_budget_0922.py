@@ -45,6 +45,7 @@ def test_complete_output_and_inference_instructions():
     assert "不刪反證" in pp.LUNA_DEVELOPER_INSTRUCTIONS
     assert "逢回加碼價" in WRITING
     assert "是否為同一資金轉移無法確認" in WRITING
+    assert "科技股創高也不能單獨證明市場已忽略高殖利率" in WRITING
 
 
 @pytest.mark.parametrize("index_failure", [False, True])

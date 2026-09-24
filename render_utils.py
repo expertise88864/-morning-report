@@ -115,7 +115,8 @@ def _format_macro_line(name: str, m: dict) -> str:
             prev = None
     prev_str = f"前值 {prev:.2f}, " if isinstance(prev, (int, float)) else ""
     cp_str = f"{cp:+.2f}%" if isinstance(cp, (int, float)) else "漲跌不明"
-    return f"{name}={m['close']} ({prev_str}{cp_str}{rank_str})"
+    from macro_observation_time import indicator_source_note
+    return f"{name}={m['close']} ({prev_str}{cp_str}{rank_str}{indicator_source_note(m)})"
 
 
 #: 章節標題的形狀:中文數字 + 頓號(「七、」「七之二、」「十一、」)。

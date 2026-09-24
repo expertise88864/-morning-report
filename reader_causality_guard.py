@@ -1,13 +1,15 @@
-"""Narrow, deterministic correction of two unsupported ETF-flow inferences.
+"""Narrow corrections of unsupported causal claims in delivered letters.
 
 This is an incident guard, not a general fact checker. A change in market
 capitalisation alone cannot establish an ETF's trades or their price impact.
-Only the two specific inference shapes seen in the 2026-09-24 delivered letter
-are corrected; unrelated reporting and source headlines remain untouched.
+Only confirmed inference shapes from delivered letters are corrected; unrelated
+reporting and source headlines remain untouched.
 """
 from __future__ import annotations
 
 import re
+
+from reader_price_causality_guard import correct_price_risk_inferences as correct_price_risk_inferences
 
 
 _SENTENCE = re.compile(r"[^。！？\n]+[。！？]")

@@ -32,6 +32,9 @@ from pathlib import Path
 from typing import Optional
 
 import llm_telemetry as _lt
+from macro_observation_time import (observed_market_date as _market_date,
+                                    yield_curve_source_note as _curve_source_note,
+                                    yield_curve_dates_comparable as _curve_dates_comparable)
 import app_context as _app
 import econ_terms as _et
 import industry_class as _industry_class
@@ -2573,6 +2576,9 @@ def _yield_curve_read(macro: dict) -> dict:
     m30 = (macro.get("30Y") or {}).get("close")
     if m3 is None or m10 is None:
         return {}
+    if not _curve_dates_comparable(macro):
+        return {"detail": "美債各天期資料日未對齊或未確認，暫不判讀長短期利率"
+                + _curve_source_note(macro), "flag": "caution"}
     spread = m10 - m3
     if spread < -0.05:
         flag, tail = "warn", "長期利率低於短期,歷史上常領先景氣轉弱,值得留意"
@@ -2583,7 +2589,7 @@ def _yield_curve_read(macro: dict) -> dict:
     parts = f"短期 {m3:.2f}%、10 年 {m10:.2f}%"
     if m30 is not None:
         parts += f"、30 年 {m30:.2f}%"
-    return {"detail": f"美債利率{parts};{tail}", "flag": flag}
+    return {"detail": f"美債利率{parts};{tail}{_curve_source_note(macro)}", "flag": flag}
 
 
 def fetch_macro_indicators() -> dict:
@@ -2602,7 +2608,7 @@ def fetch_macro_indicators() -> dict:
     - ES：S&P 500 期貨（同上，廣度確認）
     - WTI：原油期貨（通膨/地緣定價）
     - GOLD：黃金期貨（避險偏好）
-    每項回傳：close, change_pct, prev_close, pct_rank_252d, year_high, year_low
+    每項回傳：close, change_pct, prev_close, pct_rank_252d, year_high, year_low；利率另附來源與資料日
     """
     tickers = {
         "VIX":   "^VIX",
@@ -2660,6 +2666,8 @@ def fetch_macro_indicators() -> dict:
                 "year_high": round(year_high, 3) if year_high else None,
                 "year_low": round(year_low, 3) if year_low else None,
             }
+            if name in {"10Y", "13W", "30Y"}:
+                out[name].update(source="Yahoo Finance", observed_on=_market_date(d.index[-1]))
         except Exception as e:
             print(f"[macro] {name} 抓取失敗: {e}", file=sys.stderr)
             out[name] = {"error": str(e)[:60]}
@@ -11597,7 +11605,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 給 LLM 完整技術資訊以利判斷,但另附白話結論——信件呈現請用白話、避免術語(使用者要求)。
     ten_y = macro.get("10Y", {}) or {}
     thirteen_w = macro.get("13W", {}) or {}
-    if ten_y.get("close") is not None and thirteen_w.get("close") is not None:
+    if ten_y.get("close") is not None and thirteen_w.get("close") is not None and _curve_dates_comparable(macro):
         spread = ten_y["close"] - thirteen_w["close"]
         macro_block += (f"\n  殖利率曲線 10Y−13W 利差 = {spread:+.2f} 個百分點"
                         "（負值為倒掛、正值為長端高於短端；僅描述曲線形狀）")
@@ -21785,10 +21793,15 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
     # 主渲染任何後續例外都會把原始 analysis 交給此最後防線，
     # 因此不能只在 render_html 修正已知無證據因果敘述。
     from reader_causality_guard import correct_etf_flow_inferences as _guard_etf_flow
-    analysis, _causal_rules = _guard_etf_flow(analysis)
+    from reader_causality_guard import correct_price_risk_inferences as _guard_price_risk
+    from reader_hedge_causality_guard import correct_aggregate_hedge_inferences as _guard_hedge
+    analysis, _etf_rules = _guard_etf_flow(analysis)
+    analysis, _price_rules = _guard_price_risk(analysis)
+    analysis, _hedge_rules = _guard_hedge(analysis)
+    _causal_rules = (*_etf_rules, *_price_rules, *_hedge_rules)
     if _causal_rules:
         _RUN_MANIFEST.setdefault("llm", {})["causality_guard_rules"] = list(_causal_rules)
-        print(f"[render] 極簡版修正 {len(_causal_rules)} 條 ETF 資金流向推論", file=sys.stderr)
+        print(f"[render] 極簡版修正 {len(_causal_rules)} 條未獲支持的因果推論", file=sys.stderr)
 
     if (quotes.get("STANCE_PY") or {}).get("total") is None:
         analysis = _strip_llm_sections(str(analysis or ""), ("我的明確立場", "一句話總結"))
@@ -21872,14 +21885,19 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 七之五「多空交鋒」已從 prompt 刪除(2026-09-03),但模型會照舊習慣把它
     # 吐回來 —— prompt 不再要求 ≠ 模型不再寫。渲染端確定性移除(Codex r1)。
     analysis_for_render = _strip_llm_sections(analysis_for_render, ("多空交鋒",))
-    # 9/24 實信把市值上升直接寫成 ETF 被迫買入及現貨支撐；來源只有
-    # 市值變化，沒有資金流向的證據。兩條已確認的推論在最終寄信邊界修正，
-    # 不把此窄範圍守衛誤稱為通用事實查核；兩條分析路徑共用此出口。
+    # 9/24 實信把市值變化推成 ETF 申贖，9/23 又把單日股價推成市場
+    # 忽略殖利率及未來主導因素；在寄信邊界修正已確認句型。
+    # 這不是通用事實查核；特化與備援兩條分析路徑共用此出口。
     from reader_causality_guard import correct_etf_flow_inferences as _guard_etf_flow
-    analysis_for_render, _causal_rules = _guard_etf_flow(analysis_for_render)
+    from reader_causality_guard import correct_price_risk_inferences as _guard_price_risk
+    from reader_hedge_causality_guard import correct_aggregate_hedge_inferences as _guard_hedge
+    analysis_for_render, _etf_rules = _guard_etf_flow(analysis_for_render)
+    analysis_for_render, _price_rules = _guard_price_risk(analysis_for_render)
+    analysis_for_render, _hedge_rules = _guard_hedge(analysis_for_render)
+    _causal_rules = (*_etf_rules, *_price_rules, *_hedge_rules)
     if _causal_rules:
         _RUN_MANIFEST.setdefault("llm", {})["causality_guard_rules"] = list(_causal_rules)
-        print(f"[render] 已修正 {len(_causal_rules)} 條未獲交易資料支持的 ETF 資金流向推論",
+        print(f"[render] 已修正 {len(_causal_rules)} 條未獲支持的因果推論",
               file=sys.stderr)
     # 數字健全性最後防線:把 LLM 誤植的 2330「美元 ADR 價」改回新台幣中樞值
     analysis_for_render = _sanitize_llm_2330_prices(analysis_for_render, predictions)

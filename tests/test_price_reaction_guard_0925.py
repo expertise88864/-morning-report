@@ -77,3 +77,29 @@ def test_rendered_and_source_headlines_are_not_rewritten():
     )
     assert "本報解讀：聯茂出現漲停，惟無法僅憑股價確認原因（CMoney）。" in revised
     assert manifest["llm"]["price_reaction_claims_neutralized"] == 1
+
+
+def test_inline_source_link_and_blockquote_remain_verbatim():
+    link = "[聯茂以漲停回應（CMoney）](https://example.test/news)"
+    source = (
+        f"本報整理：{link}；本報認為聯茂以漲停回應（CMoney）。\n"
+        "> 新聞標題：聯茂以漲停回應（來源）\n"
+    )
+    manifest = {}
+    revised = neutralize(source, manifest)
+    assert link in revised
+    assert "> 新聞標題：聯茂以漲停回應（來源）\n" in revised
+    assert "本報認為聯茂出現漲停，惟無法僅憑股價確認原因（CMoney）" in revised
+    assert manifest["llm"]["price_reaction_claims_neutralized"] == 1
+
+
+def test_model_written_blockquote_price_cause_and_unrecognized_label_are_corrected():
+    source = (
+        "> 理由：聯茂以漲停回應（CMoney）。\n"
+        "> 媒體標題：聯茂以漲停回應（來源）。\n"
+    )
+    manifest = {}
+    revised = neutralize(source, manifest)
+    assert "> 理由：聯茂出現漲停，惟無法僅憑股價確認原因（CMoney）。\n" in revised
+    assert "> 媒體標題：聯茂出現漲停，惟無法僅憑股價確認原因（來源）。\n" in revised
+    assert manifest["llm"]["price_reaction_claims_neutralized"] == 2

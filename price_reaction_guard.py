@@ -13,6 +13,7 @@ _PRICE_RESPONSE = re.compile(
     r"以(?P<move>漲停放量|放量漲停|漲停|跌停|大漲|重挫)回應"
     r"(?=[ \t]*(?:[（(\[，。；;]|$))"
 )
+_SOURCE_SPAN = re.compile(rf"(?:{_QUOTE.pattern})|\[[^\]\n]+\]\(https?://[^)\n]+\)", re.M)
 
 
 def neutralize(text: str, manifest: dict) -> str:
@@ -29,16 +30,17 @@ def neutralize(text: str, manifest: dict) -> str:
     revised_lines: list[str] = []
     count = 0
     for line in text.splitlines(keepends=True):
-        if _SOURCE_HEADLINE.match(line.lstrip(" \t")) or _RENDERED_HEADLINE.match(line.lstrip(" \t")):
+        body = line.lstrip(" >\t")
+        if _SOURCE_HEADLINE.match(body) or _RENDERED_HEADLINE.match(body):
             revised_lines.append(line)
             continue
         parts: list[str] = []
         start = 0
-        for quote in _QUOTE.finditer(line):
-            prose, found = _correct(line[start:quote.start()])
-            parts.extend((prose, quote.group(0)))
+        for source in _SOURCE_SPAN.finditer(line):
+            prose, found = _correct(line[start:source.start()])
+            parts.extend((prose, source.group(0)))
             count += found
-            start = quote.end()
+            start = source.end()
         prose, found = _correct(line[start:])
         parts.append(prose)
         count += found

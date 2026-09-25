@@ -61,8 +61,9 @@ def test_alignment_is_wired_before_phantom_pruning():
     """接線:與證據 ID 正規化同一段(修剪之前)—— 沒接上等於不存在。"""
     i = _SRC.index("_align_corroboration(obj, packet)",
                    _SRC.index("def _align_corroboration") + 100)
-    seg = _SRC[i:i + 200]
-    assert "_prune_phantom_audit_ids" in seg, "改寫沒有排在修剪之前"
+    prune = _SRC.index("_prune_phantom_audit_ids(obj, packet)", i)
+    validate = _SRC.index("_sch.validate(obj, packet)", i)
+    assert i < prune < validate, "改寫沒有排在修剪與驗證之前"
 
 
 # --------------------------------------------- 2026-08-21 實信三項

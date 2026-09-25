@@ -223,6 +223,11 @@ def _install(monkeypatch, *, llm_json=None, market_rows: int = 0):
         def _respond(payload):
             obj = json.loads(json.dumps(llm_json, ensure_ascii=False))
             pk = seen.get("packet") or {}
+            # 合法模型輸出須抄錄本次 Python 計分，不沿用其他情境的 fixture。
+            sp = (pk.get("market") or {}).get("STANCE_PY") or {}
+            assert type(sp.get("total")) is int and sp.get("label"), sp
+            obj["stance"]["score"] = sp["total"]
+            obj["stance"]["label"] = sp["label"]
             need_gaps = (pk.get("required_disclosures")
                          or _tr.required_gap_ids(pk.get("signal_tensions")) or {})
             obj["data_gaps"] = [

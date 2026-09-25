@@ -10,6 +10,8 @@
     degradation_registry.py          降級標籤的登記
     tools/env_drift.py               本機與 CI 的版本比對
     tools/ci_pytest_annotations.py   CI 失敗的轉譯
+    email_style_dictionary.py        讀者信件樣式壓縮邊界
+    email_syntax_compact.py          最終 HTML 語法壓縮邊界
 
 共同點是「邊界」:跨行程、跨檔案、跨 CI 的介面 —— 型別搞錯的代價最高,
 而單元測試最不容易涵蓋。**加一個模組進來的方式是把它補到零錯誤,不是把

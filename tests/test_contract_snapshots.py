@@ -473,7 +473,8 @@ def _stance_authority_probes() -> list:
     out = []
     for sp, score, label in (({}, 6, "偏多"), ({}, None, "資料不足"),
                              ({}, None, "中性"),
-                             ({"total": 6, "label": "偏多"}, None, "資料不足")):
+                             ({"total": 6, "label": "偏多"}, None, "資料不足"),
+                             ({"total": 6, "label": "偏多"}, -6, "偏空")):
         pk, obj = _packet(), fx.valid_analysis()
         pk["market"]["STANCE_PY"] = sp
         obj["stance"].update(score=score, label=label)
@@ -924,7 +925,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (44, "854eda894a697f5b"),  # Real validator rejects nonexistent opinions.
+    "grounding_version":      (45, "9c61a4c823e0ed48"),  # Reject model stance contradicting Python authority.
 }
 
 

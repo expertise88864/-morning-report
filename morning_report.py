@@ -14746,13 +14746,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # **截斷仍然救不回來**,那本來就該是語法輪(分類是對的)。
             obj, _how = _dsr.json_object_from_text(out.get("text"))
             _parse_exc = obj is None
-            _RUN_MANIFEST.setdefault("llm", {})["primary_parse_error"] = {
-                "error": f"{type(_je).__name__}: {_je}"[:80],
-                "head": str(out.get("text") or "")[:120],
-                "tail": str(out.get("text") or "")[-80:],
-                # 救回來了也要留痕:模型正在偏離「只回 JSON」的契約,
-                # 而信看起來會完全正常 —— 沒有這一格就沒有人知道。
-                "recovered_by": _how}
+            from json_parse_diagnostic import record as _record_json_parse
+            _record_json_parse(_RUN_MANIFEST.setdefault("llm", {}),
+                               out.get("text"), _je, _how)
         else:
             _parse_exc = False
             # **雙重解碼是嘗試,失敗不算解析例外**(外審 r2):字串根
@@ -14790,6 +14786,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 佐證等級是資料決定的欄位(2026-08-20 生產:誇大兩筆 →
             # 整份特化作廢)—— 代抄而不是駁回。
             _align_corroboration(obj, packet)
+            from stance_score_alignment import align_model_score as _align_model_stance_score
+            if _align_model_stance_score(obj, packet):
+                _RUN_MANIFEST.setdefault("llm", {})["stance_score_aligned"] = True
             obj = _prune_phantom_audit_ids(obj, packet)
         # **傳 packet 不是 ids。** 上一批把選優與指標接上了 packet,
         # 卻留下**主閘門**吃 ID 集合 —— 於是「今天有張力卻沒處理」
@@ -15181,7 +15180,7 @@ def _render_ma200_html(status: dict) -> str:
         '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin:14px 0;">'
         '<div style="background:#f1f5f9;color:#475569;padding:8px 14px;font-weight:700;font-size:14px;">'
         '長線趨勢參考(200 日均線)</div>'
-        '<table style="width:100%;border-collapse:collapse;background:#ffffff;">'
+        '<table class="mail-ma200" style="width:100%;border-collapse:collapse;background:#ffffff;">'
         + "".join(rows) + '</table></div>')
     # 註:回測背景(抗回撤定位/槓桿長抱風險)保留在 fetch_ma200_status docstring,
     # 信件註腳依使用者要求(2026-07-14)移除。
@@ -23022,7 +23021,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
   <table role="presentation" style="width:100%;border-collapse:collapse;background:#f1f5f9;">
     <tr>
       <td align="center" style="padding:12px 4px;">
-        <table role="presentation" style="max-width:680px;width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
+        <table role="presentation" class="mail-container" style="max-width:680px;width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
 
           <!-- HERO -->
           <tr>

@@ -64,12 +64,33 @@ def finalize(analysis: str, html: str, manifest: dict) -> str:
     original_bytes = len(html.encode("utf-8"))
     html = compact(html)
     record["markup_bytes_saved"] = original_bytes - len(html.encode("utf-8"))
+    mobile_ready = True
     try:
         html = email_mobile.enhance(html)
         record["mobile"] = "enhanced" if 'id="morning-mobile"' in html else "inline_fallback"
     except Exception as exc:  # noqa: BLE001 - retain original HTML and visible warning
+        mobile_ready = False
         record["mobile_error"] = type(exc).__name__
         print("::warning::Mobile email enhancement failed; original HTML retained", file=sys.stderr)
+    if mobile_ready:
+        try:
+            from email_style_dictionary import compact as compact_styles
+            before_styles = len(html.encode("utf-8"))
+            html = compact_styles(html)
+            record["style_bytes_saved"] = before_styles - len(html.encode("utf-8"))
+        except Exception as exc:  # noqa: BLE001 - optional pass must not block delivery
+            record["style_error"] = type(exc).__name__
+            print("::warning::Final email style compaction failed; original HTML retained",
+                  file=sys.stderr)
+        try:
+            from email_syntax_compact import compact as compact_syntax
+            before_syntax = len(html.encode("utf-8"))
+            html = compact_syntax(html)
+            record["syntax_bytes_saved"] = before_syntax - len(html.encode("utf-8"))
+        except Exception as exc:  # noqa: BLE001 - optional pass must not block delivery
+            record["syntax_error"] = type(exc).__name__
+            print("::warning::Final email syntax compaction failed; original HTML retained",
+                  file=sys.stderr)
     try:
         record.update(audit(analysis, html))
         if record["missing_sections"] or record["lost_cards"]:
@@ -78,6 +99,8 @@ def finalize(analysis: str, html: str, manifest: dict) -> str:
         record["audit_error"] = type(exc).__name__
         print("::warning::Final email content audit unavailable", file=sys.stderr)
     record["html_bytes"] = len(html.encode("utf-8"))
+    record["gmail_safety_margin_bytes"] = 95 * 1024 - record["html_bytes"]
+    record["gmail_clipping_headroom_bytes"] = 102 * 1024 - record["html_bytes"]
     record["gmail_clipping_possible"] = record["html_bytes"] > 102 * 1024
     manifest.setdefault("llm", {})["email_html"] = record
     return html

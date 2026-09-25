@@ -24,6 +24,13 @@ _CSS = """<style id="morning-mobile">
 .mail-stack td{text-align:left!important;border-bottom:1px solid #e2e8f0!important;}
 .mail-stack .mail-label{display:block!important;font-size:12px!important;line-height:1.5!important;font-weight:600;color:#475569;}
 }
+@media screen and (max-width:360px){
+.mail-container,.mail-kpi{table-layout:fixed!important;}
+.mail-kpi td{padding-left:3px!important;padding-right:3px!important;overflow-wrap:anywhere!important;}
+.mail-ma200,.mail-ma200 tbody,.mail-ma200 tr,.mail-ma200 td{display:block!important;width:auto!important;}
+.mail-ma200 tr{padding:6px 0!important;border-bottom:1px solid #e2e8f0;}
+.mail-ma200 td{text-align:left!important;white-space:normal!important;overflow-wrap:anywhere!important;padding:3px 10px!important;border:0!important;}
+}
 </style>"""
 _CLASS = re.compile(r'\bclass\s*=\s*([\'"])(.*?)\1', re.I | re.S)
 

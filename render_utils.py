@@ -693,14 +693,14 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
     return f"""
           <tr>
             <td style="background:#0c4a6e;padding:0;">
-              <table role="presentation" style="width:100%;border-collapse:collapse;">
+              <table role="presentation" class="mail-kpi" style="width:100%;border-collapse:collapse;">
                 <tr>
                   {stance_tile}
                   {_kpi_tile_numeric("2330 預測", fmt(mid_2330), pct_2330)}
                   {_kpi_tile_numeric("00662 公允價", fmt(fair_price), pct_00662, is_last=True)}
                 </tr>
               </table>
-              <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid rgba(255,255,255,0.12);">
+              <table role="presentation" class="mail-kpi" style="width:100%;border-collapse:collapse;border-top:1px solid rgba(255,255,255,0.12);">
                 <tr>
                   {_kpi_tile_numeric("0050 預測", fmt(pred_0050), pct_0050)}
                   {_kpi_tile_numeric("加權預測", fmt_int(pred_taiex), pct_taiex, is_last=True)}

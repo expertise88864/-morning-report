@@ -94,6 +94,10 @@ def test_final_email_over_gmail_limit_is_reported_without_removing_content():
     record = manifest["llm"]["email_html"]
     assert record["html_bytes"] == len(delivered.encode("utf-8"))
     assert record["html_bytes"] > 102 * 1024
+    assert record["gmail_safety_margin_bytes"] == 95 * 1024 - record["html_bytes"]
+    assert record["gmail_clipping_headroom_bytes"] == 102 * 1024 - record["html_bytes"]
+    assert record["gmail_safety_margin_bytes"] < 0
+    assert record["gmail_clipping_headroom_bytes"] < 0
     findings = run_quality.assess(manifest)
     assert any(f["code"] == "email_gmail_clipping_risk" and f["severity"] == "degraded"
                for f in findings)
@@ -145,11 +149,13 @@ def test_weekend_and_minimal_renderer_diagnostics_describe_returned_html(monkeyp
     html = mr.render_weekend_digest_html("2026-09-06", table(), "", "", "", "")
     diag = mr._RUN_MANIFEST["llm"]["email_html"]
     assert diag["mobile"] == "enhanced" and diag["html_bytes"] == len(html.encode("utf-8"))
+    assert diag["gmail_safety_margin_bytes"] == 95 * 1024 - diag["html_bytes"]
     minimal = mr._render_minimal_html({}, {}, {}, "## 九、其他類股資訊\n傳導:A → B。",
                                       "2026-09-06", "每日報")
     diag = mr._RUN_MANIFEST["llm"]["email_html"]
     assert diag["mobile"] == "inline_fallback" and diag["lost_cards"] == 0
     assert diag["html_bytes"] == len(minimal.encode("utf-8"))
+    assert diag["gmail_clipping_headroom_bytes"] == 102 * 1024 - diag["html_bytes"]
 
 
 @pytest.mark.parametrize("tech,other", [(9, 9), (12, 10)])

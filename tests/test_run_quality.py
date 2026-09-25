@@ -1780,13 +1780,19 @@ def test_skipping_repair_for_budget_leaves_a_trace():
         mr._RUN_MANIFEST.update(saved)
 
 
-def test_an_unparsable_primary_response_leaves_its_head():
-    """「不是合法 JSON」是四種原因的統稱 —— 主分析側也要留 head/tail
-    (抽取器那側早有 diag)。"""
+def test_an_unparsable_primary_response_leaves_safe_shape_history():
+    """主分析要留可診斷結構，但公開 manifest 不可留原文片段。"""
     from pathlib import Path
+    from json_parse_diagnostic import record
     src = (Path(__file__).resolve().parents[1]
            / "morning_report.py").read_text(encoding="utf-8")
-    assert '"primary_parse_error"' in src, "主分析的解析失敗沒有留痕"
+    assert "_record_json_parse(" in src, "主分析的解析失敗沒有接線"
+    slot = {}
+    record(slot, '{"a":1} trailing', ValueError("invalid"), "")
+    trace = slot["primary_parse_errors"]
+    assert trace[0]["shape"]["shape"] == "extra_data"
+    assert slot["primary_parse_error"] is trace[-1]
+    assert "head" not in trace[0] and "tail" not in trace[0]
 
 
 def test_exhausting_all_attempts_is_not_recorded_as_a_budget_skip():

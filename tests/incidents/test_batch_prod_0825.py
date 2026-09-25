@@ -54,7 +54,8 @@ def test_the_primary_parser_uses_the_recovery_and_leaves_a_trace():
     seg = src[i:i + 1800]
     assert "_dsr.json_object_from_text(out.get(\"text\"))" in seg, seg[:400]
     assert "_parse_exc = obj is None" in seg, seg[:400]
-    assert '"recovered_by"' in seg, seg[:600]
+    assert "_record_json_parse(" in seg, seg[:600]
+    assert 'out.get("text"), _je, _how)' in seg, seg[:600]
 
 
 def _groups():

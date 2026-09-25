@@ -8,6 +8,7 @@ import fixtures_analysis as fx
 import json_contract as jc
 import morning_report as mr
 import prompt_profiles as pp
+from stance_score_alignment import align_model_score
 
 
 def _packet(sp):
@@ -47,6 +48,107 @@ def test_semantic_validator_rejects_fabricated_or_missing_authority(score, label
     obj = fx.valid_analysis()
     obj["stance"].update(score=score, label=label)
     assert any("stance.score" in p for p in schema.validate(obj, _packet(sp)))
+
+
+@pytest.mark.parametrize("score,label", [(5, "偏多"), (6, "偏空"), (-6, "偏空")])
+def test_known_python_stance_must_be_copied_exactly(score, label):
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=score, label=label)
+    problems = schema.validate(obj, _packet({"total": 6, "label": "偏多"}))
+    assert any("Python 權威" in p and "不一致" in p for p in problems)
+    if score != 6:
+        assert any("stance.score" in p and "應為 6" in p for p in problems)
+    if label != "偏多":
+        assert any("stance.label" in p and "應為 偏多" in p for p in problems)
+
+
+def test_oversized_stateless_repair_keeps_expected_python_stance():
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=5, label="偏空")
+    problems = schema.validate(obj, packet)
+    tail = "\nREPAIR\n" + "\n".join(problems)
+    payload, record = mr._repair_request_payload(
+        {"model": "offline"}, "x" * 610_000, tail, packet, problems=problems)
+    assert record is not None and record["mode"] in ("evidence_slice", "format_only")
+    assert "應為 6" in payload["input"]
+    assert "應為 偏多" in payload["input"]
+
+
+def test_known_python_stance_accepts_exact_copy():
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=6, label="偏多")
+    problems = schema.validate(obj, _packet({"total": 6, "label": "偏多"}))
+    assert not any("stance.score" in p or "stance.label" in p for p in problems)
+
+
+@pytest.mark.parametrize("score", [5.0, 6.0, True, "6"])
+def test_production_semantics_reject_non_integer_authority_copy(score):
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=score, label="偏多")
+    problems = schema.validate(obj, _packet({"total": 6, "label": "偏多"}))
+    assert any("stance.score 必須為整數" in p and "應為 6" in p
+               for p in problems)
+
+
+@pytest.mark.parametrize("score", [None, 5, 5.0, 6.0, True, "6"])
+def test_machine_owned_score_can_be_aligned_without_repair(score):
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=score, label="偏多", rationale="以系統立場為準")
+    assert align_model_score(obj, packet)
+    assert obj["stance"]["score"] == 6
+    assert type(obj["stance"]["score"]) is int
+    assert not any("stance.score" in p for p in schema.validate(obj, packet))
+    assert not align_model_score(obj, packet)
+
+
+@pytest.mark.parametrize("rationale", ["今日淨分 +5", "系統分數：5", "net score=-2",
+                                       "綜合得分為 5", "今日給 5 分", "11 維觀察"])
+def test_wrong_score_in_public_prose_still_requires_repair(rationale):
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=5, label="偏多", rationale=rationale)
+    assert not align_model_score(obj, packet)
+    assert any("stance.score" in p for p in schema.validate(obj, packet))
+
+
+def test_matching_explicit_score_claim_can_be_aligned():
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=5, label="偏多", rationale="今日淨分 +6")
+    assert align_model_score(obj, packet)
+    assert obj["stance"]["score"] == 6
+    assert not any("stance.score" in p for p in schema.validate(obj, packet))
+
+
+def test_score_cue_in_summary_prevents_hidden_numeric_contradiction():
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=5, label="偏多", rationale="以系統立場為準")
+    obj["executive_summary"] = "今日評分是 5，仍有不確定性"
+    assert not align_model_score(obj, packet)
+    assert any("stance.score" in p for p in schema.validate(obj, packet))
+
+
+@pytest.mark.parametrize("claim", ["6.5", "6,000", "6%", "6/10"])
+def test_partial_numeric_claim_is_never_accepted_as_matching_score(claim):
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=5, label="偏多", rationale="以系統立場為準")
+    obj["executive_summary"] = f"今日評分是 {claim}"
+    assert not align_model_score(obj, packet)
+    assert any("stance.score" in p for p in schema.validate(obj, packet))
+
+
+def test_wrong_direction_still_requires_repair():
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=5, label="偏空")
+    assert not align_model_score(obj, packet)
+    problems = schema.validate(obj, packet)
+    assert any("stance.score" in p for p in problems)
+    assert any("stance.label" in p for p in problems)
 
 
 @pytest.mark.parametrize("value", [False, True, "6", 2.5, [], {}, float("nan"),

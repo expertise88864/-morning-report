@@ -421,7 +421,8 @@ def test_the_two_budgets_are_independent(luna_on, monkeypatch):
     def _fake(payload):
         calls.append(payload)
         r = _response(_GOOD)                    # 每次都語法壞掉
-        r["output"][0]["content"][0]["text"] = "not json at all"
+        r["output"][0]["content"][0]["text"] = (
+                '{"a":1}{"a":2}' if len(calls) == 1 else "not json at all")
         return r
 
     monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
@@ -436,6 +437,9 @@ def test_the_two_budgets_are_independent(luna_on, monkeypatch):
     _used = llm["repair_budget"]["used"]
     assert (_used["syntax"], _used["semantic"]) == (1, 0), _used
     assert llm["repair_budget"]["exhausted"] == "syntax"
+    shapes = [item["shape"]["shape"] for item in llm["primary_parse_errors"]]
+    assert shapes == ["extra_data", "invalid_prefix"]
+    assert llm["primary_parse_error"] is llm["primary_parse_errors"][-1]
 
 
 def test_endless_empty_responses_stop_instead_of_looping_forever(
@@ -848,6 +852,9 @@ def test_invalid_json_repair_receives_the_raw_previous_output(
         assert bad_raw[:30] in rep, "原始輸出沒有進修補請求 —— 又是從零重寫"
         modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes")
         assert modes == ["syntax"], modes
+        parse_error = mr._RUN_MANIFEST["llm"]["primary_parse_error"]
+        assert parse_error["shape"]["shape"] == "invalid_prefix"
+        assert "head" not in parse_error and "tail" not in parse_error
     finally:
         mr._RUN_MANIFEST.clear()
         mr._RUN_MANIFEST.update(saved)

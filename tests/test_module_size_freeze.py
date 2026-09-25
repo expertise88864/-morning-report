@@ -208,6 +208,8 @@ MODULE_CEILINGS = {
     "fomc_calendar.py": 25,
     "event_clock.py": 30,
     "email_markup.py": 25,
+    "email_style_dictionary.py": 210,
+    "email_syntax_compact.py": 130,
     "reader_fact_labels.py": 65,
     "news_display_quality.py": 65,
     "news_memory_selection.py": 60,
@@ -273,6 +275,9 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:契約判準抽成 `contract_problems`(線上金絲雀與離線測試共用一份)
     "deepseek_responses.py": 500,  # 2026-08-25 生產:散文+圍欄裡的 JSON 要救得回來(否則白燒一輪修補);現況 469
     "json_segments.py": 75,  # Recover disjoint chunks; reject array-root extraction.
+    "json_parse_diagnostic.py": 80,  # Public-safe structure only; never response text.
+    "stance_score_alignment.py": 45,  # Canonicalize only a bare Python-owned score echo.
+    "stance_score_claims.py": 60,  # Keep ambiguous numeric prose on the repair path.
     # 延燒事件的身分(外審 P1-9)。動作表是宣告式的,說明佔了大半 ——
     # 那是這個模組的重點:身分不能靠相似度,每一列都要說得出
     # 代碼與判準。`adopt_legacy` 由主模組搬進來(refactor_audit 判

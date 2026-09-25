@@ -103,6 +103,7 @@ def news_subject(n: dict, packet=None) -> dict:
     item = by_id.get(_s(n.get("source_item_id"))) or {}
     title = _s(item.get("title"))
     import official_announcements
+    from news_actor_roles import comparison_target
     issuer = official_announcements.issuer(item)
     cands = [_s(e) for e in (item.get("entities") or []) if _s(e)]
     cands += [_s(a.get("asset_id")) for a in (n.get("affected_assets") or [])
@@ -123,6 +124,7 @@ def news_subject(n: dict, packet=None) -> dict:
     cands += list(dict.fromkeys(_s(r.get('code')) for r in idx.values()))
     if _cp:
         cands += list(_cp.PROFILES)
+    rival_named = rival_tech = False
     for c in dict.fromkeys(([issuer] if issuer else []) + cands):
         row = idx.get(c)
         if row is not None:
@@ -130,6 +132,10 @@ def news_subject(n: dict, packet=None) -> dict:
             code = _s(row.get("code")) or c
             kn = {code: (_s(row.get("name")),)}
             if code != issuer and (_ne is None or not _ne.mentions_entity(title, code, kn)):
+                continue
+            if code != issuer and comparison_target(title, (_s(row.get("name")), code)):
+                rival_named = True
+                rival_tech = rival_tech or is_tech({"industry": row.get("industry")})
                 continue
             name, blurb = _s(row.get("name")), _blurb(row)
             label = f"{name}（{code}" + (f",{blurb}" if blurb else "") + "）"
@@ -146,11 +152,16 @@ def news_subject(n: dict, packet=None) -> dict:
         disp = _cp.display_name(c) if _cp else c
         if not _ne.mentions_entity(title, c, {c: (disp, c)}):
             continue
+        if comparison_target(title, (disp, c)):
+            rival_named = True
+            rival_tech = rival_tech or is_tech({"name": c})
+            continue
         prof = _cp.profile_of(c) if _cp else ""
         label = (f"{disp}（{c}" + (f",{prof}" if prof else "") + "）"
                  if disp != c else (f"{c}（{prof}）" if prof else c))
         return {"label": label, "industry": "", "name": c}
-    return {"label": "", "industry": "", "name": ""}
+    return {"label": "", "industry": "", "name": "",
+            "rival_named": rival_named, "rival_tech": rival_tech}
 
 
 def is_tech(subject: dict) -> bool:

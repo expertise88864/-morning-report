@@ -58,6 +58,7 @@ import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
 import analysis_origin as _ao
+import legacy_actor_guard as _legacy_actor_guard
 import fallback_watch_gap as _fwg
 import run_quality as _rq
 import analysis_validate as _av
@@ -13839,6 +13840,7 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
     try:
         text = _call_llm_analysis_impl(
             quotes, fair, predictions, news, tw0050, calibration)
+        text = _legacy_actor_guard.correct_reader_claims(text, news, origin=_analysis_origin(), manifest=_RUN_MANIFEST)
         _record_report_writer(text)
         return text
     finally:

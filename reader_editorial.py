@@ -40,7 +40,8 @@ def is_macro(card: dict, packet: dict) -> bool:
     # A named operating company is still sector news, even when rates affect it.
     named_finance = any(alias in str(item.get('title') or '')
                         for aliases in finance_editorial.ALIASES.values() for alias in aliases)
-    if named_finance or news_subject(card, packet).get('name'):
+    subject = news_subject(card, packet)
+    if named_finance or subject.get('name') or subject.get('rival_named'):
         return False
     return bool(_MACRO.search(str(item.get('title') or '')))
 

@@ -86,8 +86,10 @@ def _event_type(text: str) -> str:
     # 統一走 _matches_any(英文 word boundary、中文 substring):
     # 舊 substring 比對會讓 award 誤中 war、steps 誤中 eps、disorder 誤中 order
     # (GPT-5.6 二審 P1)。lower 化由 _matches_any 內部處理。
+    from news_taxonomy_guard import earnings_evidence_text
     for event_type, tokens in rules:
-        if _matches_any(text or "", list(tokens)):
+        probe = earnings_evidence_text(text) if event_type == "earnings" else text
+        if _matches_any(probe or "", list(tokens)):
             return normalize_event_type(event_type, text)
     return normalize_event_type("general", text)
 
@@ -103,6 +105,12 @@ def normalize_event_type(event_type: str, text: str) -> str:
     上下文的能力整個丟掉。
     """
     et = str(event_type or "")
+    if et == "earnings":
+        from news_taxonomy_guard import earnings_evidence_text
+        probe = earnings_evidence_text(text)
+        if probe != str(text or "") and not _matches_any(
+                probe, ["earnings", "eps", "財報", "獲利", "盈餘"]):
+            return "general"
     # **同一個動作只能有一個 event_type**(2026-08-22 外審 P2-3):
     # 對照表宣告在 `event_actions.ACTION_EVENT_TYPE`(動作那一層才知道
     # 「制裁」與「出口管制」是兩個動作)。兩條入口(確定性推導與抽取器

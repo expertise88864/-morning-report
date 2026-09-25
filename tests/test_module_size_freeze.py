@@ -185,6 +185,10 @@ MODULE_CEILINGS = {
     "reader_revision.py": 85,
     "reader_evidence_writing.py": 45,
     "news_heading.py": 40,
+    "news_actor_roles.py": 70,  # Rival and purchase-target roles, both source-headline-bound.
+    "legacy_actor_guard.py": 65,  # Only evidence-bound correction, not open-ended prose rewriting.
+    "price_reaction_guard.py": 52,  # Preserve quoted/source text while qualifying a price-cause claim.
+    "news_taxonomy_guard.py": 30,  # Accounting phrase is not a new earnings event.
     "prose_join.py": 25,
     "watch_assessment.py": 60,
     "fallback_watch_gap.py": 90,

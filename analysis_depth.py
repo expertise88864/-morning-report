@@ -69,15 +69,14 @@ NEWS_SOURCE_MIN = NEWS_TARGET_MIN
 def section_counts(obj, packet=None):
     """`(科技條目數, 科技以外條目數)`;分類壞掉或無法分類時回 `(None, None)`。
 
-    分類走**渲染端同一支**(`analysis_render_depth.is_tech`)—— 兩邊各判
+    分類走**渲染端同一支**(`reader_selection.article_is_tech`)—— 兩邊各判
     一次的話,建議說的「科技不足」與信上實際分到第八段的條目可以是兩件事。
     """
     news = [n for n in ((obj or {}).get("top_news_analysis") or [])
             if isinstance(n, dict)]
     try:
-        from analysis_render_depth import is_tech as _is_tech
-        from analysis_render_depth import news_subject as _subj
-        tech = sum(1 for n in news if _is_tech(_subj(n, packet)))
+        from reader_selection import article_is_tech
+        tech = sum(1 for n in news if article_is_tech(n, packet or {}))
     except Exception:                       # noqa: BLE001 - 分類壞了不猜
         return None, None
     return tech, len(news) - tech
@@ -178,7 +177,7 @@ def depth_advisories(obj, packet=None) -> list:
     # 判準要與 prompt 的目標一致 —— prompt 說十到十六、科技≥6、非科技≥5,
     # 而這裡先前還在執行舊契約(總數 6、非科技 1–2):守衛與 prompt 打架時,
     # 模型交出六則就沒有人會要求它補,信裡的兩段照樣稀薄。
-    # 分類走**渲染端同一支**(`analysis_render_depth.is_tech`)—— 兩邊各判一次
+    # 分類走**渲染端同一支**(`reader_selection.article_is_tech`)—— 兩邊各判一次
     # 的話,建議說的「科技不足」與信上實際分到第八段的條目可以是兩件事。
     # **可行性由「那一段的素材夠不夠」判,不由全域則數判**
     # (2026-08-25 外審 P2)。先前整組建議包在 `_avail >= 30` 底下,而
@@ -192,6 +191,7 @@ def depth_advisories(obj, packet=None) -> list:
     try:
         from analysis_render_depth import is_tech as _is_tech
         from analysis_render_depth import news_subject as _subj
+        from reader_selection import article_is_tech
         _tech, _ = section_counts(obj, packet)
         # **素材面也要照同一支分類數一次**(r2 外審):只看產出的比例
         # 會在「當天真的沒有那個類股的料」時要求一個做不到的下限 ——
@@ -208,9 +208,10 @@ def depth_advisories(obj, packet=None) -> list:
             if not isinstance(it, dict):
                 continue
             sub = _subj({"source_item_id": it.get("source_item_id")}, packet)
-            if _is_tech(sub):
+            if _is_tech(sub) or (sub.get("rival_tech") and article_is_tech(
+                    {"source_item_id": it.get("source_item_id")}, packet)):
                 _src_tech += 1
-            elif (sub or {}).get("industry") or (sub or {}).get("name"):
+            elif sub.get("rival_named") or sub.get("industry") or sub.get("name"):
                 _src_other += 1
             # 認不出主體的:兩段都不算(它不是任何一段的「料」)
     except Exception:                   # noqa: BLE001 - 分類壞了只檢查總數

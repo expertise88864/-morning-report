@@ -1,5 +1,6 @@
 """Source-title company labels; never infer an issuer from affected assets."""
 import re
+from news_actor_roles import comparison_target
 
 _NON_ISSUER_PHRASES = re.compile(r"東南亞|統一投信|統一發票|台灣大學")
 
@@ -19,13 +20,13 @@ def companies(item: dict, packet: dict) -> str:
     found = []
     official = issuer(item)
     for code, name in names.items():
-        # Remove longer declared names before checking a short CJK alias:
-        # 台塑化 is not 台塑; retain a separate explicit 台塑 occurrence.
+        # Exclude longer aliases so 台塑 does not match 台塑化.
         probe = title_without_homonyms
         for longer in names.values():
             if name != longer and name in longer:
                 probe = re.sub(re.escape(longer), ' ', probe)
-        if code == official or mentions_entity(probe, code, {code: (name,)}):
+        if code == official or (mentions_entity(probe, code, {code: (name,)})
+                                and not comparison_target(probe, (name, code))):
             found.append((title_without_homonyms.find(name) if name in title_without_homonyms else len(title), code, name))
     grouped: dict[str, tuple[int, list[str]]] = {}
     for position, code, name in sorted(found):

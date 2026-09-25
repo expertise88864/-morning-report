@@ -18,6 +18,9 @@ def article_is_tech(card: dict, packet: dict) -> bool:
     # A known non-tech issuer outranks incidental AI vocabulary.
     if finance.groups(item) or subject.get("industry") or subject.get("name") in ("COST", "TMUS"):
         return False
+    # Rivalry targets are not headline actors, but still supply an industry signal.
+    if subject.get("rival_named"):
+        return bool(subject.get("rival_tech"))
     return is_tech_headline(title) or bool(re.search(
         r"台積|美光|聯亞|廠務工程|矽光子|OpenAI|Anthropic|DeepSeek|Claude|Gemini|ChatGPT", title, re.I))
 

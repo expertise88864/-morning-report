@@ -7667,6 +7667,93 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "1712d7c8-b871-11f1-bf1f-f31d9d6b936f",
+        "title": "The Bond Market Pain Isn't Over | Weekly Roundup",
+        "published": "Fri, 25 Sep 2026 10:00:00 -0000",
+        "processed_at": "2026-09-25T13:01:36Z",
+        "digest": {
+          "summary_points": [
+            "來賓 DCP 認為債市短期不可能翻多：必須看到 Fed 明示升息結束、AI 資本支出放緩、裂解價差（柴油）回落，或就業真的轉弱這幾件事之一發生；在此之前「殖利率繼續往上」仍是痛點交易，他預期曲線會是熊市陡峭化（10 年期殖利率已收在 5.2%，ZB 兩個半月跌掉近 10 大點）。",
+            "他設定的關鍵價位：ZB 若跌破 103 很可能一路走到 par（約當 6%）；MOVE 指數要突破 3 月高點 111 才算債市投降式賣壓；他認為 10 年期 5.75%～6%、30 年期 6.25% 以上才會真正壓垮經濟，而在那之前市場還撐得住。",
+            "操作思路上，他偏好在 SOFR 2027～2028 年合約跌到 94.875 這類極端價位時反向做多（買在升息預期被過度定價處），認為那才是「彈簧完全上膛」的位置，現在還不想進場；他也提醒 SOFR 與當年歐洲美元期貨的價格行為幾乎一模一樣。",
+            "股市方面，他認為 AI 是槓桿與貪婪推到極致的案例（類比 2008 房貸與網路泡沫），若要做空寧可空 AI 龍頭、而不是已被打趴的落後小型股；但他也判斷最終勝出的會是主流大廠（如 Google、Meta），並點名私人信貸、私募股權與 Oracle 債券可能是先出事的環節。",
+            "他引述一份清單指出市場廣度極端：多檔非 AI 的消費與傳產股距高點大跌 3 成到 9 成以上，且 S&P 500 已有超過一半成分股與指數呈負相關，反映被動資金與 AI 權值股主導一切的集中度風險。"
+          ],
+          "tickers": [
+            {
+              "name": "Alphabet (Google)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 AI 之戰最終會由主流大廠勝出，點名 Google 是其中之一。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I'm of the opinion. That it's going to be one of the mainstream that that ends up winning this. It's going to be Google. It's going to be meta to an extent.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "同上，主持人認為 Meta 在某種程度上也是 AI 競賽的最終贏家之一。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I'm of the opinion. That it's going to be one of the mainstream that that ends up winning this. It's going to be Google. It's going to be meta to an extent.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人指出其債券價格已倒掛、還祭出 force majeure，認為它可能成為拖垮同業的信用事件來源之一。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "SPDR 標普區域銀行 ETF",
+              "code": "KRE",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為利率上行的壓力將從區域銀行放款端浮現，KRE 日線已貼近甚至跌破 200 日均線。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "Regional banks, if you look at KRE on a daily, it literally is sitting on the 200 right now and probably punched through today.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "他認為目前是「higher yields」的痛點交易，長端殖利率在結構性財政壓力下易漲難跌，在 Fed 轉向或信用事件出現前很難翻多；但他也強調自己不是在預測崩盤，股市只是靠少數 AI 權值股撐著，指數與多數成分股早已背離。",
+          "action_view": "策略上等 SOFR 2027～2028 年合約跌到 94.875 附近的極端價位再反向做多、押注升息預期過度定價；ZB 跌破 103 則往 par（約 6%）看；真正的降息交易要等信用事件引爆、QE 預期回歸後再談。",
+          "notable_quote": "I'll stick with my thesis that until I see something materially change, it's still the pain trade with higher yields.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I'll stick with my thesis that until I see something materially change, it's still the pain trade with higher yields."
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "30df4538-b2fe-11f1-a223-33e58f5060aa",
         "title": "The Fed Is Hiking Into A Growth Slowdown | Weekly Roundup",
         "published": "Fri, 18 Sep 2026 10:00:00 -0000",

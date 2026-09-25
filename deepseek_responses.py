@@ -192,9 +192,39 @@ def json_object_from_text(text):
     i, j = raw.find("{"), raw.rfind("}")
     if 0 <= i < j:
         cands.append(("braces", raw[i:j + 1]))
-    for how, body in cands:
+    from json_segments import (has_trailing_object_start, inside_array_before,
+                               merge_disjoint_objects)
+    fence_marker = r"(?m)^[ \t]*```(?:json)?[ \t]*$"
+    array_probe = _re.sub(fence_marker, "", raw)
+    array_root = inside_array_before(array_probe, array_probe.find("{"))
+    fence_root = False
+    if m and "{" in m.group(1):
+        fence_prefix = _re.sub(fence_marker, "", raw[:m.start(1)])
+        fence_root = inside_array_before(
+            fence_prefix + m.group(1), len(fence_prefix) + m.group(1).find("{"))
+    for how, body in cands[:2]:
         if not body:
             continue
+        if how == "fence" and fence_root:
+            continue
+        try:
+            obj = _json.loads(body)
+        except Exception:               # noqa: BLE001 - 下一個候選
+            obj = None
+        if isinstance(obj, dict):
+            return obj, how
+        merged = merge_disjoint_objects(body)
+        if merged is not None:
+            return merged, "segments"
+    for _how, body in cands[2:]:
+        if array_root:
+            continue
+        merged = merge_disjoint_objects(body)
+        if merged is not None:
+            return merged, "segments"
+    if has_trailing_object_start(raw):
+        return None, ""
+    for how, body in cands[2:]:
         try:
             obj = _json.loads(body)
         except Exception:               # noqa: BLE001 - 下一個候選

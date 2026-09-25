@@ -37,5 +37,6 @@ def test_ambiguous_or_incomplete_segments_remain_invalid():
         '[1{"a":1}{"b":2}]',
         '[1{"a":1}{"b":2}',
         '[\n```json\n{"a":1}{"b":2}\n```\n]',
+        '{"a":' + '[' * 5000,
     ):
         assert dsr.json_object_from_text(text) == (None, "")

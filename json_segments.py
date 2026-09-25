@@ -51,7 +51,7 @@ def merge_disjoint_objects(text: str) -> dict | None:
     while cursor < len(body) and count < 32:
         try:
             item, cursor = decoder.raw_decode(body, cursor)
-        except ValueError:
+        except (ValueError, RecursionError):
             return None
         if not isinstance(item, dict) or not item or merged.keys() & item.keys():
             return None
@@ -70,6 +70,6 @@ def has_trailing_object_start(text: str) -> bool:
         return False
     try:
         _first, end = json.JSONDecoder().raw_decode(body, start)
-    except ValueError:
+    except (ValueError, RecursionError):
         return False
     return "{" in body[end:]

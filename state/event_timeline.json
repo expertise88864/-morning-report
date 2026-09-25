@@ -1,435 +1,4 @@
 {
- "geopolitical:sanction:國際刑事法院:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "川普政府準備對國際刑事法院實施制裁",
-  "latest_summary": "",
-  "object": "國際刑事法院",
-  "incident_tokens": [
-   "備對",
-   "制裁",
-   "實施",
-   "川普",
-   "府準",
-   "政府",
-   "施制",
-   "普政",
-   "準備"
-  ],
-  "entity": "國際刑事法院",
-  "subject_basis": "alias",
-  "subjects": [
-   "國際刑事法院"
-  ],
-  "event_type": "geopolitical",
-  "action": "sanction",
-  "identity_schema": 14
- },
- "geopolitical:hormuz_passage:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "伊朗透過調解方向美方傳達停戰及重開荷莫茲海峽條件",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "停戰",
-   "及重",
-   "向美",
-   "峽條",
-   "戰及",
-   "方向",
-   "條件",
-   "海峽",
-   "美方",
-   "茲海",
-   "荷莫",
-   "莫茲",
-   "解方",
-   "調解",
-   "透過",
-   "過調",
-   "達停",
-   "重開",
-   "開荷"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "hormuz_passage",
-  "identity_schema": 14
- },
- "geopolitical:法國柴油:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "中東戰爭推升能源成本 法國柴油均價創歷史新高",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "中東",
-   "價創",
-   "創歷",
-   "升能",
-   "史新",
-   "均價",
-   "成本",
-   "戰爭",
-   "推升",
-   "新高",
-   "東戰",
-   "歷史",
-   "源成",
-   "爭推",
-   "能源"
-  ],
-  "entity": "法國柴油",
-  "subject_basis": "literal",
-  "subjects": [
-   "法國柴油"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:中東油運:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "胡塞武裝威脅升級反擊 中東油運波動率短期難降",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "動率",
-   "升級",
-   "反擊",
-   "塞武",
-   "威脅",
-   "期難",
-   "武裝",
-   "波動",
-   "率短",
-   "短期",
-   "級反",
-   "胡塞",
-   "脅升",
-   "裝威",
-   "難降"
-  ],
-  "entity": "中東油運",
-  "subject_basis": "literal",
-  "subjects": [
-   "中東油運"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:沙烏地阿美:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "胡塞武裝對沙烏地阿美延布設施發動攻擊",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "動攻",
-   "塞武",
-   "布設",
-   "延布",
-   "攻擊",
-   "施發",
-   "武裝",
-   "發動",
-   "胡塞",
-   "裝對",
-   "設施"
-  ],
-  "entity": "沙烏地阿美",
-  "subject_basis": "literal",
-  "subjects": [
-   "沙烏地阿美"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:Black Sea shipping:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "Black Sea Shipping Turmoil Hits Wheat Market, Amplifies Inflation Risks",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "amplifies",
-   "hits",
-   "inflation",
-   "risks",
-   "turmoil",
-   "wheat"
-  ],
-  "entity": "Black Sea shipping",
-  "subject_basis": "literal",
-  "subjects": [
-   "Black Sea shipping"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:Oil market:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "Latest Oil Market News and Analysis for Sept. 21",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "21",
-   "analysis",
-   "and",
-   "latest",
-   "news",
-   "sept"
-  ],
-  "entity": "Oil market",
-  "subject_basis": "literal",
-  "subjects": [
-   "Oil market"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "伊朗向美國提出停戰條件 等待川普政府回應",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "停戰",
-   "出停",
-   "向美",
-   "國提",
-   "川普",
-   "待川",
-   "戰條",
-   "提出",
-   "政府",
-   "普政",
-   "條件",
-   "等待",
-   "美國"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:summit_talks:李成鋼:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "中國任命李成鋼為國際貿易談判代表",
-  "latest_summary": "",
-  "object": "李成鋼",
-  "incident_tokens": [
-   "中國",
-   "代表",
-   "任命",
-   "判代",
-   "國任",
-   "國際",
-   "易談",
-   "為國",
-   "談判",
-   "貿易",
-   "際貿"
-  ],
-  "entity": "李成鋼",
-  "subject_basis": "literal",
-  "subjects": [
-   "李成鋼"
-  ],
-  "event_type": "geopolitical",
-  "action": "summit_talks",
-  "identity_schema": 14
- },
- "geopolitical:美國:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "聯合國專家稱有理由相信美國在伊朗襲擊中犯下戰爭罪",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "下戰",
-   "中犯",
-   "伊朗",
-   "合國",
-   "國專",
-   "在伊",
-   "家稱",
-   "專家",
-   "戰爭",
-   "擊中",
-   "有理",
-   "朗襲",
-   "爭罪",
-   "犯下",
-   "理由",
-   "由相",
-   "相信",
-   "稱有",
-   "聯合",
-   "襲擊"
-  ],
-  "entity": "美國",
-  "subject_basis": "alias",
-  "subjects": [
-   "美國"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:sanction:國際刑事法院:2026-09#6673de": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "Trump administration prepares sanctions against ICC",
-  "latest_summary": "",
-  "object": "國際刑事法院",
-  "incident_tokens": [
-   "administration",
-   "against",
-   "icc",
-   "prepares",
-   "sanctions",
-   "trump"
-  ],
-  "entity": "國際刑事法院",
-  "subject_basis": "alias",
-  "subjects": [
-   "國際刑事法院"
-  ],
-  "event_type": "geopolitical",
-  "action": "sanction",
-  "identity_schema": 14
- },
- "geopolitical:election:United Russia:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "United Russia on track to win wartime parliamentary election",
-  "latest_summary": "",
-  "object": "United Russia",
-  "incident_tokens": [
-   "election",
-   "on",
-   "parliamentary",
-   "to",
-   "track",
-   "wartime",
-   "win"
-  ],
-  "entity": "United Russia",
-  "subject_basis": "literal",
-  "subjects": [
-   "United Russia"
-  ],
-  "event_type": "geopolitical",
-  "action": "election",
-  "identity_schema": 14
- },
- "geopolitical:tariff_action:美中:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "美中經貿高層紐約會晤，為川習會鋪路；峰會聚焦AI對話、關稅休兵與稀土",
-  "latest_summary": "",
-  "object": "美中",
-  "incident_tokens": [
-   "ai",
-   "休兵",
-   "兵與",
-   "對話",
-   "層紐",
-   "峰會",
-   "川習",
-   "會晤",
-   "會聚",
-   "會鋪",
-   "為川",
-   "稀土",
-   "稅休",
-   "約會",
-   "紐約",
-   "經貿",
-   "習會",
-   "聚焦",
-   "與稀",
-   "貿高",
-   "鋪路",
-   "關稅",
-   "高層"
-  ],
-  "entity": "美中",
-  "subject_basis": "literal",
-  "subjects": [
-   "美中"
-  ],
-  "event_type": "geopolitical",
-  "action": "tariff_action",
-  "identity_schema": 14
- },
- "geopolitical:美中:2026-09": {
-  "first_seen": "2026-09-21",
-  "days": 1,
-  "last_seen": "2026-09-21",
-  "latest_title": "川習會倒數！貝森特紐約會何立峰 美中這3大議題浮上檯面",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "上檯",
-   "何立",
-   "倒數",
-   "大議",
-   "川習",
-   "會何",
-   "會倒",
-   "森特",
-   "檯面",
-   "浮上",
-   "特紐",
-   "立峰",
-   "約會",
-   "紐約",
-   "習會",
-   "議題",
-   "貝森",
-   "題浮"
-  ],
-  "entity": "美中",
-  "subject_basis": "literal",
-  "subjects": [
-   "美中"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:烏克蘭:2026-09": {
   "first_seen": "2026-09-23",
   "days": 1,
@@ -771,6 +340,250 @@
    "META"
   ],
   "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:Sandy Spring Bank:2026-09": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "Federal Reserve issues enforcement action with former employee of Sandy Spring Bank",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "action",
+   "employee",
+   "enforcement",
+   "federal",
+   "former",
+   "issues",
+   "of",
+   "reserve",
+   "with"
+  ],
+  "entity": "Sandy Spring Bank",
+  "subject_basis": "literal",
+  "subjects": [
+   "Sandy Spring Bank"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:台灣:2026-09": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "習近平要求川普反對台灣獨立",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "反對",
+   "川普",
+   "平要",
+   "普反",
+   "求川",
+   "獨立",
+   "習近",
+   "要求",
+   "近平"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:美中:2026-09#e79074": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "美中同意延長貿易休戰2個月",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "休戰",
+   "個月",
+   "同意",
+   "延長",
+   "意延",
+   "易休",
+   "貿易",
+   "長貿"
+  ],
+  "entity": "美中",
+  "subject_basis": "literal",
+  "subjects": [
+   "美中"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:arms_sale:?:2026-09": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "川習會聚焦台灣、關稅、稀土、AI與對台軍售",
+  "latest_summary": "",
+  "object": "?",
+  "incident_tokens": [
+   "ai",
+   "台軍",
+   "對台",
+   "焦台",
+   "稀土",
+   "聚焦",
+   "與對",
+   "軍售",
+   "關稅"
+  ],
+  "entity": "川習會",
+  "subject_basis": "literal",
+  "subjects": [
+   "川習會"
+  ],
+  "event_type": "geopolitical",
+  "action": "arms_sale",
+  "identity_schema": 14
+ },
+ "litigation:2891:2026-09": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "保險業內控亮紅燈！最新裁罰出爐重罰960萬，中信金旗下壽險挨罰-財經焦點情報站 - CMoney投資網誌",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "960",
+   "下壽",
+   "中信",
+   "亮紅",
+   "保險",
+   "信金",
+   "內控",
+   "出爐",
+   "報站",
+   "壽險",
+   "情報",
+   "挨罰",
+   "控亮",
+   "旗下",
+   "業內",
+   "焦點",
+   "爐重",
+   "紅燈",
+   "經焦",
+   "罰出",
+   "裁罰",
+   "財經",
+   "重罰",
+   "金旗"
+  ],
+  "entity": "2891",
+  "subject_basis": "alias",
+  "subjects": [
+   "2891"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:正瀚生技:2026-09": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "TWSE fines 正瀚生技 NT$30,000 for violating material information disclosure rules",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "000",
+   "30",
+   "disclosure",
+   "fines",
+   "information",
+   "material",
+   "nt",
+   "rules",
+   "twse",
+   "violating"
+  ],
+  "entity": "正瀚生技",
+  "subject_basis": "literal",
+  "subjects": [
+   "正瀚生技"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-09#9bc19c": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "伊朗警告若美國再攻擊，戰火可能燒向印度洋",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "再攻",
+   "印度",
+   "可能",
+   "向印",
+   "告若",
+   "國再",
+   "度洋",
+   "戰火",
+   "攻擊",
+   "火可",
+   "燒向",
+   "美國",
+   "能燒",
+   "若美",
+   "警告"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:中國:2026-09": {
+  "first_seen": "2026-09-25",
+  "days": 1,
+  "last_seen": "2026-09-25",
+  "latest_title": "中國希望伊朗戰爭結束，但非特朗普想要的方式",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "伊朗",
+   "但非",
+   "希望",
+   "想要",
+   "戰爭",
+   "方式",
+   "普想",
+   "朗戰",
+   "朗普",
+   "望伊",
+   "爭結",
+   "特朗",
+   "的方",
+   "結束",
+   "要的",
+   "非特"
+  ],
+  "entity": "中國",
+  "subject_basis": "alias",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "geopolitical",
   "action": "",
   "identity_schema": 14
  }

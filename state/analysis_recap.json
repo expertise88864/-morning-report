@@ -571,44 +571,47 @@
  ],
  "watch_seq": 54,
  "legacy_report": {
-  "date": "2026-09-24",
+  "date": "2026-09-25",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球晶圓代工龍頭，3nm/5nm 市佔逾九成）：台股總市值昨日衝上 5.3 兆美元、首度超越印度成為全球第 4 大股市，台積電單日貢獻逾 1 兆元市值、股價收 2,500 元 （鉅亨）。傳導機制是被動式資金的機械買盤——0050、006208 等市值型 ETF 因權重膨脹被迫加碼，反過來替 2330 現貨價格做地板。量級上，昨天這 1 兆元市值增幅是單日事件，無法外推，但要留意同一批被動資金在台積電回檔時的反向賣壓會同樣機械化。[A 級・信心:中]",
+    "statement": "台積電（2330，全球晶圓代工龍頭，先進製程市佔逾九成）：中鋼子公司超揚投資公告自 2025 年 11 月起至 2026 年 9 月 24 日買進 158 張，集團合計持有 330 張 （鉅亨台股）。這是財務性投資、不是基本面訊號；以 2330 單日動輒數萬張成交量計，330 張屬零頭，量級可忽略。真正該記的是 10 月 15 日法說會——那是先進製程與資本支出指引的最近驗證點。[A 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6614281"
+     "https://news.cnyes.com/news/id/6615287"
     ]
    },
    {
-    "statement": "貿聯-KY（3665，連接線束與資料中心互連廠）：完成 9 億美元收購新加坡 Interplex 集團資料通訊業務，9 月 23 日起正式併表 （鉅亨）。這筆交易讓貿聯直接取得資料中心客製化互連與精密金屬加工能力，並串連中國、越南、泰國、馬來西亞產能。傳導路徑是 AI 伺服器機櫃 Busbar（匯流排）與高速互連需求，但它對 2330 的拉動是間接的——真正的瓶頸仍在先進封裝產能；下一個可驗證點是 10 月營收揭露的月增幅度。[A 級・信心:中]",
+    "statement": "載板與 CCL（欣興、南電、景碩、聯茂、台光電）：延續聯茂獲利爆發的線索，今日新增輝達緊盯玻璃基板、傳要求台日韓兩年內交卷 （台視），聯茂昨日則以漲停放量回應 （CMoney）。玻璃基板若在兩年內導入，設備與材料認證會先反映在資本支出上，與 2330 先進封裝對載板的需求是同一條線的兩個階段，時間差不一樣、不能相加。[B 級・信心:中-低,資訊有限]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6614333"
+     "https://news.google.com/rss/articles/CBMinAFBVV95cUxQU0FFX2Rnb25kczU3dGdudzVqVG00T3ZlRzNGWHUzM3NfcjZNNGFfOWU1ZThBY0NpQkFUU1dBSWtLLTN5MTQ1QmxCeWdPM3UxbENpQ0FIZjludTdPR01JOHhjLUlrUUNaYnEyR3FzcThoajBUd0pDYVpYUjZJeUJZeDBRcVVLUno5ak10cWxUeWlRbFRuVm9Sa2haX2Y?oc=5",
+     "https://news.google.com/rss/articles/CBMijgFBVV95cUxQbzNZc1NQR0U4OV9iY1RrYVY0WXBzMV9XeVg1X3BzdFhDVmtMb3psZHdxN2g1U0d2UEJZSlNKRG9Yb2FOdVBrY2Nzd294U25Ja09IeEZtS1pGaktYV1hlUmVVbTNSczNiNkdBX3g0UlBQQTNPTXAtdm1sU3FYUGRLWDZGOV9aNDdmQUtpVHZB?oc=5"
     ]
    },
    {
-    "statement": "聯發科（2454，全球第二大 IC 設計，主力天璣手機晶片與 AI 邊緣晶片）：發布最新 AI PC 處理器「天璣 CX C10 Max」，並宣布與 Google 合作拓展 Googlebook 市場 （TechNews）。這顆晶片若採台積電 N3 或 N2 製程，對 2330 的拉貨是正向的，但這則新聞說不出量級——沒有出貨目標、沒有品牌導入時程、沒有 ASP（平均售價），只能當方向。可留意下季法說是否揭露 AI PC 產品線的營收佔比。[A 級・信心:中]",
+    "statement": "聯發科（2454，全球第二大 IC 設計，主力天璣手機晶片）：延續外資對其 AI ASIC 市佔的上修，今日有報告力挺其切入 Google TPU 與 ASIC 商機、目標價喊到 7,300 元 （TechNews）。ASIC 每一顆都要占用與 GPU 同一段先進封裝產能，對 2330 是排擠也是加分。不過報告沒有訂單金額與出貨時程，量級要等財報或法說。[B 級・信心:中-低,資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMijgFBVV95cUxNU2ZrUFRidnE4N2NiZk5tUXZLYy1lNnhUc1pMeGF3VzBwMTROQUcxbGlsbzNHZTJTanRTTlpUSzltcUtqQzc5NUZZa0VtMUdzX0ozeVpaWkFoZ2Rab2NFdktEaTFINFZ4NWtvV09DVUwwbENmR2lYaU5NLUFnejVaTTVVeDJKT3RzbkFuYU9n?oc=5"
+     "https://news.google.com/rss/articles/CBMimgFBVV95cUxNSUpwMG1NMTVIbzh2aUkzc09MMGpUbTBOaUZhQTFUb2dObUdsRzdUdjBnTWc0bEJSVVBCV1RqajRyUy10LVh3ZkFmc2pFQUd3azFCaFJFN3FBLXJPLUxKU2FFWnJlTTZON0NrdDFROU9aUWhEbURtbHJHUk9jTXFFdlVkdUg3NmlwTTl1T25EWkQ2cjZoaWdnQThR?oc=5"
     ]
    },
    {
-    "statement": "記憶體族群（南亞科、華邦電、旺宏、力積電）：美光 9 月 30 日財報倒數計時，市場對 AI 帶動的 HBM 需求偏樂觀 （ETtoday）。南亞科最新月營收年增率達 +560.9%，是族群中動能最強的一檔，反映 DRAM 報價回升與 AI 伺服器拉貨。不過這條線與今日大盤方向相反——當整體科技股因美債殖利率破 5.1% 承壓時，記憶體報價循環是否能獨立走，要看美光財報的實際指引，那是下週最直接的驗證點。[B 級・信心:中-低,資訊有限]",
+    "statement": "AI 模型競賽：Anthropic 推出 Claude Opus 5.5，訴求成本更低、Agent 能力再升級 （Grenade）；OpenRouter 近日上架的低價選項包括 cohere/command-a-plus（輸入 0.3 美元、輸出 1.5 美元／百萬 tokens）與 upstage/solar-mini4（0.05／0.2 美元）（OpenRouter）。推理單價下探會把需求推向更大的呼叫量，最終仍落到 2330 的先進製程與 CoWoS；但要分清兩層——低價模型壓抑的是高階 GPU 的估值敘事，訂單與產能是另一回事。Polymarket 年底最佳模型盤：Anthropic 74%、Google 10%、OpenAI 10% （Polymarket）。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiUkFVX3lxTE82X3dKWUJlUXRIUzJ1dUw4c0RteHhablB5MG1zeGROUEJYQ3laQ0p5eUk1VTl2WDg2Z0IzbnpMU1lTakRnMUpTeWhGRzVoTFQ0eFHSAVBBVV95cUxORTFNbXF0M1ZBUXhmREVzaEIxVjBvMXNOc3lidElBSTVEUU1kUnJ4WVM0cjZpbGZydk9HUTZpNTJzYTFXQXktdndtM3N1Vkc1Yw?oc=5"
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5NZzhnYm9UZ1J6MU51OWsxNUhoZUtXVEE3VDBnYmtwUmlTWHYteWMwOUZ2T1MyaTd6SXBQZl8zRVFNQm5fMWdubWpkeHREa0ZCRUxXMk80TDItSE0yYm9R?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】玉山金（2884，民營金控，銀行+證券）：公平會核准玉山金併購三商美邦人壽案，認定無限制競爭疑慮 （UDN）。玉山金取得壽險牌照後可擴大經常性保費收入，但真正的財務影響要看併購價格與三商美邦的責任準備金缺口；短期對玉山金每股盈餘是中性，對整體金融指數權重影響有限。[A 級・信心:中]",
+    "statement": "Meta（META，全球最大社群平台）：旗下 Muse Charm 消費裝置搶在 OpenAI 之前進入市場，但 Zuckerberg 的策略仍未被驗證 （CNBC）；台灣供應鏈則因 Meta AI 新品齊發而被點名進補 （經濟日報）。智慧眼鏡與掌上裝置的組裝、光學與聲學模組多在台廠手上，這是 AI 題材中少數直接落在台灣硬體供應鏈的終端產品；但新品的實際出貨量未公布，這則新聞說不出量級。[B 級・信心:中-低,資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE5Va1ZheFAtVl80Y29CenU0cUN3aWI4bFhDU3g0Wi0wdjhkUXhQTFJ5OWsxVVc5NElIc056UUU0UEo2a2otalNkb0U1V1ZMNml00gFWQVVfeXFMUE5PWmR0RER3d3JtM2kxa0RWVGo1MERtWGtWM25TZWg3UUJicnZxUzNIOXFzLUpQdEVEVWd3TXB5STVmTmVPcHZWTXBfbmJFTkx6bXp4ZHc?oc=5"
+     "https://www.cnbc.com/2026/09/24/meta-mark-zuckerberg-muse-charm-openai-agent.html",
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTFBUVnZEUXl3clNHNG1vTjZWejFCa1JLbk9ZeHN2Q0w1UWVzZUJKemRqbWRKSHBkS1JPTDZsUXFfb0xmSWNjbjZPRjhFSnBLVFZkZ2RlWDhZU1dQd9IBX0FVX3lxTE5DdklkOTBwYTJXRXM1a1VianVGdmRzNjNhX0pVS3UtbFh3UUp0UWlrNk1NWjlBWEhnQ1VBSlp1dmNuMDJITjY0OE5QUnpiWGZNSHI2U0NDTFhjRE12Qmpn?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】壽險業：前 8 月百億神單累計 16 張、壽險資金 206 億元買下南港商辦「潤泰玉成廣場」創全台單一商辦最高紀錄 （工商時報）。這條傳導鏈是保費收入強勁 → 壽險可運用資金擴大 → 商用不動產與美公司債配置增加；但要注意 10 年期美債殖利率昨日破 5.1%，債券評價利益將部分回吐，對國泰金、富邦金的淨值影響會在第三季財報揭露時反映。[B 級・信心:中]",
+    "statement": "邊緣 AI（廣積，8050，工業電腦廠；高通，QCOM）：廣積推出搭載 Intel Core Ultra 7 的 3.5 吋單板電腦，整合 CPU、GPU 與 NPU，最高 180 TOPS （鉅亨）；高通發表 Snapdragon Sound Elite Gen 2 音訊平台，把耳機變成 AI 代理入口 （TechNews）。邊緣與穿戴晶片多走成熟與中階製程，對 2330 的直接拉貨不如資料中心，影響主要在台系工業電腦與穿戴的單機價值提升。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE13ZXV3SEtVN2lWRjk3cEtkRmk0NEhvM1YyQ1pQNGpGbkhRM1JlV3MwcTBEWTZxZVZjR2RyOGY5bk9ZUGJyXzJPRnpzLU5JbDZaUFZYYklFTVd1T2tqV3pn?oc=5"
+     "https://news.cnyes.com/news/id/6615373",
+     "https://news.google.com/rss/articles/CBMieEFVX3lxTE1Dbk04WExIcHlpYTg4ZEgxYUtKTEhURnhQUF9tdl9PNDlXSkI4M0JpYjdNNDNWcDNFb1l5OUo3TFRWekFtWlFfY3hEbUlnaUJUNkZvZWdVRGx5Sllob3YtUUtnQkxYaC1QN294RmlsTmdDS1RweG1zdA?oc=5"
     ]
    }
   ]

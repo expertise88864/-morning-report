@@ -89,6 +89,15 @@ def test_noun_challenge_before_clause_break_keeps_actual_company_actor():
     assert not article_is_tech(tw_card, tw_packet)
 
 
+def test_geopolitical_rivalry_noun_before_clause_break_keeps_company_actor():
+    packet = {"tw_universe": [{"code": "2330", "name": "台積電"}]}
+    for title in ("美中對抗 台積電加速美國布局",
+                  "中美抗衡 台積電擴產",
+                  "科技戰超越 台積電提高研發支出"):
+        assert companies({"title": title}, packet) == "台積電（2330）"
+    assert companies({"title": "阿里對抗 台積電新製程"}, packet) == ""
+
+
 def test_section_counts_without_packet_keeps_default_nontech_count():
     assert section_counts({"top_news_analysis": [{"source_item_id": "missing"}]}) == (0, 1)
 

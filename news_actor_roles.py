@@ -9,6 +9,9 @@ _ASCII_TARGET = re.compile(_RIVAL_VERB + r"\s*[「『（(]?\s*$", re.I)
 _NOUN_CHALLENGE = re.compile(
     r"(?:關稅|通膨|成本|利率|供應鏈|疫情|市場|技術|新|面臨|面對|迎接|應對|克服)\s*挑戰\s*$"
 )
+_NOUN_RIVALRY = re.compile(
+    r"(?:美中|中美|兩岸|地緣政治|科技戰|貿易戰)\s*(?:對抗|抗衡|超越)[\s，、；：:]+$"
+)
 _PURCHASE_VERB = re.compile(r"(?:加碼|買進|購入|增持)\s*$")
 _PURCHASE_HEADLINE = re.compile(
     r"^(?P<buyer>[\u4e00-\u9fff]{2,12})\s*斥資[^。\n]{0,40}?(?P<verb>加碼|買進|購入|增持)\s*$"
@@ -57,6 +60,7 @@ def comparison_target(title: str, aliases) -> bool:
         positions.update(match.start() for match in re.finditer(pattern, probe, re.I))
     return bool(positions) and all(
         not _NOUN_CHALLENGE.search(probe[max(0, pos - 16):pos])
+        and not _NOUN_RIVALRY.search(probe[max(0, pos - 16):pos])
         and
         ((_ASCII_TARGET if probe[pos].isascii() else _COMPARISON_TARGET)
          .search(probe[max(0, pos - 8):pos])

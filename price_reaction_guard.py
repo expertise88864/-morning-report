@@ -31,7 +31,8 @@ def neutralize(text: str, manifest: dict) -> str:
     count = 0
     for line in text.splitlines(keepends=True):
         body = line.lstrip(" >\t")
-        if _SOURCE_HEADLINE.match(body) or _RENDERED_HEADLINE.match(body):
+        if (_SOURCE_HEADLINE.match(body) or _RENDERED_HEADLINE.match(body) or
+                (body.startswith("**") and "｜" in body and line + "\n本報解讀：" in text)):
             revised_lines.append(line)
             continue
         parts: list[str] = []

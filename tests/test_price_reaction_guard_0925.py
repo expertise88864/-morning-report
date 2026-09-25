@@ -1,6 +1,7 @@
 """Offline regression for the 9/25 unsupported price-causality wording."""
 
 import analysis_origin
+from analysis_render_depth import _news_line
 import morning_report as mr
 from price_reaction_guard import neutralize
 
@@ -103,3 +104,26 @@ def test_model_written_blockquote_price_cause_and_unrecognized_label_are_correct
     assert "> 理由：聯茂出現漲停，惟無法僅憑股價確認原因（CMoney）。\n" in revised
     assert "> 媒體標題：聯茂出現漲停，惟無法僅憑股價確認原因（來源）。\n" in revised
     assert manifest["llm"]["price_reaction_claims_neutralized"] == 2
+
+
+def test_unlinked_company_source_headline_is_preserved_after_rendering():
+    packet = {
+        "tw_universe": [{"code": "2383", "name": "台光電", "industry": "電子零組件業"}],
+        "news": [{"source_item_id": "n1", "title": "台光電法說報喜 股價以漲停回應",
+                  "entities": ["2383"], "source_name": "鉅亨", "url": ""}],
+    }
+    card = {"source_item_id": "n1", "why_it_matters": "本報認為台光電以漲停回應（鉅亨）。"}
+    rendered = _news_line(card, packet)
+    manifest = {}
+    revised = neutralize(rendered, manifest)
+    assert revised.splitlines()[0] == rendered.splitlines()[0]
+    assert "本報解讀：本報認為台光電出現漲停，惟無法僅憑股價確認原因" in revised
+    assert manifest["llm"]["price_reaction_claims_neutralized"] == 1
+
+
+def test_bold_model_analysis_heading_is_not_a_source_headline():
+    source = "**風險觀察**｜台光電以漲停回應（鉅亨）。\n"
+    manifest = {}
+    revised = neutralize(source, manifest)
+    assert "**風險觀察**｜台光電出現漲停，惟無法僅憑股價確認原因（鉅亨）。" in revised
+    assert manifest["llm"]["price_reaction_claims_neutralized"] == 1

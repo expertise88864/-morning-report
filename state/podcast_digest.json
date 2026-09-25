@@ -1031,6 +1031,65 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmufmrq5901dh01uecgjegril",
+        "title": "567.【財經時事放大鏡】記憶體不缺 x 功率不漲 x JEV 不work？",
+        "published": "Thu, 24 Sep 2026 23:02:13 GMT",
+        "processed_at": "2026-09-25T07:04:50Z",
+        "digest": {
+          "summary_points": [
+            "主持人質疑宏碁執行長「記憶體沒有想像中缺」並非字面意思，可能是在向原廠喊話；自己重算後仍認為記憶體供給緊俏，AI需求已大於消費電子，此次上行力道比2017-18年更強。",
+            "主持人認為功率半導體重啟漲價循環（TI、英飛凌、ST、安森美、瑞薩接力），主因資料中心800V/8kW PSU等電力需求拉動，而非成本推動，並已傳導至光寶科等台廠。",
+            "主持人指出碳化矽跌深後出海口擴大（電動車快充、AR眼鏡導光、散熱等新應用），有機會反轉，但漲晶/加工難度高、過去價格被中國打爛，需摸石頭過河、長期觀察。",
+            "主持人提到某個新推出的快速 AI 模型，認為它只有速度快、準確度未提升，適合邊界明確的 classification workflow 以節省 token，但不會大幅取代現有流程。",
+            "主持人從無塵室進度推斷中短期記憶體產能不易開出，並指出中國記憶體並非低價搶市（售價甚至高於三星），因此不認同標準型記憶體不缺的說法。"
+          ],
+          "tickers": [
+            {
+              "name": "光寶科",
+              "code": "2301",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為功率半導體/電源供應鏈因資料中心需求旺，光寶科獲利結構改善、股價強勢，可望受惠。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "光寶科也漲上去了而且光寶科就跟你講說我們獲利是結構性的改變",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Wolfspeed",
+              "code": "WOLF",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為800V DC需求若回升，碳化矽1200V基礎的Wolfspeed可望改善，但此前被中國低價打擊，屬跌深觀察。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "如果800VDC開始好了那麼你說wap speed這個碳化氣1200V的這個基礎了這個不會變好嗎 會嘛",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為 AI 驅動的供給緊俏已從記憶體擴散到電力/功率半導體，供應鏈景氣火熱；碳化矽跌深後有機會反轉，但需時間驗證。",
+          "action_view": "操作上可觀察功率半導體漲價傳導與台廠受惠者；碳化矽屬跌深反轉觀察標的，需耐心等待、不宜急著重壓。",
+          "notable_quote": "記憶體你說缺不缺我覺得如果我不缺的話不會漲價吧",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "記憶體你說缺不缺我覺得如果我不缺的話不會漲價吧"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "cmu9g8zbc12p1010bbdruh5mu",
         "title": "566.【達人聊產業】從半導體材料業者，走進第一線 AI 產業分析 ft. SemiVision  創辦人 Jett",
         "published": "Sun, 20 Sep 2026 23:02:08 GMT",
@@ -1624,57 +1683,6 @@
           "notable_quote": "機器人這局看起來就是缺少的就是這個機器人要用在哪裡"
         },
         "shown_at": "2026-08-21T22:34:18Z"
-      },
-      {
-        "guid": "cmsrh8ten0j6r01vxhiceg9tm",
-        "title": "544.【財經時事放大鏡】OCP 趨勢觀察",
-        "published": "Thu, 13 Aug 2026 23:02:20 GMT",
-        "processed_at": "2026-08-15T14:58:37Z",
-        "digest": {
-          "summary_points": [
-            "AMD 在 OCP 揭示 CPU:GPU 比例從 8:1、4:1、2:1 降到 1:1，Sky 解讀為 AMD 想用 CPU+GPU 整合能力打機器人市場，但若未來機器人不使用獨立 GPU，NVIDIA 的雲端大腦角色反而更吃重。",
-            "OCP 對 HVDC 發布明確三階段時程：目前 Q3 先做 power rack、2025 年 2MW power center、2029 年 4.8MW power block 用固態變壓器；Sky 認為時程與規格明確化讓受惠供應鏈更確定，功率元件與被動元件需求持續上升。",
-            "高容值 MLCC（約 47 微法拉、0608 尺寸）因 AI 電力需求而缺貨，主要供應商為 Murata、太陽佑電等少數廠；Sky 指出缺的是特定料號，一般型號受排擠效應，類似 2018 年被動元件缺貨，但這次是高容產品吃產能。",
-            "液冷散熱板本質是精密金屬加工加焊接，產能過去集中在中國，移出難度高且焊接良率要求極高，Sky 認為供給緊俏將是常態，設計變化不大但缺的是精細工藝。",
-            "OCP 建立開放式 Scale-up 光通訊協定，Sky 認為統一標準有助底層對接，光通訊是 AI 算力 scale-up 的關鍵，且投資市場焦點正從記憶體轉向光通訊，這是長期趨勢。",
-            "台積電先進封裝主管在 OCP 透露 5.5 倍光罩尺寸良率 98%，並說「快要可以滿足一個客戶需求」，Sky 認為這可能暗示供給緊缺減緩，需觀察先進封裝需求加速度是否下降。",
-            "鴻海表示下一代 AI rack 採 100% 自動化、50% 元件自製、目標拿下 50% 市佔，Sky 認為自動化是鴻海強項且值得關注，但鴻海商業模式收款慢。"
-          ],
-          "tickers": [
-            {
-              "name": "AMD",
-              "code": "AMD",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "討論 CPU:GPU 比例降至 1:1 與機器人策略，未明確看多/空，但認為整合能力是焦點。"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "先進封裝良率與進程，主持人提醒供給可能接近滿足，需觀察需求加速度。"
-            },
-            {
-              "name": "鴻海",
-              "code": "2317",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "下一代 AI rack 自動化與自製率目標，自動化能力強，但商業模式收款慢。"
-            },
-            {
-              "name": "聯亞",
-              "code": "3081",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "聯亞 Q3 營收季增 20% 以上，基板供應鏈關係佳，屬缺料中『厲害』的一群。"
-            }
-          ],
-          "market_view": "主持人認為 OCP 使 AI 電力架構規格與時程更明確，功率/被動/光通訊元件需求由想像轉為即將落地；但先進封裝可能漸近滿足，需留意需求加速度。",
-          "action_view": "暫無明確加減碼；認為光通訊是值得學習的長期趨勢，投資焦點正從記憶體轉向光通訊，並可觀察電力元件與先進封裝供需變化。",
-          "notable_quote": "在種種的供不應求當中，突然有一個人跟你講說：欸，好像快囉"
-        },
-        "shown_at": "2026-08-15T22:10:34Z"
       }
     ]
   },

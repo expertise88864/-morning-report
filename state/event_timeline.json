@@ -399,20 +399,23 @@
  },
  "geopolitical:美中:2026-09#e79074": {
   "first_seen": "2026-09-25",
-  "days": 1,
-  "last_seen": "2026-09-25",
-  "latest_title": "美中同意延長貿易休戰2個月",
+  "days": 2,
+  "last_seen": "2026-09-26",
+  "latest_title": "美中同意將貿易休戰延長兩個月",
   "latest_summary": "",
   "object": "",
   "incident_tokens": [
    "休戰",
    "個月",
+   "兩個",
    "同意",
+   "將貿",
    "延長",
-   "意延",
+   "意將",
+   "戰延",
    "易休",
    "貿易",
-   "長貿"
+   "長兩"
   ],
   "entity": "美中",
   "subject_basis": "literal",
@@ -584,6 +587,167 @@
    "中國"
   ],
   "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:hormuz_passage:2026-09": {
+  "first_seen": "2026-09-26",
+  "days": 1,
+  "last_seen": "2026-09-26",
+  "latest_title": "伊朗提出7天內重啟荷姆茲海峽方案",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "內重",
+   "啟荷",
+   "天內",
+   "姆茲",
+   "峽方",
+   "提出",
+   "方案",
+   "海峽",
+   "茲海",
+   "荷姆",
+   "重啟"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "hormuz_passage",
+  "identity_schema": 14
+ },
+ "geopolitical:美伊戰爭:2026-09": {
+  "first_seen": "2026-09-26",
+  "days": 1,
+  "last_seen": "2026-09-26",
+  "latest_title": "美伊戰爭可能出現和解契機 歐股多數收紅",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "出現",
+   "可能",
+   "和解",
+   "多數",
+   "契機",
+   "收紅",
+   "數收",
+   "歐股",
+   "現和",
+   "股多",
+   "能出",
+   "解契"
+  ],
+  "entity": "美伊戰爭",
+  "subject_basis": "literal",
+  "subjects": [
+   "美伊戰爭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:arms_sale:台海:2026-09": {
+  "first_seen": "2026-09-26",
+  "days": 1,
+  "last_seen": "2026-09-26",
+  "latest_title": "美前眾議員籲加速對台軍售，警告AI產業受台海關係牽動",
+  "latest_summary": "",
+  "object": "台海",
+  "incident_tokens": [
+   "ai",
+   "係牽",
+   "前眾",
+   "加速",
+   "台軍",
+   "員籲",
+   "對台",
+   "業受",
+   "牽動",
+   "產業",
+   "眾議",
+   "籲加",
+   "美前",
+   "警告",
+   "議員",
+   "軍售",
+   "速對",
+   "關係"
+  ],
+  "entity": "台海",
+  "subject_basis": "literal",
+  "subjects": [
+   "台海"
+  ],
+  "event_type": "geopolitical",
+  "action": "arms_sale",
+  "identity_schema": 14
+ },
+ "geopolitical:美中:2026-09": {
+  "first_seen": "2026-09-26",
+  "days": 1,
+  "last_seen": "2026-09-26",
+  "latest_title": "川習會後美中互動持續，美駐中大使稱對台政策未變",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "中大",
+   "互動",
+   "使稱",
+   "動持",
+   "台政",
+   "大使",
+   "對台",
+   "川習",
+   "持續",
+   "政策",
+   "會後",
+   "未變",
+   "稱對",
+   "策未",
+   "美駐",
+   "習會",
+   "駐中"
+  ],
+  "entity": "美中",
+  "subject_basis": "literal",
+  "subjects": [
+   "美中"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:美國白宮:2026-09": {
+  "first_seen": "2026-09-26",
+  "days": 1,
+  "last_seen": "2026-09-26",
+  "latest_title": "美國白宮啟動短期柴油出口禁令經濟評估",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "令經",
+   "出口",
+   "動短",
+   "口禁",
+   "啟動",
+   "期柴",
+   "柴油",
+   "油出",
+   "濟評",
+   "短期",
+   "禁令",
+   "經濟",
+   "評估"
+  ],
+  "entity": "美國白宮",
+  "subject_basis": "literal",
+  "subjects": [
+   "美國白宮"
+  ],
+  "event_type": "export_controls",
   "action": "",
   "identity_schema": 14
  }

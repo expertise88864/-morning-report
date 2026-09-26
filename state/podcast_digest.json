@@ -3,6 +3,135 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "6e0078b2-5a15-4f1d-95dd-16545ab2a236",
+        "title": "EP700 | 🪭",
+        "published": "Sat, 26 Sep 2026 06:40:54 GMT",
+        "processed_at": "2026-09-26T13:07:46Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Meta Connect 2026 的核心是 Muse 的各種硬體載體；Muse Charm 有別於 AI Pin、Rabbit R1 等已死產品，因 Meta 有用戶基礎，但信任度僅 8% 是最大隱憂，他個人會買來試，並從投資角度觀察能否帶動 Meta 或串接服務。",
+            "主持人判斷 AI 眼鏡／VR 想取代手機極不切實際，預估賣幾億支、光波導吃光台積電產能的假設太樂觀；手機太強，新裝置只能是小眾或交互補充。",
+            "主持人形容近期台股是動能交易者互相凌遲的盤，追高常當天被殺，但指數仍緩步創高；他聞到信任感快回來，但需等中秋後確認。",
+            "主持人操作上已調整為買綠不追高、放慢不做槓桿，選股重質而非快；他認為 AI 遲早休息，過去動能盤的習慣會害人。",
+            "主持人評論聽眾持股組合：光通訊（Lumentum/Coherent）、康寧、Teradyne、AMD、Google 等配置以過去角度選得漂亮，屬全面合理，但部分現在他未必會再挑。"
+          ],
+          "tickers": [
+            {
+              "name": "Alphabet (Google)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為聽眾持股中的 Google 沒問題，未表達看空。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Google沒有問題啦",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Lumentum",
+              "code": "LITE",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人說 Lumentum 與 Coherent 包下光通訊兩檔，具代表性。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Lumentum,光同口一輪兩個圈包了嘛",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Coherent",
+              "code": "COHR",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人將 Coherent 與 Lumentum 並列為光通訊雙雄，未看空。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Lumentum,光同口一輪兩個圈包了嘛",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Bloom Energy",
+              "code": "BE",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人說 Blue Energy 是賭資料中心供電（表貨供電）的標的，屬資料中心敘事。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Blue Energy就是你要去賭那個什麼,表貨供電嘛",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Corning",
+              "code": "GLW",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為康寧玻璃合理，有光的味道，可搭配光通訊與機台。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "康寧玻璃很合理啊,就是它現在基本上也是有點那種光的味道,光的形狀在",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Teradyne",
+              "code": "TER",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Teradyne 機台搭配光通訊與 AMD 使配置全面。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人說 AMD CPU 在組合中使整體配置全面，但未明確看多後市。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為台股近期處於動能交易者互相凌遲的盤面，追高易被修理，但指數仍緩步墊高；他觀察到信任感似乎快回來，等中秋後再確認。",
+          "action_view": "操作上建議放慢腳步，選優質公司、買綠不追高，避免追強與槓桿；等中秋後盤面確認再調整。",
+          "notable_quote": "這個盤面是在反映大家的一個心性,但隨著可能越來越多人放棄之後,現在這個盤面真的是有感覺,有點氣氛回來,但一樣還是要等中秋之後再來觀察",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "這個盤面是在反映大家的一個心性,但隨著可能越來越多人放棄之後,現在這個盤面真的是有感覺,有點氣氛回來,但一樣還是要等中秋之後再來觀察"
+          },
+          "direction_quality": {
+            "attributed": 5,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "07a93403-e26a-4a8b-a53a-497aa4e9ca20",
         "title": "EP699 | 🪻",
         "published": "Wed, 23 Sep 2026 07:47:36 GMT",
@@ -464,35 +593,6 @@
           "notable_quote": "一個完全正確的報告，不代表在你的投資上面可以去獲得一些收益"
         },
         "shown_at": "2026-08-19T22:37:05Z"
-      },
-      {
-        "guid": "986db49f-de3d-49e4-9ef7-dd721bdc240c",
-        "title": "EP688 | 🥽",
-        "published": "Sat, 15 Aug 2026 06:36:40 GMT",
-        "processed_at": "2026-08-15T08:43:38Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為SpaceX股票解禁的首次衝擊最大，但隨流動性增加、承接者變多，後續解禁對股價的影響會愈來愈小，而且釋出更多籌碼有助價格發現。",
-            "主持人認為Cerebras的SRAM低延遲解碼方案在Reasoning推論時代有搞頭，公司取得晶圓產能愈來愈多代表信心增強，待這波解禁籌碼消化後值得觀察。",
-            "主持人指出NVIDIA 800V DC白皮書可能重新點燃被市場冷落的電源族群；2026-27年power rack階段受惠AC-DC PSU、SHAF電容/連接器與BBU，但部分已反映在股價上。",
-            "主持人強調中期power center階段才是新機會，SiC、GaN（尤其GaN缺貨超乎先前預期）、IGBT及集中式整流器將受惠；2028-30年UPS、busway、SSCB，2030年後重電與儲能接棒。",
-            "主持人對被動元件/功率族群看法：經過深跌後營收續創新高、獲利成長高於營收成長，代表價格條件仍好；AI需求可支撐漲價，但車用/消費電子的漲價則有價格破壞風險。",
-            "主持人提醒抄底不要幻想抓絕對低點，只能抓相對位置；應以事件搭配超強反彈走勢來判斷底部，分幾批進場且不要一次打光子彈，若破底則反而是更深的風險。"
-          ],
-          "tickers": [
-            {
-              "name": "Cerebras Systems",
-              "code": "CBRS",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為其SRAM推論方案有潛力，取得產能增加顯示信心，待籌碼釋出後再觀察。"
-            }
-          ],
-          "market_view": "主持人認為市場題材仍充沛，先前修正讓很多股票變便宜，資金在各族群間輪動；電源族群被冷落許久，800V DC白皮書可能點燃新一波行情，但仍需觀察族群能否形成主流。",
-          "action_view": "抄底應分批慢慢買，不要幻想買在最低；用事件搭配強勁反彈判斷底部，若破底需警惕更深風險；可開始依白皮書測算電源鏈公司未來營收時間點，再挑選股價相對低估的標的。",
-          "notable_quote": "你不可能會百分之百完美的抓到底部……我們能夠知道的是相對位置，但是絕對位置真的太難了。"
-        },
-        "shown_at": "2026-08-15T22:10:34Z"
       }
     ]
   },

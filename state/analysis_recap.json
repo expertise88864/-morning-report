@@ -576,39 +576,39 @@
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠，先進製程市佔逾九成）：英特爾代工負責人向 KeyBanc 表示，14A 製程性能預計在台積電 A14 節點的「5% 以內」（鉅亨）。傳導機制在於客戶端的中長期尋源策略：若英特爾真能縮小差距，台積電在 2028 年後節點的定價權會被牽制，但兩家都還沒量產。這則新聞說不出量級——沒有良率、沒有客戶、沒有投產日期，只能當長期競爭格局的觀察點。[B 級・信心:中-低]",
+    "statement": "台積電（2330，全球最大晶圓代工廠，先進製程與封裝產能為 AI 供應鏈瓶頸所在）：傳出 2027 年晶圓代工報價將調升 3%~6%，帶動高「含積量」ETF 討論 （鉅亨台股）。報價調升直接進毛利率，且因先進製程無替代產能、客戶議價空間有限，最快反映在 2027 年起的每片晶圓收入。但公司未證實此報價區間，量級還无法對應到具體營收，只能當方向性訊號。[B 級・信心:中，未經公司證實]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6616246"
+     "https://news.cnyes.com/news/id/6615805"
     ]
    },
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠）：經濟部投審司指出，赴美投資已 7 度核准、累計股本 440 億美元，後續仍有新案待審 （ETtoday財經）。傳導機制是資本配置的排擠效果：海外廠初期良率與成本都高於台灣，毛利率稀釋是漸進的，不是一次到位。以台積電宣布的 2,650 億美元總規模對照，已核准股本僅約六分之一，最快 2027 年才會反映在折舊與毛利結構上。[A 級・信心:中]",
+    "statement": "NVIDIA（NVDA，AI 加速器龍頭）：延續 AI 封裝材料這條線，正評估玻璃基板方案，最快 2028 年前導入下一代 GPU，並推動台積電共同開發 （鉅亨美股個股）。玻璃基板要取代有機基板，牽動的是先進封裝載板與設備規格，屬 2028 年後的中長線資本支出題材。技術障礙（玻璃通孔金屬化）與客戶認證都尚未完成，時間點太遠、對今日訂單與稼動率沒有量級影響。[B 級・信心:中-低]",
     "source_urls": [
-     "https://finance.ettoday.net/news/3244112"
+     "https://news.cnyes.com/news/id/6616743"
     ]
    },
    {
-    "statement": "聯茂（6213，銅箔基板廠，PCB 上游材料）：單月 EPS 達 2.54 元，帶動 CCL 四雄齊揚，PCB 材料產值估增 38.6% （Yahoo股市）。傳導機制與上一條同向：AI 伺服器主板層數增加 → 高階 CCL 用量與單價齊升 → 上游材料廠毛利改善。單月 EPS 抵一季逾七成是斜率極陡的訊號，但要確認是報價調漲還是產品組合升級，兩者的續航力差很多。[A 級・信心:中]",
+    "statement": "聯茂（6213，銅箔基板廠，AI 伺服器高速板材供應商）：延續近期獲利爆發這條線，8 月獲利超預期、開盤漲停一字鎖 （自由時報）。銅箔基板是 AI 伺服器與交換器的高速訊號載體，獲利跳升反映的是高階板材出貨比重拉升。這是一則獲利數字驅動的個股事件，但漲停鎖死代表當日流動性極低，追價風險與基本面改善是兩件事。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiwgJBVV95cUxPMmtLbE56MFVfcjNmRkRETjJTemRkR3FuTkN3azFNeG1OODZKWnphdXUwdEFmZTlXVlZWTHhtZWk0cTl0Qm5tbzB5cTBacS02RVNac2xVb2R6MHR6WWVTemtUWl8zUTNwUE1sanRfRnZfek9RVTBuQWNRLTFkeEdQRDRMWlA1MXYwWGRWS05rZHYwVWFQY2pqOFZjU2tkV2RUQnhlMEdkTXBacG9PM2Ntd0pvZUVlQmkzWFJhbXRacW5vb2hwajFQZUIxczlmbFhRN2JyUVFNRElUc1h0d185TnFFbmhESVJBUlprRTl2MXV1aWpsUGJYeDhhU0duT3FTZl9oTjM0WEhQRXNfOThNeWtXUFZLWUpyWkV3NmJBRUtyWm5ENEpVaTREREViVWJGTEZxSXd0emZ5VF9hbW53ZkV3?oc=5"
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFA2ZnhHQ3UyLW03RllQN3YzaGstWFAzUENiWmdMekxoSVlVRmxOdkd5WEREMXYxOUlJdThxQ1IzOHUtcjhaLWVpT1FIbmRYbklNdllodHFVNUI?oc=5"
     ]
    },
    {
-    "statement": "微軟（MSFT，全球最大軟體商）：將 Copilot 重整為 Home／Code／Autopilot 三大功能，試圖在企業 AI 市場對抗 Anthropic （TechNews）。傳導機制走雲端推論需求 → 資料中心伺服器採購 → 台廠代工與電源供應鏈。這則是產品發布，沒有採購數字，對台股的傳導要等雲端資本支出指引更新才看得到。[B 級・信心:低]",
+    "statement": "【金融｜台灣】國泰金（2882，壽險與銀行雙引擎金控）：Factset 最新調查將 EPS 預估上修至 8.88 元、目標價 125 元，同時該集團上修今年 GDP 預估至 11.6%、並估央行 9 月不會升息 （LINE TODAY）。壽險投資收益是這條上修的主因，台美股雙漲墊高獲利基期，而若如預期不再升息，債券評價回吐的壓力也減輕。注意這是賣方預估值、不是公司自結數字，幅度能否實現要看後續月獲利。[B 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMimwFBVV95cUxQSUs3ZTEtN0VXOUhqUW9sck0wX1JaR3lrTGhHN3QwMUxoR0pMWjJnQnB1eXR0MEk5MTBaTEZxOHp0RG1zZTJBRWd3R0M0OFFDNkpxTFVDbjY3bXk2bVJrVHAycWJjTUFLYWxTU0Ffc0JmV1NoeFlpX0I1Nk9VMlFtUW83bkdFZlh2T0xZYm5wbk5vS3YxQnliTEJQVQ?oc=5"
+     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE5fM1hncWNFTWZ0cFRqTmVjWXh1dFN0ZnlTZjNZM0oxNEl1SUhnMGFWQ2dva3ppRFZGRjcwQ0ozNjAyakJzc0ZNdUs5LVVGMW1ielV3WnNTX3h1bzJad3BMVmVKSXg?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】台灣人壽（中信金旗下壽險）：金管會最新裁罰出爐，台壽吞最高罰單、金額逾千萬，15 家保單遭下架 （CMoney）。傳導機制為保單下架直接影響新契約保費收入，但裁罰金額對中信金年度獲利屬可吸收範圍。關鍵在於停賣商品佔台壽新契約價值的比重，目前公開資訊看不出來，因此無法量化。[B 級・信心:中]",
+    "statement": "【傳產原物料｜台灣】南亞科（2408，台灣主要 DRAM 廠）：8 月營收月增、年增雙增，法人估今年 EPS 上看 74.6 元 （UDN）。記憶體供給短缺與 HBM4 排擠傳統 DRAM 產能，是這條營收動能的來源，與本週美光財報屬同一條驗證線。EPS 推估值需要後面幾季報價支撐，單月營收雙增還不足以證明全年數字。[B 級・信心:中-低]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiggFBVV95cUxPRmtvU0ZQd0ZTeWRnVl9kdGtmWE1HbDh3SGtJRnFFR3JfYjVtXy1aYkVDeDlnSkZySEhkWjlhdF9uSk04cWZfOU41QjJBaUtLanRxTWprWFBGMmxHWlcxR3NmN1k3bVhrRXVvV01rR0dfQVk4cGp0NkVYcG85M2h4aEJB?oc=5"
+     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE1xbkpNUVpuWHJheG5KSldOQjlUOUFPUWhKaTBjZElwNzE1dWUtSWtjT1lKN25oTnhqZGc4UUk2NUxwT1dTRHY3RDUteGZnUlZC0gFWQVVfeXFMTms4VWlYbmJyb1I5eTZWUzE2U095VjZkTE1vcE42OXNTZjJmVHVrY3A0SXJtdjFhQTFHV2JiMmpHN25MZXBXTG44UzhVQjhHZlZJdm5JQ3c?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】國泰金（2882，台灣最大金控）：國民經濟信心調查顯示 69% 民眾有投資台股 ETF （自由時報）。傳導機制是散戶資金持續透過 ETF 流入權值股，被動買盤對 0050 成分股形成結構性支撐。這項數據每季變動不大，對盤面的即時影響有限，但顯示內資承接力仍在。[B 級・信心:低-中]",
+    "statement": "【營建資產｜台灣】房市信心：看跌房價比重由約 6 成降至約 3 成，信義房屋指房市信心轉中性、新竹最樂觀 （udn房地產）。央行利率不變並鬆綁房市管制，是買方預期轉向的直接原因，去化率回穩對建商推案節奏偏正面。但同批報導也提到北市預售均價 4319 萬元、中古屋房價指數刷新高，量能是否真正回來要等下一期移轉棟數。[B 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFAtRnRGbF9MNnpfRlBjSHUyTW5ON0hodmlpcGpHNFJUR01DbFdhQjB0c0M2YXJzWHRjN3dDLVNtdFhiZGRuZXNSNzZQREdIZDZUU3RMTC1pbDk?oc=5"
+     "https://news.google.com/rss/articles/CBMif0FVX3lxTE8xZ0lxcTZteG1mc3ppdmgxOFBFdDczeVJGVFVMUl9lWi1Ka01iN1QxS2FxVEhwVHZvaHJoenZTWi1VcDFULVI5b1pkcnFGYkFXNEpfUFZna1Z5TzJZekxtTkJaN2NubVp0eGwzNS1BSmFkQXhNRm53RFRTdERLdTQ?oc=5"
     ]
    }
   ]

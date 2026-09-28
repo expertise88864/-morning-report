@@ -1785,6 +1785,93 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "a7e2f7cb-f0ec-42e9-ac0c-b93996196d81",
+        "title": "EP340. 川習會台灣怎麼看、Meta Connect 大會、資料中心搶電大戰 | M觀點",
+        "published": "Mon, 28 Sep 2026 16:53:53 GMT",
+        "processed_at": "2026-09-28T20:51:09Z",
+        "digest": {
+          "summary_points": [
+            "主持人解讀川習會：關稅戰休兵延長兩個月、雙方各降300億美元項目關稅只是小禮物；稀土仍是美國不敢全面課稅的關鍵，MP 產能雖提升仍不足以完全取代中國。",
+            "主持人看好 Meta：Muse agent 成功後，AI 眼鏡/VR 眼鏡故事缺口補上；他預測新 VR 眼鏡（約4萬台幣、100公克）銷量將遠超 Apple Vision Pro，價格與舒適度是關鍵。",
+            "主持人認為 Oracle 木星計畫延遲不是 AI 泡沫，而是電力卡關；對比 SpaceX 已解決電力，年底前 Colossus 2 有機會再加 66 萬顆 GB300，新增用電約 1.6GW，等於核三廠對外供電量。",
+            "主持人稱 SpaceX 資料中心是印鈔機，Q3/Q4 財報將爆發；太空資料中心因地面電力與政治阻力而更具吸引力，未來5-10年只有 SpaceX 能賺。",
+            "主持人透露自身投資操作：SpaceX 持股已超過3%，目標加到主動部位4%，回檔會繼續補；強調自己長線投資，短期跌不是壞事。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好 Meta 將 AI 整合至眼鏡，Muse 成功與 VR 眼鏡低價輕量將帶動硬體銷售，AI 裝置故事缺口補上。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我認為 meta他是有能力把 ai 整合到他的眼鏡的所以當他把 ai 很妥善的整合到眼鏡眼鏡就成為最好的 ai device",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 SpaceX 解決電力、算力出租如印鈔機，Q3/Q4 財報將爆發，太空資料中心未來5-10年只有它能賺；自身持股已逾3%，目標4%。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我跟你講這是印鈔機啊這真的是印鈔機啊所以今年這個第三季第四季 spaces 的財報要大爆發",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "MP Materials",
+              "code": "MP",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人提到 MP 稀土產能提升，可覆蓋美國本土約三成需求，降低對中國稀土依賴，但未給買賣建議。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Oracle 木星計畫延遲是因州政府否決天然氣管線用地、電力卡關，而非 AI 泡沫。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人未對大盤明說方向，但認為 AI 資料中心缺電是核心瓶頸，電力與算力供給者將受惠；同時看好 AI 裝置整合（Meta）與太空資料中心（SpaceX）長線趨勢。",
+          "action_view": "主持人透露自身操作：長線持有並加碼 SpaceX，目標從目前逾3%加至主動部位4%，回檔視為補貨機會；未給個股買進建議，僅分享自身看法。",
+          "notable_quote": "我跟你講這是印鈔機啊這真的是印鈔機啊所以今年這個第三季第四季 spaces 的財報要大爆發",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我跟你講這是印鈔機啊這真的是印鈔機啊所以今年這個第三季第四季 spaces 的財報要大爆發"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "7dc2a5f2-a116-4884-801e-28e756635e3a",
         "title": "EP339. Grok 4.7 失敗了嗎、模型大戰趨勢觀察、Muse 爆紅後影響 | M觀點",
         "published": "Thu, 24 Sep 2026 17:44:17 GMT",
@@ -2386,57 +2473,6 @@
           "notable_quote": "AI產業一個月，等於傳統的科技產業maybe半年左右"
         },
         "shown_at": "2026-08-20T22:35:06Z"
-      },
-      {
-        "guid": "dbeef481-226a-4556-a855-caba3bb9787b",
-        "title": "EP328. SPCX Grok 4.6、谷歌 Gemini 3.7 Flash、Anthropic 上市估值 | M觀點",
-        "published": "Mon, 17 Aug 2026 06:16:31 GMT",
-        "processed_at": "2026-08-17T09:02:33Z",
-        "digest": {
-          "summary_points": [
-            "xAI 的 Grok 4.6 用 1.5 兆參數就追平 GPT 5.6 Soul 的 AAII 61 分，且每任務成本僅 0.84 美元，比 GPT 5.6 Soul 便宜 32%、比 Fable 5 便宜 73%，主持人認為 xAI 已回到最前沿且 CP 值最高。",
-            "主持人預期 Grok 4.7（2 兆參數）9 月底前推出，有機會以 63-65 分拿下 AAII 第一；並透露 Grok 4.5 推出後 xAI Token 銷量一週內增三倍，後續月增率可能 50-100%。",
-            "主持人修正模型商品化觀點，認為前沿模型不會完全互換，換模型如同換 NBA 球星有磨合成本，企業沒有強烈動機不會更換核心模型。",
-            "Gemini 3.7 Flash 僅達次前沿（AAII 56 分），每任務成本 0.4 美元與 Meta 的 MuSpark 1.2 平手、比 GPT 5.6 Tera 便宜 20%，主持人認為能幫 Google Cloud 防守客戶，但不上 Azure/AWS 會失去規模經濟。",
-            "Anthropic 傳 10 月以 2 兆美元 IPO，主持人認為是投資人放話帶風向；他認為合理估值 1-1.5 兆美元，但市場可能給到 1.8 兆，因年底 ARR 可達 1000 億美元。",
-            "阿里巴巴 Qwen 3.8 27B 可塞進 24GB 消費級顯卡，是第一個可在一般電腦跑 agent workflow 的模型，主持人認為會吸引大量個人用戶與研究者採用。",
-            "主持人以 NVIDIA 類比 Anthropic：市占率雖被 OpenAI 與 xAI 搶走，但整體 AI 需求高速成長，Anthropic 月增 7% 即可在年底達 100B ARR，不必因成長率落後就看衰。"
-          ],
-          "tickers": [
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Gemini 3.7 Flash 只達次前沿且僅在 GCP 推出，主持人認為 Google 防守客戶有餘但缺乏規模經濟，不看衰也不看好奪冠。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人說微軟應力挺 Grok 等其他模型以制衡 OpenAI/Anthropic，讓模型商品化，平台才有話語權。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人說亞馬遜應力挺 Grok 等其他模型以制衡 OpenAI/Anthropic，讓模型商品化，平台才有話語權。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人以 NVIDIA 為例，資料中心業務年增 92%，市占雖下滑但量體仍大，仍可達合理估值，未看衰。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "未明確給出個股操作，但對高估值 AI IPO 保持謹慎，認為 Anthropic 2 兆太貴、合理約 1-1.5 兆，但尊重市場定價。",
-          "notable_quote": "我雖然覺得太貴,可是市場覺得ok啊,那就ok嘛"
-        },
-        "shown_at": "2026-08-17T22:30:06Z"
       }
     ]
   },
@@ -7371,6 +7407,107 @@
   "circuit": {
     "name": "The Circuit",
     "episodes": [
+      {
+        "guid": "271a0027-9224-4155-bb96-da9f04ed5b30",
+        "title": "Memory Pricing Pressures, Meta's Muse AI, and the Agentic CPU Crunch",
+        "published": "Mon, 28 Sep 2026 11:56:40 -0700",
+        "processed_at": "2026-09-28T20:55:24Z",
+        "digest": {
+          "summary_points": [
+            "主持人觀察中國記憶體廠正加速擴產：YMTC（NAND）把部分擴產計畫提前，CXMT（DRAM）目標明年底前每月再增 10 萬片、年增約 33% 產能，良率也在改善並切入不同 DRAM 產品線；他認為這不是「天要塌了」，而是提醒中國玩家已是認真的供應商、變大變強的速度很快。",
+            "消費端記憶體價格是主持人這集的核心關切：本週有兩份預測因記憶體漲價而下修消費性裝置（PC、手機等）出貨，他認為這個下修合理、消費硬體短期會很難看；但他從記憶體廠 CEO 等利益相關方聽到消費級記憶體價格可能開始走平，自己半信半疑，並預期資料中心用記憶體價格仍會繼續漲。他認為記憶體廠應把客戶分成價格敏感的消費客群與不計價的資料中心客群，做出市場區隔。",
+            "主持人提醒記憶體三雄若對長期消費性大客戶太強硬，等於把客戶推向中國供應商：三週前有報導稱 Apple 測試過 CXMT 記憶體並積極爭取美國政府豁免；他也提到 Hot Chips 上記憶體場次被與會者強烈質疑（為何走向 hybrid bonding、為何 HBM 要堆更多層、只會需要更多晶圓），並預期記憶體廠這次會更策略性經營客戶、不把利潤率拉到看起來像趁火打劫，才不會長期丟掉客戶。",
+            "Meta 本週發表 AI 產品（包括 AI 代理 Muse 與一款 AI 玩具），主持人說他兩個月前就預測消費者 AI 會長成這種助理形態，並認為現在 AI 的難點在產品化：Muse 是往對方向的一步，但模型能力還不夠，真正好用的消費產品可能還要再一兩代模型；他也強調企業 AI 存在巨大的技能落差，這種會主動提示、看著你操作的助理，可能是帶動採用與上手的催化劑。",
+            "Anthropic 與 Akamai 宣布約 110 億美元合作（Anthropic 分年付款、Akamai 給認股權證），主持人推測 Akamai 可能替 Anthropic 跑推論並提供 Linode 閒置 CPU 算力，也可能切入更分散的網路拓樸與代理安全，並提出 Cloudflare 在這一塊同樣有大角色的理論。他認為這再次凸顯運算（尤其 CPU）嚴重短缺：Twitter 上有人喊 CPU 對 GPU 30:1，而同一人一年前講的是 16 顆 GPU 對 1 顆 CPU，他要大家先深呼吸，但世界確實會需要大量 CPU；他正在寫一份「agentic CPU guidebook」，並指出 Meta 手上 CPU 很多、可能因此有優勢。"
+          ],
+          "tickers": [
+            {
+              "name": "Micron",
+              "code": "MU",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為記憶體三大廠（三星、Hynix、Micron）利潤率正在上升，但應該善待長期消費性客戶，否則等於把客戶推向中國新供應商；節目未對股價表態。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "if the Samsung, Hynix and micron are smart about it, they're going to, they're going to do what they can to protect their long standing consumer customers because if they if they don't sort of look out for them to some degree, that is going to open the door for those customers to look elsewhere",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Akamai",
+              "code": "AKAM",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人推測 Akamai 可能以 Linode 的閒置 CPU 替 Anthropic 跑推論，或切入分散式網路拓樸與代理安全，但合作細節未公開、走向有多種可能。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "One is Akamai is going to run inference for Anthropic as a pure compute deal. Anthropic needs CPUs in particular to do inference. They probably haven't been getting a lot of those in the deals they've signed. They really need those now to do more inference and Linode and Akamai has a big pool of probably underutilized CPU sitting around.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Cloudflare",
+              "code": "NET",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人提出理論：邊緣網路在代理架構中很重要，Cloudflare 接下來也會扮演大角色，只是它沒有大量雲端 CPU 可用。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "Which kind of leads me to this theory that like Cloudflare has a big role to play here too. I think they're the next one who has a comparable offering but they don't they don't have a big pool of cloud CPUs.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Meta 的 AI 代理 Muse 是往對方向的一步、會激發很多想像，但產品化與模型能力仍不到位，屬於產品評論而非投資立場；另提到 Meta 手上 CPU 很多，可能在代理工作負載上有優勢。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "I think there is immense consumer and to your point you enterprise utility but I really think there's a strong consumer product in in the works some somebody's going to come blow up with something.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Apple 在助理型 AI 有信任與通路優勢、可能比 Google 更早出手；另提到 Apple 曾測試 CXMT 記憶體並爭取美國政府豁免，是記憶體廠必須留意的長期大客戶。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "I think Apple makes a play here sooner than I think Google Google does this to right and the thing I keep walking back from is if you're just going to pick who would you think is is best advantage",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I don't think memory is getting cheaper in consumer, but maybe prices stop going up again, as opposed to data center pricing, memory is just going to keep going up.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I don't think memory is getting cheaper in consumer, but maybe prices stop going up again, as opposed to data center pricing, memory is just going to keep going up."
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 2,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
       {
         "guid": "66396c1f-3abf-4944-a99a-afc2818e43c1",
         "title": "Conversation with Ayar Labs CEO Mark Wade on Silicon Photonics, Co-Packaged Optics, and Next-Gen AI Infrastructure",

@@ -6278,5 +6278,110 @@
    "git_sha": "7ba15b8115b6"
   },
   "git_sha": "7ba15b8115b6"
+ },
+ {
+  "type": "top5",
+  "created": "2026-09-29",
+  "ledger_schema_version": 2,
+  "created_at": "2026-09-29T08:48:56.981105+08:00",
+  "target_session": "2026-09-29",
+  "base_session": "2026-09-24",
+  "codes": [
+   "3037",
+   "3711",
+   "2454",
+   "3443",
+   "3189"
+  ],
+  "raw_codes": [
+   "3037",
+   "3711",
+   "6213",
+   "2454",
+   "3443"
+  ],
+  "excluded": [
+   [
+    "6213",
+    "漲停鎖死"
+   ]
+  ],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-09-29",
+  "created_at": "2026-09-29T08:48:56.981105+08:00",
+  "target": "2026-09-29",
+  "threshold": 2475.0,
+  "pred_pct": -0.133,
+  "prob": 0.417,
+  "sigma": 1.371,
+  "sigma_n": 60,
+  "base_rate": 0.531,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "02f36aa3289b"
+  },
+  "git_sha": "02f36aa3289b"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-09-29",
+  "created_at": "2026-09-29T08:48:56.981105+08:00",
+  "target": "2026-09-29",
+  "threshold": 48024.6,
+  "pred_pct": -0.358,
+  "prob": 0.3,
+  "sigma": 0.778,
+  "sigma_n": 60,
+  "base_rate": 0.633,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "02f36aa3289b"
+  },
+  "git_sha": "02f36aa3289b"
+ },
+ {
+  "type": "mz_shadow",
+  "created": "2026-09-29",
+  "created_at": "2026-09-29T08:48:56.981105+08:00",
+  "target": "2026-09-29",
+  "raw": 2471.72,
+  "shadow": 2474.36,
+  "base": 2475.0,
+  "a": 1.572,
+  "b": 0.6737,
+  "n_train": 92,
+  "forecast_version": "prob-v2",
+  "mz_rule": "delta-mz-hac-v1",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "02f36aa3289b"
+  },
+  "git_sha": "02f36aa3289b"
  }
 ]

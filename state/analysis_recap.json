@@ -571,44 +571,44 @@
  ],
  "watch_seq": 54,
  "legacy_report": {
-  "date": "2026-09-28",
+  "date": "2026-09-29",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠，先進製程與封裝產能為 AI 供應鏈瓶頸所在）：傳出 2027 年晶圓代工報價將調升 3%~6%，帶動高「含積量」ETF 討論 （鉅亨台股）。報價調升直接進毛利率，且因先進製程無替代產能、客戶議價空間有限，最快反映在 2027 年起的每片晶圓收入。但公司未證實此報價區間，量級還无法對應到具體營收，只能當方向性訊號。[B 級・信心:中，未經公司證實]",
+    "statement": "台積電（2330，全球最大晶圓代工廠）：半導體設備界傳出擬啟動美國第二園區、落腳德州達拉斯，規劃 6 座先進晶圓廠，總投資額估超越亞利桑那州的 2,650 億美元 （ETtoday）。公司尚未回應。若成真，海外資本支出更分散，對漢唐、帆宣、亞翔等廠務工程商是額外訂單能見度，但也意味本地擴產步調相對放緩；在台積電正式公告前，這則新聞說不出確切量級，因為沒有金額、沒有時程、沒有製程節點。[B 級・信心:低，公司未證實]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6615805"
+     "https://finance.ettoday.net/news/3245451"
     ]
    },
    {
-    "statement": "NVIDIA（NVDA，AI 加速器龍頭）：延續 AI 封裝材料這條線，正評估玻璃基板方案，最快 2028 年前導入下一代 GPU，並推動台積電共同開發 （鉅亨美股個股）。玻璃基板要取代有機基板，牽動的是先進封裝載板與設備規格，屬 2028 年後的中長線資本支出題材。技術障礙（玻璃通孔金屬化）與客戶認證都尚未完成，時間點太遠、對今日訂單與稼動率沒有量級影響。[B 級・信心:中-低]",
+    "statement": "世界先進（5347，成熟製程晶圓代工）：董事長方略 28 日表示 8 吋產能利用率已「徹底爆掉」，AI 浪潮排擠非 AI 成熟製程產能 （鉅亨）。成熟製程吃緊直接反映在聯電、世界先進的報價與稼動率，屬落後指標但方向確認；這條與上一條台積電先進封裝擴產指向同一件事：整體晶圓需求端仍緊。[A 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6616743"
+     "https://news.cnyes.com/news/id/6609525"
     ]
    },
    {
-    "statement": "聯茂（6213，銅箔基板廠，AI 伺服器高速板材供應商）：延續近期獲利爆發這條線，8 月獲利超預期、開盤漲停一字鎖 （自由時報）。銅箔基板是 AI 伺服器與交換器的高速訊號載體，獲利跳升反映的是高階板材出貨比重拉升。這是一則獲利數字驅動的個股事件，但漲停鎖死代表當日流動性極低，追價風險與基本面改善是兩件事。[A 級・信心:中]",
+    "statement": "NVIDIA（NVDA，GPU 與 AI 加速器龍頭）：宣布 1,500 億美元史上最大規模庫藏股回購計畫，股價一度逆勢漲逾 3% （TechNews）。回購本身不改變台積電訂單，但反映管理層對未來現金流的信心；它與上一條美光財報指向同一個需求端結論——AI 資本支出尚未見頂，這對 2330 是持有理由的強化、不是新訂單。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFA2ZnhHQ3UyLW03RllQN3YzaGstWFAzUENiWmdMekxoSVlVRmxOdkd5WEREMXYxOUlJdThxQ1IzOHUtcjhaLWVpT1FIbmRYbklNdllodHFVNUI?oc=5"
+     "https://news.google.com/rss/articles/CBMiwAFBVV95cUxOb0lRVjVXMmpZeU9vRjBlOGVzb3UyYUR6LWhfRFg2MmlZZXN2R2dyYXdZdFAxZ1RkYWlOdzg0WTJpY1M3WGxNQUtWd0VKVnNVQm9wZ3ZVOGtyVmticmVhRGUyR0FQUGNMOHl5cEhHU1Y5T3V5bUxzOG04SkZCaXVpdGdGTi1MdUpkVEt4ZG1YV3NQLUIyVzhoaUFLR3NtZUJaWXdZQl9UYUotckJqSjUwYXMyTGJlQ1VPVVZNVXpMZFc?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】國泰金（2882，壽險與銀行雙引擎金控）：Factset 最新調查將 EPS 預估上修至 8.88 元、目標價 125 元，同時該集團上修今年 GDP 預估至 11.6%、並估央行 9 月不會升息 （LINE TODAY）。壽險投資收益是這條上修的主因，台美股雙漲墊高獲利基期，而若如預期不再升息，債券評價回吐的壓力也減輕。注意這是賣方預估值、不是公司自結數字，幅度能否實現要看後續月獲利。[B 級・信心:中]",
+    "statement": "聯發科（2454，全球第二大 IC 設計廠）：搶下 Anthropic 與 OpenAI 的 ASIC 訂單，外資按讚 （經濟日報）。ASIC（客製化 AI 晶片）與 GPU 搶的是同一段 CoWoS 先進封裝產能，聯發科訂單到手意味台積電先進封裝需求更擁擠；但 ASIC 從設計到量產通常需 12 至 18 個月，對 2330 明年上半年稼動率才有意義，今年看不到。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE5fM1hncWNFTWZ0cFRqTmVjWXh1dFN0ZnlTZjNZM0oxNEl1SUhnMGFWQ2dva3ppRFZGRjcwQ0ozNjAyakJzc0ZNdUs5LVVGMW1ielV3WnNTX3h1bzJad3BMVmVKSXg?oc=5"
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5MbFctcF9Bc1lQX2xRWkVRMlFHSEhyY2N2NXVmdW1fY0QyQUpUc2FKd2tTWGpTNlZhcW9ELW41UFFIazIwRUQ5R3U3SERJSnE3NkdEZHRMdHdhd9IBX0FVX3lxTE4xUDg5Sk9UaEFsaWloQ0t4Y2QyNkF6ZFd1OTBTU25UZGJPeWwwSERQM3piNDBjTUw4YV82dTRFbzA1SUlfT2hHODZ0cWhsd0VqZU9YREg5RTVBOGNRUDhV?oc=5"
     ]
    },
    {
-    "statement": "【傳產原物料｜台灣】南亞科（2408，台灣主要 DRAM 廠）：8 月營收月增、年增雙增，法人估今年 EPS 上看 74.6 元 （UDN）。記憶體供給短缺與 HBM4 排擠傳統 DRAM 產能，是這條營收動能的來源，與本週美光財報屬同一條驗證線。EPS 推估值需要後面幾季報價支撐，單月營收雙增還不足以證明全年數字。[B 級・信心:中-低]",
+    "statement": "AI 模型競賽：Anthropic 發布 Claude Sonnet 5.5，OpenRouter 官方定價輸入 $2／百萬 tokens、輸出 $10／百萬 tokens，比同級旗艦便宜約四到五成 （TradingView／OpenRouter）；Google DeepMind 負責人稱 Gemini 4 將「遠早於年底」推出 （鉅亨）。低價模型普及會推升推理端 token 使用總量，中長期對算力與先進封裝需求是加分；但今日盤面半導體股（ARM 跌逾 8%、QCOM 跌逾 6%、MRVL 跌近 4%）的反應顯示，市場把「模型便宜」讀成對高階算力的短線情緒利空，與實際訂單脫鉤。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE1xbkpNUVpuWHJheG5KSldOQjlUOUFPUWhKaTBjZElwNzE1dWUtSWtjT1lKN25oTnhqZGc4UUk2NUxwT1dTRHY3RDUteGZnUlZC0gFWQVVfeXFMTms4VWlYbmJyb1I5eTZWUzE2U095VjZkTE1vcE42OXNTZjJmVHVrY3A0SXJtdjFhQTFHV2JiMmpHN25MZXBXTG44UzhVQjhHZlZJdm5JQ3c?oc=5"
+     "https://news.cnyes.com/news/id/6617330"
     ]
    },
    {
-    "statement": "【營建資產｜台灣】房市信心：看跌房價比重由約 6 成降至約 3 成，信義房屋指房市信心轉中性、新竹最樂觀 （udn房地產）。央行利率不變並鬆綁房市管制，是買方預期轉向的直接原因，去化率回穩對建商推案節奏偏正面。但同批報導也提到北市預售均價 4319 萬元、中古屋房價指數刷新高，量能是否真正回來要等下一期移轉棟數。[B 級・信心:中]",
+    "statement": "AI 伺服器供應鏈：緯創（3231，NB／伺服器代工）吃下戴爾、美超微的 Vera Rubin 訂單看到明年 （工商時報）。AI 機櫃拉貨會透過電源（台達電 2308）、散熱（奇鋐 3017）與 PCB（欣興 3037）傳導到台股；但這條與美光的記憶體財報、聯發科的 ASIC 訂單都指向同一段 AI 資本支出主線，三家各自補齊供應鏈不同環節，而非互相排擠。[B 級・信心:中-低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMif0FVX3lxTE8xZ0lxcTZteG1mc3ppdmgxOFBFdDczeVJGVFVMUl9lWi1Ka01iN1QxS2FxVEhwVHZvaHJoenZTWi1VcDFULVI5b1pkcnFGYkFXNEpfUFZna1Z5TzJZekxtTkJaN2NubVp0eGwzNS1BSmFkQXhNRm53RFRTdERLdTQ?oc=5"
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE1FM2xnaGtQTU00ZDl4akJuN2FEY1Jsd3BGNzJ2ckptcDFjbHlMTkZtZFUwclh4ekliU1paZmlzWXp4djBVejdiM3ZkR09IY2dYbTZhV1BZZGl2aUR2dXZ3?oc=5"
     ]
    }
   ]

@@ -571,44 +571,44 @@
  ],
  "watch_seq": 54,
  "legacy_report": {
-  "date": "2026-09-29",
+  "date": "2026-10-01",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠）：半導體設備界傳出擬啟動美國第二園區、落腳德州達拉斯，規劃 6 座先進晶圓廠，總投資額估超越亞利桑那州的 2,650 億美元 （ETtoday）。公司尚未回應。若成真，海外資本支出更分散，對漢唐、帆宣、亞翔等廠務工程商是額外訂單能見度，但也意味本地擴產步調相對放緩；在台積電正式公告前，這則新聞說不出確切量級，因為沒有金額、沒有時程、沒有製程節點。[B 級・信心:低，公司未證實]",
+    "statement": "美光 MU（美國記憶體大廠，HBM 與 DRAM 供應商）：Q4 財報優於預期，資料中心營收年增約 11 倍、長約增至 320 億美元，毛利率衝上 86.8% （經濟日報）。HBM 排擠傳統 DRAM 產能，帶動第四季記憶體報價估漲兩成，直接傳導到南亞科 2408、華邦電 2344 的接單與 ASP。法人點名南亞科為轉單受惠者，最快第四季財報反映，這是本段最扎實的一條。[A 級・信心:高]",
     "source_urls": [
-     "https://finance.ettoday.net/news/3245451"
+     "https://news.google.com/rss/articles/CBMiXEFVX3lxTE5xOWI4QUtWc0ZNMWhCcXB2SkR6WjJ0SUxJU2EyU203NG5TZXVzcW1LN3lSZGRhbmRkTkVHVTNORlh5cVgtQkdiSElmWjFwRzNZLVpCZ3ZSSnNvcENv0gFiQVVfeXFMTXY0N1hBX2VXNlZOTnpWWEpKMmJxX3QwNWtINUh6bnJPdzhXbzRPQ2ZWMkZ1cDFEdHJiYzYwSDNTYUpZTTZCQmE1ZWdpblVpR1RqdWxxLTcyNzRELW5GLTNmRnc?oc=5"
     ]
    },
    {
-    "statement": "世界先進（5347，成熟製程晶圓代工）：董事長方略 28 日表示 8 吋產能利用率已「徹底爆掉」，AI 浪潮排擠非 AI 成熟製程產能 （鉅亨）。成熟製程吃緊直接反映在聯電、世界先進的報價與稼動率，屬落後指標但方向確認；這條與上一條台積電先進封裝擴產指向同一件事：整體晶圓需求端仍緊。[A 級・信心:中]",
+    "statement": "AMD（全球第二大 x86 CPU 與 AI GPU 廠）：Zen 6 架構 Venice EPYC 處理器 2027 年產能售罄，採台積電 2 奈米製程 （TechNews）。N2 是 2330 明年最重要的成長引擎，客戶提前鎖定產能等於為先進製程稼動率買保險；這與 AI 模型競賽帶動的算力需求是同一條線。[A 級・信心:中-高]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6609525"
+     "https://news.google.com/rss/articles/CBMirgFBVV95cUxOSFBiT3lNTzIxbDdFQzZkcmhvaVdMNU8wbk1iZ0hXQkhlR24yTmpvRWZ0cnBBVkdKNEh6MEt4QVlQRHlNdFlwR25ubTYxaE5iNmVjZEpZVmpqYUd6a2xFR3psSFVHMTJEcy1NVGZPVEtyc2RFQnJWaEVEQ29zalB1VHd0clctOTlHY2ZHSlFadkpndjhWaGx4bGN4MEtXSVhUQ21QMXZyMy1qNUhkR3c?oc=5"
     ]
    },
    {
-    "statement": "NVIDIA（NVDA，GPU 與 AI 加速器龍頭）：宣布 1,500 億美元史上最大規模庫藏股回購計畫，股價一度逆勢漲逾 3% （TechNews）。回購本身不改變台積電訂單，但反映管理層對未來現金流的信心；它與上一條美光財報指向同一個需求端結論——AI 資本支出尚未見頂，這對 2330 是持有理由的強化、不是新訂單。[A 級・信心:中]",
+    "statement": "【金融｜台灣】中信金控（2891，台灣大型金控，旗下台灣人壽）：台灣人壽董事會通過租賃及委託興建合約、金額 12.03 億元，另核准投資台灣創新資本有限合夥不超過 9 億元 （MOPS）；台中超巨蛋 BOT 預計 10 月 16 日簽約 （UDN）。壽險資金轉進長天期不動產與私募股權，鎖住長期收益率、降低再投資風險，對金控是收益結構改善，短期獲利貢獻有限。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiwAFBVV95cUxOb0lRVjVXMmpZeU9vRjBlOGVzb3UyYUR6LWhfRFg2MmlZZXN2R2dyYXdZdFAxZ1RkYWlOdzg0WTJpY1M3WGxNQUtWd0VKVnNVQm9wZ3ZVOGtyVmticmVhRGUyR0FQUGNMOHl5cEhHU1Y5T3V5bUxzOG04SkZCaXVpdGdGTi1MdUpkVEt4ZG1YV3NQLUIyVzhoaUFLR3NtZUJaWXdZQl9UYUotckJqSjUwYXMyTGJlQ1VPVVZNVXpMZFc?oc=5"
+     "https://news.google.com/rss/articles/CBMiVkFVX3lxTFBJRzRBelhvckVDS09Hb2NNZUQtWHh1bEttUVZmZ2U4WUxxQThzdEsyVHdDblJ5SFNFRXpkaks0WnZ5YmVCQ0hEbFd3c0tXUDVMYV9McWZB0gFWQVVfeXFMTXhFejN0V2FXaXkxZlB1RXE3amJ4UlJNMVlyTHQteVhNNVB5QnQxZERTenA4U3lkWmdjMlMzMXdDMlM2cWVFdHlDWkE1OEdEc2lEYVBtRnc?oc=5"
     ]
    },
    {
-    "statement": "聯發科（2454，全球第二大 IC 設計廠）：搶下 Anthropic 與 OpenAI 的 ASIC 訂單，外資按讚 （經濟日報）。ASIC（客製化 AI 晶片）與 GPU 搶的是同一段 CoWoS 先進封裝產能，聯發科訂單到手意味台積電先進封裝需求更擁擠；但 ASIC 從設計到量產通常需 12 至 18 個月，對 2330 明年上半年稼動率才有意義，今年看不到。[A 級・信心:中]",
+    "statement": "【金融｜台灣】凱基金控（2883，旗下凱基證券）：董事會通過現金增資、發行不超過 7.2 億股，規模約 200 至 250 億元，七成以上挹注凱基證券 （鉅亨台股）。凱基證券前 8 月稅後純益 227.54 億元、年增 235%，承銷市占近四成，增資是為搶 AI 與半導體籌資案擴資本；以 250 億元上限對照約 1.05 兆元市值，股本稀釋約 2.4%，屬可承受範圍。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5MbFctcF9Bc1lQX2xRWkVRMlFHSEhyY2N2NXVmdW1fY0QyQUpUc2FKd2tTWGpTNlZhcW9ELW41UFFIazIwRUQ5R3U3SERJSnE3NkdEZHRMdHdhd9IBX0FVX3lxTE4xUDg5Sk9UaEFsaWloQ0t4Y2QyNkF6ZFd1OTBTU25UZGJPeWwwSERQM3piNDBjTUw4YV82dTRFbzA1SUlfT2hHODZ0cWhsd0VqZU9YREg5RTVBOGNRUDhV?oc=5"
+     "https://news.cnyes.com/news/id/6619098"
     ]
    },
    {
-    "statement": "AI 模型競賽：Anthropic 發布 Claude Sonnet 5.5，OpenRouter 官方定價輸入 $2／百萬 tokens、輸出 $10／百萬 tokens，比同級旗艦便宜約四到五成 （TradingView／OpenRouter）；Google DeepMind 負責人稱 Gemini 4 將「遠早於年底」推出 （鉅亨）。低價模型普及會推升推理端 token 使用總量，中長期對算力與先進封裝需求是加分；但今日盤面半導體股（ARM 跌逾 8%、QCOM 跌逾 6%、MRVL 跌近 4%）的反應顯示，市場把「模型便宜」讀成對高階算力的短線情緒利空，與實際訂單脫鉤。[A 級・信心:中]",
+    "statement": "【傳產｜台灣】南亞（1303，塑化與電子材料雙主軸）：CCL 報價看漲 90%，外資喊上「4 字頭」 （旺得富）。銅箔基板是 PCB 上游，漲價反映 AI 伺服器高頻材料需求，南亞的電子材料部門直接受益；但 30 日外資賣超 5.8 萬張、投信買超 8.1 萬張，法人不同調，漲價能否落袋要看第四季實際報價。[A 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6617330"
+     "https://news.google.com/rss/articles/CBMiakFVX3lxTE02UEktR3N3U055TWNKVjBPVGRkbFFiZzNkRThCd0YtVmk2TjZzY3lRNm1GZHZYVWdreDhZYWZBN0JyX1JWMkNia3RnNkpfWWNtNDVSMHNydnNzWUlSeTRfa0VBYzltMmhVbWc?oc=5"
     ]
    },
    {
-    "statement": "AI 伺服器供應鏈：緯創（3231，NB／伺服器代工）吃下戴爾、美超微的 Vera Rubin 訂單看到明年 （工商時報）。AI 機櫃拉貨會透過電源（台達電 2308）、散熱（奇鋐 3017）與 PCB（欣興 3037）傳導到台股；但這條與美光的記憶體財報、聯發科的 ASIC 訂單都指向同一段 AI 資本支出主線，三家各自補齊供應鏈不同環節，而非互相排擠。[B 級・信心:中-低，資訊有限]",
+    "statement": "【重電綠能｜台灣】NVIDIA（AI 晶片龍頭）：釋出 AI 工廠認證規範，點火儲能商機，有望釋單台達電、光寶 （經濟日報）。AI 資料中心用電需求推升儲能與電網資本支出，台達電（2308）的電源與儲能業務直接受惠；但「有望釋單」屬方向性消息，沒有金額與數量，判斷不出量級。[B 級・信心:中-低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE1FM2xnaGtQTU00ZDl4akJuN2FEY1Jsd3BGNzJ2ckptcDFjbHlMTkZtZFUwclh4ekliU1paZmlzWXp4djBVejdiM3ZkR09IY2dYbTZhV1BZZGl2aUR2dXZ3?oc=5"
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5sQ0dLRXFaVEZEWmtaUEFVYVljTDU4SjQ5MGE4bUV6S3QzeDE3WWpXOTF5Q0M1QnRkLXk5ajNweENQZXBnT2ROTVo0MnRsVTR4SjhJMjFoV2JEd9IBX0FVX3lxTE02VWlBbXotX0dOc2pBdnJPOFRFLTNCT3BxVnU2Slg1WEhoN3pXSzAtLVBQYzh0a1paVVRyNV9KUFUtWVZTR05kS3VyN3dKOXpZS1Nja2lfT3ZKalFKck5v?oc=5"
     ]
    }
   ]

@@ -6484,8 +6484,16 @@
    "3443"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "8046": 1285.0,
+   "6213": 624.0,
+   "3189": 961.0,
+   "3036": 209.5,
+   "3443": 8090.0
+  },
+  "taiex_entry": 47767.49
  },
  {
   "question": "2330_open_up",

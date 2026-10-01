@@ -811,5 +811,82 @@
   "event_type": "geopolitical",
   "action": "",
   "identity_schema": 14
+ },
+ "geopolitical:election:美國:2026-10": {
+  "first_seen": "2026-10-01",
+  "days": 1,
+  "last_seen": "2026-10-01",
+  "latest_title": "美國期中選舉倒數，油價與美伊戰事牽動通膨，眾議院翻轉風險升高",
+  "latest_summary": "",
+  "object": "美國",
+  "incident_tokens": [
+   "中選",
+   "事牽",
+   "伊戰",
+   "倒數",
+   "價與",
+   "動通",
+   "升高",
+   "戰事",
+   "期中",
+   "油價",
+   "牽動",
+   "眾議",
+   "美伊",
+   "翻轉",
+   "與美",
+   "舉倒",
+   "議院",
+   "轉風",
+   "通膨",
+   "選舉",
+   "院翻",
+   "險升",
+   "風險"
+  ],
+  "entity": "美國",
+  "subject_basis": "alias",
+  "subjects": [
+   "美國"
+  ],
+  "event_type": "geopolitical",
+  "action": "election",
+  "identity_schema": 14
+ },
+ "cybersecurity:中國:2026-10": {
+  "first_seen": "2026-10-01",
+  "days": 1,
+  "last_seen": "2026-10-01",
+  "latest_title": "英國MI5警告中國藉資助AI等學術研究提升情報刺探能力",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "ai",
+   "mi5",
+   "刺探",
+   "升情",
+   "報刺",
+   "學術",
+   "情報",
+   "探能",
+   "提升",
+   "研究",
+   "究提",
+   "等學",
+   "能力",
+   "英國",
+   "藉資",
+   "術研",
+   "警告",
+   "資助"
+  ],
+  "entity": "中國",
+  "subject_basis": "alias",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "cybersecurity",
+  "action": "",
+  "identity_schema": 14
  }
 }

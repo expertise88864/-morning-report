@@ -704,5 +704,112 @@
   "event_type": "geopolitical",
   "action": "",
   "identity_schema": 14
+ },
+ "geopolitical:arms_sale:?:2026-10": {
+  "first_seen": "2026-10-01",
+  "days": 1,
+  "last_seen": "2026-10-01",
+  "latest_title": "美國民主黨參議員聯合聲明籲川普速推對台軍售並攜手盟友抗中脅迫",
+  "latest_summary": "",
+  "object": "?",
+  "incident_tokens": [
+   "並攜",
+   "中脅",
+   "友抗",
+   "台軍",
+   "合聲",
+   "售並",
+   "對台",
+   "川普",
+   "手盟",
+   "抗中",
+   "推對",
+   "攜手",
+   "明籲",
+   "普速",
+   "盟友",
+   "籲川",
+   "聯合",
+   "聲明",
+   "脅迫",
+   "軍售",
+   "速推"
+  ],
+  "entity": "美國民主黨參議員",
+  "subject_basis": "literal",
+  "subjects": [
+   "美國民主黨參議員"
+  ],
+  "event_type": "geopolitical",
+  "action": "arms_sale",
+  "identity_schema": 14
+ },
+ "cybersecurity:cyberattack:Boston Scientific:2026-10": {
+  "first_seen": "2026-10-01",
+  "days": 1,
+  "last_seen": "2026-10-01",
+  "latest_title": "Boston Scientific 近期發生網路攻擊事故且復原過程漫長",
+  "latest_summary": "",
+  "object": "Boston Scientific",
+  "incident_tokens": [
+   "且復",
+   "事故",
+   "原過",
+   "復原",
+   "擊事",
+   "攻擊",
+   "故且",
+   "漫長",
+   "生網",
+   "發生",
+   "程漫",
+   "網路",
+   "路攻",
+   "過程"
+  ],
+  "entity": "Boston Scientific",
+  "subject_basis": "literal",
+  "subjects": [
+   "Boston Scientific"
+  ],
+  "event_type": "cybersecurity",
+  "action": "cyberattack",
+  "identity_schema": 14
+ },
+ "geopolitical:微軟:2026-10": {
+  "first_seen": "2026-10-01",
+  "days": 1,
+  "last_seen": "2026-10-01",
+  "latest_title": "JadePuffer借助AI代理攻擊Azure，微軟揭露兩起雲端資料破壞事件 - iThome",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "ai",
+   "azure",
+   "jadepuffer",
+   "事件",
+   "代理",
+   "借助",
+   "兩起",
+   "壞事",
+   "揭露",
+   "攻擊",
+   "料破",
+   "理攻",
+   "破壞",
+   "端資",
+   "資料",
+   "起雲",
+   "雲端",
+   "露兩"
+  ],
+  "entity": "微軟",
+  "subject_basis": "alias",
+  "subjects": [
+   "微軟"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
  }
 }

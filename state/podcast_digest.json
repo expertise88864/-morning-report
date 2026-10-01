@@ -1900,6 +1900,107 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "2f27b778-c361-467b-b886-8c9ff15d88c6",
+        "title": "EP341. Anthropic S1 流出、OpenAI 開發者日、谷歌 Meta SPCX | M觀點",
+        "published": "Thu, 01 Oct 2026 16:08:17 GMT",
+        "processed_at": "2026-10-01T19:52:11Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Anthropic 上市估值即使達 1.8-2 兆美元也不算太不合理，因為它是當下最強前沿 AI 實驗室；但他批評其 IPO 治理架構：創辦人透過 Founder LLC 掌握 50.1% 投票權，加上 5 人 Long Term Benefit Trust 可選 4/7 董事、自我延續，可能凌駕創辦人，但上市後他仍會買。",
+            "主持人指出 OpenAI 的 GPT-6.1 Turbo 是當前 CP 值之王／工作碼之王：AAI 52 分僅比三個前沿模型低 1 分，成本約 0.7 美元，是 Gemini 4 Argon 的約三分之一；他認為 GPT-6.1 Turbo 的 High 模式約等於 GPT-6 Extra 的 Medium 模式，且實際 Token 用量比 GPT-6 還少。",
+            "主持人認為 OpenAI 的 DOTS 是急就章：因 Meta Muse 免費爆紅壓力而提前推出，Pro 用戶回報功能有一半未開、回應慢；他預期企業 AI Agent 市場中微軟 AutoPilot 因原生整合 Microsoft 365 在 Fortune 500 最具優勢，OpenAI、Meta、xAI 只能搶非微軟派。",
+            "主持人反駁市場看衰 Google：Google 有算力、資料、人才三要素，Gemini 4 Argon 重回前沿模型，AAI 53 分與 Extra、Fable 5.1 同級，成本 1.99 美元低於 Fable 7.63 與 Extra 3.26；尤其 Agentic Coding 指數升到第三，證明先前嘲笑者是跟風。",
+            "主持人對 SpaceX 長線有信心：Starship 第 14 飛首次進入低地軌道並部署 26 顆 Starlink V3，任務約 90 分；他預期第 15 飛可能在 10 月、2027 下半年進入成熟商業營運，股價短期難預測但基本面沒有問題，投資需耐心。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為若上市後仍是前沿 AI 第一，會買進，且估值有望接近 2 兆美元；同時批評其治理架構，但不影響買入意願。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "如果Entropy上市之後我會不會買呢,我應該會買怎麼可能不買呢,因為除非Entropy他疊出AI前沿公司以外吧,否則我們作為科技投資我們怎麼可能不去買最目前最強的AI公司一定會去買",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Google 已重回前沿模型，Agentic Coding 大幅追趕，先前看衰者是跟風；但也指出 GPT-6.1 Turbo 的 CP 值更高。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "嘴砲王過去這兩三個月你去翻過去這兩三個月他在網路上在嘲笑Google那些人那些網紅那些K.O你以後都不用聽他們的就代表他們只是個跟風向仔",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為 Meta 挖角 MongoDB CEO 進軍企業 AI 雖有小成功，但大成功需打敗微軟等，不特別看好也不看壞。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我目前並不特別看好並不特別看好但是我覺得它會有一些小成功可是它會不會有大成功就代表你要大成功你就要打敗我們剛剛講的所有的對手",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為企業 AI Agent 市場終究由微軟主導，因原生整合 Microsoft 365 與權限系統，除非微軟自己搞砸。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "除非微軟做爛除非微軟搞砸否則這塊市場的大公司的部分應該還是微軟主導",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Starship 進度順利，首次進入低地軌道並部署衛星；對 SpaceX 長線有信心，但股價短期難預測。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "可是我覺得他長線還是滿有信心的他的營運沒有什麼問題只是我說真的股價什麼時候會真的到我們覺得說一路往上噴真的不是我們那麼容易能預測的",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "主持人提醒投資不要 all-in，即使他有八九成準確也可能看錯；對基本面沒問題的股票要有耐心，市場終究會還公道。",
+          "notable_quote": "不要all in投資mula我從來不all in你為什麼要all in你知道為什麼不all in嗎我們不all in的原因是因為我們也會看錯",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "不要all in投資mula我從來不all in你為什麼要all in你知道為什麼不all in嗎我們不all in的原因是因為我們也會看錯"
+          },
+          "direction_quality": {
+            "attributed": 5,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "a7e2f7cb-f0ec-42e9-ac0c-b93996196d81",
         "title": "EP340. 川習會台灣怎麼看、Meta Connect 大會、資料中心搶電大戰 | M觀點",
         "published": "Mon, 28 Sep 2026 16:53:53 GMT",
@@ -2538,57 +2639,6 @@
           "notable_quote": "如果未來我們整個世界對於算力的需求成長，20%到50%的年成長幅度，年化成長就很誇張了。"
         },
         "shown_at": "2026-08-24T22:40:29Z"
-      },
-      {
-        "guid": "850d0717-e949-4f40-931a-a9dcd9783885",
-        "title": "EP329. Anthropic 成長減速、模型二與 Astra、Meta 被兩黨一起告 | M觀點",
-        "published": "Thu, 20 Aug 2026 15:22:10 GMT",
-        "processed_at": "2026-08-20T20:53:09Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Anthropic 7月 ARR 650億美元低於市場預期的700億美元，只是「情緒面」衝擊，不代表 AI 長線動能改變，主因是市占率被 OpenAI GPT-5.6 與 Grok 4.5 搶走，而非整體 AI 需求放緩。",
-            "主持人拆解成長率：Anthropic 5至7月 ARR 成長38%，但可能 6 月成長25%、7 月僅10%；相較 OpenAI 企業端 ARR 月增32%、Grok API 首週 token 量三倍，顯示 Anthropic 短期壓力極大。",
-            "主持人認為 AI 最大隱憂是「企業省錢/提升生產力做得到，但生產力無法轉換成營收」，若這點不打通，AI 市場成長率未來一年可能出現急速放緩的轉折點。",
-            "主持人透露 Anthropic 內部最強模型 Model 2（比 Misos 有感進步，預估 AAII 約65分）不打算對外發布，只作為下一代模型的開發基礎；他反駁「頂尖 AI Lab 最強模型只留自用、跨足各產業」的說法，認為忽略產業摩擦與規模經濟。",
-            "主持人預期 OpenAI 的 Astra 就是 GPT-6，參數規模約5兆，可能11月推出；年底美國模型將是 Anthropic、OpenAI、Google Gemini 4 Pro、xAI Grok 5 四強爭霸，他給四家各25%機率成為最強。",
-            "主持人評論 Meta 青少年成癮訴訟：核心難點是證明 Meta「故意」設計成癮機制，他預期 Meta 主要罪名可能不成立，但法官仍可能要求產品調整；此案將替注意力經濟畫紅線，YouTube、TikTok 等都會受影響。",
-            "主持人觀察美國10年期公債殖利率從3月低點4%升至4.7%，認為主因不是通膨，而是科技巨頭為 AI 資本支出發債搶走資金；這對股市估值是潛在利空。"
-          ],
-          "tickers": [
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 ARR 不如預期是競爭搶市占，若上市後大跌他會買入，因仍是最強前沿模型且算力供應將增加"
-            },
-            {
-              "name": "OpenAI",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人指出企業端 ARR 月增 32%，搶走 Anthropic 市占，競爭力轉強"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人預期訴訟主要罪名可能不成立，但法官可能要求產品調整，影響中性偏負面"
-            },
-            {
-              "name": "Alphabet (Google)",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人預期 Gemini 4 Pro 會很強，年底四強爭霸中 Google 有 25% 機率成為最強"
-            }
-          ],
-          "market_view": "主持人認為美債殖利率升至4.7%是科技巨頭發債搶資金所致，並非通膨擔憂，對股市估值是潛在利空；AI 長線仍看好，但企業生產力無法轉換成營收，未來一年可能出現轉折。",
-          "action_view": "若 Anthropic 上市後因 ARR 不如預期大跌，主持人會進場買入；AI infra 短線情緒受挫但長線不變，需留意企業 AI 生產力兌現為營收的轉折。",
-          "notable_quote": "AI產業一個月，等於傳統的科技產業maybe半年左右"
-        },
-        "shown_at": "2026-08-20T22:35:06Z"
       }
     ]
   },

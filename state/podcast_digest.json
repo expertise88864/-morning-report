@@ -1240,6 +1240,107 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmupkyfa900er01vchbdo5hje",
+        "title": "568.【財經時事放大鏡】高利率 vs 台股冷暖 x 德州不止炸雞",
+        "published": "Thu, 01 Oct 2026 23:02:08 GMT",
+        "processed_at": "2026-10-01T23:42:26Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為十年期美債殖利率5.2-5.3%已高於2008年、接近2007年Q2，但AI資料中心投資報酬率仍高於資金成本，因此股市暫未受重擊；高利率持續夠久仍會影響，需邊走邊看。",
+            "主持人指出台積電傳評估在德州設第二園區、六座先進晶圓廠、投資2,650億美元；直接受惠者是廠務工程族群（亞翔、帆宣、聖暉、洋基工程等），因供不應求在手訂單創新高，毛利率可能優於過去。",
+            "主持人解讀NVIDIA AI工廠/散熱認證為整廠輸出型Infra系統，ALG、Vertiv、LiquiStack入列；台灣散熱雙鴻、奇鋐未進入屬合理，因為非其擅長領域，不需過度解讀。",
+            "主持人觀察到貨櫃型小型資料中心（約250kW）與儲能櫃轉資料中心的模組化趨勢，台達電等有產品；NVIDIA AI工廠儲能認證有群聯、特斯拉/阿波羅電力參與，值得追蹤。",
+            "主持人認為台股重演六月輪動：晶圓、被動元件、功率元件先後轉強，但殖利率比六月更高、經濟條件沒變，股價先下後上約一季，需注意基期與資金熱度。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人提及德州擴廠傳聞，長期產能/產值可能增加，但主要焦點是受惠的廠務工程，未對台積電股價表態。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "亞翔",
+              "code": "6139",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為台積電美國擴廠及整體需求供不應求，亞翔等廠務工程在手訂單創新高，毛利率有機會比過去好。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以看起來這個從五月到九月,但是到最近可能接近十月。欸,大家在手訂單都創新高欸。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "帆宣",
+              "code": "6196",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為帆宣等廠務工程受惠台積電美國擴廠，在手訂單創新高，供不應求下毛利率可能優於過去。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以看起來這個從五月到九月,但是到最近可能接近十月。欸,大家在手訂單都創新高欸。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "聖暉*",
+              "code": "5536",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為聖暉等廠務工程受惠半導體擴廠需求，在手訂單創新高，轉包與人力調度有機會提升毛利率。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以看起來這個從五月到九月,但是到最近可能接近十月。欸,大家在手訂單都創新高欸。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "洋基工程",
+              "code": "6691",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為洋基工程等廠務工程因多家半導體廠擴產，訂單能見度高，供不應求下價格與毛利率有撐。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以看起來這個從五月到九月,但是到最近可能接近十月。欸,大家在手訂單都創新高欸。",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為，十年公債殖利率創高但AI生產力提升讓股市暫時未受太大衝擊；台股重演六月輪動，基本面變化慢，股價先下後上約一季，宜邊走邊看。",
+          "action_view": "操作上宜邊走邊看：觀察殖利率與AI需求/價格是否維持，回檔後可留意受惠AI擴廠的廠務工程與低估值輪動族群，但需注意一季循環的基期。",
+          "notable_quote": "殖利率其實就像是錢的地心引力。所以當這個數字很大的時候,就天上的錢,他們就會慢慢的降下來,簡單來說就是資金會降溫啦。",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "殖利率其實就像是錢的地心引力。所以當這個數字很大的時候,就天上的錢,他們就會慢慢的降下來,簡單來說就是資金會降溫啦。"
+          },
+          "direction_quality": {
+            "attributed": 4,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "cmufmrq5901dh01uecgjegril",
         "title": "567.【財經時事放大鏡】記憶體不缺 x 功率不漲 x JEV 不work？",
         "published": "Thu, 24 Sep 2026 23:02:13 GMT",
@@ -1828,71 +1929,6 @@
           "notable_quote": "我覺得 AI 這邊不是你有沒有研究透，反而是你去抓那個情緒的 pattern，下一次大家會把重心放在那個板塊。"
         },
         "shown_at": "2026-08-24T22:40:29Z"
-      },
-      {
-        "guid": "cmt1n1iqq09kc01wmcl5oan18",
-        "title": "545.【財經時事放大鏡】XBM, HBF, SRAM x 宇樹&機器人",
-        "published": "Thu, 20 Aug 2026 23:02:09 GMT",
-        "processed_at": "2026-08-21T03:59:36Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 HBF 架構因 NAND 怕熱易壞、焊死無法熱插拔、速度慢，短期難成氣候，且佔板面積。",
-            "主持人解讀 Intel 重新投入 XBM/ZAM 記憶體顯示其看好 2030 後記憶體市場，因 AI 需求大、毛利率高，但技術難度與商用時程仍遠。",
-            "大聯大法說證實上半年提前拉貨且下半年優於上半年，記憶體、Power Semi、先進封裝皆缺貨漲價，主持人認為基本面無虞，Morgan Stanley 的放緩解讀是偏解讀。",
-            "主持人反駁「HBM 太貴所以轉向 SRAM/Groq」的邏輯，指出 SRAM 比 HBM 更貴，HBM 短期無替代但波動將劇烈。",
-            "主持人指出宇樹科技雖有賺錢、降價衝量、轉型快，但人形機器人市場仍早期，缺少垂直應用與大腦軟體。",
-            "主持人認為機器人技術尚未成熟，模擬訓練與世界模型仍缺，機器人缺乏真實應用場景，造價高，無法像 AI 模型全能。",
-            "主持人看好中國在機器人硬體的成本優勢（電動車/無人機供應鏈），並認為台灣鴻海供應鏈有切入機會，但台灣缺乏量能基礎。"
-          ],
-          "tickers": [
-            {
-              "name": "大聯大",
-              "code": "3702",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "法說證實上半年提前拉貨，下半年仍優於上半年，記憶體、Power Semi、先進封裝/製程皆缺貨漲價，基本面無虞。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "重新投入 XBM/ZAM 記憶體，顯示其看好 2030 後記憶體市場，但技術難度高，商用化時程遠。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "其 Groq/LPU 技術用 SRAM 是速度考量，未來可能用 SOIC 堆疊，但主持人未對股價表態。"
-            },
-            {
-              "name": "宇樹科技",
-              "code": "",
-              "market": "",
-              "direction": "neutral",
-              "reason": "上市後暴漲，有賺錢、四足轉人型快、降價衝量，但人形機器人市場仍早期，大腦軟體落後。"
-            },
-            {
-              "name": "鴻海",
-              "code": "2317",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "機器人供應鏈有機會，台灣廠商可切入，但需觀察應用落地。"
-            },
-            {
-              "name": "長江存儲",
-              "code": "",
-              "market": "",
-              "direction": "neutral",
-              "reason": "IPO 輔導中，NAND flash 出貨量全球第三，中國記憶體競爭力提升。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "主持人認為記憶體新技術有機會，但 HBM 波動大；機器人供應鏈（鴻海等）有搞頭，但需觀察應用落地。",
-          "notable_quote": "機器人這局看起來就是缺少的就是這個機器人要用在哪裡"
-        },
-        "shown_at": "2026-08-21T22:34:18Z"
       }
     ]
   },

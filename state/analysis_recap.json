@@ -571,44 +571,44 @@
  ],
  "watch_seq": 54,
  "legacy_report": {
-  "date": "2026-10-01",
+  "date": "2026-10-02",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "美光 MU（美國記憶體大廠，HBM 與 DRAM 供應商）：Q4 財報優於預期，資料中心營收年增約 11 倍、長約增至 320 億美元，毛利率衝上 86.8% （經濟日報）。HBM 排擠傳統 DRAM 產能，帶動第四季記憶體報價估漲兩成，直接傳導到南亞科 2408、華邦電 2344 的接單與 ASP。法人點名南亞科為轉單受惠者，最快第四季財報反映，這是本段最扎實的一條。[A 級・信心:高]",
+    "statement": "台積電（2330，全球晶圓代工龍頭，先進製程市佔逾九成）：川普在《時代》專訪中稱一家「偉大的台灣晶片公司」在美投資 5,000 億美元，未具名也未交代期程 （鉅亨台股）；同日外電報導台積電正評估德州新晶片園區，單座至少 200 億美元、整體上看數百億美元 （鉅亨台股）。海外新廠若成案，廠務工程與設備採購會先動，但折舊攤提在兩年後才進財報，對明年毛利率是成本項而非營收項。川普的金額是他的受訪說法、台積電也未證實德州案，所以今天反映的是題材，不是訂單。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiXEFVX3lxTE5xOWI4QUtWc0ZNMWhCcXB2SkR6WjJ0SUxJU2EyU203NG5TZXVzcW1LN3lSZGRhbmRkTkVHVTNORlh5cVgtQkdiSElmWjFwRzNZLVpCZ3ZSSnNvcENv0gFiQVVfeXFMTXY0N1hBX2VXNlZOTnpWWEpKMmJxX3QwNWtINUh6bnJPdzhXbzRPQ2ZWMkZ1cDFEdHJiYzYwSDNTYUpZTTZCQmE1ZWdpblVpR1RqdWxxLTcyNzRELW5GLTNmRnc?oc=5"
+     "https://news.cnyes.com/news/id/6619970"
     ]
    },
    {
-    "statement": "AMD（全球第二大 x86 CPU 與 AI GPU 廠）：Zen 6 架構 Venice EPYC 處理器 2027 年產能售罄，採台積電 2 奈米製程 （TechNews）。N2 是 2330 明年最重要的成長引擎，客戶提前鎖定產能等於為先進製程稼動率買保險；這與 AI 模型競賽帶動的算力需求是同一條線。[A 級・信心:中-高]",
+    "statement": "聯電（2303，全球第三大晶圓代工，特殊製程為主）：公告以 69.8 億元向應用材料東南亞私人有限公司收購機器設備 （富途牛牛）。設備採購本身不能證明特定製程擴產或客戶轉單，要看投產日期與用途才有意義。這則目前只揭露金額，未見製程別與產能規劃，量級判斷不出來。[B 級・信心:低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMirgFBVV95cUxOSFBiT3lNTzIxbDdFQzZkcmhvaVdMNU8wbk1iZ0hXQkhlR24yTmpvRWZ0cnBBVkdKNEh6MEt4QVlQRHlNdFlwR25ubTYxaE5iNmVjZEpZVmpqYUd6a2xFR3psSFVHMTJEcy1NVGZPVEtyc2RFQnJWaEVEQ29zalB1VHd0clctOTlHY2ZHSlFadkpndjhWaGx4bGN4MEtXSVhUQ21QMXZyMy1qNUhkR3c?oc=5"
+     "https://news.google.com/rss/articles/CBMinAFBVV95cUxPTDFuWWRkcDFIVVB2WHBjd1VMOGhZM1pRVXdKWVVUdktlc1ZWU1IxR3loV0E3eE81c3owSS1kZVlzaERfOWVzZjlIemNMYzNqQ1VYMTVWLXRnOGV6UmQ5MUQ4c0RWdlFjcnlnT0pWZU9MR2RMN0xQMUZ2dnFobVJOYXprTmZmaGZTY3Q5V2NFY3ZBT1QxMWZPRmRhdUM?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】中信金控（2891，台灣大型金控，旗下台灣人壽）：台灣人壽董事會通過租賃及委託興建合約、金額 12.03 億元，另核准投資台灣創新資本有限合夥不超過 9 億元 （MOPS）；台中超巨蛋 BOT 預計 10 月 16 日簽約 （UDN）。壽險資金轉進長天期不動產與私募股權，鎖住長期收益率、降低再投資風險，對金控是收益結構改善，短期獲利貢獻有限。[A 級・信心:中]",
+    "statement": "【航運｜全球】散裝與貨櫃運價：波羅的海乾散貨指數（BDI）收 3,140 點、上漲 27 點 （富聯網）；美國線運價續揚、連兩週上漲，但上海出口集裝箱運價指數（SCFI）已連二跌 （自由時報／工商時報）。散裝與貨櫃走勢分歧，代表這波是鐵礦砂與穀物的噸位需求在帶，不是全面性的艙位吃緊。對長榮、陽明的實質貢獻要看歐美線而非美國線，SCFI 連跌是這條線的警訊。[B 級・信心:中-低]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiVkFVX3lxTFBJRzRBelhvckVDS09Hb2NNZUQtWHh1bEttUVZmZ2U4WUxxQThzdEsyVHdDblJ5SFNFRXpkaks0WnZ5YmVCQ0hEbFd3c0tXUDVMYV9McWZB0gFWQVVfeXFMTXhFejN0V2FXaXkxZlB1RXE3amJ4UlJNMVlyTHQteVhNNVB5QnQxZERTenA4U3lkWmdjMlMzMXdDMlM2cWVFdHlDWkE1OEdEc2lEYVBtRnc?oc=5"
+     "https://news.google.com/rss/articles/CBMiiAFBVV95cUxOUUIxZzJ5SEFVbzVvTzFXdUo0VXh2bl9xWE9xLTZrb0lIVHhPM3dON181RTFjeDZoZ2oydXNXNS1FOWsxdHJkdkIwcDZBTjhkT1BwdEJ3Z0RuU19aeG8yMzR1UkdDQlViM2dSYjUtb19lUGVVd2JhQXdOT0JkMExDUURQNl9CX1N2?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】凱基金控（2883，旗下凱基證券）：董事會通過現金增資、發行不超過 7.2 億股，規模約 200 至 250 億元，七成以上挹注凱基證券 （鉅亨台股）。凱基證券前 8 月稅後純益 227.54 億元、年增 235%，承銷市占近四成，增資是為搶 AI 與半導體籌資案擴資本；以 250 億元上限對照約 1.05 兆元市值，股本稀釋約 2.4%，屬可承受範圍。[A 級・信心:中]",
+    "statement": "【汽車｜台灣】特斯拉（TSLA，全球電動車龍頭）：台灣 9 月新車銷量中，特斯拉掛牌數衝破 5,000 輛，比豐田神車多出約 1,500 輛 （ETtoday車雲）。單一車款的月度掛牌暴衝通常來自到港集中與促銷，不是全年需求的等比例放大。對和泰車（2207）這類總代理是市佔被侵蝕的訊號，對電動車供應鏈是短線出貨確認。[B 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6619098"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBrS2ZTWjJMOXdTd2JqOTFScE1SR3RqWXQ1RG9YbkNYdTA3aWQtdG40NlJoMUNqeWVIZHVRY2VuRmt0UHE4UThIcG5BOHY0dHPSAU5BVV95cUxQcXFhZzZyeFpES2tfTk1HXzZaRjZxSWp5NlBQd1FxQ2xMaFJuOS1mam9sdUJZRVlYWVhfeWFmZTVxNHdodk1HQmlZT2JXWmc?oc=5"
     ]
    },
    {
-    "statement": "【傳產｜台灣】南亞（1303，塑化與電子材料雙主軸）：CCL 報價看漲 90%，外資喊上「4 字頭」 （旺得富）。銅箔基板是 PCB 上游，漲價反映 AI 伺服器高頻材料需求，南亞的電子材料部門直接受益；但 30 日外資賣超 5.8 萬張、投信買超 8.1 萬張，法人不同調，漲價能否落袋要看第四季實際報價。[A 級・信心:中]",
+    "statement": "【傳產｜台灣】台塑集團與南亞（1303）：市場關注南亞的銅箔基板（CCL，PCB 上游的高頻材料）佔比衝上 43%，集團並傳出投入百億搶半導體訂單，外資目標價喊到 424 元 （FTNN）。CCL 報價上漲反映 AI 伺服器高頻材料需求，但南亞昨日股價收跌 0.6%、法人賣超塑膠工業 41.6 億元。報價題材與籌碼方向相反，漲價能否落袋要看第四季實際報價。[B 級・信心:中-低]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiakFVX3lxTE02UEktR3N3U055TWNKVjBPVGRkbFFiZzNkRThCd0YtVmk2TjZzY3lRNm1GZHZYVWdreDhZYWZBN0JyX1JWMkNia3RnNkpfWWNtNDVSMHNydnNzWUlSeTRfa0VBYzltMmhVbWc?oc=5"
+     "https://news.google.com/rss/articles/CBMiS0FVX3lxTE9URVNsNlRJeW9MenlNd25Iak5LYklmRk9ENnpGTTY5cWNRSmR4c2w3U1VwaUtySHRIX0hNb2ZYQ3RnYTBFWlFDQkNQVQ?oc=5"
     ]
    },
    {
-    "statement": "【重電綠能｜台灣】NVIDIA（AI 晶片龍頭）：釋出 AI 工廠認證規範，點火儲能商機，有望釋單台達電、光寶 （經濟日報）。AI 資料中心用電需求推升儲能與電網資本支出，台達電（2308）的電源與儲能業務直接受惠；但「有望釋單」屬方向性消息，沒有金額與數量，判斷不出量級。[B 級・信心:中-低，資訊有限]",
+    "statement": "【營建｜台灣】六都房市：9 月六都建物買賣移轉棟數月增 14%，第三季年增逾 5%，高雄表現最強 （鉅亨）。央行選擇性信用管制尚未鬆綁，成交量先回溫代表的是自住買盤遞延回籠，不是投資需求重啟。對興富發（2542）等建商的推案去化是正面訊號，但房貸逾放金額同步逼近百億，槓桿風險是這條線的背面。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5sQ0dLRXFaVEZEWmtaUEFVYVljTDU4SjQ5MGE4bUV6S3QzeDE3WWpXOTF5Q0M1QnRkLXk5ajNweENQZXBnT2ROTVo0MnRsVTR4SjhJMjFoV2JEd9IBX0FVX3lxTE02VWlBbXotX0dOc2pBdnJPOFRFLTNCT3BxVnU2Slg1WEhoN3pXSzAtLVBQYzh0a1paVVRyNV9KUFUtWVZTR05kS3VyN3dKOXpZS1Nja2lfT3ZKalFKck5v?oc=5"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1nenJadDJObzllRTFYNjZkaVJIanFUaEZJNG1MVE5odmhBMHlGX2Q4aFF6Qk5aMDRuUVVQNkpnMzFpeTVna1dEUTBXYlRybTg?oc=5"
     ]
    }
   ]

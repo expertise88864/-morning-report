@@ -55,7 +55,8 @@
   "2026-09-28",
   "2026-09-29",
   "2026-09-30",
-  "2026-10-01"
+  "2026-10-01",
+  "2026-10-02"
  ],
  "records": [
   {
@@ -2513,6 +2514,13 @@
    "first_seen": "2026-09-30"
   },
   {
+   "code": "00851",
+   "ex_date": "2026-10-16",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
    "code": "00904",
    "ex_date": "2026-10-16",
    "kind": "息",
@@ -2541,6 +2549,69 @@
    "first_seen": "2026-10-01"
   },
   {
+   "code": "009805",
+   "ex_date": "2026-10-16",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00714",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00717",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00730",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00733",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00900",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00905",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00908",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00912",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
    "code": "00922",
    "ex_date": "2026-10-19",
    "kind": "息",
@@ -2553,6 +2624,13 @@
    "kind": "息",
    "cash": null,
    "first_seen": "2026-10-01"
+  },
+  {
+   "code": "00934",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
   },
   {
    "code": "00943",
@@ -2569,6 +2647,83 @@
    "first_seen": "2026-10-01"
   },
   {
+   "code": "00945B",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00952",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00956",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00960",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00961",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00963",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00964",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00981T",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00982D",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00983D",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00984A",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
    "code": "00985A",
    "ex_date": "2026-10-19",
    "kind": "息",
@@ -2583,11 +2738,46 @@
    "first_seen": "2026-10-01"
   },
   {
+   "code": "00995A",
+   "ex_date": "2026-10-19",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
    "code": "00996A",
    "ex_date": "2026-10-19",
    "kind": "息",
    "cash": null,
    "first_seen": "2026-10-01"
+  },
+  {
+   "code": "4155",
+   "ex_date": "2026-10-20",
+   "kind": "息",
+   "cash": 0.3,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00408A",
+   "ex_date": "2026-10-21",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "0056",
+   "ex_date": "2026-10-22",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
+  },
+  {
+   "code": "00907",
+   "ex_date": "2026-10-27",
+   "kind": "息",
+   "cash": null,
+   "first_seen": "2026-10-02"
   },
   {
    "code": "4552",

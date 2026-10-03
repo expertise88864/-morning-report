@@ -3,6 +3,93 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "42301381-6003-4b54-a28d-290a3fd2e258",
+        "title": "EP702 | 🐉",
+        "published": "Sat, 03 Oct 2026 07:18:09 GMT",
+        "processed_at": "2026-10-03T13:32:59Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為大盤已全面轉強：期貨與NQ創高、光輝10月如假包換，不應逆勢放空或過早猜高；被動元件與功率元件補漲代表多頭擴散，他續抱光通訊為主要持倉。",
+            "主持人以聯發科限制員工AI用量為例（月支出1–2億元、自建資料中心不堪負荷），指出企業AI導入最終回歸成本，他預期將出現落地伺服器/私服模式，但高階模型對晶片設計仍不可取代。",
+            "針對大摩傳聞（光收發模組BOM美系占比65%才可出貨），主持人判斷這只是把現狀明文化、短期無實質衝擊；但市場提前押注未來禁令收緊將使美系DSP/驅動/TIA/雷射廠受惠、中系雷射廠受害，台廠有轉單想像但屬間接。",
+            "主持人點出光模組DSP缺貨源於與GPU搶先進製程產能、lead time拉長，這是他認為禁令若收緊將更有利美系元件廠的結構性理由；但他強調該報告屬傳聞，勿過度認真。",
+            "主持人認為產業趨勢從年初至今未變，7月修正只是短線；他看到SSD/HDD等利空常被過度解讀，操作上應鎖定趨勢而非被單一消息嚇出場。"
+          ],
+          "tickers": [
+            {
+              "name": "Marvell",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人點名Marvell為美系DSP供應商，認為若禁令收緊將受惠，市場已提前押注；他雖指短線是原狀反應，但方向有利美系元件廠。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "因為我們剛好前幾集有跟大家聊到DSP漲價,DSP相關的不管是什麼MARVEL MAX LINEAR什麼的,然後或者是BRAKAM,其實在禮拜五的股價表現都有起來,我覺得就是這個事件驅動,但我自己的感受是這不就是原狀嗎,它是一個原狀沖盛而已,但大家的反應很大,可能我在想心態是認為說,OK就是美國政府是有意要去處理這個東西,所以就算現在看起來是比較寬鬆,就是可能丟出來試水文,但後面搞不好去做一些限縮之後,然後就有可能會讓利益導向這一些公司,然後大家只提早去賭",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Broadcom",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人點名Broadcom（BRAKOM）為美系DSP供應商，認為禁令收緊後利益將導向這些公司，股價週五已反應。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "因為我們剛好前幾集有跟大家聊到DSP漲價,DSP相關的不管是什麼MARVEL MAX LINEAR什麼的,然後或者是BRAKAM,其實在禮拜五的股價表現都有起來,我覺得就是這個事件驅動,但我自己的感受是這不就是原狀嗎,它是一個原狀沖盛而已,但大家的反應很大,可能我在想心態是認為說,OK就是美國政府是有意要去處理這個東西,所以就算現在看起來是比較寬鬆,就是可能丟出來試水文,但後面搞不好去做一些限縮之後,然後就有可能會讓利益導向這一些公司,然後大家只提早去賭",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "達發",
+              "code": "6526",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "主持人指達發DSP目前僅400G、離3.2T數個世代，且非美系價值占比，短期不在禁令受惠清單；長期轉單僅為間接想像。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那再來在DSP這邊的話,因為台系就只有一家DSP業者,就是聯發科下面的達法,那它的DSP呢,其實目前應該是鎖定出貨在400G這邊,然後一個Lang可能是50到100G之類的,差不多是這樣子,所以它如果要走到3.2T的話,那個對它來講應該也是幾個世代以後的東西,所以它也不會是第一波受惠啦,就如果我們今天在講說,你要有65%的美國的這個價值的話,那其實它是台灣的嘛,所以它也不算是美國的,所以它也不會在受惠的這個清單裡面",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人提到聯發科因AI成本月支出1–2億元而限縮員工用量，顯示企業AI導入的成本壓力；未對股價方向表態。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為大盤已全面轉強，期貨與NQ創高，多頭趨勢未變，不應逆勢放空或過早猜高；被動元件/功率元件補漲顯示漲勢擴散。",
+          "action_view": "主持人以光通訊為主要持倉，未因被動元件補漲而換股；他建議鎖定產業趨勢，勿因單一利空（如SSD/HDD傳聞）過度反應。",
+          "notable_quote": "光輝10月果然是如假包換,然後就是真的,那真的在10月的時候呢,這個盤面就是整體轉向一個更好的方向",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "光輝10月果然是如假包換,然後就是真的,那真的在10月的時候呢,這個盤面就是整體轉向一個更好的方向"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 1,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "2ab843a8-d7f8-4655-a73d-609b81c59baa",
         "title": "EP701 | 🐡",
         "published": "Wed, 30 Sep 2026 07:54:31 GMT",
@@ -581,58 +668,6 @@
           "notable_quote": "市場好像有一點變得更有效率了"
         },
         "shown_at": "2026-08-27T00:35:06Z"
-      },
-      {
-        "guid": "028c8a8c-0fb3-4c46-b2c4-28e2df4be37b",
-        "title": "EP690 | ⛳",
-        "published": "Sat, 22 Aug 2026 07:30:59 GMT",
-        "processed_at": "2026-08-22T08:47:40Z",
-        "digest": {
-          "summary_points": [
-            "主持人判斷Marvell與Google的客製化半導體協議，代表Google更決心走COT（Customer Owned Tooling）模式，未來高單價晶片設計與關鍵料件採購更可能留在Google自己手上。",
-            "主持人認為此事件對「普遍IC設計是利多」，因為Google日後可能開出更多晶片案；但對博通偏空合理，因其Turnkey整包加價與高毛利模式會被COT逐步削弱。",
-            "主持人指出Marvell拿到的Google週邊晶片（如MPU、CPU、搜尋專用的Frozen）是新案而非搶走聯發科或博通既有Roadmap，因此把聯發科當直接利空可能是市場反應過度。",
-            "主持人認為Google此舉也反映其更認真投入硬體／雲端租賃與AI Token生意，未來晶片案可能越開越多，長期對設計夥伴仍有利。",
-            "主持人認為本週盤面黏但健康：七月底跌深後至今已有很多人陸續收復失土，比原本預期快；現在沒有四五月的FOMO，追高容易被修理，但基本面有數字的股票仍會慢慢墊高。",
-            "主持人對「會買不會賣」的投資人建議，可直接用十日線（或月線）當出場訊號，先回測並試著跌破時賣出三成到五成，避免抱上抱下。",
-            "主持人對員工認購未上市股的看法是：若公司有成長性、產品競爭力好且資金閒置，可以大量認購甚至全壓；若該筆資金有用途，至少先認三成。",
-            "主持人提醒錯過過去六年的科技／半導體大行情很可惜，但半導體終究是週期，後面仍可能有大的，重點是先活下來。"
-          ],
-          "tickers": [
-            {
-              "name": "Marvell",
-              "code": "MRVL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與Google簽訂客製化半導體協議並拿下TPU週邊新晶片，主持人認為這是普遍IC設計利多，Marvell可望受惠新案增加。"
-            },
-            {
-              "name": "博通",
-              "code": "AVGO",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Google更往COT走，可能壓縮博通原本Turnkey整包加價與高毛利模式，主持人認為短線偏空解釋合理。"
-            },
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "主持人認為Marvell拿的是新案而非搶走聯發科既有TPU週邊案，市場當直接利空可能反應過度，長期設計夥伴仍可能受惠。"
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為Google更決心投入客製化晶片、硬體／雲端租賃與AI Token生意，未來晶片案可能越開越多，長期正向。"
-            }
-          ],
-          "market_view": "主持人認為本週盤面雖然黏、缺乏FOMO，追高容易被修理，但七月底跌深後有不少人已陸續收復失土，速度比原本預期快，整體仍屬相對樂觀。",
-          "action_view": "操作上避免追漲強勢股，等待拉回慢慢墊高；若只會買不會賣，可用十日線或月線當出場訊號，跌破先出三成到五成。若有閒置資金且公司成長性佳，可考慮大量認購未上市股，資金有用途則至少先認三成。",
-          "notable_quote": "所以這個事件應該是,普遍的IC Design的一個利多"
-        },
-        "shown_at": "2026-08-22T22:12:20Z"
       }
     ]
   },

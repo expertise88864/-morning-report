@@ -71,7 +71,7 @@
    "row_count": 21,
    "min_date": "2026-08-03",
    "max_date": "2026-08-31",
-   "sha256": "744031d9ada83bbc53d5ba1ddb42ab141a2afba8183f03505b366fc7b4999a3d"
+   "sha256": "ffec07b7ac7d4748dff89389a8a891c5694c2e4357ad80b1940202e487f321d8"
   },
   "2026-09.json.gz": {
    "row_count": 21,
@@ -80,10 +80,10 @@
    "sha256": "c80b4741db947ca6507df30d781bc35cda095f6a3e730db115333dcdab228082"
   },
   "2026-10.json.gz": {
-   "row_count": 1,
+   "row_count": 2,
    "min_date": "2026-10-01",
-   "max_date": "2026-10-01",
-   "sha256": "8766b1e7524c2e2213a1fba4b5991a9ed8f20586fb421044a029abf77cf882fe"
+   "max_date": "2026-10-02",
+   "sha256": "ed6e7f636ab37cc64651f4a79ca6e7ec407bf0df007800ee413cd033250d90a5"
   }
  }
 }

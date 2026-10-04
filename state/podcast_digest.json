@@ -8247,6 +8247,95 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "b2292f38-bfff-11f1-b8d6-df047071f5f3",
+        "title": "America’s AI Boom Is Squeezing Main Street | Weekly Roundup",
+        "published": "Sun, 04 Oct 2026 14:27:00 -0000",
+        "processed_at": "2026-10-04T17:50:33Z",
+        "digest": {
+          "summary_points": [
+            "來賓認為這波美債殖利率飆升的主因不是通膨預期或財政／期限溢價，而是市場在重新定價更高的聯準會終端利率（風險中立利率跟著點陣圖上移）；在名目 GDP 6.6%、信用成長 3% 的背景下，十年期 4% 搭配 3% 的聯邦基金利率本來就不合理。",
+            "來賓指出美國成長極度狹窄：幾乎全靠 AI 資料中心與 hyperscaler 資本支出，住宅市場已被打趴；政策想壓低 30 年房貸利率來重啟房市，卻不能降息（會推升 MBS 與債券波動），只能先營造「落後曲線」的氛圍、放話緊縮來壓平殖利率曲線。",
+            "來賓的圖表數據：hyperscaler AI 資本支出 2026 年成長逾 90% 年增，但明年預估降到約 30-35%，且很大一部分是名目價格——記憶體漲價將吃掉亞馬遜 2026 年 AI 資料中心支出的 30%（2023-24 僅 8%），微軟 1900 億美元指引中約 250 億來自晶片短缺造成的高價，對實質 GDP 成長並不有利。",
+            "主持人認為政策護盤與注資反而把資金灌進商品，讓長端殖利率問題更難解（像在推繩子），要壓低長端就得停止注資，否則只剩 QE／殖利率曲線控制一途；結果是主街族群（建商、地區銀行、等權重、小型股、公用事業）被壓垮，AI 交易則持續有韌性。他也認為柴油出口禁令這類供給限制會一邊壓縮供給、一邊刺激需求，讓通膨更難降。",
+            "來賓形容現在是「涓滴市場」：美國是消費驅動經濟，而消費由富裕階層主導（後 30% 家庭消費占比不到 15%，第九分位單一就占 15.4%，且因富人不太回覆調查而被低估），所以股市就是經濟；標普 500 以黃金計價幾乎原地踏步、甚至低於 2008 年水準，多數漲幅其實來自美元貶值。",
+            "來賓認為政策正在刻意製造對美債的被動需求：放寬 SLR 讓銀行買、資金充足率已逾 100% 的退休基金只要約 3.3% 報酬就達標而轉買長天期美債、穩定幣則買短天期國庫券，成為吸納供給的逃生閥。",
+            "來賓認為真正的貿易戰是日本與歐洲爭奪出口市占（歐洲節節敗退、日本勝出），德國企業破產件數自 COVID 以來每個月都高於 2016-2019 同月平均、大型破產案的就業也在上升；川普則把供應鏈依賴從中國轉向日本、韓國（日本投入約 5000 億美元於能源基建與資料中心），美國願意承受部分進口物價壓力（中國進口品年增 5.6%、韓國半導體 12.6%），AfD 崛起則是歐洲政策被迫轉向的警訊。"
+          ],
+          "tickers": [
+            {
+              "name": "比特幣",
+              "code": "BTC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人同意資產負債表擴張與貨幣化是長期主軸，看多貶值交易並點名比特幣。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "so that's another thing that I think you're right in terms of like balance sheet expansion monetization like long-term bullish debasement Bitcoin etc catalyst",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "來賓指出其 1900 億美元資本支出指引中約 250 億來自晶片短缺造成的高價，顯示資本支出有相當比例是名目價格而非實質擴張。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "記憶體漲價將吃掉其 2026 年 AI 資料中心支出的 30%（2023-24 僅 8%），被用來說明 hyperscaler 資本支出的名目成分。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人指出其 EPS 有相當部分來自 AI 實驗室投資被按市價重估，屬於對獲利品質的提醒。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為只要長端殖利率是被偏高的名目 GDP 推升、而非期限溢價或通膨預期失控，大盤距離歷史高點只有幾個百分點並不奇怪；但這是 K 型經濟，AI 以外的主街與海外市場明顯脆弱，他並預期未來一、兩個月就業與通膨數據仍會偏熱，聯準會官員可能再度被打臉。",
+          "action_view": "沒有明確的加減碼建議；主持人與來賓的長期思路是對抗貨幣貶值——若在意實質報酬，會轉向比特幣或有獲利的股票，退休基金則可能只靠長天期美債就達到報酬門檻。",
+          "notable_quote": "you basically have like the stock market is the economy because you have a consumption driven economy that is driven by wealthy people who are consuming based on what stock prices are doing",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "you basically have like the stock market is the economy because you have a consumption driven economy that is driven by wealthy people who are consuming based on what stock prices are doing"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "1712d7c8-b871-11f1-bf1f-f31d9d6b936f",
         "title": "The Bond Market Pain Isn't Over | Weekly Roundup",
         "published": "Fri, 25 Sep 2026 10:00:00 -0000",

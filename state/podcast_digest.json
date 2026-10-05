@@ -676,6 +676,65 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2413171887",
+        "title": "2026/10/5(一)非農降溫 救得了美債?全球國債大逃殺 輝達創新高 科技股準備軋空?【早晨財經速解讀】",
+        "published": "Mon, 05 Oct 2026 01:08:46 +0000",
+        "processed_at": "2026-10-05T08:54:29Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為9月非農僅增2.9萬人雖讓10月升息預期消失、推升美股，但這不是「史詩級利多」；從宏觀第三人稱視角看，美債結構性壓力（財政赤字、油價/食品通膨外溢、AI企業發債、日本資金回流、貿易戰、外國央行退買長債）未解，殖利率不易因此快速下滑。",
+            "主持人指出科技股能無視高利率創高，主因是獲利成長速度比利率壓力更快：第三季科技業獲利預估暴增65%、標普500獲利成長24%，使前瞻本益比從5月21倍降到19倍；台股創高也是本益比下滑後價值買盤推升，非投機情緒。",
+            "主持人觀察AI硬體需求仍緊俏：台灣伺服器代工廠第三季營收年增130%、韓國記憶體出口年增412%，DDR5/DDR4現貨價高於合約價；美光預估2027-2028記憶體供需比2026更緊，輝達創高帶頭，費半上方無賣壓可能醞釀嘎空，記憶體行情未結束。",
+            "主持人認為高利率已向下游傳導：美國30年房貸利率單週從7.03%升至7.28%（2022年10月以來最大單週升幅），房貸申請量9月最後一週跌6%、連四週下滑，看房活動停滯；小型股羅素2000已跌約10%但守住長期趨勢線且重回200日線，若站穩顯示高利率衝擊可被消化。",
+            "主持人認為歐洲主權債壓力比美國更大：法國10年債殖利率升至4.8%（2008年來新高），與德國利差突破1.2個百分點、借款成本高於義大利，CDS逼近2012-13歐債危機水準；德國汽車訂單月減1.7%、機械產量前7月年減4.1%，汽車業裁員擴大，風險正從美債轉向歐債。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為輝達盤中創歷史新高、上方無賣壓，帶頭向上攻反映AI硬體需求仍強，是費半領頭羊。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "輝達現在帶頭向上攻",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為記憶體供需吃緊延至2028年，美光股價站穩且上方無賣壓、下方有支撐，記憶體行情未結束。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "美光甚至預估2027-2028的供需狀況甚至比2026年來的更為緊張",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為美股與台股創高並非投機泡沫，而是AI獲利成長拉低本益比、吸引價值買盤；但高利率結構性壓力（財政赤字、歐債、房貸傳導）未解，後續須觀察小型股與歐債風險。",
+          "action_view": "操作上，主持人提醒勿因單一非農數據轉弱就追價，應以第三人稱視角看結構性風險；但牛市未結束，可留意獲利強勁且估值已回落的AI/半導體、記憶體族群，並注意高利率對房市與小型股的傳導。",
+          "notable_quote": "牛市不會因為漲太多而退休,直到支撐它的音樂停止",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "牛市不會因為漲太多而退休,直到支撐它的音樂停止"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2411629311",
         "title": "2026/10/2(五)台股創新高 下一棒換誰?利空鈍化?大賣空喊AI 為了人類該跌!【早晨財經速解讀】",
         "published": "Fri, 02 Oct 2026 01:07:23 +0000",
@@ -1219,47 +1278,6 @@
           }
         },
         "shown_at": "2026-09-18T00:28:43Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2401223802",
-        "title": "2026/9/16(三)股市還在撐 債市先崩?2026最難一局 Fed升息後 誰先投降？【早晨財經速解讀】",
-        "published": "Wed, 16 Sep 2026 01:08:11 +0000",
-        "processed_at": "2026-09-16T07:50:30Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為美債 5% 殖利率是資產重新定價的關鍵：20 年期公債拍賣得標殖利率 5.42%、尾差 2 個基點，間接投標比重降至 52.465% 創有紀錄新低，顯示外資不願承接長天期美債，「嘴上喜歡高利率，但要你鎖 20 年又不願意」。",
-            "主持人解讀貝森特對 5% 美債的淡化只是信心喊話，美國政府無法解決財政與殖利率上升問題；投資人應把「美國」拆開——可相信美國企業競爭力、同時懷疑政府財政，看好美股獲利但看空美債價格。",
-            "主持人認為本週市場核心不是 AI 放緩論而是流動性與 FOMC 利率預期；若聯準會不升息反而對股市衝擊更大，因為市場已 price in 升息，點陣圖可能極端分裂，近期費半反彈只是資金內部輪動。",
-            "主持人看美國內需消費：7 月信用卡循環信用增加 28 億美元、總額 1.357 兆美元，平均信用卡利率 22.15%，預期率創高，反映家庭是「撐不住才借錢應急」；從體感數據看聯準會其實不太能升息。",
-            "主持人評論輝達策略：輝達不只是賣晶片而是對賭 AI 生態系，過去一年對外股權投資增至 990 億美元，投資 OpenAI、Anthropic、xAI 等再回購 GPU 形成融資循環；他認為本質問題不大，但 AI 融資商品若被重組包裝，類似 08 年 MBS/CDO，風險貼水與最終風險承擔者才是關鍵。"
-          ],
-          "tickers": [
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為輝達以投資 AI 公司再回購晶片形成生態系循環，策略本身問題不大，但 AI 融資商品重組包裝後的風險值得警惕。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為本週市場核心不是 AI 放緩論，而是流動性與 FOMC 利率預期；5% 十年期美債殖利率若站穩，將迫使股市、房地產與企業融資重新定價，但美國企業獲利仍強，美國資產必須拆開成政府與企業來看。",
-          "action_view": "操作上不要把「看多美國」視為同一件事：可持續看好美股企業獲利、看空美債價格，並觀察 FOMC 點陣圖是否極端分裂，以及外資對長天期美債的承接意願。",
-          "notable_quote": "你可以相信美國企業的競爭力,但同時懷疑美國的政府的財政,你可以看多美股獲利,然後順便看空美債價格",
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 0,
-            "unverified": 1,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-17T00:22:20Z"
       }
     ]
   },
@@ -1964,6 +1982,107 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "5726508f-d13e-4bfd-80a9-b5d4b72e75fb",
+        "title": "EP342. 亞馬遜賣掉 GPU、台積電想進 Terafab、Agent 特助 vs 經理 | M觀點",
+        "published": "Mon, 05 Oct 2026 05:37:10 GMT",
+        "processed_at": "2026-10-05T08:24:17Z",
+        "digest": {
+          "summary_points": [
+            "亞馬遜傳出把已上線的80億美元GPU賣給SPV再回租，主持人解讀這是AI大基建從「用自己的錢買」進入財務工程階段，科技巨頭因極度看好需求而以槓桿放大算力投資，不是利空，但也代表市場風險升溫。",
+            "主持人認為台積電主動找特斯拉談TeraFab合作，目的在搶下特斯拉Optimus或SpaceX未來大量AI晶片訂單；若成局，他預期TeraFab將變成與Intel兩線並進，台積電在園區內另蓋廠，不取代Intel。",
+            "主持人提到約兩三週前看到圖表顯示OpenAI與Anthropic第三季成長可能減速（未確認），他將此視為AI需求的一個潛在風險，但認為可能只是開源模型與AI agent搶市，還不到需要認真研究的地步。",
+            "主持人在比較Meta Muse與xAI Grok Bot後，提出「特助 vs 部門經理」的框架；他個人偏愛Grok Bot，因為可以跳過中階、直接對個別agent交代細節，避免上下文被污染，讓每個任務執行更佳。",
+            "主持人認為Meta用免費Muse搶消費級AI agent，規模可能達上億用戶，而Grok Bot因月費30美元用戶僅百萬至一兩千萬，OpenAI的AI agent因成本無法推免費版；Google可能動作太慢，讓Muse享有規模真空。"
+          ],
+          "tickers": [
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人解讀出售GPU再回租為放大資本效率、加大AI投資，非利空；但整體市場槓桿風險升溫，未給出股價方向。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人猜測台積電主動找特斯拉談TeraFab合作，想鎖定特斯拉/SpaceX晶片訂單；若成局預期與Intel並行，非取代。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為若台積電主導TeraFab，特斯拉資本支出可能降低，但Intel部分仍會進行；未給股價方向。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "英特爾",
+              "code": "INTC",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人表示Intel 18A與14A目前無壞消息，台積電若加入TeraFab也不取代Intel，兩線並進。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為Muse免費策略可望取得上億用戶，但Meta需燒錢，商業模式尚未驗證；未給股價方向。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為AI基建已進入財務工程階段，科技巨頭用槓桿放大投資，市場風險升溫；但他目前只看到兩個危險訊號，尚未到減碼程度。",
+          "action_view": "主持人操作思路是先觀察，不急著減碼；若累積到四個危險訊號才會考慮減碼。",
+          "notable_quote": "我不會把這個看成是一個利空的新聞,這不是個利空的新聞這是某個程度來講反而是科技巨頭還在想辦法要加大投資的一個新聞",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我不會把這個看成是一個利空的新聞,這不是個利空的新聞這是某個程度來講反而是科技巨頭還在想辦法要加大投資的一個新聞"
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 5,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "2f27b778-c361-467b-b886-8c9ff15d88c6",
         "title": "EP341. Anthropic S1 流出、OpenAI 開發者日、谷歌 Meta SPCX | M觀點",
         "published": "Thu, 01 Oct 2026 16:08:17 GMT",
@@ -2666,44 +2785,6 @@
           "notable_quote": "輝達市占率會一直掉，但是呢，它自己還是會很漂亮的成長。"
         },
         "shown_at": "2026-08-27T23:56:23Z"
-      },
-      {
-        "guid": "2bc39045-e008-4b9c-987d-e6cb6dad2c5f",
-        "title": "EP330. 輝達 GPU 要漲價、中國機器人跑很快、特斯拉新消息更新 | M觀點",
-        "published": "Mon, 24 Aug 2026 05:42:40 GMT",
-        "processed_at": "2026-08-24T08:56:41Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為輝達敢對GPU漲價15%（連上一代Blackwell也漲），證明AI算力仍極度供不應求，且不怕客戶轉單，因為在電力有限下輝達GPU的單位經濟最好。",
-            "主持人指出本季科技巨頭調高資本支出主要是因記憶體等零組件漲價，並非增加伺服器數量，反映供應鏈極度緊俏。",
-            "主持人認為目前僅5%企業高度使用AI，未來95%企業從Generative AI進入Agentic AI時使用量可能爆增10倍，支撐長線AI需求。",
-            "主持人對AI算力長期需求持審慎樂觀：保守估年化成長20-50%（雲端十年年化約20%），但認為80-100%的極端估計過於樂觀。",
-            "中國人形機器人跑步破紀錄，主持人認為極限運動能力對商業化價值極低，真正關鍵是量產成本與實體AI大腦，而中國在大腦方面落後特斯拉至少五年。",
-            "特斯拉刻意減少Model Y投入Robotaxi車隊，主持人解讀為管理層對Cybercab短期規模化推出信心極高，並預估年底前至少部署300台Cybercab。",
-            "FSD V15已開始上路測試，參數量更大、上下文窗口擴大、延遲再降20%，主持人認為將是跳躍式升級，並可能推動Robotaxi明年爆量擴張。",
-            "Optimus Gen3量產延遲至未來數月，主持人承認工程難度高於預期，但認為特斯拉路線正確：先做通用機器人收集數據，長期才有飛輪效應。"
-          ],
-          "tickers": [
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為漲價反映需求極度強勁，且輝達GPU在電力有限下單位經濟最佳，未來一年仍供不應求。"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好Robotaxi短期擴張與FSD升級，認為Optimus雖延遲但路線正確，整體對特斯拉未來樂觀。"
-            }
-          ],
-          "market_view": "主持人認為未來5-10年AI算力需求仍強勁成長（保守估年化20-50%），但對AI股估值持審慎樂觀態度，需留意泡沫風險。",
-          "action_view": "主持人分享自身操作：對SpaceX部位尚未買滿，會趁回調分批慢慢加碼；對AI股整體採審慎樂觀，未明確建議追高。",
-          "notable_quote": "如果未來我們整個世界對於算力的需求成長，20%到50%的年成長幅度，年化成長就很誇張了。"
-        },
-        "shown_at": "2026-08-24T22:40:29Z"
       }
     ]
   },

@@ -576,39 +576,41 @@
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330）：與西門子推進半導體設計自動化合作，聚焦先進製程、3DFabric 與矽光子 （科技新報）。設計工具與製程綁得越緊，IC 設計客戶轉單成本越高，這是護城河的延伸；但這則新聞沒有揭露合作金額、客戶數或時程，量級判斷不出來。[A 級・信心:中-低]",
+    "statement": "台積電（2330）：延續同一條美國擴產的線，台積電以 1,000 億美元投資計畫居 2025 年全球跨國投資第一，亞利桑那累計投資達 2,650 億美元 （鉅亨台股）。海外先進產能分散可換取關稅與客戶綁定，但美國製造成本高於台灣，是中長期毛利率的稀釋變數。這條與上一條指向同一件事：美國產能布局是籌碼也是成本，兩者要合看。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiY0FVX3lxTE9JS1lJQVlrOVZJZnZjSUROdzZldGFyUDQ3UkJ2Z25JUGlnVERsVFhTcGZONEFtTE9kcXZzSkZ2MWVwN3g0ekJJQ25VczBiS1pGczkxNm9OTERMa0o5MGFMZXgtUQ?oc=5"
+     "https://news.cnyes.com/news/id/6621091"
     ]
    },
    {
-    "statement": "甲骨文（Oracle，美國雲端與資料庫大廠）：奪下算力大單，點名挹注鴻海、神達、廣達等台廠接單 （經濟日報）。AI 伺服器組裝拉貨直接進組裝廠營收，對 2330 的傳導是透過 CoWoS 需求的間接路徑，不是直接客戶關係；新聞未揭露金額，量級待後續訂單公告驗證。這條與上一條 Broadcom 的 ASIC 融資指向同一段先進封裝產能，兩者是互相排擠而非相加。[B 級・信心:中-低]",
+    "statement": "環宇-KY（4991，三五族光通訊元件廠）：延續 9 月以來磷化銦基板供料改善這條線，公司 200G PD 已導入量產、70mW CW Laser 完成多家客戶驗證，法人指出料源可支應至年底，上週股價漲 15.21% 站回 2532 元 （鉅亨台股）。光通訊接收端規格由 800G 往 1.6T 升級，資料中心內部傳輸的瓶頸與 CPO（共同封裝光學）供應鏈是同一條線，但與 2330 的關係是先進封裝旁的光電整合、不是直接代工單。公司未公布 200G PD 的出貨量與單價，對營收貢獻的百分比無法量化。[B 級・信心:中-低]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1XZnlROGVSeFd3ZHhQWXhJYmRhcjUwdGhhQi1HemRrTHBRMG5JNzV3VHFELTNFT2dLSFZvR0h0VVB4elFIbTVWSC01UHNjVXM1TVVTNWVURE9DUdIBX0FVX3lxTFBHNFFMd3F1V05DcE5rcFNNYnBzT3pWc0s3Q0JwdFJPWU0xaUw3UHhqejRiWERmdGFkWlNaVnYtdDI3MUZNemZUa0wzWVhMWDNKRGRES3diM1ZIdWhKR1Vn?oc=5"
+     "https://news.cnyes.com/news/id/6621284"
     ]
    },
    {
-    "statement": "應用材料（AMAT，半導體設備大廠）與貝思半導體（Besi，先進封裝設備商）：擴大策略合作推進新一代封裝技術 （UDN）。混合鍵合是 SoIC 等級堆疊的關鍵製程，設備端先行布局通常領先客戶量產一到兩年；但新聞未揭露合作金額或對應產能，這則說不出量級。[B 級・信心:中-低]",
+    "statement": "【航運｜全球】紅海與中東航道：延續荷莫茲與紅海的風險線，葉門政府軍反攻青年運動、紅海航運與中東局勢再升溫 （民視新聞網），週末阿曼與伊朗近海再有兩艘油輪遭襲 （CNBC）。船舶繞行好望角會拉長船期、吃掉有效運力，對長榮（2603）、陽明（2609）的歐美線運價是支撐；成本端 WTI 收 91.0 美元、單日僅跌 0.12%，燃油壓力尚未擴大。[B 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE1SRjluQi1KU1dRTGROR1RlZWFGR3lRMVY4dHlyd0o4NlhHWUN3a3hjdGVRbXZ5SFl3RTYxS0l3N0d5MFJyWkljNGZIOUJXaW100gFWQVVfeXFMT0RmSlhicHhJZzczakp2eEdaZ1FUQlF4blpycGgxWnlXLWtSNEJxNk5CR251QXBKXzV4TkJ5WmZndlRHUXVCVUNhM1BOdVhfU1ZEeXZyNlE?oc=5"
+     "https://news.google.com/rss/articles/CBMiYEFVX3lxTE9EN2NWblFESmdXeHpMMnpEczU5N3p4d0tDU3pveGpUYWplTXNheEZkZUlwRFIzbVVGczNmTF9fc2x0VGZJT3Q3MmswQXJwb1FyVDU1TDFfRVl2NUNnUGVGcA?oc=5"
     ]
    },
    {
-    "statement": "南亞科（2408，DRAM 廠）：代子公司南亞科技國際公告董事會決議現金增資 （MOPS）。同日市場消息指美光大擴產、記憶體訂單能見度看到 2031 年 （民報）。現金增資通常對應擴產或充實營運資金，但 MOPS 未揭露金額、用途與時程，量級判斷不出來；對母公司南亞科的實際影響要等增資金額與該子公司業務比重揭露才知道。[B 級・信心:低，資訊有限]",
+    "statement": "【汽車｜全球】比亞迪與台灣電動車市場：比亞迪 9 月銷量靠出口支撐、抵消中國車市疲軟 （DIGITIMES）；台灣 9 月電動車掛牌，特斯拉 Model Y 衝破 5,000 輛拿下單月冠軍 （DDCAR）。中國車市呈現內需弱、外銷強的兩面，對台廠車用零組件的意義是客戶結構位移而非總量擴張；台灣本地則由特斯拉拉貨帶動充電與線束需求。[B 級・信心:中-低]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE9ZTTNNd3N2ekFvamlCYThOTzFlNG42bFVmaEVIYVBpeUh5WWlyUEdNb0VZS0dzNjFkOGFqcE11ZVZpaTBqUTZTS05tT2ZvMVRLREZ0V0ZHMHIxMl8wVDN0dWZJSnE?oc=5"
+     "https://news.google.com/rss/articles/CBMia0FVX3lxTE5LdHV3MjZMMktoSDlrd29VbWhwZVdGMVlYNWZwenE1Z192NDE0YmQ4cnZ6elRSdHpxVnFjMXkyNC1Jb3Z5MXlmWWl6U1VpbHNHR1lRMUJ6bkd1Skw2dGhDNk96NU9EbkFYS1lJ?oc=5",
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE5ONEQyd05JX1hmNEdSS044VUZrZjhlb2JLam1ndkY0UkJHVTloSzRYRFVBazVkajZ0OUU4TEFIaVR4c2I4enpHeUtHU2pyTGs?oc=5"
     ]
    },
    {
-    "statement": "美光（MU，美國記憶體大廠）：美光財報揭示的訊號成為 SK 海力士即將公布業績的前導參考 （鉅亨）。美光 2026 年第四季毛利率 86.8% 創歷史新高，台廠南亞科、華邦電、力積電同屬記憶體循環，報價若延續，月營收年增率會最先反映在產品組合上。這條的量級要看 SK 海力士開出的數字對照，現在只能說方向。[B 級・信心:中-低]",
+    "statement": "【重電｜台灣】電力基建：AI 資料中心的用電需求把重電族群推上基建要角 （自由財經）；台電同時喊話國會支持 711 億元撥補，否則電價承壓 （台灣好新聞）。資料中心用電成長會拉高變壓器、開關與電網工程的標案能見度，對應華城（1519）、士電（1503）、中興電（1513）的在手訂單；但撥補若未過，會先反映在台電的資本支出節奏上。[B 級・信心:中-低]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1aTVo5VVhJUXVTOGw1dFJyNU1KajUzdVUzVFBRRk5rejVpc1FYZk5nVW5Mcm5EaEhaWTBTUzdyTmRMb2loMVJwRHBNQkgzc1k?oc=5"
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBIN3JYM0VpZEdRZHdNajZ1VUlwcGJLT1BoRmNydjVRbVY4N3o4ZVZMQWltcVRyVW5pcGxuaVAzWnBRcjBVRGJBNkMyQ29ITmRTb0hqTG9NeXA?oc=5"
     ]
    },
    {
-    "statement": "【航運｜台灣】陽明（2609，國營背景貨櫃航商）：延續中東戰火升溫這條線，陽明昨日爆量漲停 （自由時報）。同日 SCFI 指數收 3,662.30、下跌 24.32 （CMoney）。漲停反映的是紅海風險溢價，而 SCFI 現貨價仍在跌——兩者方向相反，代表股價先跑、基本面還沒跟上。對長榮、陽明而言，真正決定下半年獲利的是歐美線長約價而非現貨跳動，這個落差是後續要驗證的點。[B 級・信心:中-低]",
+    "statement": "【營建｜台灣】房市南北分歧：房市呈現雙北剛需穩定、中南部回落 （591新聞）；高雄房市量增是假象，其中四成屬新成屋過戶、預售買氣再跌四成 （壹蘋新聞網）。預售買氣下滑會遞延建商的營收認列與現金流，對以預售為主的興富發（2542）等建商去化率形成壓力，雙北剛需則是相對抗跌的一塊。[B 級・信心:中-低]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBrM2VTa29mRFdpdzUtbE5ac25ESExHZmRfeUFCUDRVa3lCMS1HOVVuTTFJaHBiaHNOc0Z4WWxtemN5a1lDODFveWU1Y1pYaDNKR0pUVVRKQzg?oc=5"
+     "https://news.google.com/rss/articles/CBMiSkFVX3lxTE1FR3NxMTZoUGNVSjREdXlJNGNYZXhOVnFDdUpDaFkwdFdMY2pNQnpCbEhpdXE1eWtPUmwyN2Y0bEFPVmNScmItX2lB0gFPQVVfeXFMTlhLN2hLNmdaUDJhWXhKOWZaN0hpbUx6S2hYQkMyYmFOVnZHLUhpWFNXS0V0UENaTktkYWJ6Z2szNjFrU0doM3ozOWh1V1lfNA?oc=5",
+     "https://news.google.com/rss/articles/CBMigwFBVV95cUxPb1B3M2RGUUNjd0RBWlUzRGdXYlRkVnR6amNScGZRaWZiZzJieC1XcFFtRU8xUGZvbVBzYlgyTUFiTmFZWmRUS0VOMTM0Z1ZBYjNfbFF4WXdkSjIxMFowdGJTOU9ZalBaVnlyRktGak9CMUV0Q0c2Mmg2MEtPN3IxOXlhWQ?oc=5"
     ]
    }
   ]

@@ -7746,6 +7746,121 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "5271c60e-08eb-453e-b78e-a8ded9829dea",
+        "title": "Has the Memory Cycle Broken? Plus: Nvidia & Broadcom’s $40B+ Financing Playbook",
+        "published": "Mon, 05 Oct 2026 16:07:05 -0700",
+        "processed_at": "2026-10-06T01:04:56Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為市場對記憶體（含美光）的估值模型隱含 2029 年需求崩壞與毛利率大幅壓縮，但他主張記憶體 TAM 已從過去約 1,000 億美元的高峰結構性放大到 6,000～8,000 億美元、bit growth 需求必然向上，不該套用過去「漲兩三年就崩跌」的循環框架，他的說法是「bet on bits, not history」。",
+            "主持人指出 CXMT 正提前拉高產能目標、中國蓋一座記憶體廠只需約 18 個月（美國、韓國、日本要 2.5～3 年），因此 2028 年供給可能大量開出；一方認為記憶體廠開始保留舊世代（如 DDR4）產能、變得更像台積電模式，是記憶體結構性改變的論據，另一方則懷疑廠商是否真會這樣做，因為（主持人自己的粗略比喻）每 4 片落後世代晶圓才換得到 1 片 HBM，而 HBM 單價高上百倍，經濟誘因強烈傾向全押 HBM。",
+            "主持人參加 HPE 網通投資者日後指出，HPE 併購 Juniper 後改以網通當「帶路雞」，企業客戶因 agentic AI 時代老舊設備的資安漏洞恐慌而被迫全面換網，成為拉動運算、基礎設施與軟體生意的鉤子；但他直言不喜歡 Juniper 的技術、不完全認同 HPE 的投資論述，也質疑 HPE 是否只是「工程公司」、缺乏獨特 IP（HPE 同週調高財測）。",
+            "Nvidia 本週把「動用資產負債表支撐生態系」正式放進給投資人的簡報，Broadcom 也承諾貸款 Anthropic 最高約 400 億美元建置 TPU；主持人認為以 Hock Tan 像私募股權基金般經營 Broadcom 的風格，此舉是對這輪 AI 結構性建置投下的額外信任票，但也提醒這是不斷墊高風險的動態，並直言半導體業過去不舉債是有原因的，讓這位老分析師感到緊張。",
+            "Tokenomics：主持人認為現在已可用公開的 token 定價資料把 AI 經濟量化（推理模型的溢價一年內消失、input 與 output token 因底層算力不同而訂價結構迥異）；另一位則對「premium token」概念存疑，認為會依客群與用途差別定價，並以 OpenAI Dev Day 推出約 250 tokens/秒的高速層級為例，說明速度本身就是可收費的差異化。"
+          ],
+          "tickers": [
+            {
+              "name": "美光（Micron）",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為財報與財測都好、股價一週下來幾乎持平，市場仍在爭論記憶體循環；一方主張以 bit growth 而非歷史循環估值，另一方明說不願對後市表態。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Are we thinking about even in some degree of cyclicality, the right kind of forward assumptions here for micron and some of these other names?",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "輝達（Nvidia）",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為它以資產負債表支撐生態系屬於投資成長、不是循環融資，但對其野心與不斷墊高的風險抱持謹慎態度，並認為它正替 AI 資料中心矽晶設定競爭規則、逼得所有對手都得更用力。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I'm obviously somewhat cautious about Nvidia's ambitions here. They're spending so much money. They've put so much on the balance sheet.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "博通（Broadcom）",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為它承諾貸款 Anthropic 建置 TPU、加上 Hock Tan 私募股權式的經營風格，是對這輪結構性建置投下額外信任票，且它相對有本錢動用私募股權資金來競爭，但這並非對其股價的直接表態。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "And so for them to be willing to do this and perhaps be more aggressive, I just I take as an additional vote of confidence to the structural degree of this build out.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人指出 AMD 現金約 100 億美元、每季產生現金遠不如 Nvidia（Nvidia 約為其 20 倍），在這場「資產負債表即服務」的競爭中越來越難競爭，網通布局也明顯缺席。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "I think it's getting increasingly difficult for them to compete because they don't have a balance sheet.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "HPE（慧與）",
+              "code": "HPE",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為其以網通領軍的策略有邏輯（企業因資安顧慮換網），但直言不喜歡 Juniper 的技術、不完全認同其投資論述，並質疑 HPE 是否只是「工程公司」、缺乏獨特 IP。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I'm just not sure HPE is quite the path to get there.",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "台積電（TSMC）",
+              "code": "TSM",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為台積電距離終端需求太遠、無法掌握真實需求，加上作風保守（連創投部門都沒有），不會也不該像 Nvidia、Broadcom 那樣替客戶出資；但認為台積電其實應該透過創投投資有潛力的新創，以餵養長期需求。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "TSMC is too far off the chain to really, really know true end demand.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人沒有明確的大盤或總經預測，但認為這輪 AI 建置的長期經濟效益仍高度不確定，並對半導體業者開始動用資產負債表支撐需求感到不安，直言過去半導體公司不舉債是有原因的。",
+          "action_view": "",
+          "notable_quote": "So that's again, that's why like the main report I did this week was called bet on bits, not history, because bit growth demand is inevitably going up, which just means you've got to be able to manufacture that in a bit growth scenario up, up into the right.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "So that's again, that's why like the main report I did this week was called bet on bits, not history, because bit growth demand is inevitably going up, which just means you've got to be able to manufacture that in a bit growth scenario up, up into the right."
+          },
+          "direction_quality": {
+            "attributed": 4,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "271a0027-9224-4155-bb96-da9f04ed5b30",
         "title": "Memory Pricing Pressures, Meta's Muse AI, and the Agentic CPU Crunch",
         "published": "Mon, 28 Sep 2026 11:56:40 -0700",

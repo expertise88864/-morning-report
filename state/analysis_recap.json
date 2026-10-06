@@ -571,46 +571,44 @@
  ],
  "watch_seq": 54,
  "legacy_report": {
-  "date": "2026-10-05",
+  "date": "2026-10-06",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330）：延續同一條美國擴產的線，台積電以 1,000 億美元投資計畫居 2025 年全球跨國投資第一，亞利桑那累計投資達 2,650 億美元 （鉅亨台股）。海外先進產能分散可換取關稅與客戶綁定，但美國製造成本高於台灣，是中長期毛利率的稀釋變數。這條與上一條指向同一件事：美國產能布局是籌碼也是成本，兩者要合看。[A 級・信心:中]",
+    "statement": "台積電（2330）：馬斯克證實與台積電洽談 Terafab 合作，由台積電興建並營運專供特斯拉、SpaceX 與 xAI 的晶圓廠，TSM ADR 週一收 485.80 美元創收盤新高 （鉅亨）。若成局，模式近似熊本 JASM——客戶出資與承諾採購、台積電出技術與營運，等於再鎖一條長期先進製程訂單。但合作尚未定案，馬斯克自稱台積電產能「屬補充」，晶圓廠規模與時程皆未揭露，量級無法推算。[A 級・信心：中，因未定案]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6621091"
+     "https://news.cnyes.com/news/id/6622231"
     ]
    },
    {
-    "statement": "環宇-KY（4991，三五族光通訊元件廠）：延續 9 月以來磷化銦基板供料改善這條線，公司 200G PD 已導入量產、70mW CW Laser 完成多家客戶驗證，法人指出料源可支應至年底，上週股價漲 15.21% 站回 2532 元 （鉅亨台股）。光通訊接收端規格由 800G 往 1.6T 升級，資料中心內部傳輸的瓶頸與 CPO（共同封裝光學）供應鏈是同一條線，但與 2330 的關係是先進封裝旁的光電整合、不是直接代工單。公司未公布 200G PD 的出貨量與單價，對營收貢獻的百分比無法量化。[B 級・信心:中-低]",
+    "statement": "台積電（2330）：9 月營收將於 10 月 8 日公布，法說會訂 10 月 15 日 （鉅亨）。兩週內催化劑密集，ADR 短線漲幅已偏大，法說前法人通常調節持股，波動可能放大。這是同一天裡第三條台積電消息，但它決定前兩條能否兌現——法說若下修毛利率指引，高盛的資本支出上調劇本就要重估。[B 級・信心：中-低，資訊有限]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6621284"
+     "https://news.cnyes.com/news/id/6622241"
     ]
    },
    {
-    "statement": "【航運｜全球】紅海與中東航道：延續荷莫茲與紅海的風險線，葉門政府軍反攻青年運動、紅海航運與中東局勢再升溫 （民視新聞網），週末阿曼與伊朗近海再有兩艘油輪遭襲 （CNBC）。船舶繞行好望角會拉長船期、吃掉有效運力，對長榮（2603）、陽明（2609）的歐美線運價是支撐；成本端 WTI 收 91.0 美元、單日僅跌 0.12%，燃油壓力尚未擴大。[B 級・信心:中]",
+    "statement": "鴻海（2317，全球最大 EMS 代工廠，雲端與網通產品營收占比已超過消費電子）：9 月營收 1.158 兆元創歷史新高，第三季 3.03 兆元、年增 47%，是台灣首家單月破兆企業，公司稱 AI 相關業務第四季仍將成長 （經濟日報）。鴻海是輝達 AI 伺服器主要組裝夥伴，整機放量會同步拉動 GPU 載板、電源與散熱需求，也間接支撐 2330 的 CoWoS 拉貨。年增 47% 是可觀察的季增基礎，但公司未給第四季具體財測，量級只能看月營收能否守住兆元。[A 級・信心：高]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiYEFVX3lxTE9EN2NWblFESmdXeHpMMnpEczU5N3p4d0tDU3pveGpUYWplTXNheEZkZUlwRFIzbVVGczNmTF9fc2x0VGZJT3Q3MmswQXJwb1FyVDU1TDFfRVl2NUNnUGVGcA?oc=5"
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTFBDa3A3R0lkaWJQQkt6UVRrZGRoRmxHb2dXRmpyYmtEOE93V284YWVMZHA3aEI1cFQySkVGTko1MjQxUjZoN25NMjBRb2tPcmZrTjlSekVnUEVaUdIBX0FVX3lxTE13QlV5Z1hleC1kRXFfT0g4b21hUC0yOTJMS2VwamU4TkV3WGo4QlNYUkdnVXFaXzQzTzBZdk55clRYQ0lDTDV3ZzFPQi10eF9MSXVmOGVqVWdwT3RCNmJz?oc=5"
     ]
    },
    {
-    "statement": "【汽車｜全球】比亞迪與台灣電動車市場：比亞迪 9 月銷量靠出口支撐、抵消中國車市疲軟 （DIGITIMES）；台灣 9 月電動車掛牌，特斯拉 Model Y 衝破 5,000 輛拿下單月冠軍 （DDCAR）。中國車市呈現內需弱、外銷強的兩面，對台廠車用零組件的意義是客戶結構位移而非總量擴張；台灣本地則由特斯拉拉貨帶動充電與線束需求。[B 級・信心:中-低]",
+    "statement": "美光（MU，美國記憶體大廠，DRAM 與 NAND 供應商）：發表 512GB DDR5 RDIMM 伺服器記憶體模組，傳輸速率達 9200 MT/s，功耗較四條 128GB 配置降低逾 60%，預計 2027 下半年量產 （鉅亨）。單條容量提升會拉高每台 AI 伺服器的 DRAM 搭載量，對記憶體報價與南亞科、華邦電的產品組合是順風。但量產落在 2027 下半年，對今年營收沒有貢獻，短線影響的是市場對記憶體供需吃緊的預期。[A 級・信心：中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMia0FVX3lxTE5LdHV3MjZMMktoSDlrd29VbWhwZVdGMVlYNWZwenE1Z192NDE0YmQ4cnZ6elRSdHpxVnFjMXkyNC1Jb3Z5MXlmWWl6U1VpbHNHR1lRMUJ6bkd1Skw2dGhDNk96NU9EbkFYS1lJ?oc=5",
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE5ONEQyd05JX1hmNEdSS044VUZrZjhlb2JLam1ndkY0UkJHVTloSzRYRFVBazVkajZ0OUU4TEFIaVR4c2I4enpHeUtHU2pyTGs?oc=5"
+     "https://news.cnyes.com/news/id/6622182"
     ]
    },
    {
-    "statement": "【重電｜台灣】電力基建：AI 資料中心的用電需求把重電族群推上基建要角 （自由財經）；台電同時喊話國會支持 711 億元撥補，否則電價承壓 （台灣好新聞）。資料中心用電成長會拉高變壓器、開關與電網工程的標案能見度，對應華城（1519）、士電（1503）、中興電（1513）的在手訂單；但撥補若未過，會先反映在台電的資本支出節奏上。[B 級・信心:中-低]",
+    "statement": "AMD（全球第二大 x86 CPU 廠，MI 系列為 AI GPU 主力）：蘇姿丰來台向台積電、封測廠與載板廠爭取更多供應 （DIGITIMES）。MI 系列 GPU 與伺服器 CPU 同時放量會排擠 CoWoS 與 ABF 載板產能——這與台積電資本支出上調、輝達拉貨是同一條產能吃緊的線，三方搶的是同一份產能而不是三份。具體採購量與交期未揭露，量級判斷不出來。[B 級・信心：中-低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBIN3JYM0VpZEdRZHdNajZ1VUlwcGJLT1BoRmNydjVRbVY4N3o4ZVZMQWltcVRyVW5pcGxuaVAzWnBRcjBVRGJBNkMyQ29ITmRTb0hqTG9NeXA?oc=5"
+     "https://news.google.com/rss/articles/CBMijgFBVV95cUxPY2ZZLXByU0ZER25DX3MwRTg1cnRyME1HRmVPQTljUWxHUGtwNzZsT1Nja2ZkT3NwM0tiaWxyRmJKYmJ0UGc3YWVjN2dQLXlac0FqUDlhZlVtMHFISmR3ZU5QckF5N1NWaVhOTFFEZ0tMNVlVUUc5bHBOV1A3MERJZVBKMUp1bFNERTVyNjRB?oc=5"
     ]
    },
    {
-    "statement": "【營建｜台灣】房市南北分歧：房市呈現雙北剛需穩定、中南部回落 （591新聞）；高雄房市量增是假象，其中四成屬新成屋過戶、預售買氣再跌四成 （壹蘋新聞網）。預售買氣下滑會遞延建商的營收認列與現金流，對以預售為主的興富發（2542）等建商去化率形成壓力，雙北剛需則是相對抗跌的一塊。[B 級・信心:中-低]",
+    "statement": "【金融｜台灣】玉山金（2884，民營金控，以銀行為主體）：完成合意併購三商美邦人壽，金控資產規模突破 6.6 兆元 （自由時報）。併購壽險可讓銀行金控取得長期保費現金流並提升資本運用效率，但壽險接軌新會計制度後的資本需求與利差損，會是整併後兩年的觀察點。對每股盈餘的貢獻要看換股比例與後續增資規模，目前尚無法量化。[A 級・信心：中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiSkFVX3lxTE1FR3NxMTZoUGNVSjREdXlJNGNYZXhOVnFDdUpDaFkwdFdMY2pNQnpCbEhpdXE1eWtPUmwyN2Y0bEFPVmNScmItX2lB0gFPQVVfeXFMTlhLN2hLNmdaUDJhWXhKOWZaN0hpbUx6S2hYQkMyYmFOVnZHLUhpWFNXS0V0UENaTktkYWJ6Z2szNjFrU0doM3ozOWh1V1lfNA?oc=5",
-     "https://news.google.com/rss/articles/CBMigwFBVV95cUxPb1B3M2RGUUNjd0RBWlUzRGdXYlRkVnR6amNScGZRaWZiZzJieC1XcFFtRU8xUGZvbVBzYlgyTUFiTmFZWmRUS0VOMTM0Z1ZBYjNfbFF4WXdkSjIxMFowdGJTOU9ZalBaVnlyRktGak9CMUV0Q0c2Mmg2MEtPN3IxOXlhWQ?oc=5"
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5iU1d6aENyVzF0a0h1SnZzbVBtQTlYSXQxYUtQZzVKLU5CSGk5WVVCRVVvU29xenNkWE5jX0dGS2pMN0pYbnU5TkRid3FlZllDb0lRWGpaNmw?oc=5"
     ]
    }
   ]

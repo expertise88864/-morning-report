@@ -4072,6 +4072,11 @@
     "void": true,
     "reason": "corpact_coverage_gap",
     "session": "2026-09-10"
+   },
+   "20": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-05"
    }
   },
   "entry": {
@@ -6019,7 +6024,13 @@
    ]
   ],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-05"
+   }
+  },
   "entry": {
    "2454": 5105.0,
    "3711": 685.0,
@@ -6140,7 +6151,7 @@
    "3443"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
+  "status": "void",
   "res": {}
  },
  {
@@ -6907,7 +6918,12 @@
    "ledger_schema": 2,
    "git_sha": "38e02f2b7fdd"
   },
-  "git_sha": "38e02f2b7fdd"
+  "git_sha": "38e02f2b7fdd",
+  "resolved": "2026-10-06",
+  "outcome": true,
+  "actual": 2550.0,
+  "brier_model": 0.0225,
+  "brier_base": 0.2411
  },
  {
   "question": "taiex_open_up",
@@ -6932,7 +6948,12 @@
    "ledger_schema": 2,
    "git_sha": "38e02f2b7fdd"
   },
-  "git_sha": "38e02f2b7fdd"
+  "git_sha": "38e02f2b7fdd",
+  "resolved": "2026-10-06",
+  "outcome": true,
+  "actual": 48574.95,
+  "brier_model": 0.0045,
+  "brier_base": 0.1459
  },
  {
   "type": "mz_shadow",
@@ -6957,6 +6978,10 @@
    "ledger_schema": 2,
    "git_sha": "38e02f2b7fdd"
   },
-  "git_sha": "38e02f2b7fdd"
+  "git_sha": "38e02f2b7fdd",
+  "resolved": "2026-10-06",
+  "actual": 2550.0,
+  "err_raw": 18.23,
+  "err_shadow": 26.83
  }
 ]

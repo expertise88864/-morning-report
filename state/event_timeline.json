@@ -1,98 +1,4 @@
 {
- "export_controls:川普:2026-10": {
-  "first_seen": "2026-10-03",
-  "days": 1,
-  "last_seen": "2026-10-03",
-  "latest_title": "川普宣布美國不會實施柴油出口禁令",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "不會",
-   "出口",
-   "口禁",
-   "國不",
-   "實施",
-   "施柴",
-   "會實",
-   "柴油",
-   "油出",
-   "禁令",
-   "美國"
-  ],
-  "entity": "川普",
-  "subject_basis": "literal",
-  "subjects": [
-   "川普"
-  ],
-  "event_type": "export_controls",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:G7:2026-10": {
-  "first_seen": "2026-10-03",
-  "days": 1,
-  "last_seen": "2026-10-03",
-  "latest_title": "G7與歐洲同意四個月內釋出1億桶戰略儲油",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "個月",
-   "億桶",
-   "儲油",
-   "內釋",
-   "同意",
-   "四個",
-   "意四",
-   "戰略",
-   "月內",
-   "桶戰",
-   "歐洲",
-   "洲同",
-   "略儲",
-   "與歐",
-   "釋出"
-  ],
-  "entity": "G7",
-  "subject_basis": "literal",
-  "subjects": [
-   "G7"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:石油:2026-10": {
-  "first_seen": "2026-10-03",
-  "days": 1,
-  "last_seen": "2026-10-03",
-  "latest_title": "G7宣布透過IEA釋放1億桶石油儲備，歐洲同意釋出柴油儲備",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "g7",
-   "iea",
-   "億桶",
-   "儲備",
-   "出柴",
-   "同意",
-   "意釋",
-   "柴油",
-   "歐洲",
-   "油儲",
-   "洲同",
-   "透過",
-   "釋出",
-   "釋放"
-  ],
-  "entity": "石油",
-  "subject_basis": "literal",
-  "subjects": [
-   "石油"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:strait_tension:2026-10": {
   "first_seen": "2026-10-03",
   "days": 2,
@@ -129,9 +35,9 @@
  },
  "litigation:GOOGL:2026-10#e902af": {
   "first_seen": "2026-10-05",
-  "days": 2,
-  "last_seen": "2026-10-06",
-  "latest_title": "Alphabet公司遭控隱瞞Gemini 3.5 Pro問題 投資人集體訴訟 - 商傳媒",
+  "days": 3,
+  "last_seen": "2026-10-07",
+  "latest_title": "討論牆 | Alphabet公司遭控隱瞞Gemini 3.5 Pro問題 投資人集體訴訟 - LINE TODAY",
   "latest_summary": "",
   "object": "",
   "incident_tokens": [
@@ -143,7 +49,9 @@
    "問題",
    "投資",
    "控隱",
+   "討論",
    "訴訟",
+   "論牆",
    "資人",
    "遭控",
    "隱瞞",
@@ -633,6 +541,139 @@
   "subject_basis": "alias",
   "subjects": [
    "中國"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:美光:2026-10#ca5aaa": {
+  "first_seen": "2026-10-07",
+  "days": 1,
+  "last_seen": "2026-10-07",
+  "latest_title": "美光6億美元和解Netlist專利訴訟 取得HBM等記憶體技術5年授權 - 優分析UAnalyze",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "hbm",
+   "netlist",
+   "uanalyze",
+   "億美",
+   "優分",
+   "元和",
+   "分析",
+   "利訴",
+   "取得",
+   "和解",
+   "專利",
+   "年授",
+   "憶體",
+   "技術",
+   "授權",
+   "等記",
+   "美元",
+   "記憶",
+   "訴訟",
+   "體技"
+  ],
+  "entity": "美光",
+  "subject_basis": "alias",
+  "subjects": [
+   "美光"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:台灣:2026-10": {
+  "first_seen": "2026-10-07",
+  "days": 1,
+  "last_seen": "2026-10-07",
+  "latest_title": "裴洛西晤蔡英文：美國國會對台灣人民及自由承諾堅定不移",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "不移",
+   "人民",
+   "及自",
+   "國國",
+   "國會",
+   "堅定",
+   "定不",
+   "承諾",
+   "晤蔡",
+   "會對",
+   "民及",
+   "洛西",
+   "由承",
+   "美國",
+   "自由",
+   "英文",
+   "蔡英",
+   "裴洛",
+   "西晤",
+   "諾堅"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:國際油價:2026-10": {
+  "first_seen": "2026-10-07",
+  "days": 1,
+  "last_seen": "2026-10-07",
+  "latest_title": "中東戰爭未見緩解，國際油價持穩/微幅收高",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "中東",
+   "幅收",
+   "微幅",
+   "戰爭",
+   "持穩",
+   "收高",
+   "未見",
+   "東戰",
+   "爭未",
+   "緩解",
+   "見緩"
+  ],
+  "entity": "國際油價",
+  "subject_basis": "literal",
+  "subjects": [
+   "國際油價"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:英國柴油價格:2026-10": {
+  "first_seen": "2026-10-07",
+  "days": 1,
+  "last_seen": "2026-10-07",
+  "latest_title": "美國和伊朗戰爭衝擊，英國柴油價格創新高",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "伊朗",
+   "創新",
+   "和伊",
+   "國和",
+   "戰爭",
+   "新高",
+   "朗戰",
+   "爭衝",
+   "美國",
+   "衝擊"
+  ],
+  "entity": "英國柴油價格",
+  "subject_basis": "literal",
+  "subjects": [
+   "英國柴油價格"
   ],
   "event_type": "geopolitical",
   "action": "",

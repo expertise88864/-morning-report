@@ -5,6 +5,8 @@ morning_report 以 re-export 保相容,既有測試零修改。
 import datetime as dt
 from typing import Optional
 
+from twse_holiday_calendar import is_known_closed
+
 
 def _session_distance(start_date: str, end_date: str, sessions: list[str]) -> Optional[int]:
     """用真實 TWSE 交易日計算距離；任一日期不在日曆中則回 None。"""
@@ -16,8 +18,8 @@ def _session_distance(start_date: str, end_date: str, sessions: list[str]) -> Op
 
 
 def _next_tw_weekday(day: dt.date) -> dt.date:
-    """回傳 day 當日或下一個台股平日。休市日會在實際開盤對齊時再往後解析。"""
-    while day.weekday() >= 5:
+    """回傳最近已知可開盤日；2026 休市表以證交所公告為準。"""
+    while day.weekday() >= 5 or is_known_closed(day):
         day += dt.timedelta(days=1)
     return day
 
@@ -85,14 +87,14 @@ def _resolved_prediction_history(history: list[dict],
 
 
 def _weekday_session_distance(start_date: str, end_date: str) -> int:
-    """計算兩日期間的台股平日數；正式校準前的候選追蹤用近似值。"""
+    """計算兩日期間已知可開盤的平日數；未知休市日仍是近似值。"""
     start = dt.datetime.strptime(start_date, "%Y-%m-%d").date()
     end = dt.datetime.strptime(end_date, "%Y-%m-%d").date()
     count = 0
     day = start
     while day < end:
         day += dt.timedelta(days=1)
-        if day.weekday() < 5:
+        if day.weekday() < 5 and not is_known_closed(day):
             count += 1
     return count
 

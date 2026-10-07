@@ -2,7 +2,7 @@
 import re
 import unicodedata
 from difflib import SequenceMatcher
-
+from hospital_news_identity import hospital_news_title
 
 def relevant(label: str, title: str) -> bool:
     # A stock discussion repost is not local reporting, even with a ticker prefix.
@@ -18,9 +18,15 @@ def relevant(label: str, title: str) -> bool:
         "醫界追蹤": r"醫院|醫療|急診|醫師|護理|衛福|健保|病患|病床|等床",
         "學區/文教": r"學校|學區|中學|高中|國中|國小|教育|招生|入學|校園|明道|葳格",
     }
+    if label == "彰基/中國醫" and not hospital_news_title(title):
+        return False
     if label in required and not re.search(required[label], title):
         return False
     if label == "建設" and re.search(r"選戰|造勢|競選|後援會", title):
+        return False
+    if label == "建設" and not (re.search(
+            r"捷運|巨蛋|建設|工程|動土|開工|完工|啟用|規劃|標案|開發|水利|排水|道路|軌道|鐵路|高架|橋梁|橋樑|公共設施|園區|擴廠|長照",
+            title) or re.search(r"中捷.{0,20}(?:藍線|橘線|延伸|決標|環評|土建)", title)):
         return False
     if label == "產業/科技" and not re.search(
             r"產業|科技|半導體|晶圓|園區|中科|工業|企業|廠|投資|招商|製造|研發|供應鏈|產線|(?<![A-Za-z])AI(?![A-Za-z])",
@@ -46,7 +52,6 @@ def unique(rows: list[dict]) -> list[dict]:
             out.append(row)
             seen.add(key)
     return out
-
 
 def duplicate(left: str, right: str) -> bool:
     if left == right:

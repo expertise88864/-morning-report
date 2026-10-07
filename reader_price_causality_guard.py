@@ -5,8 +5,8 @@ import re
 _QUOTE = re.compile(r"「[^」\n]*(?:」|$)|“[^”\n]*(?:”|$)|『[^』\n]*(?:』|$)", re.M)
 _SENTENCE = re.compile(r"[^。！？\n]+(?:[。！？]|(?=\n|$))")
 _SOURCE_HEADLINE = re.compile(r"^(?:[-*]\s*)?(?:\*\*)?(?:新聞標題|來源標題)[:：]")
-_RENDERED_HEADLINE = re.compile(
-    r"^(?:\*\*[^*\n]+\*\*｜)?\[[^\]\n]+\]\(https?://[^)\n]+\)"
+_SOURCE_LIST_HEADLINE = re.compile(r"^[-*]\s+\[[^\]\n]+\]\s+\S")  # Shape filter only; never provenance.
+_RENDERED_HEADLINE = re.compile(r"^(?:\*\*[^*\n]+\*\*｜)?\[[^\]\n]+\]\(https?://[^)\n]+\)"
     r"(?:（[^）\n]*）)?[。！？]?$|^\*\*[^*\n]+\*\*(?:（[^）\n]*）)?[。！？]?$")
 _OWN_ANALYSIS = re.compile(r"^(?:\*\*風險觀察\*\*｜)?(?:本報解讀[:：]|(?:\*\*)?利率與科技股評價風險(?:[:：]|\*\*[:：｜]))")
 _PRICE_CLAIM = "科技股昨天照樣創新高，說明市場目前願意忽略"

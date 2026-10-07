@@ -45,6 +45,39 @@ def test_content_commit_gets_pending_trailers_and_queue_survives_local_state_los
     assert not gate.STATE_DIR.exists()  # The queue is entirely recoverable from Git.
 
 
+def test_commit_message_body_divider_does_not_hide_review_trailers(repo):
+    root, git = repo
+    (root / "sample.txt").write_text("divider-case", encoding="utf-8")
+    git("add", "sample.txt")
+    path = root / "message.txt"
+    path.write_text("Change a file\n\n---\n\nBody details\n", encoding="utf-8")
+
+    assert queue.commit_message(gate, str(path)) == 0
+    git("commit", "-F", str(path))
+    assert queue.is_pending(queue.trailers(gate, queue.message_for(gate, git("rev-parse", "HEAD"))))
+
+
+@pytest.mark.parametrize("comment_char", ["#", ";"])
+def test_verbose_scissors_keep_review_trailers_in_commit_message(repo, comment_char):
+    root, git = repo
+    git("config", "core.commentChar", comment_char)
+    (root / "sample.txt").write_text("verbose-case", encoding="utf-8")
+    git("add", "sample.txt")
+    path = root / "message.txt"
+    marker = f"{comment_char} ------------------------ >8 ------------------------"
+    path.write_text(
+        f"Change a file\n\n{comment_char} Please enter the commit message.\n"
+        f"{marker}\ndiff --git a/sample.txt b/sample.txt\n",
+        encoding="utf-8",
+    )
+
+    assert queue.commit_message(gate, str(path)) == 0
+    rewritten = path.read_text(encoding="utf-8")
+    assert rewritten.index("Claude-Opus-5-Review: pending") < rewritten.index(marker)
+    git("commit", "--cleanup=scissors", "-F", str(path))
+    assert queue.is_pending(queue.trailers(gate, queue.message_for(gate, git("rev-parse", "HEAD"))))
+
+
 def test_only_empty_verified_audit_resolves_its_exact_target(repo):
     root, git = repo
     first = pending_commit(repo)
@@ -57,7 +90,7 @@ def test_only_empty_verified_audit_resolves_its_exact_target(repo):
     with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
         queue.commit_message(gate, str(path))
     span = queue.commit_range(gate, first)
-    queue.save_approvals(gate, [span], "verified-diff-fingerprint")
+    queue.save_approvals(gate, [span], gate.push_fingerprint([span]))
     assert queue.commit_message(gate, str(path)) == 0
     (root / "sample.txt").write_text("unrelated user edit", encoding="utf-8")
     git("add", "sample.txt")
@@ -70,6 +103,75 @@ def test_only_empty_verified_audit_resolves_its_exact_target(repo):
     queue.receipt_path(gate, first).unlink()  # Disposable isolated-test cache only.
     assert queue.quota_push_allowed(gate, [gate.PushRange(
         "refs/heads/main", "refs/heads/main", second, audit)])
+
+
+def test_push_receipt_cannot_authorize_exact_commit_audit(repo):
+    _, git = repo
+    base = git("rev-parse", "HEAD")
+    sha = pending_commit(repo)
+    push = gate.PushRange("refs/heads/main", "refs/heads/main", base, sha)
+    queue.save_approvals(gate, [push], gate.push_fingerprint([push]))
+    assert not queue.has_approval(gate, sha)
+
+    exact = queue.commit_range(gate, sha)
+    queue.save_approvals(gate, [exact], gate.push_fingerprint([exact]))
+    assert queue.has_approval(gate, sha)
+
+
+def test_later_exact_request_changes_revokes_older_approval(repo):
+    sha = pending_commit(repo)
+    exact = queue.commit_range(gate, sha)
+    fingerprint = gate.push_fingerprint([exact])
+    queue.save_approvals(gate, [exact], fingerprint)
+    assert queue.has_approval(gate, sha)
+
+    queue.save_rejections(gate, [exact], fingerprint)
+    assert not queue.has_approval(gate, sha)
+
+
+def test_exact_merge_review_preserves_individual_merged_commit_receipt(repo):
+    root, git = repo
+    git("checkout", "-b", "side")
+    side = pending_commit(repo, "side")
+    side_range = queue.commit_range(gate, side)
+    queue.save_approvals(gate, [side_range], gate.push_fingerprint([side_range]))
+    assert queue.has_approval(gate, side)
+
+    git("checkout", "main")
+    (root / "main.txt").write_text("main", encoding="utf-8")
+    git("add", "main.txt")
+    git("commit", "-m", "Main change")
+    git("merge", "--no-ff", "side", "-m", "Merge side")
+    merged = git("rev-parse", "HEAD")
+    merge_range = queue.commit_range(gate, merged)
+    assert side in gate._outgoing_commits(merge_range.base, merge_range.tip)
+
+    merge_fingerprint = gate.push_fingerprint([merge_range])
+    queue.save_approvals(gate, [merge_range], merge_fingerprint)
+    assert queue.has_approval(gate, side)
+    assert queue.has_approval(gate, merged)
+
+    queue.save_rejections(gate, [merge_range], merge_fingerprint)
+    assert queue.has_approval(gate, side)
+    assert not queue.has_approval(gate, merged)
+
+
+def test_review_entry_point_never_promotes_push_approval_to_exact_receipt(repo, monkeypatch):
+    import io
+    _, git = repo
+    base = git("rev-parse", "HEAD")
+    sha = pending_commit(repo)
+    monkeypatch.setattr(gate.sys, "stdin", io.StringIO(
+        f"refs/heads/main {sha} refs/heads/main {base}\n"))
+    monkeypatch.setattr(gate, "run_review", lambda *args: 0)
+    assert gate.main(["push"]) == 0
+    assert not queue.receipt_path(gate, sha).exists()
+
+    assert gate.main(["commit", "--commit", sha]) == 0
+    assert queue.has_approval(gate, sha)
+    monkeypatch.setattr(gate, "run_review", lambda *args: 2)
+    assert gate.main(["commit", "--commit", sha]) == 2
+    assert not queue.has_approval(gate, sha)
 
 
 def test_quota_push_requires_every_outgoing_commit_to_be_marked(repo):
@@ -130,6 +232,35 @@ def test_replace_refs_cannot_change_exact_sha_review_evidence(repo):
     assert gate.push_fingerprint([span]) == before
     assert "original-content-must-be-reviewed" in gate._snapshot_text("commit", [span])
     assert queue.is_pending(queue.trailers(gate, queue.message_for(gate, original)))
+
+
+def test_exact_commit_snapshot_includes_state_text_hidden_by_gitattributes(repo):
+    root, git = repo
+    (root / ".gitattributes").write_text(
+        "state/*.json -diff\nstate/emails/** -diff binary\n", encoding="utf-8"
+    )
+    state = root / "state" / "podcast_digest.json"
+    state.parent.mkdir()
+    state.write_text('{"episode": "before"}\n', encoding="utf-8")
+    private_mail = root / "state" / "emails" / "private.json"
+    private_mail.parent.mkdir()
+    private_mail.write_text('{"mail": "before"}\n', encoding="utf-8")
+    git("add", ".gitattributes", "state/podcast_digest.json", "state/emails/private.json")
+    git("commit", "-m", "baseline state")
+
+    state.write_text('{"episode": "after-review-this-value"}\n', encoding="utf-8")
+    private_mail.write_text('{"mail": "private-mail-value"}\n', encoding="utf-8")
+    git("add", "state/podcast_digest.json", "state/emails/private.json")
+    message = root / "message.txt"
+    message.write_text("Update podcast state\n", encoding="utf-8")
+    queue.commit_message(gate, str(message))
+    git("commit", "-F", str(message))
+    sha = git("rev-parse", "HEAD")
+
+    snapshot = gate._snapshot_text("commit", [queue.commit_range(gate, sha)])
+    assert '+{"episode": "after-review-this-value"}' in snapshot
+    assert '-{"episode": "before"}' in snapshot
+    assert "private-mail-value" not in snapshot
 
 
 def test_queue_follows_topic_branches_after_switching_away(repo):

@@ -256,7 +256,8 @@ def test_a_us_holiday_marks_the_us_side_unusable():
     out = st.detect(q)
     us = [i for i in out["items"] if i["tension_id"] == "t_us_vs_taifex"][0]
     assert us["usable_for_inference"] is False
-    assert "休市" in us["caveat"]
+    assert "未更新" in us["caveat"]
+    assert "休市" not in us["caveat"]
     local = [i for i in out["items"] if i["tension_id"] == "t_pred_vs_breadth"][0]
     assert local["usable_for_inference"] is True, "本地訊號不該被美股休市影響"
     # **不可用的不列入「必須處理」** —— 否則模型會被逼著解釋一個假矛盾

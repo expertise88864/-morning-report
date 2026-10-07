@@ -127,7 +127,56 @@ _SECTION_NUMBER = re.compile(
     r"^[〇零一二三四五六七八九十百]+(?:之[〇零一二三四五六七八九十百]+)?、")
 
 
-def _md_to_html(text: str) -> str:
+def analysis_source_urls(quotes: dict, *, cbc_correction: bool = False) -> list[str]:
+    """Only fetched news and the structured packet's history may supply links."""
+    indexed = [row.get("u") for row in (quotes.get("NEWS_LINK_INDEX") or [])
+               if isinstance(row, dict) and row.get("u")]
+    urls = indexed + list(quotes.get("_ANALYSIS_PACKET_URLS") or [])
+    if cbc_correction:
+        from policy_scope_guard import CBC_SOURCE_URL
+        urls.append(CBC_SOURCE_URL)
+    return urls
+
+
+def analysis_source_titles(quotes: dict) -> list[tuple[str, str]]:
+    """Python-bound title evidence, separate from safe link destinations."""
+    from reader_citation_registry import analysis_bindings
+    return analysis_bindings(quotes)
+
+
+def packet_source_urls(packet: dict, *, quotes: dict | None = None) -> list[str]:
+    """Source URLs present in the sanitized specialized evidence packet."""
+    if quotes is not None:
+        from reader_citation_registry import source_bindings
+        quotes['_ANALYSIS_PACKET_TITLES'] = source_bindings(
+            row for section in ('historical_sources', 'news') for row in (packet.get(section) or []))
+    return [row["url"] for section in ("historical_sources", "news")
+            for row in (packet.get(section) or [])
+            if isinstance(row, dict) and row.get("url")]
+
+
+def render_week_review_html(analysis_md: str, manifest: dict,
+                            source_urls=()) -> str:
+    """Preserve the weekly prose and links from its bounded source material."""
+    if not (analysis_md or "").strip():
+        return ""
+    from reader_market_language_guard import record_cbc_scope
+    from policy_scope_guard import CBC_SOURCE_URL
+    analysis_md = record_cbc_scope(analysis_md, manifest)
+    analysis_md = chr(10).join(ln for ln in str(analysis_md).splitlines()
+                                if ln.strip() not in ("---", "***", "___"))
+    cbc_rules = (manifest.get("llm") or {}).get("policy_scope_guard_rules") or []
+    allowed = [*source_urls, *([CBC_SOURCE_URL] if cbc_rules else [])]
+    body = _style_analysis_html(_md_to_html(analysis_md, allowed_urls=allowed))
+    return (
+        '<div style="border:1px solid #c7d2fe;border-radius:10px;overflow:hidden;margin:14px 0;">'
+        '<div style="background:#eef2ff;color:#3730a3;padding:8px 14px;font-weight:700;font-size:14px;">'
+        '本週回顧與下週展望</div>'
+        f'<div style="padding:10px 14px;font-size:13px;color:#334155;line-height:1.8;">{body}</div>'
+        "</div>")
+
+
+def _md_to_html(text: str, *, allowed_urls=()) -> str:
     """
     自製 minimal Markdown → HTML 轉譯器，只用 stdlib `re`，不依賴第三方套件。
     支援：H1-H4 標題、**粗體**、*斜體*、- 與 * 列表、> 引用、空行分段。
@@ -252,11 +301,22 @@ def _md_to_html(text: str) -> str:
     html = re.sub(r"\*\*([^*\n]+?)\*\*", r"<strong>\1</strong>", html)
     html = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<em>\1</em>", html)
 
+    # A syntactically safe URL is not necessarily a source. Only URLs supplied
+    # by the Python news/history packet may become clickable citations.
+    from urllib.parse import quote
+    trusted_urls = set()
+    for raw_url in allowed_urls:
+        trusted = safe_href(raw_url, max_chars=2048)
+        if trusted:
+            trusted_urls.add(trusted)
+            trusted_urls.add(quote(trusted, safe=":/?=&%"))
+            trusted_urls.add(quote(trusted, safe=":/?=&%#@+;,$!-_~"))
+
     # Convert escaped Markdown links before source-label dimming. Keep long RSS
     # destinations in href, not in visible text that expands narrow email tables.
     def link(m):
         clean_url = safe_href(html_lib.unescape(m.group(2)), max_chars=2048)
-        if not clean_url:
+        if not clean_url or clean_url not in trusted_urls:
             return m.group(0)
         return (f'<a href="{html_lib.escape(clean_url, quote=True)}" '
                 'style="color:#94a3b8;font-size:12px;font-weight:400;'
@@ -451,8 +511,9 @@ def build_news_link_index(news: list) -> list:
                         or (not media and is_agg)):
                     title = base
                     media = media or tail
+            from reader_citation_registry import title_hashes
             out.append({"t": _cite_sig_tokens(title),
-                        "u": url, "m": media.strip().lower()})
+                        "u": url, "m": media.strip().lower(), "title_hashes": title_hashes(it.get('title'))})
         except Exception:
             continue
     return out[:600]
@@ -815,7 +876,7 @@ def _render_event_calendar_html(events: list[dict]) -> str:
     return (
         '<div style="border:1px solid #fca5a5;border-radius:10px;overflow:hidden;margin:14px 0;">'
         '<div style="background:#fef2f2;color:#991b1b;padding:8px 14px;font-weight:700;font-size:14px;">'
-        '未來 7 天風險事件（時間均為台北時間）</div>'
+        '未來 7 天風險事件（已核實時刻為台北時間；待確認者不推定時區）</div>'
         '<table style="width:100%;border-collapse:collapse;background:#ffffff;">'
         + rows + '</table></div>')
 
@@ -870,6 +931,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
     if not episodes:
         return ""
     from podcast_stance import direction as attributed_direction
+    from podcast_entity_identity import conflicting_spoken_name
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b"), "unknown": ("提及，未確認多空表態", "#64748b")}
     # 國際快訊壓到 6 條,把版面留給台股(iPhone Gmail 102KB);其餘(含未知/新增節目)維持 15 條
@@ -884,14 +946,17 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
             for p in (d.get("summary_points") or [])[:max_pts])
         ticker_rows = ""
         for t in (d.get("tickers") or [])[:8]:
-            label, color = dir_label[attributed_direction(t)]
+            spoken_name = conflicting_spoken_name(t)
+            label, color = dir_label["unknown" if spoken_name else attributed_direction(t)]
             name = htmllib.escape(str(t.get("name", "")))
             code = htmllib.escape(str(t.get("code", "")).strip())
-            disp = f"{name}（{code}）" if code else name
-            check = _podcast_ticker_crosscheck(t, snapshot)
+            disp = (htmllib.escape(spoken_name) + "（公司對應待核實）" if spoken_name
+                    else f"{name}（{code}）" if code else name)
+            check = "" if spoken_name else _podcast_ticker_crosscheck(t, snapshot)
             check_html = (f"<div style='font-size:12px;color:#0369a1;margin-top:2px;'>"
                           f"對照:{htmllib.escape(check)}</div>") if check else ""
-            for source in (related_sources or {}).get(str(t.get('name') or '').strip(), []):
+            for source in ([] if spoken_name else (related_sources or {}).get(
+                    str(t.get('name') or '').strip(), [])):
                 link = htmllib.escape(safe_href(source.get('url')), quote=True)
                 if link:
                     date = htmllib.escape(str(source.get('published_at') or '')[:10])
@@ -934,6 +999,30 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
         + "".join(cards))
 
 
+def _format_sector_heat_block(sector_heat: dict, top_n: int = 12) -> str:
+    """Pure market-data prompt table; no news or portfolio information."""
+    sectors = (sector_heat or {}).get("sectors") or {}
+    ranked = (sector_heat or {}).get("ranked") or []
+    if not sectors or not ranked:
+        return ""
+    lines = []
+    for name in ranked[:top_n]:
+        s = sectors.get(name) or {}
+        leaders = "、".join(
+            f"{m['code']}{m['name']}{m['pct']:+.1f}%" for m in (s.get("leaders") or [])[:3])
+        _iy = s.get("inst_net_yi")
+        _inst_txt = (f"、法人 {_iy:+.1f} 億(估)"
+                     if isinstance(_iy, (int, float)) else "")
+        lines.append(
+            f"- {name}:成交 {s.get('value_yi', 0):,.0f} 億"
+            f"(佔 {s.get('value_share_pct', 0):.1f}%)、中位 {s.get('median_pct', 0):+.1f}%、"
+            f"漲 {s.get('up', 0)}/跌 {s.get('down', 0)}{_inst_txt} | 領先:{leaders or '-'}")
+    total = (sector_heat or {}).get("total_value_yi") or 0
+    return ("\n\n【類股熱度表(最近可得交易日 TWSE 全市場,依成交值排序;純行情數據非新聞,"
+            f"供「九、其他類股」判斷哪些類股在動、誰領漲。全市場成交約 {total:,.0f} 億)】\n"
+            + "\n".join(lines))
+
+
 def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
     """近 5 日資金輪動 —— **一張完整的表**,不是四顆膠囊。
 
@@ -943,7 +1032,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
 
     每一列一個類股,依「相對大盤」由強到弱:
       近 5 日中位 / 相對大盤 / 5 日上漲檔數÷成分檔數(晨報 universe 口徑,
-      `_sector_rotation` 算的)+ 今日成交占比・法人淨買賣(估)・領漲股
+      `_sector_rotation` 算的)+ 最近可得交易日成交占比・法人淨買賣(估)・成交代表
       (全市場口徑,與「類股熱度表」同源;類股名稱對不上時該欄留「—」)。
     兩個口徑不同,表頭與註腳都寫明;紅漲綠跌是台股慣例。
     """
@@ -1000,7 +1089,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
         f"<th style='padding:5px 6px;font-size:11px;color:#92400e;text-align:{a};"
         f"border-bottom:1px solid #fcd9b6;white-space:normal;'>{t}</th>"
         for t, a in (("類股", "left"), ("5 日中位", "right"), ("相對大盤", "right"),
-                     ("5 日上漲/檔", "right"), ("今日成交占比・法人", "right")))
+                     ("5 日上漲/檔", "right"), ("最近成交占比・法人", "right")))
     mm = float((rot or {}).get("market_median") or 0)
     return (
         "<div style='margin:4px 0 14px;padding:10px 12px;background:#fffbeb;border-radius:8px;'>"
@@ -1010,7 +1099,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
         f"<tr>{head}</tr>{''.join(trs)}</table></div>"
         "<div style='font-size:11px;color:#94a3b8;margin-top:6px;'>"
         "※ 5 日中位 / 相對大盤 / 上漲檔數＝晨報 universe 成分股口徑（相對 &gt;0＝股價相對表現較強，不代表資金淨流入）；"
-        "今日成交占比・法人淨買賣（估）・成交代表＝全市場口徑；代表股按今日成交金額選取，漲跌為單日。"
+        "最近可得交易日成交占比・法人淨買賣（估）・成交代表＝全市場口徑；代表股按該交易日成交金額選取，漲跌為單日。"
         "純參考、非買賣訊號。</div></div>")
 
 
@@ -1723,6 +1812,7 @@ def _fmt_fact(raw) -> str:
 #: 部分仍然有樣式;被 class 化的是重複幾十次的內文與表格,那些即使失去樣式
 #: 也只是變樸素,不會讀不懂。
 _STYLE_CLASS_MIN_USES = 4
+_INLINE_TYPE_FALLBACK = {"font-size", "text-align", "line-height"}
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _STYLE_ATTR_RE = re.compile(r"""\sstyle=(['"])(.*?)\1""", re.S)
@@ -1756,9 +1846,22 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
     def retained(value):
         return "".join(p.strip() + ";" for p in value.split(";")
                        if p.partition(":")[0].strip().lower() in
-                       {"font-size", "text-align", "line-height"})
+                       _INLINE_TYPE_FALLBACK)
+
+    def unsafe(value):
+        # A split semicolon inside a CSS token could invent an inline property.
+        return (any(x in value.lower() for x in ("url(", "content:", "var("))
+                or any(x in value for x in ("\\", "'", '"')))
+
+    def moved(value):
+        if unsafe(value):
+            return value
+        return "".join(p.strip() + ";" for p in value.split(";")
+                       if p.partition(":")[0].strip().lower() not in
+                       _INLINE_TYPE_FALLBACK and p.strip())
 
     worth = sorted((v for v, n in counts.items() if n >= min_uses
+                    and not unsafe(v)
                     and n * (len(v) - len(retained(v)) - 18) > len(v) + 12),
                    key=lambda v: (-len(v) * counts[v], v))
     if not worth:
@@ -1779,5 +1882,5 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
         return _STYLE_ATTR_RE.sub(_sub, tag)
 
     out = _TAG_RE.sub(_rewrite, html)
-    sheet = "".join(f".{names[v]}{{{v}}}" for v in worth)
+    sheet = "".join(f".{names[v]}{{{moved(v)}}}" for v in worth)
     return out.replace("</head>", f"<style>{sheet}</style></head>", 1)

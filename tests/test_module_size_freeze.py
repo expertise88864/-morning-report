@@ -172,11 +172,21 @@ MAIN_MODULE_LINE_CEILING = 26_336  # Exact calendar window moved into a leaf hel
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
+    "repair_claim_revision.py": 45,  # Full-context-only audited claim/asset/evidence-role anchor.
     "macro_observation_time.py": 80,  # Market-date provenance; no networking or state.
     "reader_causality_guard.py": 90,  # Narrow incident guard, not a generic fact checker.
     "reader_hedge_causality_guard.py": 75,  # Correct delivered aggregate-position attribution.
     "reader_hedge_0921.py": 50,  # Exact older incident phrases, not a semantic classifier.
     "reader_price_causality_guard.py": 80,  # Protect attributed quotes around known price claim.
+    "reader_market_language_guard.py": 100,  # Narrow delivered-mail trade/flow wording guard.
+    "earnings_timing_guard.py": 35,  # Date-only MU must not become 9/30 Taiwan intraday fact.
+    "reader_market_actor.py": 45,  # Explicit non-reader market actors, not a general fact checker.
+    "policy_scope_guard.py": 55,  # Verified CBC 2026 report periods and figures only.
+    "source_title_provenance.py": 45,  # Exact Python emergency-title binding, not truth.
+    "reader_source_line.py": 45,  # Standalone citation syntax, not semantic provenance.
+    "reader_citation_provenance.py": 20,  # Python-bound source-title exemption at the prose guard.
+    "reader_citation_registry.py": 55,  # Bounded Python-source URL/title hashes, separate from link allowlists.
+    "calendar_ipo_dedup.py": 45,  # Stable exact-row deduplication for subscription display.
     "sector_rotation.py": 80,  # Pure aggregation extracted from the main module.
     "reader_prose.py": 132,  # Conclusion projection extracted; do not reabsorb it.
     "reader_selection.py": 60,  # Editorial priority moved into its own module.
@@ -193,12 +203,16 @@ MODULE_CEILINGS = {
     "watch_assessment.py": 60,
     "fallback_watch_gap.py": 90,
     "conclusion_guard.py": 45,
+    "minimal_stance_echo.py": 35,  # Pure last-resort Python-authority reconciliation.
     "local_news_routing.py": 50,
+    "hospital_news_identity.py": 20,  # Hospital actor, not a property landmark.
     "local_news_event_dates.py": 30,
     "company_ingress.py": 35,
     "scenario_window.py": 85,
     "sports_quality.py": 85,
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
+    "tennis_result_time.py": 25,  # future-completed source anomaly guard
+    "twse_holiday_calendar.py": 25,  # official 2026 full-market weekday closures
     "source_text.py": 65,
     "journal_selection.py": 55,
     "history_quality.py": 55,
@@ -217,12 +231,13 @@ MODULE_CEILINGS = {
     "news_research_context.py": 310,
     "news_temporal_context.py": 65,
     "podcast_dates.py": 65,
-    "podcast_evidence.py": 80,
+    "podcast_evidence.py": 85,  # Ambiguous identities must not reach the model context.
     "podcast_comparison.py": 140,
     "podcast_prompt_context.py": 45,
     "podcast_revision.py": 40,
     "podcast_topic.py": 40,
     "podcast_stance.py": 100,
+    "podcast_entity_identity.py": 45,  # Narrow transcript-name conflict guard.
     "podcast_quotes.py": 45,
     "news_identity_guards.py": 50,
     "headline_amounts.py": 60,
@@ -473,11 +488,17 @@ MODULE_CEILINGS = {
     # 之後若只存截斷版,明天 prompt 裡兩個不同 ID 會配一模一樣、沒有結論的
     # 描述,模型分不出哪個 ID 是哪一條。截斷只在顯示時做。
     "analysis_recap.py": 900,  # 2026-08-24 外審 P2:昨日觀點要真的是上一個交易日;現況 872
+    "watch_report_day.py": 35,  # 產報日與目標交易日分界；保持小型純函式
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。
     "payload_compact.py": 215,   # 2026-08-08:top_events dict 形狀修正 + 註解(外審 P1-3)
     "repair_contract_context.py": 55,
+    "repair_cluster_members.py": 45,  # Focused packet-backed repair lookup.
+    "repair_index_sources.py": 60,  # Index-only failures must see their source.
+    "repair_priority.py": 30,  # Fair source ordering across repair problems.
+    "earnings_calendar.py": 50,  # Date-only earnings must not gain invented time zones.
+    "reader_flow_guard.py": 35,  # Independent flow-identity claim guard.
     "quality_rejection_detail.py": 30,
     "sports_news_selection.py": 75,
     "tennis_news_context.py": 45,
@@ -601,6 +622,7 @@ MODULE_CEILINGS = {
     # 第十八輪:實測 301 —— 三條新規則(逐標的、同向解讀、claim 回指)。
     # 2026-08-19 第四批:legacy 骨架各欄位的寫法說明。實測 472 行。
     "prompt_profiles.py": 530,  # 2026-08-24:公報引用形狀寫進 prompt;現況 501
+    "prompt_bundle_debug.py": 35,  # 純尺寸摘要，不讓 prompt 本體落入公開 manifest
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。

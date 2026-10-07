@@ -9,13 +9,13 @@
 - 每週 DeepSeek 線上契約 canary 同樣停用。正式晨報、Podcast 正式資料整理及品質告警不變；原有 Codex／Claude 程式審查與額度恢復補審不變。
 - 舊任務或排程要求付費驗證時，以本節為準。恢復付費測試需使用者重新明確同意。
 
-## 最新使用者定案：遠端 CI 候選驗證與正式發佈（2026-09-06）
-本節取代下方／舊任務／舊排程中「每次候選 push 前完整本機 CI」及「直接推 main 再修」的規則；不變更醫療內容核可、獨立 Codex/Claude review 或資料保護要求。
-- 四個專案採本機快速檢查與相關回歸測試 → codex/* 候選分支 → 完整遠端 CI → 已驗證同一 SHA 才正常快轉進 main；候選 push 不要求先有完整本機 CI。
+## 遠端 CI 候選驗證與正式發佈（2026-09-06；依後續 push 前門檻澄清修訂）
+本節取代「直接推 main 再修」的舊流程；候選與正式兩階段遠端驗證不豁免下節明確定案的**任何分支 push 前完整適用本機 CI 等效檢查**。不變更醫療內容核可、獨立 Codex/Claude review 或資料保護要求。
+- 四個專案採本機快速相關回歸及完整適用 CI 等效檢查全綠 → codex/* 候選分支 → 完整遠端 CI → 已驗證同一 SHA 才正常快轉進 main；候選與正式 push 前均須重驗實際待推版本。
 - 使用 _delivery.py 與 _delivery_policy.json；正式 push 的 pre-push hook 必須驗證 exact SHA 的候選 push workflows/jobs/steps 成功，並確認最新 main 是候選祖先。新的修改、生成、整合或 rebase 使旧證據失效。
 - 網站還須 same-repository PR、exact-SHA Vercel Preview 與瀏覽器檢查；Vercel 正式建置前另驗證候選 CI，未驗證版本不可上線。部署成功不等於 CI 通過。
 - HsiaoEye 視覺基準只能由 Ubuntu 產生並人工確認，不自動接受差異；保留 CMS 新修改，衝突停止，不 force-push。CMS 存檔不等於正式發佈完成。
-- 晨報候選 CI 不得寄信、寫回正式 state 或觸發正式排程；變更產報/LLM/外部資料關鍵路徑時另做不寄信 dry-run。既有正式寄信排程不得因候選驗證中斷。
+- 晨報候選 CI 不得寄信、寫回正式 state 或觸發正式排程；變更產報/LLM/外部資料關鍵路徑時用封存案例與離線 fixture 驗證，實際內容待正常排程信驗收，不執行付費 dry-run。既有正式寄信排程不得因候選驗證中斷。
 - CI 失敗持續診斷並修正可確認缺陷，修正後重跑完整遠端驗證；取消、逾時、缺失、讀不到及應跑卻跳過皆不通過。禁止 skip-ci、降門檻或繞 hook 製造全綠。
 - Claude 固定 claude-opus-5-5 / high / read-only；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
 - main 發佈後還要驗證 exact-SHA 正式 CI／部署及適用 smoke checks，才可宣告交付；純文件與空 audit commit 也走候選流程。
@@ -57,7 +57,8 @@ push 後繼續驗證該 SHA 的 GitHub CI 全綠，才可宣告交付完成。**
 不豁免 CI；不得加入 skip-CI 或放寬測試以製造綠燈。
 
 ruff → `python -m py_compile <改過的檔>` → `python -m pytest`(全套)→
-動渲染則 DRY_RUN 預覽 → **Claude Opus 5.5 diff 閘門** → **Codex 推送閘門** → push。
+動渲染則離線 fixture／HTML 回歸（不得執行付費 DRY_RUN；正常信隔日驗收）→
+**Claude Opus 5.5 diff 閘門** → **Codex 推送閘門** → push。
 一主題一 commit;繁中 commit message;結尾 `Co-Authored-By: Claude <當前模型名> <noreply@anthropic.com>`。
 
 ### Claude Opus 5.5 mandatory diff review
@@ -141,5 +142,5 @@ Git 的 `.githooks/pre-commit` / `pre-push` 會再次執行 gate;不得使用 `-
 - **必須先問使用者**:改 main() 控制流、任何輸出行為變化、計分相關、刪任何東西、新資料源、
   以及所有規格沒寫到的模糊題/品味題。**不確定就問,查不到就標註,不要編造。**
 - **本機 harness 極限**:需要「跑一次完整 pipeline 才能驗證」的改動(如 main() 拆分),
-  只能靠 CI dry-run artifact 對比;做不到就明說並擱置,不要硬上。
-- 本檔與計劃文件目前 untracked;**未經使用者同意不要 commit 它們**。
+  先用封存輸入、離線 fixture 和候選 CI 驗證可覆蓋的部分；實際外部內容與手機閱讀只待正常排程信驗收。若仍無法驗證關鍵行為，就明說並暫緩該改動，不以付費 dry-run、手動晨報或測試信補測。
+- 本檔已由 Git 追蹤；修改時仍須遵守完整 diff review、push 前本機 CI 與候選／正式遠端驗證。

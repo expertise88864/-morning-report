@@ -1,12 +1,10 @@
-"""Content-free shape diagnostics for rejected model JSON.
-
-The run manifest is persisted in a public repository. Never copy response
-text, keys, or values into this diagnostic; counts and closed enum labels only.
-"""
+"""Public-manifest JSON diagnostics: counts and closed labels, never source text."""
 
 from __future__ import annotations
 
 import json
+
+from analysis_schema import ANALYSIS_OUTPUT_SCHEMA
 
 
 def _kind(value: object) -> str:
@@ -50,6 +48,10 @@ def describe(text: str | None) -> dict[str, int | str]:
     except (ValueError, RecursionError):
         return {**result, "shape": "invalid_prefix"}
     result.update(shape="single_json", first_kind=_kind(first), first_end=end)
+    if isinstance(first, dict):
+        result["first_keys"] = len(first)
+        result["first_required_keys"] = len(
+            first.keys() & set(ANALYSIS_OUTPUT_SCHEMA["required"]))
     cursor = end + len(raw[end:]) - len(raw[end:].lstrip())
     if cursor == len(raw):
         return result

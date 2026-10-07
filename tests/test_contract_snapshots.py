@@ -43,6 +43,7 @@ import analysis_depth as _ad
 import analysis_schema as sch
 import evidence_packet as ep
 import llm_postprocess as lp
+import repair_claim_revision as claim_revision
 import prompt_profiles as pp
 import render_utils as ru
 from test_podcast_comparison import render_probe as _podcast_render, validation_probe as _podcast_validation
@@ -545,6 +546,17 @@ def _research_probe() -> dict:
                           _ad.news_regressions(valid, empty)]}
 
 
+def _claim_revision_probe():
+    original = {"claim_audit": [{"statement": "公司維持展望", "asset_scope": ["2330"],
+                                "evidence_ids": ["n1"], "counterevidence_ids": []}]}
+    anchor = claim_revision.signatures(original)
+    revised = json.loads(json.dumps(original))
+    revised["claim_audit"][0]["statement"] = "公司撤回展望"
+    return [claim_revision.repair_problems(original, set(), anchor),
+            claim_revision.repair_problems(revised, set(), anchor),
+            claim_revision.repair_problems(revised, {"n1"}, anchor)]
+
+
 def _behaviour() -> dict:
     """每個契約版本**現在**的行為指紋。"""
     pk = _packet()
@@ -573,7 +585,12 @@ def _behaviour() -> dict:
             {}, {}, [], [], {}, sanitize=str)),
         _versionless(ep.build({}, {}, {}, [{'title': '台積電營收成長', 'source_item_id': 'html1',
             'summary': '<a href="https://example.com/rss-token">營收+2.5%，並非下降</a>',
-            'published': '2026-09-10', 'link': 'https://example.com/news'}], [], {}, sanitize=str))]),
+            'published': '2026-09-10', 'link': 'https://example.com/news'}], [], {}, sanitize=str)),
+        _versionless(ep.build({'PODCAST_DIGEST': [{'show': '節目', 'title': '供電討論',
+            'published': '2026-09-10T06:00:00+08:00', 'digest': {'tickers': [{
+                'name': 'Bloom Energy', 'code': 'BE', 'direction_evidence': {
+                    'status': 'attributed', 'quote': 'Blue Energy就是供電題材'}}]}}]},
+            {}, {}, [], [], {}, as_of='2026-09-12T07:00:00+08:00', sanitize=str))]),
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
         # **profile 的指紋不該被證據契約牽動。** 餵 `luna`(由真實
         # `_packet()` 建的)時,evidence 加一個欄位就讓 prompt 契約亮紅 ——
@@ -600,6 +617,7 @@ def _behaviour() -> dict:
         # tripwire 會響。這正是本檔要防的形狀,只是漏了這一格。
         "postprocess_version": _sha([lp._extract_stance(_REPORT_TEXT),
                                      lp._extract_summary(_REPORT_TEXT),
+                                     _claim_revision_probe(),
                                      sorted(_ad._identity(_ANALYSIS).keys()),
                                      sorted(map(str, _ad._identity(
                                          _ANALYSIS).get("三大重點", ())))]),
@@ -734,7 +752,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (43, "909a272112fc50b4"),  # Separate opinion context.
+    "evidence_schema_version":  (45, "be284a45a918c5c7"),  # Count-only news-selection diagnostics.
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -809,15 +827,15 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (70, "c22cd2577f2d4f24"),  # Sept25 combined prose/provenance.
+    "primary_profile_version":  (72, "1ad9d90fbd6fd393"),  # Sept29: stale-quote and earnings-time safeguards.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (37, "d30aa4c0cc411e0f"),  # Sept25 combined prose/provenance.
+    "fallback_profile_version":  (40, "e770e82f6d6a9176"),  # Sept29: stale-quote and earnings-time safeguards.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
-    "postprocess_version":      (10, "ff37668d050219a1"),  # v22 形狀
+    "postprocess_version":      (11, "796c3232b8fe99e7"),  # Frozen batch: unseen audited-claim anchor only.
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
     # 整段丟掉的 priced_in / falsification_trigger / counterevidence /
     # actions_to_consider。**渲染層丟資料時模型再深入也沒用。**
@@ -858,7 +876,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (38, "a5a023abe2b012b7"),  # Labels, adjacent caveats, complete macro cards.
+    "renderer_version":       (39, "f4574868204f7aba"),  # Only cited news/history URLs become Markdown anchors.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -925,7 +943,8 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (45, "9c61a4c823e0ed48"),  # Reject model stance contradicting Python authority.
+    # v46:同一輪修補同時指出 null 分數與不符的立場標籤，避免拆成兩輪。
+    "grounding_version":      (46, "18897932d3781a63"),
 }
 
 
@@ -1010,3 +1029,9 @@ def test_the_snapshot_fixture_is_schema_valid():
         assert jc.violations(case, sch.ANALYSIS_OUTPUT_SCHEMA) == [], (
             f"grounding 案例 {i} 形狀就不合法 —— 那一關會先擋掉它,"
             "量不到「根據」那一關")
+
+
+def test_unseen_claim_revision_guard_mutation_changes_postprocess_contract(monkeypatch):
+    baseline = _behaviour()["postprocess_version"]
+    monkeypatch.setattr(claim_revision, "repair_problems", lambda *args: [])
+    assert _behaviour()["postprocess_version"] != baseline

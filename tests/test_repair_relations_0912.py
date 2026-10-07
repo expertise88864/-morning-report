@@ -22,9 +22,10 @@ def test_stateless_slice_keeps_structural_relationships(monkeypatch):
             "unrelated_text": "do not copy this"}}},
     }
     before = deepcopy(packet)
-    monkeypatch.setattr(mr._ep, "evidence_ids", lambda p: {"n1"})
+    monkeypatch.setattr(mr._ep, "evidence_ids", lambda p: {"n1", "history:h1"})
     monkeypatch.setattr(mr._ep, "evidence_snippets",
-                        lambda *a, **k: {"n1": {"title": "CPI"}})
+                        lambda *a, **k: {"n1": {"title": "CPI"},
+                                         "history:h1": {"title": "earlier release"}})
     out, report = mr._repair_request_payload(
         {"model": "offline"}, "x" * pb.MAX_REQUEST_CHARS, "PROBLEMS", packet)
     text = out["input"]
@@ -34,9 +35,67 @@ def test_stateless_slice_keeps_structural_relationships(monkeypatch):
     assert relations["history_allowed_by_source"] == {"n1": ["history:h1"]}
     assert relations["cluster_members"] == {"cluster:n1": ["n1", "n2"]}
     assert "do not copy this" not in text
-    assert report["visible_ids"] == {"n1"}
+    assert report["visible_ids"] == {"n1", "history:h1"}
     assert report["slim_chars"] == pb.measure_request(out) <= pb.MAX_REQUEST_CHARS
     assert packet == before
+
+
+def test_slim_repair_hides_unseen_history_citation_permissions(monkeypatch):
+    packet = {"research": {"contexts": {
+        "n1": {"evidence_ids": ["history:h1", "history:h2"]},
+        "n2": {"evidence_ids": ["history:h3"]}}}}
+    monkeypatch.setattr(mr._ep, "evidence_ids", lambda _: {
+        "n1", "n2", "history:h1", "history:h2", "history:h3"})
+    monkeypatch.setattr(mr._ep, "evidence_snippets", lambda *a, **k: {
+        "n1": {"title": "visible"}, "history:h1": {"title": "visible history"}})
+    out, record = mr._repair_request_payload(
+        {"model": "offline"}, "x" * pb.MAX_REQUEST_CHARS, "PROBLEMS", packet)
+    body = out["input"].split("REPAIR_RELATIONS\n")[1].split(
+        "\n</UNTRUSTED_SOURCE_DATA>")[0]
+    assert json.loads(body)["history_allowed_by_source"] == {
+        "n1": ["history:h1"]}
+    assert record["visible_ids"] == {"n1", "history:h1"}
+    assert pb.measure_request(out) <= pb.MAX_REQUEST_CHARS
+
+
+@pytest.mark.parametrize("research", [
+    {"contexts": [{"evidence_ids": ["history:h1"]}]},
+    [{"contexts": {"n1": {"evidence_ids": ["history:h1"]}}}],
+])
+def test_slim_repair_degrades_malformed_history_context_index(monkeypatch, research):
+    packet = {"news": [{"source_item_id": "n1", "title": "當期公告"}],
+              "research": research}
+    monkeypatch.setattr(mr._ep, "evidence_ids", lambda _: {"n1", "history:h1"})
+    monkeypatch.setattr(mr._ep, "evidence_snippets", lambda *a, **k: {
+        "n1": {"title": "當期公告"}})
+    out, record = mr._repair_request_payload(
+        {"model": "offline"}, "x" * pb.MAX_REQUEST_CHARS, "PROBLEMS", packet)
+    assert record["mode"] == "evidence_slice"
+    assert record["visible_ids"] == {"n1"}
+    assert "REPAIR_RELATIONS" not in out["input"]
+    assert "history:h1" not in out["input"]
+    assert pb.measure_request(out) <= pb.MAX_REQUEST_CHARS
+
+
+def test_slice_room_excludes_history_that_will_not_be_visible(monkeypatch):
+    # A stateless repair must not reserve request space for history IDs that
+    # its evidence slice will never show. Otherwise a large historical index
+    # can force format-only repair even when the visible source easily fits.
+    monkeypatch.setattr(pb, "MAX_REQUEST_CHARS", 20_000)
+    packet = {"news": [{"source_item_id": "n1"}], "research": {"contexts": {
+        "n1": {"evidence_ids": ["history:" + str(i).zfill(4) + "x" * 60
+                                  for i in range(400)]}}}}
+    monkeypatch.setattr(mr._ep, "evidence_ids", lambda _: {"n1"})
+    monkeypatch.setattr(mr._ep, "evidence_snippets", lambda _p, _ids, *, budget_chars: (
+        {"n1": {"title": "visible source"}} if budget_chars > 100 else {}))
+
+    out, record = mr._repair_request_payload(
+        {"model": "offline"}, "x" * 20_000, "PROBLEMS", packet)
+
+    assert record["mode"] == "evidence_slice"
+    assert record["visible_ids"] == {"n1"}
+    assert "visible source" in out["input"]
+    assert pb.measure_request(out) <= pb.MAX_REQUEST_CHARS
 
 
 def test_relation_fences_cannot_be_closed_by_source_values():
@@ -45,6 +104,14 @@ def test_relation_fences_cannot_be_closed_by_source_values():
     assert text.count("</UNTRUSTED_SOURCE_DATA>") == 1
     assert text.count("<UNTRUSTED_SOURCE_DATA>") == 1
     assert rc.section({}) == ""
+
+
+@pytest.mark.parametrize("field", ["news_clusters", "event_graph", "top_events"])
+def test_malformed_relation_index_does_not_abort_stateless_repair(field):
+    # These are optional indexes, not authority to accept an ungrounded claim.
+    # A bad shape must withhold its relation rather than crash the repair call.
+    packet = {field: [{"unexpected": "list instead of mapping"}]}
+    assert rc.section(packet) == ""
 
 
 @pytest.mark.parametrize('empty_slice', [False, True])
@@ -80,6 +147,19 @@ def test_format_only_keeps_relations_after_empty_or_shrunk_slice(monkeypatch, ov
     assert report['visible_ids'] == set()
     assert rc.section(packet) in out['input']
     assert pb.measure_request(out) <= pb.MAX_REQUEST_CHARS
+
+
+def test_format_only_does_not_offer_unseen_history_citation_permissions(monkeypatch):
+    packet = {"research": {"contexts": {
+        "n1": {"evidence_ids": ["history:h1"]}}}}
+    monkeypatch.setattr(mr._ep, "evidence_ids", lambda _: {"n1", "history:h1"})
+    monkeypatch.setattr(mr._ep, "evidence_snippets", lambda *a, **k: {})
+    out, record = mr._repair_request_payload(
+        {"model": "offline"}, "x" * pb.MAX_REQUEST_CHARS, "PROBLEMS", packet)
+    assert record["mode"] == "format_only"
+    assert record["visible_ids"] == set()
+    assert "REPAIR_RELATIONS" not in out["input"]
+    assert "history:h1" not in out["input"]
 
 
 def test_relations_that_cannot_fit_are_still_blocked_by_request_gate(monkeypatch):

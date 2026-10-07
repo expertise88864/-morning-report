@@ -5,6 +5,7 @@ import hashlib
 import json
 
 from podcast_dates import published_at
+from podcast_entity_identity import conflicting_spoken_name
 from podcast_stance import direction as attributed_direction
 
 MAX_CONTEXT_CHARS = 24_000
@@ -52,6 +53,11 @@ def project(episodes: list, *, as_of: str, sanitize) -> dict:
         points = points if isinstance(points, list) else []
         tickers = digest.get('tickers')
         tickers = tickers if isinstance(tickers, list) else []
+        if any(conflicting_spoken_name(t) for t in tickers if isinstance(t, dict)):
+            output['identity_conflict_episodes'] = output.get('identity_conflict_episodes', 0) + 1
+            output['omitted_episodes'] += 1
+            print('::warning::podcast_identity_conflict_episode_omitted')
+            continue
         row = {'opinion_id': oid, 'show': show, 'title': title,
                'published_at': stamp.isoformat() if stamp else '',
                'date_known': stamp is not None,

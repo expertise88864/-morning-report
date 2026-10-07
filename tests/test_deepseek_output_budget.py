@@ -192,6 +192,9 @@ def test_a_truncated_response_is_rejected_not_returned(monkeypatch):
         attempts = (mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or []
         assert attempts, "截斷的那次呼叫沒有入帳"
         assert "length" in str(attempts[-1].get("error") or ""), attempts[-1]
+        assert mr._RUN_MANIFEST["llm"]["request_measurements"] == [
+            {"role": "primary", "chars": 6, "tokens": 5000,
+             "accepted": False}]
         assert (mr._RUN_MANIFEST.get("llm") or {}).get("primary") is None, \
             "截斷的回應被記成 accepted —— 那會讓它看起來是這封信的作者"
     finally:
@@ -202,6 +205,21 @@ def test_a_complete_response_is_still_returned(monkeypatch):
     """反向:別為了擋截斷而把正常回應也擋掉。"""
     mr = _fake_deepseek(monkeypatch, "stop", content="完整的政策解析")
     assert mr._call_deepseek("prompt") == "完整的政策解析"
+
+
+def test_legacy_deepseek_records_paired_request_measurement(monkeypatch):
+    """備援作者也須保留本次輸入字元與 token 的成對量測。"""
+    mr = _fake_deepseek(monkeypatch, "stop", content="完整的政策解析")
+    previous = mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        assert mr._call_deepseek("離線輸入") == "完整的政策解析"
+        measurements = mr._RUN_MANIFEST["llm"]["request_measurements"]
+        assert measurements == [{"role": "primary", "chars": 4,
+                                 "tokens": 5000, "accepted": True}]
+    finally:
+        mr._RUN_MANIFEST.pop("llm", None)
+        if previous is not None:
+            mr._RUN_MANIFEST["llm"] = previous
 
 
 def test_truncation_does_not_burn_three_retries(monkeypatch):

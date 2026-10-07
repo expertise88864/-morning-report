@@ -152,6 +152,14 @@ def test_pass_is_idempotent_and_unhelpful_inputs_are_untouched():
         "<div style='color:#94a3b8;'>文字</div>")
 
 
+def test_css_comment_cannot_invent_inline_font_size():
+    style = "/* color:#fff; font-size:1px; */ color:#94a3b8;padding:4px;"
+    markup = ("<html><head></head><body>"
+              + f'<p style="{style}">文字</p>' * 20
+              + "</body></html>")
+    assert email_style_dictionary.compact(markup) == markup
+
+
 def test_style_pass_failure_is_reported_without_dropping_the_mail(monkeypatch, capsys):
     monkeypatch.setattr(email_content_audit.email_mobile, "enhance", lambda html: html)
 

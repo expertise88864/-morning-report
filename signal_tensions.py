@@ -120,7 +120,7 @@ def detect(quotes: Optional[dict]) -> dict:
             # **stale 不丟掉,只標不可用** —— 丟掉的話「沒有張力」與
             # 「張力不可用」在下游長得一模一樣。
             "usable_for_inference": not stale,
-            "caveat": ("美股昨日休市,該側為上一個交易日的延續值,"
+            "caveat": ("美股行情未更新（原因待核）,該側為較早報價的延續值,"
                        "與本地當日訊號不同步" if stale else ""),
         })
 

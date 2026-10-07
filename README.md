@@ -3,7 +3,7 @@
 每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
 **個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
 天氣與颱風警示、中彰投雲在地快訊、重大政策深度解析(行政院公報)、Podcast 重點、醫學文獻、
-體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 3,000+ 單元測試。
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 4,000+ 單元測試。
 
 ---
 
@@ -138,7 +138,7 @@
 | `morning-report-b.yml` | 每日 22:00(=台北 06:00) | 主晨報;週日走輕量綜合信;寄信成功後 commit state |
 | `podcast-digest.yml` | 每日 4 次 | faster-whisper 本地轉錄 + DeepSeek 摘要 → `state/podcast_digest.json` |
 | `gooaye-radar.yml` | 週三/六下午 | 股癌新集偵測 → 族群雷達獨立信 |
-| `ci.yml` | push/PR | ruff + py_compile + pytest;另有手動 dry-run-preview |
+| `ci.yml` | push/PR | 鎖版依賴、compileall、Ruff、mypy、完整 pytest；付費 `dry-run-preview` 已停用，不作通過證據 |
 | `monthly-ic-report.yml` | 每月 | 因子 IC / 計分回測報告(離線,不寄信) |
 
 > GitHub Actions cron 可能延遲 5–15 分鐘,平台特性。
@@ -170,7 +170,7 @@ portfolio_risk.py     持倉曝險引擎(現僅後台,卡片已依使用者要�
 podcast_digest.py     Podcast 轉錄與摘要(獨立排程)
 gooaye_radar.py       股癌雷達獨立信
 tools/                稽核與驗證腳本(codex_review、mz_walkforward、report_watchdog…)
-tests/                2,600+ 測試(不連網;conftest 隔離 state 寫入與網路)
+tests/                4,000+ 測試(不連網;conftest 隔離 state 寫入與網路)
 state/                執行期狀態(見下);由 workflow 於寄信成功後 commit 回 repo
 ```
 
@@ -247,25 +247,24 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
 ## 七、本地測試
 
 ```bash
-# 測試工具(pytest / PyYAML / ruff)已從 production 依賴拆出來,
-# 本機開發裝 dev 這一份(它自己會帶進 requirements.txt)。
-pip install -r requirements-dev.txt
-pytest -q                        # 3,600+ 測試,不連網、不寄信
-
-# 完整流程預覽(連真實資料,不寄信);PowerShell:
-$env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."
-python morning_report.py         # 預覽寫到 /tmp/morning_report_preview.html
+# 與 CI 相同的鎖版開發依賴；離線測試不得連付費模型、SMTP 或正式 state。
+pip install --require-hashes -r requirements-dev.lock
+pytest -q                        # 4,000+ 測試,不連網、不寄信
 ```
+
+`DRY_RUN`、canary、preview 和手動正式晨報都可能呼叫付費模型，依目前使用者定案
+不得用於測試或修正驗證。實際內容及手機閱讀只驗收下一封正常排程寄出的信；
+候選與正式發佈仍須通過 `REMOTE_CI_DELIVERY.md` 的 exact-SHA CI 閘門。
 
 ---
 
-## 八、成本估算
+## 八、成本核對
 
-| 項目 | 月成本 |
+| 項目 | 核對方式 |
 |---|---|
-| GitHub Actions(每次 2–8 分 × 每日) | NT$0(免費額度內) |
-| DeepSeek API(晨報+Podcast 摘要+雷達) | NT$5–15 |
-| 其餘資料源(Yahoo/TWSE/ESPN/Polymarket/Open-Meteo/FinMind 免費層) | NT$0 |
+| GitHub Actions | 依帳戶帳單、runner 類型與實際分鐘數核對；CI 通過不代表零費用 |
+| DeepSeek API(晨報+Podcast 摘要+雷達) | 逐班 manifest 的 token／費用僅為估計；實際支出以供應商帳單為準，失敗請求也可能計費 |
+| 其餘資料源(Yahoo/TWSE/ESPN/Polymarket/Open-Meteo/FinMind) | 依各來源當期條款、額度及實際用量核對，不預設固定為 NT$0 |
 
 ---
 
@@ -288,8 +287,10 @@ python morning_report.py         # 預覽寫到 /tmp/morning_report_preview.html
 
 1. **計分/預測係數凍結**:任何改動需先回測(`backtest_data/`、monthly IC)。
 2. **端點先探活**:新資料源/查詢一律先 live 實測召回與結構,才寫程式。
-3. **外部 code review**:非瑣碎改動需經 `tools/codex_review.sh`(GPT-5.6,
-   read-only)審到 APPROVE 才 push;文件/測試-only 可跳過。
+3. **獨立 code review**:非簡單改動依專案規則做 Codex 續審；所有 diff
+   (含文件與測試)均用 `tools/claude_diff_review.py` 取得精確
+   `claude-opus-5-5`／high／唯讀審查。額度 pending 須留待補審紀錄，
+   不得冒稱已獲 APPROVE；發佈與 CI 門檻詳見 `AGENTS.md`。
 4. **隱私**:持股明細只存在 Secrets;信件存檔去識別;個人任職/房產資訊
    不落地於信件、log 或公開檔案。
 5. **顯示層與模型層分離**:使用者要求隱藏的卡片(Top5/曝險/估值溫度/選擇權)

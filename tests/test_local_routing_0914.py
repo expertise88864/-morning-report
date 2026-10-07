@@ -67,6 +67,13 @@ def test_specialist_scope_and_input_are_preserved():
     assert candidates == before
 
 
+def test_sunday_hospital_query_does_not_claim_election_as_hospital(monkeypatch):
+    title = "副總統蕭美琴彰化行 力挺參選縣長的陳素月"
+    out = fetch(monkeypatch, {"彰基/中國醫": [title], "選情": []})
+    assert "彰基/中國醫" not in out
+    assert out["選情"][0]["title"] == title
+
+
 def test_full_bucket_does_not_hide_a_later_category():
     from local_news_routing import select
     a = {"title": "彰化鐵路高架通車", "link": "https://example.invalid/a"}

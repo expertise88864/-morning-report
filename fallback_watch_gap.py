@@ -27,7 +27,8 @@ def due_cases(state: dict, report_date: str, target_session: str = "") -> dict:
         return {"count": 0, "cases": []}
     try:
         ledger = recap._watch_ledger(state)
-        selected = {row["watch_id"] for row in recap.usable_watch(state, _date(target_session) or today)}
+        # Review eligibility uses the report day, not the next market open.
+        selected = {row["watch_id"] for row in recap.usable_watch(state, today)}
     except (TypeError, ValueError):
         return {"count": 0, "cases": [], "error": "invalid_ledger"}
     cases = []

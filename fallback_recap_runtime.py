@@ -19,7 +19,8 @@ def delivered(html, context, path, manifest, atomic_write):
         visible = _plain(html)
         links = {a.get('href') for a in BeautifulSoup(html, 'html.parser').find_all('a')}
         record['items'] = [item for item in record.get('items', [])
-                           if _plain(_md_to_html(item['statement'])) in visible
+                           if _plain(_md_to_html(item['statement'],
+                                                 allowed_urls=item['source_urls'])) in visible
                            and set(item['source_urls']).issubset(links)]
         if not record['items']:
             from fallback_delivered import extract

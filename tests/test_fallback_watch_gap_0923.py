@@ -60,8 +60,9 @@ def test_weekend_report_date_does_not_prematurely_expire_monday_watch():
     assert gap.findings(record, origin.LEGACY_AFTER_LUNA_FAILURE) == []
     state["watch"].append(_watch("w50", created="2026-09-25", deadline="2026-09-26"))
     record = gap.due_cases(state, "2026-09-26", "2026-09-28")
-    assert record["count"] == 1 and record["unselected_count"] == 1
-    assert "w50(期限 2026-09-26)" in gap.findings(record, origin.LUNA_SPECIALIZED)[0][2]
+    assert record["count"] == 1 and record["unselected_count"] == 0
+    assert gap.findings(record, origin.LUNA_SPECIALIZED) == []
+    assert "w50(期限 2026-09-26)" in gap.findings(record, origin.LEGACY_PRIMARY)[0][2]
 
 
 def test_due_scan_bad_state_cannot_block_the_report_or_hide_diagnostic():

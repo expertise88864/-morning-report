@@ -28,6 +28,9 @@ def test_reserves_fit_budget_and_do_not_evict_required():
     assert len(kept) == 220 and any(x["source_item_id"] == "t249" for x in kept)
     assert all(diag["selected_articles"]["sector:" + s] >= 3 for s in coverage.SECTORS)
     assert diag["uncovered_buckets"] == []
+    assert sum(diag["selection_reason_counts"].values()) == len(source)
+    assert (len(kept) == sum(v for k, v in diag["selection_reason_counts"].items()
+                             if k != "not_selected"))
     assert source == before
     assert coverage.select(source, {"t249"}, 220) == (kept, diag)
 
@@ -37,6 +40,22 @@ def test_required_overflow_and_absent_sector_are_not_fabricated():
     kept, diag = coverage.select(source, {str(i) for i in range(5)}, 3)
     assert kept == source
     assert diag["available_articles"] == diag["selected_articles"] == {}
+    assert diag["selection_reason_counts"] == {
+        "required_event": 5, "editorial_reserve": 0,
+        "rank_fill": 0, "not_selected": 0}
+
+
+def test_selection_reason_counts_partition_kept_without_source_identity():
+    source = [item("nr12"), item("ns34", "類股-航運"),
+              item("np56"), item("np78")]
+    kept, diag = coverage.select(source, {"nr12"}, 3)
+    assert [x["source_item_id"] for x in kept] == [
+        "nr12", "ns34", "np56"]
+    assert diag["selection_reason_counts"] == {
+        "required_event": 1, "editorial_reserve": 1,
+        "rank_fill": 1, "not_selected": 1}
+    assert all(sid not in str(diag["selection_reason_counts"])
+               for sid in ("nr12", "ns34", "np56", "np78"))
 
 
 def test_round_robin_with_tiny_remaining_budget():

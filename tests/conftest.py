@@ -8,19 +8,185 @@ pytest 共用設定與 fixtures。
   測試完全不連 Yahoo Finance。
 """
 import os
+import shutil as _shutil
+import smtplib as _smtplib
 import socket as _socket
-
-os.environ.setdefault("GMAIL_USER", "test@example.com")
-os.environ.setdefault("GMAIL_APP_PASSWORD", "dummy")
-os.environ.setdefault("LLM_PROVIDER", "gemini")
+import sys as _sys
+import tempfile as _tempfile
+from pathlib import Path as _PathLib
+from urllib.parse import urlsplit as _urlsplit
 
 import pandas as pd
 import pytest
-from pathlib import Path as _PathLib
-import sys as _sys
+
+# Never inherit production credentials or recipients into an offline test run.
+# These changes live only in the pytest process (and its child processes).
+os.environ["GMAIL_USER"] = "test@example.com"
+os.environ["GMAIL_APP_PASSWORD"] = ""
+os.environ["RECIPIENT"] = "test@example.com"
+os.environ["CONTACT_EMAIL"] = "test@example.com"
+os.environ["RADAR_RECIPIENT"] = "test@example.com"
+os.environ["QUALITY_RECIPIENT"] = "test@example.com"
+os.environ["LLM_PROVIDER"] = "gemini"
+for _credential in (
+    "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY", "FRED_API_KEY",
+    "GEMINI_API_KEY", "OPENAI_API_KEY", "FINMIND_TOKEN",
+):
+    os.environ[_credential] = ""
 
 
-import morning_report as mr
+class SMTPBlockedInTests(RuntimeError):
+    """An offline test must replace SMTP with an explicit in-memory fake."""
+
+
+def _blocked_smtp(*_args, **_kwargs):
+    raise SMTPBlockedInTests("SMTP is blocked in offline tests")
+
+
+# Install before importing the report or collecting tests, not just per test.
+_smtplib.SMTP = _blocked_smtp
+_smtplib.SMTP_SSL = _blocked_smtp
+
+
+_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1", ""}
+
+
+class NetworkBlockedInTests(RuntimeError):
+    """An offline test must replace outbound network access with a fake."""
+
+
+def _blocked(host):
+    return NetworkBlockedInTests(
+        f"測試嘗試連線 {host} —— 測試不得打真實網路。"
+        "請 patch 該路徑的 _http_get / requests.get / feedparser。"
+    )
+
+
+def _audit_network_call(event, args):
+    """Reject Python socket traffic during collection, before fixtures start.
+
+    Native curl clients need their own collection-time guard below.  No socket
+    is opened by this hook.
+    """
+    if event == "socket.getaddrinfo":
+        host = args[0] if args else None
+    elif event == "socket.connect":
+        address = args[1] if len(args) > 1 else None
+        if not isinstance(address, tuple):  # local Unix-domain socket
+            return
+        host = address[0] if address else None
+    else:
+        return
+    if host is None:
+        return  # local passive resolution
+    name = os.fsdecode(host) if isinstance(host, bytes) else str(host)
+    if name not in _ALLOWED_HOSTS:
+        raise _blocked(name)
+
+
+_sys.addaudithook(_audit_network_call)
+
+
+# curl_cffi uses native libcurl, so Python socket audit events do not see its
+# outbound requests.  Install this before importing report code or collecting
+# tests; an autouse fixture starts too late for import-time requests.
+import curl_cffi.requests as _curl_requests  # noqa: E402
+
+_REAL_CURL_REQUEST = _curl_requests.Session.request
+
+
+def _guard_curl_request(self, method, url, *args, **kwargs):
+    host = _urlsplit(str(url)).hostname or str(url)
+    if host not in _ALLOWED_HOSTS:
+        raise _blocked(host)
+    return _REAL_CURL_REQUEST(self, method, url, *args, **kwargs)
+
+
+_CURL_COLLECTION_GUARD = _guard_curl_request
+_curl_requests.Session.request = _CURL_COLLECTION_GUARD
+
+# AsyncSession also uses native libcurl; the synchronous Session guard does
+# not intercept its requests, and Python socket audit events cannot see them.
+_REAL_ASYNC_CURL_REQUEST = _curl_requests.AsyncSession.request
+
+
+async def _guard_async_curl_request(self, method, url, *args, **kwargs):
+    host = _urlsplit(str(url)).hostname or str(url)
+    if host not in _ALLOWED_HOSTS:
+        raise _blocked(host)
+    return await _REAL_ASYNC_CURL_REQUEST(self, method, url, *args, **kwargs)
+
+
+_guard_async_curl_request._morning_offline_guard = True
+_curl_requests.AsyncSession.request = _guard_async_curl_request
+
+
+# Python's audit events sit below Path.open, os.open, shutil.rmtree and the
+# ordinary os/pathlib wrappers.  Keep this active from collection onward: a
+# per-test monkeypatch cannot protect a collection-time write or a hard stop.
+_REAL_STATE_ROOT = (_PathLib(__file__).resolve().parents[1] / "state").resolve()
+_WRITE_OPEN_FLAGS = (
+    os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND
+)
+
+
+def _audit_targets_repo_state(path) -> bool:
+    if isinstance(path, int):  # an already-open descriptor has no pathname
+        return False
+    try:
+        candidate = _PathLib(os.fsdecode(path)).resolve()
+    except (OSError, ValueError, TypeError):
+        return False
+    return candidate == _REAL_STATE_ROOT or _REAL_STATE_ROOT in candidate.parents
+
+
+def _audit_state_write(event, args):
+    if event == "open":
+        path, mode, flags = args
+        writing = any(ch in str(mode) for ch in "wax+") or (
+            isinstance(flags, int) and bool(flags & _WRITE_OPEN_FLAGS)
+        )
+        targets = (path,) if writing else ()
+    elif event == "os.rename":
+        targets = args[:2]  # moving a production file away is destructive too
+    elif event in {
+        "os.remove", "os.rmdir", "os.mkdir", "os.truncate",
+        "os.chmod", "os.chown", "os.utime", "os.link", "os.symlink",
+    }:
+        # link/symlink have source and destination; the rest have one path.
+        targets = args[:2] if event in {"os.link", "os.symlink"} else args[:1]
+    else:
+        return
+    for target in targets:
+        if _audit_targets_repo_state(target):
+            raise AssertionError(
+                f"測試試圖寫入 repo 的真實 state:{event} → {target}"
+            )
+
+
+_sys.addaudithook(_audit_state_write)
+
+# Import-time production constants must point at a disposable copy, not at the
+# versioned state.  Keep its historical contents for read-path tests; the audit
+# guard above still protects the original tree and contract tests can read it.
+_TEST_STATE_SANDBOX = _tempfile.TemporaryDirectory(prefix="morning-test-state-")
+_TEST_STATE_ROOT = _PathLib(_TEST_STATE_SANDBOX.name) / "state"
+_shutil.copytree(_REAL_STATE_ROOT, _TEST_STATE_ROOT)
+os.environ["STATE_ROOT"] = str(_TEST_STATE_ROOT)
+os.environ["TWSE_TOP100_ARCHIVE_FILE"] = str(_TEST_STATE_ROOT / "twse_top100_archive.json")
+os.environ["REVENUE_CONSENSUS_FILE"] = str(_TEST_STATE_ROOT / "revenue_consensus.json")
+# Python subprocesses do not inherit sys.addaudithook or monkeypatches.  Load
+# the same offline boundary at child interpreter startup, only in pytest's
+# environment; the report runner itself never gets this PYTHONPATH entry.
+_CHILD_GUARD_DIR = _PathLib(__file__).resolve().parent / "offline_child_guard"
+os.environ["MORNING_TEST_FORMAL_STATE_ROOT"] = str(_REAL_STATE_ROOT)
+os.environ["PYTHONPATH"] = os.pathsep.join(
+    part for part in (str(_CHILD_GUARD_DIR), os.environ.get("PYTHONPATH", "")) if part
+)
+
+
+# Install the collection-time state guard before importing production modules.
+import morning_report as mr  # noqa: E402
 
 # **子目錄裡的測試也要 import 得到 `fixtures_analysis`**(2026-09-04)。
 # pytest 只會把「測試檔自己所在的目錄」放進 sys.path,所以 tests/incidents/
@@ -146,20 +312,8 @@ def fake_yf(monkeypatch):
 # 封鎖之後,任何新測試意外打網路都會**當場失敗並指名 host**,而不是變成
 # 一個偶爾很慢、偶爾在 CI 掛掉的謎題。
 # ============================================================================
-_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1", ""}
 _real_getaddrinfo = _socket.getaddrinfo
 _real_create_connection = _socket.create_connection
-
-
-class NetworkBlockedInTests(RuntimeError):
-    """測試意外嘗試連外。請 patch 掉該路徑的 _http_get / requests / feedparser。"""
-
-
-def _blocked(host):
-    return NetworkBlockedInTests(
-        f"測試嘗試連線 {host} —— 測試不得打真實網路。"
-        "請 patch 該路徑的 _http_get / requests.get / feedparser。"
-    )
 
 
 @pytest.fixture(autouse=True)
@@ -177,31 +331,6 @@ def _block_outbound_network(monkeypatch):
 
     monkeypatch.setattr(_socket, "getaddrinfo", guard_getaddrinfo)
     monkeypatch.setattr(_socket, "create_connection", guard_create_connection)
-    # **curl_cffi 不經 Python socket**(全案審查 2026-09-03 TC-1):lock 裡的
-    # yfinance 寫死 `from curl_cffi import requests`(它存在的理由就是繞過
-    # Yahoo 對 requests/urllib3 指紋的封鎖),連線在 libcurl 的 C 層完成 ——
-    # 上面兩個 patch 對它完全無效:沒套 `fake_yf` 的測試若走到 yfinance,
-    # 不會報 NetworkBlockedInTests,而是安靜地真的打一次 Yahoo。這個守衛的
-    # 整個目的是「打通打不通斷言都一樣」,對這個套件先前不成立。
-    # `Session.request` 是 curl_cffi 所有同步請求的必經點
-    # (`get()` → `request()` → `Session().request()`)。
-    try:
-        import curl_cffi.requests as _curl_requests
-    except Exception:                        # noqa: BLE001 - 沒裝就沒有這條路
-        _curl_requests = None
-    if _curl_requests is not None:
-        from urllib.parse import urlsplit as _urlsplit
-        _real_curl_request = _curl_requests.Session.request
-
-        def guard_curl_request(self, method, url, *a, **kw):
-            host = _urlsplit(str(url)).hostname or str(url)
-            if host not in _ALLOWED_HOSTS:
-                raise _blocked(host)
-            return _real_curl_request(self, method, url, *a, **kw)
-
-        monkeypatch.setattr(_curl_requests.Session, "request", guard_curl_request)
-
-
 @pytest.fixture(autouse=True)
 def _never_write_repo_state(monkeypatch, tmp_path_factory):
     """測試不得寫入 repo 的真實 state 檔。
@@ -343,7 +472,9 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
             if not isinstance(value, _Path):
                 continue
             try:
-                inside = value.resolve().is_relative_to(repo_state)
+                resolved = value.resolve()
+                inside = (resolved.is_relative_to(_TEST_STATE_ROOT)
+                          or resolved.is_relative_to(repo_state))
             except (OSError, ValueError):
                 inside = False
             if inside:
@@ -353,9 +484,11 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
 # ---------------------------------------------------------------- state 不變式
 #: **不要再玩打地鼠**(2026-09-02 r14 外審)。
 #:
-#: 目前的 monkeypatch 守衛列舉了 `Path.write_text/write_bytes/unlink/
-#: rename/replace`、`os.rename/replace`、`builtins.open` —— 但仍漏
-#: `os.remove` / `os.rmdir` / `shutil.rmtree` / `Path.open` / `os.truncate`…
+#: 早期 monkeypatch 守衛只列舉部分 API，曾漏掉
+#: `os.remove` / `os.rmdir` / `shutil.rmtree` / `Path.open` / `os.truncate`。
+#: 上面的 Python audit hook 現在攔截這些 API 的底層事件（包括收集階段），
+#: 但子行程與繞過 Python audit 的原生程式碼仍不受此 hook 保護；不能把它
+#: 說成完整的隔離式 state 根目錄。
 #: 而這個 repo 已經有三次實害紀錄(覆寫 manifest、清掉 exdiv history、
 #: 搬走 analysis_recap;最後那次還是我在**驗證守衛修正時**造成的)。
 #:
@@ -371,9 +504,9 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
 #:   * 正常結束的那一輪,漏 patch 哪個 API 都會被抓到;
 #:   * 被強制中止的那一輪,**這一層什麼都保證不了**。
 #:
-#: 真正的隔離是「測試永遠只拿到可丟棄的 state 根目錄」(`STATE_ROOT`
-#: 已經有那個機制,但 state 契約那批測試存在的理由正是去讀**真實**的
-#: state,不能一律改)。那是還沒做完的事,不要用這一層假裝它做完了。
+#: 測試的預設 `STATE_ROOT` 現在是正式 state 的一次性副本；契約測試仍可
+#: 唯讀檢查真實 state。子行程或原生程式碼若自行定位 repo 路徑，仍能繞過
+#: 本行程的 audit hook，因此這不是對所有外部程序的完整檔案系統沙箱。
 #: 這一輪**開始時** `state/` 長什麼樣。`None` = 查不動;
 #: `"__unset__"` = `pytest_sessionstart` 根本沒跑(不是 pytest 主流程)。
 _STATE_BASELINE = "__unset__"

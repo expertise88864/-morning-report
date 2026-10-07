@@ -158,7 +158,11 @@ def fetch_gazette(fetch) -> list[dict]:
     try:
         raw = fetch(GAZETTE_XML_URL, timeout=30)
     except Exception as e:
-        raise GazetteUnavailable(f"公報抓取失敗: {type(e).__name__}") from e
+        status = getattr(e, "code", None)
+        http_status = (f" HTTP {status}" if isinstance(status, int)
+                       and 100 <= status <= 599 else "")
+        raise GazetteUnavailable(
+            f"公報抓取失敗: {type(e).__name__}{http_status}") from e
     return parse_gazette_xml(raw)
 
 

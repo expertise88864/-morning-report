@@ -35,6 +35,7 @@ def format_uncertain(rows, now, annotate):
     lines = []
     for row in selected[:3]:
         hint = str(row.get('time') or '').strip()
+        hint = '' if hint == '時間待確認' else hint
         note = str(row.get('note') or '').strip()
         lines.append(f"- {str(row['date'])[:10]}｜{annotate(str(row['title']))}（時間待確認）"
                      + (f'〔原始時間註記：{annotate(hint)}〕' if hint else '')

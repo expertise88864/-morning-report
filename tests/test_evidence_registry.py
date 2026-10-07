@@ -115,7 +115,8 @@ def test_a_us_holiday_marks_the_us_side_unusable_everywhere():
     pk = _packet(quotes={"US_HOLIDAY": {"detected": True}})
     reg = er.registry(pk)
     assert reg["market:QQQ.change_pct"]["usable_for_inference"] is False
-    assert "休市" in reg["market:QQQ.change_pct"]["why_unusable"]
+    assert "未更新" in reg["market:QQQ.change_pct"]["why_unusable"]
+    assert "休市" not in reg["market:QQQ.change_pct"]["why_unusable"]
     # 本地側**不受影響** —— 一竿子打翻全部就等於沒有分辨力
     assert reg["market:TAIFEX_OI.foreign_oi_net"]["usable_for_inference"]
 

@@ -10,6 +10,8 @@ import re
 import analysis_origin
 from news_actor_roles import purchase_target_actor
 from price_reaction_guard import neutralize
+from reader_citation_registry import source_bindings
+from reader_market_language_guard import neutralize_report
 
 
 _LEAD = re.compile(r"^(?P<space>\s*)\*\*(?P<label>[^*\n：:]{2,100})\*\*(?P<colon>[：:])")
@@ -49,12 +51,15 @@ def correct_investment_target_headings(text: str, news: list[dict], *,
         manifest.setdefault("llm", {})["investment_target_headings_corrected"] = changed
     return "".join(parts)
 
-
 def correct_reader_claims(text: str, news: list[dict], *,
-                          origin: str, manifest: dict) -> str:
+                          origin: str, manifest: dict, allowed_urls=(), source_titles=()) -> str:
     """Apply the narrow actor and price-causality safeguards before recap."""
     if origin == analysis_origin.EMERGENCY_FALLBACK:
         return text  # This path is a verbatim source-title list, not model prose.
     corrected = correct_investment_target_headings(
         text, news, origin=origin, manifest=manifest)
-    return neutralize(corrected, manifest)
+    return neutralize_report(neutralize(
+        corrected, manifest, preserve_unlinked_rendered_headline=
+        origin == analysis_origin.LUNA_SPECIALIZED), manifest,
+        allowed_urls=[*allowed_urls,
+                      *(n.get("link") or n.get("url") for n in news if isinstance(n, dict))], source_titles=[*source_titles, *source_bindings(news)])

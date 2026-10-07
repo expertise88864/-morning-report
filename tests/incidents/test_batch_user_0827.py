@@ -106,7 +106,7 @@ def test_tennis_results_carry_set_scores(monkeypatch):
     """ESPN 的 `linescores` 實測有逐盤與 tiebreak。勝方視角;兩側盤數
     對不齊(退賽/缺漏)就不顯示 —— 半截比分比沒有比分更誤導。"""
     comp = {
-        "id": "c1", "date": "2026-08-27T01:00Z",
+        "id": "c1", "date": "2026-08-26T13:00Z",
         "status": {"type": {"completed": True}},
         "round": {"displayName": "Semifinal"},
         "competitors": [
@@ -116,7 +116,7 @@ def test_tennis_results_carry_set_scores(monkeypatch):
             {"winner": False, "athlete": {"shortName": "B. Loser"},
              "linescores": [{"value": 6.0, "tiebreak": 3},
                             {"value": 4.0}]}]}
-    ev = {"shortName": "US Open", "date": "2026-08-27T01:00Z",
+    ev = {"shortName": "US Open", "date": "2026-08-26T13:00Z",
           "status": {"type": {"state": "in"}},
           "groupings": [{"grouping": {"slug": "mens-singles"},
                          "competitions": [comp]}]}
@@ -230,7 +230,7 @@ def test_week_review_is_wired_into_the_sunday_email():
     src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index("def run_weekend_digest")
     seg = src[i:src.index("def ", i + 10)]
-    assert "analyze_week_in_review(now_tpe)" in seg
+    assert "analyze_week_in_review(now_tpe, source_urls_out=_week_source_urls)" in seg
     assert "week_review_html=week_review_html" in seg
     j = src.index("def render_weekend_digest_html")
     seg2 = src[j:j + 2600]

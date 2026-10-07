@@ -176,9 +176,14 @@ def legacy(quotes, news, *, sanitize) -> str:
     if not news and not quotes.get("NEWS_RESEARCH_SOURCES"):
         return ""
     try:
-        return "\n" + context.legacy_block((news or []) + (quotes.get("NEWS_RESEARCH_SOURCES") or []),
+        source_urls, source_titles = [], []
+        block = context.legacy_block((news or []) + (quotes.get("NEWS_RESEARCH_SOURCES") or []),
                                     (quotes.get("NEWS_MEMORY") or []) + (quotes.get("NEWS_RESEARCH_BACKGROUND") or []),
-                                    dt.datetime.now(memory.TPE).isoformat(), sanitize=sanitize)
+                                    dt.datetime.now(memory.TPE).isoformat(), sanitize=sanitize,
+                                    source_urls_out=source_urls, source_titles_out=source_titles)
+        quotes["_ANALYSIS_PACKET_URLS"] = source_urls
+        quotes["_ANALYSIS_PACKET_TITLES"] = source_titles
+        return "\n" + block
     except Exception as exc:
         print(f"::warning::news_research_legacy ({type(exc).__name__})", flush=True)
         return ""

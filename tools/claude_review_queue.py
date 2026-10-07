@@ -12,13 +12,27 @@ SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?\Z")
 
 
 def trailers(gate, message: str) -> dict[str, list[str]]:
-    raw = gate._git_bytes("interpret-trailers", "--parse", stdin=message.encode())
+    # A commit message may legitimately contain a `---` body line. It is not a
+    # patch separator, so let Git inspect the actual trailer block after it.
+    raw = gate._git_bytes("interpret-trailers", "--parse", "--no-divider",
+                          stdin=message.encode())
     result: dict[str, list[str]] = {}
     for line in raw.decode("utf-8", errors="replace").splitlines():
         key, sep, value = line.partition(":")
         if sep:
             result.setdefault(key.lower(), []).append(value.strip())
     return result
+
+
+def _split_scissors(gate, message: str) -> tuple[str, str]:
+    """Keep hook-added trailers above Git's verbose-message cut line."""
+    configured = gate._try_git_bytes("config", "--get", "core.commentChar")
+    comment_char = configured.decode("utf-8", errors="replace").strip() if configured else "#"
+    if comment_char == "auto":
+        comment_char = "#"
+    marker = f"{comment_char} ------------------------ >8 ------------------------"
+    cut = re.search(rf"(?m)^{re.escape(marker)}\r?$", message)
+    return (message[:cut.start()], message[cut.start():]) if cut else (message, "")
 
 
 def message_for(gate, sha: str) -> str:
@@ -70,25 +84,42 @@ def has_approval(gate, sha: str) -> bool:
         record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    return (isinstance(record, dict) and record.get("commit") == sha
+    if not (isinstance(record, dict) and record.get("commit") == sha
             and record.get("model") == gate.MODEL and record.get("effort") == gate.EFFORT
-            and record.get("verdict") == "APPROVE"
-            and bool(record.get("fingerprint")))
+            and record.get("verdict") == "APPROVE"):
+        return False
+    # A push review may have covered this commit as one member of a larger
+    # range. Only the exact-commit snapshot is evidence for an audit trailer.
+    exact = commit_range(gate, sha)
+    return record.get("fingerprint") == gate.push_fingerprint([exact])
 
 
 def save_approvals(gate, ranges, fingerprint: str) -> None:
     for ref in ranges:
-        for sha in gate._outgoing_commits(ref.base, ref.tip):
-            record = {"commit": sha, "model": gate.MODEL, "effort": gate.EFFORT,
-                      "verdict": "APPROVE", "fingerprint": fingerprint}
-            gate._atomic_text(receipt_path(gate, sha), json.dumps(record) + "\n")
+        # A merge's first-parent range also contains its second-parent commits.
+        # The verdict is for the requested tip, not a replacement receipt for
+        # every commit encountered while constructing that review snapshot.
+        sha = ref.tip
+        record = {"commit": sha, "model": gate.MODEL, "effort": gate.EFFORT,
+                  "verdict": "APPROVE", "fingerprint": fingerprint}
+        gate._atomic_text(receipt_path(gate, sha), json.dumps(record) + "\n")
+
+
+def save_rejections(gate, ranges, fingerprint: str) -> None:
+    """A later exact rejection must supersede any older local approval cache."""
+    for ref in ranges:
+        sha = ref.tip
+        record = {"commit": sha, "model": gate.MODEL, "effort": gate.EFFORT,
+                  "verdict": "REQUEST_CHANGES", "fingerprint": fingerprint}
+        gate._atomic_text(receipt_path(gate, sha), json.dumps(record) + "\n")
 
 
 def commit_message(gate, path: str) -> int:
     """Queue every content commit; allow empty audit commits only with real evidence."""
     message_path = Path(path)
     message = message_path.read_text(encoding="utf-8")
-    meta = trailers(gate, message)
+    content, scissors = _split_scissors(gate, message)
+    meta = trailers(gate, content)
     targets = meta.get(REVIEWED.lower(), [])
     if targets:
         if (gate.staged_fingerprint() is not None or len(targets) != 1
@@ -115,7 +146,9 @@ def commit_message(gate, path: str) -> int:
     if not additions:
         return 0
     separator = "\n" if meta else "\n\n"
-    rewritten = message.rstrip() + separator + "\n".join(additions) + "\n"
+    rewritten = content.rstrip() + separator + "\n".join(additions) + "\n"
+    if scissors:
+        rewritten += "\n" + scissors
     if not is_pending(trailers(gate, rewritten)):
         raise gate.ReviewError("cannot safely add pending commit trailers")
     gate._atomic_text(message_path, rewritten)

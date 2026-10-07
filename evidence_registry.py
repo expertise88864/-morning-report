@@ -261,7 +261,7 @@ def registry(packet: Optional[dict]) -> dict:
             "session": session, "source": f"quotes.{block}",
             "quality": "stale" if stale else "ok",
             "usable_for_inference": not stale,
-            "why_unusable": ("美股昨日休市,本區塊是上一個交易日的延續值,"
+            "why_unusable": ("美股行情未更新（原因待核）,本區塊是較早報價的延續值,"
                              "與今天的本地訊號不同步" if stale else ""),
         }))
         # 區塊本身也要引用得到(談「今天沒有這塊資料」時需要)

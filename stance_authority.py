@@ -19,11 +19,11 @@ def problems(obj: dict, packet) -> list:
                  and bool(sp.get("label")))
     if not available and (score is not None or label != "資料不足"):
         out.append("系統計分缺席:stance.score 必須為 null 且 label 為資料不足,禁止 LLM 補算")
-    elif available and score is None:
-        out.append(f"Python 計分可得:stance.score 不可為 null,"
-                   f"必須抄錄系統分數 {sp['total']}")
     elif available:
-        if type(score) is not int:
+        if score is None:
+            out.append(f"Python 計分可得:stance.score 不可為 null,"
+                       f"必須抄錄系統分數 {sp['total']}")
+        elif type(score) is not int:
             out.append(f"stance.score 必須為整數且與 Python 權威分數一致:"
                        f"應為 {sp['total']},不可採用模型重算值")
         elif score != sp["total"]:

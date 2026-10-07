@@ -183,6 +183,45 @@ def test_fetch_tennis_digest(monkeypatch):
     assert not any(r["winner"] == "Q. Winner" for r in out["results"])  # 資格賽不進賽果
 
 
+def test_tennis_completed_flag_cannot_publish_future_result(monkeypatch):
+    import datetime as dt
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            def match(cid, when):
+                return {
+                    "id": cid, "date": when,
+                    "round": {"displayName": "Semifinal"},
+                    "status": {"type": {"completed": True}},
+                    "competitors": [
+                        {"athlete": {"shortName": cid + " Winner"}, "winner": True},
+                        {"athlete": {"shortName": "Opponent"}, "winner": False},
+                    ],
+                }
+
+            return {"events": [{
+                "shortName": "Singapore Tennis Open",
+                "date": "2026-09-27T01:00:00Z",
+                "status": {"type": {"state": "in"}},
+                "groupings": [{
+                    "grouping": {"slug": "womens-singles"},
+                    "competitions": [
+                        match("past", "2026-09-25T12:00:00Z"),
+                        match("future", "2026-09-27T01:00:00Z"),
+                        match("unknown", "not-a-date"),
+                    ],
+                }],
+            }]}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *args, **kwargs: Response())
+    sent_at = dt.datetime(2026, 9, 26, 8, 22, tzinfo=mr.TPE)
+    results = mr.fetch_tennis_digest(sent_at)["results"]
+    assert [result["winner"] for result in results] == ["past Winner"]
+
+
 def test_render_sports_cpbl_scores():
     sports = {"news": {}, "cpbl_scores": [
         {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
@@ -2653,7 +2692,8 @@ def test_local_title_fuzzy_dedup(monkeypatch):
                         lambda url, *a_, **k: Feed(url))
     out = mr.fetch_local_news()
     titles = [i["title"] for i in out.get("建設", [])]
-    assert len(titles) == 2 and titles[0].startswith("中醫大附醫") and titles[1].startswith("中捷藍線")
+    assert titles == [c]
+    assert out["彰基/中國醫"][0]["title"] == a
 
 
 def test_render_sports_poly_survives_when_legacy_sources_all_fail():

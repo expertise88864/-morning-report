@@ -926,6 +926,27 @@ def test_the_state_guard_covers_shutil_move(tmp_path):
     assert (STATE / "analysis_recap.json").exists()
 
 
+def test_state_audit_guard_blocks_other_write_apis_without_touching_state():
+    """A missing parent makes each probe harmless even if the guard regresses."""
+    import os as _os
+
+    ghost_parent = STATE / "__guard_probe_parent_does_not_exist__"
+    ghost = ghost_parent / "ghost.json"
+    assert not ghost_parent.exists()
+    operations = (
+        lambda: ghost.open("w"),
+        lambda: _os.open(ghost, _os.O_WRONLY | _os.O_CREAT),
+        lambda: _os.remove(ghost),
+        lambda: _os.rmdir(ghost_parent),
+        lambda: _os.mkdir(ghost_parent / "child"),
+        lambda: _os.truncate(ghost, 0),
+    )
+    for operation in operations:
+        with pytest.raises(AssertionError, match="真實 state"):
+            operation()
+    assert not ghost_parent.exists()
+
+
 def _fake_partition(rows, month="2026-09"):
     """在暫存目錄造一個分區檔(不碰真實 state)。"""
     import gzip

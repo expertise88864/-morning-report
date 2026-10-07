@@ -3,11 +3,13 @@ import datetime as dt
 import re
 
 
-def completed_preview(title, results, now):
+def completed_preview(title, results, now, published=None):
     from render_utils import _TENNIS_EVENT_ZH, _TENNIS_PLAYER_ZH
     if not re.search(r"爭奪|爭冠|挑戰|力拚|力拼|決賽.*(?:前瞻|預告|將)|final preview", title, re.I):
         return False
     if re.search(r"擊敗|奪冠|贏得|回顧|重溫|賽後|歷史上的今天|^\s*(?:昔日|當年)|defeated|won|recap", title, re.I):
+        return False
+    if published is None and not re.search(r"前瞻|預告|將|盼|望|能否|誰能|力拚|力拼|賽前|今晨", title, re.I):
         return False
     for result in results or []:
         if not isinstance(result, dict) or result.get('round') != 'Final':
@@ -17,6 +19,8 @@ def completed_preview(title, results, now):
             if played.tzinfo is None or not dt.timedelta(0) <= now - played <= dt.timedelta(days=7):
                 continue
         except (ValueError, TypeError, OverflowError):
+            continue
+        if published is not None and published.tzinfo is not None and published >= played:
             continue
         event = str(result.get('event_key') or result.get('event') or '')
         event_zh = _TENNIS_EVENT_ZH.get(event)

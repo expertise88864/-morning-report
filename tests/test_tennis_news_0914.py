@@ -20,6 +20,25 @@ def test_same_final_preview_does_not_consume_a_news_slot():
     assert rows == before
 
 
+def test_post_final_results_with_preview_words_are_not_dropped():
+    titles = ['舒爾頓挑戰美網首冠未果 茲維列夫封王',
+              '茲維列夫美網爭冠 直落三擊退舒爾頓']
+    rows = [{'title': title, 'published_parsed': (2026, 9, 13, 22, 0, 0)}
+            for title in titles]
+    selected, report = sn.select(rows, NOW, tennis_results=[RESULT])
+    assert [row['title'] for row in selected] == titles
+    assert report['excluded'] == 0
+    for title in titles:
+        assert not completed_preview(title, [RESULT], NOW)
+
+
+def test_pre_final_preview_with_publication_time_is_dropped():
+    rows = [{'title': PREVIEW, 'published_parsed': (2026, 9, 13, 18, 0, 0)}]
+    selected, report = sn.select(rows, NOW, tennis_results=[RESULT])
+    assert selected == []
+    assert report['excluded'] == 1
+
+
 def test_ambiguous_or_other_event_news_remains():
     assert completed_preview(PREVIEW, [RESULT], NOW)
     for title in ['回顧美網決賽前舒爾頓挑戰茲維列夫',

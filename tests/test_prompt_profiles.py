@@ -152,12 +152,31 @@ def test_the_manifest_summary_never_contains_the_prompt_text():
     它有數萬 token,而 legacy 那份含新聞全文 —— state 是 commit 進公開 repo 的。
     """
     packet = _packet()
-    blob = pp.bundle_debug_json(pp.build_luna_bundle(packet))
+    bundle = pp.build_luna_bundle(packet)
+    blob = pp.bundle_debug_json(bundle)
     assert "你是一位" not in blob
     assert "EVIDENCE" not in blob
     assert "央行理監事會決議" not in blob
     d = json.loads(blob)
     assert d["prompt_sha"] and d["evidence_sha"] and d["profile_id"]
+    assert d["request_component_chars"] == {
+        "developer_instructions": len(bundle["developer_instructions"]),
+        "user_payload": len(bundle["user_payload"]),
+        "response_schema_json": len(json.dumps(
+            bundle["response_schema"], ensure_ascii=False, default=str)),
+    }
+
+
+def test_legacy_manifest_component_sizes_have_no_schema_or_prompt_text():
+    prompt = "只供離線測試的新聞原文"
+    bundle = pp.build_deepseek_legacy_bundle(_packet(), prompt)
+    summary = json.loads(pp.bundle_debug_json(bundle))
+    assert prompt not in json.dumps(summary, ensure_ascii=False)
+    assert summary["request_component_chars"] == {
+        "developer_instructions": 0,
+        "user_payload": len(prompt),
+        "response_schema_json": 0,
+    }
 
 
 # ---------------------------------------------------------------- strict schema
@@ -451,5 +470,5 @@ def test_the_instructions_demand_reading_the_python_tables_together():
     t = pp.LUNA_DEVELOPER_INSTRUCTIONS
     assert "不要逐項重列" in t, "禁令又被寫回成「不要重述」了"
     assert "但也不要因此放著不管" in t
-    assert "跟今天的立場一致還是矛盾" in t, "沒有要求把解讀接回今天的立場"
+    assert "跟本報立場一致還是矛盾" in t, "沒有要求把解讀接回權威立場"
     assert "矛盾時要明講" in t, "只要求解讀、沒要求誠實面對相反的證據"

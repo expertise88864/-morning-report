@@ -50,6 +50,22 @@ def test_semantic_validator_rejects_fabricated_or_missing_authority(score, label
     assert any("stance.score" in p for p in schema.validate(obj, _packet(sp)))
 
 
+def test_null_score_and_unknown_label_report_both_python_authority_mismatches():
+    packet = _packet({"total": 6, "label": "偏多"})
+    obj = fx.valid_analysis()
+    obj["stance"].update(score=None, label="資料不足", rationale="系統計分缺席")
+    problems = schema.validate(obj, packet)
+    assert any("stance.score" in p and "系統分數 6" in p for p in problems)
+    assert any("stance.label" in p and "應為 偏多" in p for p in problems)
+
+    tail = "\nREPAIR\n" + "\n".join(problems)
+    payload, record = mr._repair_request_payload(
+        {"model": "offline"}, "x" * 610_000, tail, packet, problems=problems)
+    assert record is not None and record["mode"] in ("evidence_slice", "format_only")
+    assert "系統分數 6" in payload["input"]
+    assert "應為 偏多" in payload["input"]
+
+
 @pytest.mark.parametrize("score,label", [(5, "偏多"), (6, "偏空"), (-6, "偏空")])
 def test_known_python_stance_must_be_copied_exactly(score, label):
     obj = fx.valid_analysis()

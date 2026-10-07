@@ -8,7 +8,6 @@ import re
 
 from reader_price_causality_guard import _QUOTE, _RENDERED_HEADLINE, _SOURCE_HEADLINE
 
-
 _PRICE_RESPONSE = re.compile(
     r"以(?P<move>漲停放量|放量漲停|漲停|跌停|大漲|重挫)回應"
     r"(?=[ \t]*(?:[（(\[，。；;]|$))"
@@ -16,8 +15,8 @@ _PRICE_RESPONSE = re.compile(
 _SOURCE_SPAN = re.compile(rf"(?:{_QUOTE.pattern})|\[[^\]\n]+\]\(https?://[^)\n]+\)", re.M)
 
 
-def neutralize(text: str, manifest: dict) -> str:
-    """Preserve price facts; avoid claiming a cause absent transaction evidence."""
+def neutralize(text: str, manifest: dict, *, preserve_unlinked_rendered_headline: bool = False) -> str:
+    """Preserve price facts; trust unlinked headings only from Python rendering."""
     if not isinstance(text, str) or not text:
         return text
 
@@ -32,7 +31,8 @@ def neutralize(text: str, manifest: dict) -> str:
     for line in text.splitlines(keepends=True):
         body = line.lstrip(" >\t")
         if (_SOURCE_HEADLINE.match(body) or _RENDERED_HEADLINE.match(body) or
-                (body.startswith("**") and "｜" in body and line + "\n本報解讀：" in text)):
+                (preserve_unlinked_rendered_headline and body.startswith("**") and
+                 "｜" in body and line + "\n本報解讀：" in text)):
             revised_lines.append(line)
             continue
         parts: list[str] = []

@@ -48,8 +48,8 @@ SCHEDULED_MAX_EFFORT = {
     # 「API 收得下 max」,不能證明「85k-token 的 prompt 在現行 timeout、
     # 預算與備援條件下能穩定完成」。支援性見 `MODEL_LIMITS[...]["efforts"]`。
     #
-    # 2026-08-07/08 **手動執行的量測**(這正是本表下面那句話要求的形式:
-    # 「要提高請先用手動執行量一次 reasoning_tokens」)。七輪本機 DRY_RUN
+    # 2026-08-07/08 **歷史手動執行的量測**(現行使用者規則已禁止為測試
+    # 手動執行或付費 DRY_RUN；這裡只是保留當時證據)。七輪本機 DRY_RUN
     # 打真實端點、走生產同一條 packet 與 32K strict schema,`effort=max`:
     #
     #   prompt        78,381 / 81,870 / 83,751 / 84,603 / 84,810 tok
@@ -227,7 +227,9 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
             out.append(_issue(
                 f"{role}({prov})推理強度 {eff} 超過實測過的上限 {cap} —— "
                 "超出的部分沒有量測支持,逾時掉備援的風險未知;"
-                "要提高請先用手動執行或影子量一次 reasoning_tokens", fatal=False))
+                "維持現行上限,以正常排程 manifest 的 reasoning_tokens 與耗時"
+                "累積證據,取得使用者核可前不得提高;不可為驗證手動重跑或影子付費測試",
+                fatal=False))
     return out
 
 

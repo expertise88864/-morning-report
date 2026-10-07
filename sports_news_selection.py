@@ -39,17 +39,17 @@ def select(entries: Iterable[Mapping[str, Any]], now: dt.datetime,
     for entry in entries:
         report["input"] += 1
         title = str(entry.get("title") or "").strip()
-        if (not title or not news_allowed(entry) or stale_scorecard(title, now.date())
-                or completed_preview(title, tennis_results, now)
-                or re.match(r"^\s*[\[【]推薦[\]】]\s*(?:網球|MLB|NBA|中職|棒球)", title, re.I)):
-            report["excluded"] += 1
-            continue
         stamp = entry.get("published_parsed") or entry.get("updated_parsed")
         try:
             published = dt.datetime(stamp[0], stamp[1], stamp[2], stamp[3], stamp[4],
                                     stamp[5], tzinfo=dt.timezone.utc) if stamp else None
         except (ValueError, TypeError, OverflowError, IndexError, KeyError):
             published = None
+        if (not title or not news_allowed(entry) or stale_scorecard(title, now.date())
+                or completed_preview(title, tennis_results, now, published)
+                or re.match(r"^\s*[\[【]推薦[\]】]\s*(?:網球|MLB|NBA|中職|棒球)", title, re.I)):
+            report["excluded"] += 1
+            continue
         if published is not None and (published < cutoff or published > now + dt.timedelta(minutes=5)):
             report["excluded"] += 1
             continue

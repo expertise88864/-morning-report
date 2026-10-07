@@ -75,8 +75,9 @@ def test_the_conclusion_card_keeps_only_stance_reason_and_risk():
 
 # ------------------------------------------------------------------ ⑦⑧
 def test_the_letter_is_taiwan_first_and_coherent():
-    persona = _SRC[_SRC.index("你是嚴謹但敢於下判斷的"):][:200]
-    assert "重押 00662" not in persona and "以台股為核心" in persona
+    persona = _SRC[_SRC.index("你是嚴謹但敢於下判斷的"):][:280]
+    assert "重押 00662" not in persona and "晨報的主體是台灣經濟與台股" in persona
+    assert "不假設讀者持有哪些股票或 ETF" in persona
     assert "偏多操作 00662" not in _SRC
     for old in ("傳導到 2330/00662 的機制", "硬扯 2330/00662", "避免重壓 00662"):
         assert old not in wr.LEGACY_RULES, old

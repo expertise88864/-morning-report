@@ -361,9 +361,9 @@ def extract_output(response: Optional[dict]) -> dict:
     沒有標記才退回全部串接 —— 把旁白混進 JSON 會讓解析失敗,
     而失敗的樣子是「模型不聽話」,實際上是我們讀錯了。
     """
-    out = {"text": "", "refusal": "", "status": "",
-           "incomplete_reason": "", "had_commentary": False,
-           "empty_content": False}
+    out = {"text": "", "refusal": "", "status": "", "incomplete_reason": "",
+           "had_commentary": False, "empty_content": False, "answer_text_parts": 0,
+           "first_answer_part_chars": 0}
     if not isinstance(response, dict):
         return out
     out["status"] = str(response.get("status") or "")
@@ -400,11 +400,12 @@ def extract_output(response: Optional[dict]) -> dict:
             elif part.get("type") == "refusal" and part.get("refusal"):
                 refusals.append(str(part["refusal"]))
 
-    raw = "".join(finals) if saw_final_phase else "".join(unphased)
+    raw = "".join(parts := (finals if saw_final_phase else unphased))
     out["text"] = strip_json_fence(raw)
+    out["answer_text_parts"] = len(parts)
+    out["first_answer_part_chars"] = max(0, min(len(out["text"]), len(parts[0]) - raw.rfind(out["text"]))) if parts else 0
     out["refusal"] = "\n".join(refusals)
-    # 有 message 但一個字都沒有 —— 官方點名過的情況,要能與「沒有 message」
-    # (通常是 incomplete/被截斷)分辨開。
+    # 有 message 但零字 = empty_content；沒有 message 則通常是 incomplete/被截斷。
     out["empty_content"] = bool(saw_message and not raw.strip() and not refusals)
     return out
 

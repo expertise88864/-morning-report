@@ -41,6 +41,10 @@ def related_news(episodes, directory, now):
             if (stamp is None or not dt.timedelta(0) <= now - stamp <= dt.timedelta(days=7)
                     or not url or url in seen):
                 continue
+            # Discussion posts with trading slogans are not independent news context.
+            if re.search(r'\$[^$]+\$|\[[^]]+\].*\$', title) and re.search(
+                    r'Moomoo|投資網誌|討論', title, re.I):
+                continue
             # Latin names require word boundaries (AMD must not match an acronym suffix).
             pattern = re.escape(name)
             if name.isascii():

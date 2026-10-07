@@ -402,7 +402,7 @@ def test_the_fallback_chain_has_no_retired_endpoint():
 
 
 def test_detect_us_holiday_memorial_day():
-    """週二早上跑時,QQQ.date 應為週一;若為週五則代表週一 US 休市(Memorial Day 之類)。"""
+    """舊報價須降級，但其原因不能僅憑報價日期判為休市。"""
     import datetime as dt
     quotes = {"QQQ": {"date": "2026-05-22"}}    # Fri
     today = dt.date(2026, 5, 26)                # Tue
@@ -410,6 +410,18 @@ def test_detect_us_holiday_memorial_day():
     assert out["detected"] is True
     assert out["gap_days"] == 3
     assert out["expected_date"] == "2026-05-25"
+
+
+def test_stale_quote_on_open_us_session_does_not_assert_holiday():
+    """2026-09-28 NYSE 有交易；9/29 的 9/25 QQQ 報價只是未更新。"""
+    import datetime as dt
+    out = mr.detect_us_holiday({"QQQ": {"date": "2026-09-25"}},
+                               dt.date(2026, 9, 29))
+    assert out["detected"] is True
+    assert out["reason"] == "quote_stale_unverified"
+    alerts = mr.detect_market_alerts({"US_HOLIDAY": out, "MACRO": {}}, {}, {}, {})
+    assert any(a["level"] == "red" and "行情未更新" in a["title"] for a in alerts)
+    assert not any("休市" in a["title"] or "國定假日" in a["detail"] for a in alerts)
 
 
 def test_detect_us_holiday_normal_tuesday():
@@ -436,12 +448,12 @@ def test_detect_us_holiday_no_qqq_date():
 
 
 def test_us_holiday_triggers_red_alert():
-    """US_HOLIDAY 偵測到時,detect_market_alerts 應產生 red 警告。"""
+    """相容舊欄位的 stale 判定應產生 red 警告，不能推斷假日。"""
     quotes = {"US_HOLIDAY": {"detected": True, "actual_date": "2026-05-22",
                              "actual_weekday": "週五", "expected_date": "2026-05-25", "gap_days": 3},
               "MACRO": {}}
     alerts = mr.detect_market_alerts(quotes, {}, {}, {})
-    assert any(a.get("title") == "美股昨日休市（國定假日）" and a.get("level") == "red"
+    assert any(a.get("title") == "美股行情未更新（原因待核）" and a.get("level") == "red"
                for a in alerts)
 
 
@@ -462,10 +474,11 @@ def test_data_quality_flags_us_holiday():
     holiday_entry = next((d for d in dq if d["name"] == "美股交易日"), None)
     assert holiday_entry is not None
     assert holiday_entry["status"] == "fallback"
-    # 美股行情各檔也應降為 fallback,且 detail 含「休市」字眼
+    # 美股行情各檔也應降為 fallback,不得將舊報價冒稱已確認休市
     qqq_entry = next(d for d in dq if d["name"] == "美股行情 QQQ")
     assert qqq_entry["status"] == "fallback"
-    assert "休市" in qqq_entry["detail"]
+    assert "新鮮度待核" in qqq_entry["detail"]
+    assert "休市" not in qqq_entry["detail"]
 
 
 def test_build_data_quality_detects_zero_filled_institutional():
@@ -925,6 +938,16 @@ def test_world_news_block_caps_per_source():
     assert "事件3" in blk and "事件4" not in blk
 
 
+def _prompt_market_and_world_blocks(prompt):
+    # Check routing inside the news-material fence, not the separate research
+    # identity map where titles are repeated solely to resolve source IDs.
+    material = prompt.split("★★★ 重大事件（必讀，含全文摘錄）★★★\n", 1)[1]
+    material = material.split("</UNTRUSTED_SOURCE_DATA>", 1)[0]
+    market = material.split("[Other sector coverage (dated headlines only)]", 1)[0]
+    world = material.split("【昨日世界大事新聞(非市場導向;[類別] 標示,標題末為來源媒體)】\n", 1)[1]
+    return market, world.split("\n\n【", 1)[0]
+
+
 def test_world_items_excluded_from_market_buckets():
     """世界項目(即使被判 critical)不進市場配額桶,只出現在世界取材段(Codex review)。"""
     news = [
@@ -934,11 +957,13 @@ def test_world_items_excluded_from_market_buckets():
          "title": "Fed 意外升息", "published": "2026-07-15"},
     ]
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
-    # 世界標題只出現一次(取材段),不佔 ★★★ 市場桶
-    assert p.count("某區域戰爭爆發") == 1
-    assert "[國際大事] 某區域戰爭爆發" in p
-    # 市場 critical 正常進桶
-    assert "Fed 意外升息" in p
+    market, world = _prompt_market_and_world_blocks(p)
+    # 世界新聞不能占市場配額；市場 critical 不能被世界新聞擠掉。
+    assert "某區域戰爭爆發" not in market
+    assert world.count("某區域戰爭爆發") == 1
+    assert "[國際大事] 某區域戰爭爆發" in world
+    assert market.count("Fed 意外升息") == 1
+    assert "Fed 意外升息" not in world
 
 
 def test_dedup_news_preserves_world_cat():
@@ -967,7 +992,9 @@ def test_mixed_source_event_reaches_both_blocks():
     news[0]["importance"] = "critical"
     news[0]["published"] = "2026-07-15"
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
-    assert p.count("美伊衝突升級油價飆漲") == 2       # 市場桶一次 + 世界取材段一次
+    market, world = _prompt_market_and_world_blocks(p)
+    assert market.count("美伊衝突升級油價飆漲") == 1
+    assert world.count("美伊衝突升級油價飆漲") == 1
 
 
 def test_yield_curve_read_plain_language():
@@ -1239,8 +1266,8 @@ def test_format_event_scenarios_filters_window_and_keeps_notes():
     cal = [
         {"date": today, "time": "20:30", "title": "[USD] CPI y/y",
          "note": "預期 3.1%、前值 3.2%", "impact": "high"},
-        {"date": today + dt.timedelta(days=1), "time": "盤後(美東)",
-         "title": "NVDA 財報", "note": "", "impact": "high"},
+        {"date": today + dt.timedelta(days=1), "time": "時間待確認",
+         "title": "NVDA 財報", "note": "來源日期時區未核實", "impact": "high"},
         {"date": today + dt.timedelta(days=10), "time": "10:00",
          "title": "[USD] 太遠的事件", "note": "預期 X", "impact": "high"},
     ]
@@ -1248,7 +1275,7 @@ def test_format_event_scenarios_filters_window_and_keeps_notes():
     assert "CPI" in out and "預期 3.1%" in out       # 視窗內、保留預期/前值
     exact, uncertain = out.split("日期已知、時間待確認", 1)
     assert "NVDA 財報" not in exact  # Unknown time never establishes exact-window membership.
-    assert "NVDA 財報（時間待確認）" in uncertain and "盤後(美東)" in uncertain
+    assert "NVDA 財報（時間待確認）" in uncertain and "來源日期時區未核實" in uncertain
     assert "太遠的事件" not in out                    # 視窗外(>48h)剔除
 
 

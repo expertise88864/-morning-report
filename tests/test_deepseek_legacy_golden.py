@@ -73,7 +73,7 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 # 「仍要 5 條」。逐行 diff 過,只有這兩處字面動了。
 # CR-02 2026-09-05:刻意修正未知模式,禁止 LLM 自算;有 Python 權威時抄錄規則不變。
 LEGACY_PROMPT_SHA256 = (
-    "e0ae9a541ffb4541713da88ed6008f4104fcd713132b872ec82dd6f35c29a4c2")  # 09/25: combined prose/provenance.
+    "c29b34d9135124ab134dace628de4bc094d7cc3cbb8450c0490d0dad66a691f3")  # 09/29: stale quote and earnings-time guardrails.
 #: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。
@@ -111,6 +111,15 @@ def test_the_legacy_deepseek_prompt_is_byte_frozen():
         "DeepSeek legacy prompt 變了。若是**刻意**要改,請更新 "
         f"LEGACY_PROMPT_SHA256 為 {got} 並在 commit 說明改了什麼、為什麼;"
         "若不是刻意的,那就是 Luna 的特化污染到了 legacy 路徑。")
+
+
+def test_weekend_forecast_names_report_and_target_session_separately():
+    quotes, fair, predictions, news, tw0050, calibration = legacy_prompt_inputs()
+    quotes = dict(quotes, REPORT_DAY="2026-09-26", TARGET_SESSION="2026-09-28")
+    prompt = mr._build_prompt(quotes, fair, predictions, news, tw0050, calibration)
+    assert "本信產報日為 2026-09-26，預測目標交易日為 2026-09-28" in prompt
+    assert "不可把尚未開盤的盤面寫成『今天盤面』" in prompt
+    assert "持有 2330、0050" not in prompt
 
 
 def test_the_legacy_prompt_keeps_its_section_order():
@@ -194,7 +203,8 @@ def test_the_legacy_prompt_demands_the_same_three_readability_rules():
         # 少了什麼**,所以每一條要求都要有自己的語意判準。
         ("R17 表要被合起來讀", "Python 排好的表要有人解讀"),
         ("R17 要接回今天的立場", "一致還是矛盾"),
-        ("R17 矛盾不可略過", "矛盾時要明講,不可略過"),
+        ("R17 不同口徑不得混為資金流", "不得由類股淨額斷言同一批資金"),
+        ("R17 矛盾不可略過", "矛盾時要明講"),
         ("七之二 要寫得出路徑", "「所以會怎樣」要寫得出**路徑**"),
         ("七之二 禁抽象標籤", "不接受四五個字的抽象標籤"),
         # v6(2026-08-04 二次):**方向形容詞不是分析**。實測八段 10 條有

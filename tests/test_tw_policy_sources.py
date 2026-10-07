@@ -115,6 +115,20 @@ def test_fetch_failure_surfaces_to_caller():
         tps.fetch_gazette(_boom)
 
 
+def test_fetch_http_failure_records_only_safe_status():
+    """A degraded report needs the status, never the URL or response body."""
+    from urllib.error import HTTPError
+
+    def _boom(url, timeout=0):
+        raise HTTPError("https://example.test/private?token=secret", 521,
+                        "upstream down", None, None)
+
+    with pytest.raises(tps.GazetteUnavailable) as caught:
+        tps.fetch_gazette(_boom)
+    assert str(caught.value) == "公報抓取失敗: HTTPError HTTP 521"
+    assert "secret" not in str(caught.value)
+
+
 def test_main_records_degradation_when_gazette_unavailable(monkeypatch):
     """端到端:公報掛掉時 _DEGRADED_STEPS 必須有 gazette,否則整個一手政策來源
     消失卻沒有任何人知道。"""

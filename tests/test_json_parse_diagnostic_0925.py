@@ -2,6 +2,7 @@
 
 import json
 
+from analysis_schema import ANALYSIS_OUTPUT_SCHEMA
 from json_parse_diagnostic import describe
 
 
@@ -42,3 +43,17 @@ def test_large_private_value_changes_only_counts_not_reported_content():
     assert diagnostic["shape"] == "extra_data"
     assert private[:20] not in encoded
     assert "trailing text" not in encoded
+
+
+def test_first_object_reports_schema_coverage_without_exposing_keys_or_values():
+    required = ANALYSIS_OUTPUT_SCHEMA["required"]
+    private = "PRIVATE_MARKER_DO_NOT_PERSIST"
+    complete = describe(json.dumps({key: private for key in required}) + " trailing text")
+    wrapper = describe(json.dumps({"secret-wrapper": private}) + " trailing text")
+    assert complete["first_keys"] == complete["first_required_keys"] == len(required)
+    assert wrapper["first_keys"] == 1
+    assert wrapper["first_required_keys"] == 0
+    diagnostic = json.dumps([complete, wrapper])
+    assert private not in diagnostic
+    assert "secret-wrapper" not in diagnostic
+    assert "executive_summary" not in diagnostic

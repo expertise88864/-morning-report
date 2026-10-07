@@ -734,7 +734,8 @@ def test_render_html_includes_kpi_strip_with_full_data():
     kpi_section = html.split("一、美股收盤行情")[0]
     assert "VIX" not in kpi_section.split("MARKET ALERTS")[0] or "VIX 預測" not in html
     # 結論橫條
-    assert "今日結論" in html and "SOX 暴跌減碼" in html
+    assert "今日結論" in html and "SOX 暴跌" in html
+    assert "SOX 暴跌減碼" not in html
     # KPI 在 alerts 之前
     assert html.find("立場") < html.find("一、美股收盤行情")
     # 0050 在濃縮的「個股開盤預測」段
@@ -1208,7 +1209,8 @@ def test_batch26_summary_strips_net_score(monkeypatch):
                           "2026-06-02", "每日報")
     assert "淨分" not in html
     assert "偏空" in html                     # 立場標籤必須保留(Codex r2)
-    assert "減碼 00662 待戰事明朗" in html    # 結論主體保留
+    assert "減碼 00662" not in html           # 產報端不把立場翻成交易指令
+    assert "不是買賣訊號" in html
     # 無分隔情況:「偏空（淨分 -6）減碼」→ 立場+動作都在
     from llm_postprocess import _strip_score_phrases
     assert _strip_score_phrases("偏空（淨分 -6）減碼 00662") == "偏空減碼 00662"

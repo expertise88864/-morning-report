@@ -240,7 +240,7 @@ def _tip_object_evidence(tip: str) -> bytes:
 
 
 def _commit_patch(commit: str) -> bytes:
-    return _git_bytes(
+    patch = _git_bytes(
         "show",
         "-m",
         "--format=fuller",
@@ -251,6 +251,19 @@ def _commit_patch(commit: str) -> bytes:
         "--no-textconv",
         commit,
     )
+    # state/*.json is marked -diff: --binary proves bytes changed but hides the
+    # actual JSON from the reviewer. Supply its text patch separately; do not
+    # force arbitrary binary state/email artifacts into the review snapshot.
+    parents = _git_bytes("rev-list", "--parents", "-n", "1", commit).decode().split()[1:]
+    for parent in parents or [_empty_tree()]:
+        state_patch = _git_bytes(
+            "diff", "--text", "--full-index", "--no-color", "--no-ext-diff",
+            "--no-textconv", parent, commit, "--", ":(glob)state/**/*.json",
+            ":(exclude,glob)state/emails/**",
+        )
+        if state_patch:
+            patch += b"\n## state JSON text patch (normally hidden by -diff)\n" + state_patch
+    return patch
 
 
 def push_fingerprint(ranges: Sequence[PushRange]) -> str | None:
@@ -718,8 +731,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ReviewError("the reviewed diff changed during review; run the review again")
         if result in (0, 2):
             clear_pending_review(args.scope, before)
-        if result == 0 and args.scope in ("commit", "push"):
-            queue.save_approvals(sys.modules[__name__], ranges, before)
+        if args.scope == "commit":
+            if result == 0:
+                queue.save_approvals(sys.modules[__name__], ranges, before)
+            elif result == 2:
+                queue.save_rejections(sys.modules[__name__], ranges, before)
         return result
     except QuotaUnavailable as exc:
         if before is not None:

@@ -7,17 +7,24 @@ from llm_postprocess import neutralize_fence_tags
 from podcast_prompt_context import section as opinion_section
 
 
-def section(packet: dict) -> str:
+def section(packet: dict, *, visible_ids: set[str] | None = None) -> str:
     """Project relations, not source text; budgeted with the entire request.
 
     The packet has already passed the production external-text sanitization.
     Re-neutralize fences because identifiers may originate in external records.
     These mappings confer no factual support and are not evidence registry IDs.
     """
-    info = packet.get("news_clusters") or {}
-    graph = packet.get("event_graph") or {}
-    research = packet.get("research") or {}
-    top = packet.get("top_events") or {}
+    info = packet.get("news_clusters")
+    info = info if isinstance(info, dict) else {}
+    graph = packet.get("event_graph")
+    graph = graph if isinstance(graph, dict) else {}
+    research = packet.get("research")
+    research = research if isinstance(research, dict) else {}
+    contexts = research.get("contexts") or {}
+    if not isinstance(contexts, dict):
+        contexts = {}
+    top = packet.get("top_events")
+    top = top if isinstance(top, dict) else {}
     relations = {
         "cluster_members": {
             c["cluster_id"]: c.get("member_source_ids") or []
@@ -28,9 +35,10 @@ def section(packet: dict) -> str:
         "macro_release_cluster_ids": graph.get("macro_release_cluster_ids") or [],
         "shared_driver_groups": graph.get("shared_driver_groups") or [],
         "history_allowed_by_source": {
-            sid: ctx.get("evidence_ids") or []
-            for sid, ctx in (research.get("contexts") or {}).items()
-            if isinstance(ctx, dict)},
+            sid: [eid for eid in ctx.get("evidence_ids") or []
+                  if visible_ids is None or eid in visible_ids]
+            for sid, ctx in contexts.items()
+            if isinstance(ctx, dict) and (visible_ids is None or sid in visible_ids)},
         "deep_topics": [{k: t[k] for k in
                          ("cluster_id", "source_item_id", "member_source_ids") if k in t}
                         for t in research.get("deep_topics") or [] if isinstance(t, dict)],

@@ -7,7 +7,8 @@
 
 ★ 個股清單為「本報依股癌所談族群、以程式自動整理」,非股癌推薦、非投資建議(股癌不點個股)。
 ★ v1 僅涵蓋「上市(TWSE)」個股;上櫃(TPEx)個股暫不展開(既有 snapshot 資料源為上市)。
-★ 本機/CI 設 DRY_RUN=1 只輸出預覽檔不寄信;轉錄需 faster-whisper(workflow 另裝)。
+★ DRY_RUN 即使不寄信仍可能呼叫付費模型，不得作本機／CI 測試；請用離線 fixture。
+  正常雷達轉錄需 faster-whisper(workflow 另裝)。
 """
 from __future__ import annotations
 

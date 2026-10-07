@@ -88,8 +88,68 @@ def test_junk_rejected_but_real_reporting_kept():
     assert not relevant('產業/科技', 'Taichung Marathon 完賽')
     assert relevant('產業/科技', '台中AI新創發表會')
     assert relevant('產業/科技', '中科半導體廠擴充產線')
+    assert not relevant('彰基/中國醫', '副總統蕭美琴彰化行 力挺參選縣長的陳素月')
+    assert relevant('彰基/中國醫', '彰基心外團隊接力搶救心梗患者')
+    assert relevant('彰基/中國醫', '彰化基督教兒童醫院增設病房')
+    assert relevant('彰基/中國醫', '彰化基督教醫療財團法人公告院務')
+    assert relevant('彰基/中國醫', '鹿港基督教醫院擴建醫療大樓')
+    assert relevant('彰基/中國醫', '二林基督教醫院新門診啟用')
+    assert relevant('彰基/中國醫', '員林基督教醫院急診服務調整')
+    assert relevant('彰基/中國醫', '雲林基督教醫院增設診間')
+    assert relevant('彰基/中國醫', '中國附醫兒童急診擴充床位')
+    assert relevant('彰基/中國醫', '中國醫附醫急診擴充床位')
+    assert relevant('彰基/中國醫', '中國醫創博會奪2金2銀1銅')
+    assert relevant('彰基/中國醫', '中國醫北港附醫擴充門診')
+    assert relevant('彰基/中國醫', '中國醫兒醫增設病房')
+    assert relevant('彰基/中國醫', '中國醫大兒童醫院啟用新門診')
+    assert relevant('彰基/中國醫', '中國醫藥大學發表醫療新方案')
+    assert not relevant('彰基/中國醫', '中國醫療設備展在彰化登場')
+    assert not relevant('彰基/中國醫', '中國醫師公會討論健保')
+    assert not relevant('彰基/中國醫', '彰化基督教會舉辦市集')
+    assert not relevant('建設', '溪湖糖廠彰化羊肉節登場')
+    assert relevant('建設', '台中捷運藍線工程動工')
+    assert relevant('建設', '中捷藍線第二標決標')
+    assert relevant('建設', '中捷綠線延伸線環評過關')
+    assert not relevant('建設', '中捷綠線國慶連假運量創新高')
+    from local_news_routing import destination
+    assert destination('建設', '中醫大附醫修正性手術 助婦人重拾自然嗓音') == '彰基/中國醫'
     assert not news_allowed({'title': '回饋列車來到苗栗 小球員把握交流機會'})
+    assert not news_allowed({'title': '觀賞中信兄弟 @ 樂天桃猿：09/25的賽事直播 | DAZN TW'})
+    assert not news_allowed({'title': 'Hu J./Lu H. 1 - 2 Wang A./Zhou Y.：比賽報告、統計數據、陣容和H2H'})
     assert news_allowed({'title': '中信兄弟再見安打逆轉勝'})
+
+
+def test_hospital_landmark_in_property_news_stays_in_property_category():
+    from local_news_routing import destination
+    from news_display_quality import relevant
+
+    property_titles = (
+        ('房市', '台中中國醫商圈新建案開價每坪35萬', '房市'),
+        ('建商動態', '彰基旁新建案完工', '建商動態'),
+        ('建設', '中國醫周邊預售屋推案', '房市'),
+        ('建設', '中醫大附近新建案開賣', '房市'),
+        ('房市', '中國醫藥大學旁預售屋推案', '房市'),
+        ('建設', '中國附醫周邊住宅成交價', '房市'),
+        ('建設', '中醫大附醫附近新建案開賣', '房市'),
+    )
+    for source, title, expected in property_titles:
+        assert destination(source, title) == expected
+        assert not relevant('彰基/中國醫', title)
+    assert destination('建設', '中醫大附醫修正性手術 助婦人重拾自然嗓音') == '彰基/中國醫'
+    for title in ('中國醫保公司研發AI平台', '中國醫美產業展開幕'):
+        assert destination('產業/科技', title) == '產業/科技'
+        assert not relevant('彰基/中國醫', title)
+
+
+def test_weekend_related_news_excludes_ticker_discussion(monkeypatch, tmp_path):
+    monkeypatch.setattr(quality.memory, 'load', lambda *a, **kw: [
+        {'title': '加碼做空 [微笑] $美國超微公司 (AMD.US)$ - Moomoo',
+         'published_at': '2026-09-19T00:00:00Z', 'url': 'https://example.com/discussion'},
+        {'title': 'AMD 公布新晶片規格', 'published_at': '2026-09-19T00:00:00Z',
+         'url': 'https://example.com/report'}])
+    episodes = [{'digest': {'tickers': [{'name': 'AMD'}]}}]
+    assert [row['title'] for row in quality.related_news(episodes, tmp_path, NOW)['AMD']] == [
+        'AMD 公布新晶片規格']
 
 
 def test_local_region_and_event_dates_from_september_23_mail():

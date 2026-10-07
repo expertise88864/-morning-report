@@ -35,6 +35,36 @@ _SRC = Path(mr.__file__).read_text(encoding="utf-8")
 _REPO_STATE = Path(__file__).resolve().parents[1] / "state"
 
 
+def test_runtime_state_is_a_disposable_copy_with_real_read_context():
+    """Production modules read a snapshot, never the versioned write target."""
+    import conftest
+
+    assert mr.STATE_ROOT == conftest._TEST_STATE_ROOT
+    assert mr.STATE_ROOT.resolve() != _REPO_STATE.resolve()
+    assert (mr.STATE_ROOT / "analysis_recap.json").read_bytes() == (
+        _REPO_STATE / "analysis_recap.json").read_bytes()
+
+
+def test_offline_test_process_has_no_live_credentials_or_smtp():
+    """A developer's shell credentials cannot turn pytest into a paid/send run."""
+    import os
+    import smtplib
+    import conftest
+
+    assert mr.GMAIL_USER == "test@example.com"
+    assert not mr.GMAIL_APP_PASSWORD
+    assert mr.RECIPIENTS == ["test@example.com"]
+    for key in (
+        "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY", "FRED_API_KEY",
+        "GEMINI_API_KEY", "OPENAI_API_KEY", "FINMIND_TOKEN",
+    ):
+        assert not os.environ[key]
+    assert os.environ["RADAR_RECIPIENT"] == "test@example.com"
+    assert os.environ["QUALITY_RECIPIENT"] == "test@example.com"
+    with pytest.raises(conftest.SMTPBlockedInTests):
+        smtplib.SMTP_SSL("smtp.gmail.com", 465)
+
+
 # ---------------------------------------------------------------- A. state 登錄
 #
 # 刻意做**原始碼層**檢查而非讀執行期的常數值:conftest 的 autouse fixture 會把
@@ -455,6 +485,8 @@ def test_producers_and_consumer_share_one_state_root(tmp_path, monkeypatch):
 
     root = tmp_path / "iso_state"
     monkeypatch.setenv("STATE_ROOT", str(root))
+    monkeypatch.setenv("TWSE_TOP100_ARCHIVE_FILE", str(root / "twse_top100_archive.json"))
+    monkeypatch.setenv("REVENUE_CONSENSUS_FILE", str(root / "revenue_consensus.json"))
     saved = {n: _sys.modules.pop(n, None)
              for n in ("morning_report", "podcast_digest", "gooaye_radar",
                        "model_history_store")}
@@ -464,6 +496,8 @@ def test_producers_and_consumer_share_one_state_root(tmp_path, monkeypatch):
         rad = importlib.import_module("gooaye_radar")
         mhs = importlib.import_module("model_history_store")
         assert mr2.STATE_ROOT == root
+        assert mr2.TWSE_TOP100_ARCHIVE_FILE == root / "twse_top100_archive.json"
+        assert mr2.REVENUE_CONSENSUS_FILE == root / "revenue_consensus.json"
         assert pod.STATE_FILE == root / "podcast_digest.json"
         assert rad.RADAR_STATE_FILE == root / "gooaye_radar.json"
         assert mhs.DEFAULT_PARTITION_DIR == root / "model_history"

@@ -13,13 +13,14 @@ news.google.com、www.dgpa.gov.tw、openapi.twse.com.tw、www.twse.com.tw
 而且與程式碼完全無關。封鎖後同樣兩個檔 1.6 秒。
 """
 import socket
+import sys
 
 import pytest
 
 # pytest 把 tests/conftest.py 載成頂層模組 `conftest`,
 # 用 `from tests.conftest import ...` 會拿到**另一個** module 實例,
 # 例外類別身分不同 → pytest.raises 抓不到(自測時踩到)。
-from conftest import NetworkBlockedInTests
+from conftest import NetworkBlockedInTests, _CURL_COLLECTION_GUARD
 
 
 def test_outbound_dns_is_blocked():
@@ -33,6 +34,24 @@ def test_outbound_dns_is_blocked():
 def test_outbound_tcp_is_blocked():
     with pytest.raises(NetworkBlockedInTests):
         socket.create_connection(("openapi.twse.com.tw", 443), timeout=1)
+
+
+def test_collection_time_socket_audit_blocks_without_network_call():
+    """The guard must exist before per-test fixtures or report imports run.
+
+    Emitting audit events invokes no DNS lookup and opens no socket.
+    """
+    with pytest.raises(NetworkBlockedInTests):
+        sys.audit("socket.getaddrinfo", "api.deepseek.com", 443, 0, 0, 0)
+    with pytest.raises(NetworkBlockedInTests):
+        sys.audit("socket.connect", object(), ("api.deepseek.com", 443))
+
+
+def test_curl_native_request_guard_is_installed_before_test_fixtures():
+    """Inspect the installed hook without making any HTTP request."""
+    import curl_cffi.requests as curl_requests
+
+    assert curl_requests.Session.request is _CURL_COLLECTION_GUARD
 
 
 def test_localhost_still_allowed():

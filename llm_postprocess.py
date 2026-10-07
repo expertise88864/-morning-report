@@ -32,7 +32,7 @@ import sys
 #: v10(v22,repo-wide 外審 2026-08-19 P1-B):schema 的 narrative_delta/
 #: macro_environment 換形狀(綁 prior_view_id 與 evidence_ids),修補與
 #: 驗證走的形狀跟著變 —— 行為雜湊變了就要升版,樣本才不混群。
-POSTPROCESS_VERSION = 10
+POSTPROCESS_VERSION = 11  # Frozen batch adds unseen audited-claim anchoring only.
 #: v2:段落語意修正+補回四欄位;v3:schema v2 深度渲染;
 #: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
 #: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合
@@ -64,7 +64,7 @@ POSTPROCESS_VERSION = 10
 #: v20(2026-08-29 使用者):七之二改一氣呵成段落(標題句。解讀句。
 #: 後續可能影響:…);八/九分類對無主體新聞退回標題判準(產業級科技
 #: 新聞不再全部掉進「其他類股」)。
-RENDERER_VERSION = 38  # Sept24: label interpretations and move source limits beside claims.
+RENDERER_VERSION = 39  # Markdown anchors require Python-provided news/history source URLs.
 
 #: 契約快照追蹤的版本欄位(2026-08-08 自 llm_experiment.COHORT_FIELDS 遷入:
 #: 實驗已拆,但「哪些契約版本要被凍結追蹤」這份登錄簿必須活著 ——
@@ -279,6 +279,25 @@ def previous_output_block(text: str, *, intro: str) -> str:
             + "</UNTRUSTED_SOURCE_DATA>")
 
 
+REPAIR_PROBLEM_LIMIT = 80
+REPAIR_DIAGNOSTIC_CHARS = 16_000
+
+
+def repair_diagnostic_lines(problems: list) -> list[str]:
+    """Show production-sized failures without growing the diagnostic budget.
+
+    The 9/26 syntax repair had 55 issues. A 40-item cut hid known failures,
+    while the existing worst-case 40 x 400 character budget can show up to 80
+    shorter diagnostics. The evidence selector must use these exact lines too.
+    """
+    rows = [neutralize_fence_tags(str(p))[:400]
+            for p in list(problems or [])[:REPAIR_PROBLEM_LIMIT]]
+    if sum(map(len, rows)) <= REPAIR_DIAGNOSTIC_CHARS:
+        return rows
+    cap = REPAIR_DIAGNOSTIC_CHARS // len(rows)
+    return [row[:cap] for row in rows]
+
+
 def repair_instruction(problems: list, hints: list,
                        previous_json: str = "",
                        previous_raw: str = "") -> str:
@@ -292,14 +311,14 @@ def repair_instruction(problems: list, hints: list,
 
     一條問題約一百字,四十條也只是 4K 字元 —— 對上 1M 的 payload,
     截斷省不了什麼,只會讓修補變成賭模型自己猜中沒說的那幾條。
-    上限 40 是防病態(驗證器迴圈失控)不是預算:真的超過 40 條,
+    上限 80 是防病態(驗證器迴圈失控)不是預算:真的超過 80 條,
     修補救不了,而且要說出來被截了多少。
     """
     # **問題清單在圍欄外的信任區,而它逐字帶著模型的原文**(全案審查
     # 2026-09-03 LM-3):`{cur_from!r}` 這類片段是模型自由文字,一個偽造的
     # 收尾標籤放在裡面就能開/關圍欄。這裡是所有問題訊息的唯一出口,在這裡
     # 中和一次,不必每個訊息各自記得。
-    shown = [neutralize_fence_tags(str(p)) for p in (problems or [])[:40]]
+    shown = repair_diagnostic_lines(problems)
     dropped = max(0, len(problems or []) - len(shown))
     nl = chr(10)
     # **「保持原樣」要給得出原樣**(外審 r1,P2):每次請求都是獨立的,
@@ -723,7 +742,7 @@ def _extract_summary(text: str) -> str:
     if not isinstance(text, str):
         return ""
     # 匹配「## 一句話總結」或「## 十四、一句話總結」後的第一行
-    m = _re.search(r"#+\s*[一二三四五六七八九十零\d]*、?\s*一句話(?:總結|結論)\s*\n+([^\n#]+)", text)
+    m = _re.search(r"#+\s*[一二三四五六七八九十零\d]*、?\s*一句話(?:總結|結論)\s*\n+(?![ \t]*#)([^\n]+)", text)
     if m:
         return m.group(1).strip().lstrip("*").rstrip("*").strip()
     return ""

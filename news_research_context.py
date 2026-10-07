@@ -131,8 +131,9 @@ def accepted_dismissals(obj: dict, packet: dict) -> set:
         cid = str(row.get("cluster_id") or "")
         if cid not in allowed:
             continue
-        focused = dict(packet, news_clusters=dict(packet.get("news_clusters") or {},
-                                                  required_cluster_ids=[cid]))
+        focused = dict(packet, finance_analysis_candidates=[],
+                       news_clusters=dict(packet.get("news_clusters") or {},
+                                          required_cluster_ids=[cid]))
         if not coverage._coverage_problems({"dismissed_events": [row]}, focused, []):
             accepted.add(cid)
     return accepted
@@ -237,7 +238,8 @@ def metrics(obj: dict, packet: dict) -> dict:
             "history_budget_omissions": sum(c.get("omitted_for_budget", 0) for c in contexts.values())}
 
 
-def legacy_block(news: list, archive: list, as_of: str, *, sanitize) -> str:
+def legacy_block(news: list, archive: list, as_of: str, *, sanitize,
+                 source_urls_out: list | None = None, source_titles_out: list | None = None) -> str:
     """Legacy gets the same provenance rules, in its own non-nested fence."""
     import news_clusters
     import event_score
@@ -247,8 +249,27 @@ def legacy_block(news: list, archive: list, as_of: str, *, sanitize) -> str:
     packet["top_events"] = event_score.rank(cluster_info.get("clusters") or news_clusters.clusters(normalized), normalized)
     build(packet, archive)
     import evidence_packet
-    data = evidence_packet.sanitize_tree({k: packet[k] for k in ("research", "historical_sources")}, sanitize)
+    # Legacy news prose has no source IDs. Retain a bounded identity join for
+    # matched history / deep topics, without repeating summaries or full text.
+    referenced = {sid for sid, ctx in packet["research"]["contexts"].items() if ctx["evidence_ids"]}
+    referenced.update(sid for topic in packet["research"]["deep_topics"]
+                      for sid in topic["member_source_ids"])
+    data = {k: packet[k] for k in ("research", "historical_sources")}
+    data["current_sources"] = {
+        n["source_item_id"]: {k: n[k] for k in ("title", "published", "date_missing", "source", "url")}
+        for n in normalized if n["source_item_id"] in referenced}
+    data = evidence_packet.sanitize_tree(data, sanitize)
+    if source_urls_out is not None:
+        source_urls_out[:] = [row["url"] for row in data["historical_sources"]
+                              if isinstance(row, dict) and row.get("url")]
+        source_urls_out.extend(row["url"] for row in data["current_sources"].values()
+                               if isinstance(row, dict) and row.get("url"))
+    if source_titles_out is not None:
+        from reader_citation_registry import source_bindings
+        source_titles_out[:] = source_bindings([*data['historical_sources'], *data['current_sources'].values()])
     return (RESEARCH_RULES + "此路徑輸出 Markdown：將前情與來源融入原新聞段落，不输出 JSON 欄位名。\n"
+            + "current_sources 將內部 ID 對應當期標題、日期與來源；只將匹配歷史接到該則新聞，"
+              "無對照不猜配；ID 不得出現在讀者正文。\n"
             + "<UNTRUSTED_SOURCE_DATA>\n" + json.dumps(data, ensure_ascii=False) + "\n</UNTRUSTED_SOURCE_DATA>\n")
 
 

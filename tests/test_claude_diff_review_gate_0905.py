@@ -292,6 +292,8 @@ def test_zero_net_tree_push_still_hashes_every_outgoing_commit(monkeypatch):
     def fake_git(*args, stdin=None):
         if args[:2] == ("rev-list", "--reverse"):
             return b"c1\nc2\n"
+        if args[:2] == ("rev-list", "--parents"):
+            return f"{args[-1]} {base}\n".encode()
         if args[0] == "show":
             return f"patch:{args[-1]}".encode()
         if args[0] == "diff":

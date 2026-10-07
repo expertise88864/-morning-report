@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import json
 import sys
-
+from watch_report_day import report_day
 #: 一則觀點存這麼多字。**存的是判斷,不是全文** —— 太長會擠占明天的
 #: payload 預算,而「昨天說了什麼」的重點在方向與量級,不在修辭。
 STATEMENT_CHARS = 160
@@ -494,7 +494,7 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
         if prior.get("unreadable"):
             raise ValueError("existing recap unreadable; refusing to overwrite history")
         _prior_watch = _watch_ledger(prior)
-        _today = str(rec.get("date") or "")
+        _today = report_day(packet)
         rec["watch"], rec["watch_seq"], _watch_dropped = carry_watch(
             prior, analysis_obj, _today)
         if isinstance(manifest, dict):
@@ -568,8 +568,9 @@ def load(path) -> dict:
         return {"unreadable": True, "items": []}
 
 
-def prompt_recap(recap: dict, target_session_date: str, previous_session: str = "") -> dict:
-    """Project an expanded ledger for prompts without changing persisted state."""
+def prompt_recap(recap: dict, target_session_date: str, previous_session: str = "",
+                 *, report_date: str = "") -> dict:
+    """Project watches by report day, not target session; do not mutate state."""
     recap = dict(recap)
     from fallback_recap import for_prompt
     legacy = for_prompt(recap.pop("legacy_report", None), previous_session, target_session_date)
@@ -577,7 +578,7 @@ def prompt_recap(recap: dict, target_session_date: str, previous_session: str = 
         recap["legacy_report"] = legacy
     if len(recap.get("watch") or []) <= WATCH_OPEN_MAX:
         return dict(recap)
-    selected = {w["watch_id"] for w in usable_watch(recap, target_session_date)}
+    selected = {w["watch_id"] for w in usable_watch(recap, report_date or target_session_date)}
     return dict(recap, watch=[w for w in _watch_ledger(recap)
                              if w["watch_id"] in selected])
 

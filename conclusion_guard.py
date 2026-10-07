@@ -32,4 +32,4 @@ def fallback(authority: str) -> str:
     }
     if authority not in actions:
         return "目前資料不足，暫不提供方向性結論；請留意後續資料更新。"
-    return f"今日維持{authority}。{actions[authority]}價位估算見下方預測表。"
+    return f"今日立場為{authority}。{actions[authority]}價位估算見下方預測表。"

@@ -421,8 +421,13 @@ def test_the_two_budgets_are_independent(luna_on, monkeypatch):
     def _fake(payload):
         calls.append(payload)
         r = _response(_GOOD)                    # 每次都語法壞掉
-        r["output"][0]["content"][0]["text"] = (
-                '{"a":1}{"a":2}' if len(calls) == 1 else "not json at all")
+        if len(calls) == 1:
+            r["output"][0]["content"] = [
+                {"type": "output_text", "text": '{"a":1}'},
+                {"type": "output_text", "text": '{"a":2}'},
+            ]
+        else:
+            r["output"][0]["content"][0]["text"] = "not json at all"
         return r
 
     monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
@@ -439,6 +444,10 @@ def test_the_two_budgets_are_independent(luna_on, monkeypatch):
     assert llm["repair_budget"]["exhausted"] == "syntax"
     shapes = [item["shape"]["shape"] for item in llm["primary_parse_errors"]]
     assert shapes == ["extra_data", "invalid_prefix"]
+    assert [item["answer_text_parts"] for item in llm["attempts"][:2]] == [2, 1]
+    assert [item["first_answer_part_chars"] for item in llm["attempts"][:2]] == [7, 15]
+    assert '{"a":1}' not in json.dumps(llm["attempts"])
+    assert "not json at all" not in json.dumps(llm["attempts"])
     assert llm["primary_parse_error"] is llm["primary_parse_errors"][-1]
 
 

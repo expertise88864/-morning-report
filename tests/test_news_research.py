@@ -232,6 +232,12 @@ def test_deep_topic_may_be_explicitly_dismissed_under_the_existing_evidence_cont
     assert not context.advisories(obj, pk)
     result = context.metrics(obj, pk)
     assert result["deep_topics_analyzed"] == 0 and result["deep_topics_dismissed"] == 1
+    # Another finance story still needs analysis elsewhere, but cannot veto
+    # this cluster's otherwise valid evidence-backed dismissal.
+    pk["finance_analysis_candidates"] = [["unrelated_finance_source"]]
+    assert not context.validate(obj, pk)
+    assert not context.advisories(obj, pk)
+    assert context.metrics(obj, pk)["deep_topics_dismissed"] == 1
     for key, invalid in [("why_not_material", ""), ("revisit_trigger", ""),
                          ("supporting_evidence_ids", ["unrelated"])]:
         bad = copy.deepcopy(obj)

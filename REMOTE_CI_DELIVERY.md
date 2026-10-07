@@ -1,4 +1,4 @@
-# Remote-first delivery — 2026-09-06
+# Candidate-first delivery with local and remote gates
 
 ## Latest user decision — 2026-09-07: no paid test generation
 This supersedes the earlier morning-report live preview requirement. Do not call
@@ -15,19 +15,27 @@ content or iPhone Gmail acceptance from offline tests. Production morning-report
 and Podcast processing schedules, quality warnings and independent code reviews
 are unchanged. Re-enabling paid testing requires a new explicit user decision.
 
-The user explicitly replaced mandatory full local CI before candidate pushes.
-Production remains fail-closed. This is a delivery workflow, not permission to
-change medical content, visual baselines, credentials, recipients or scoring.
+Current binding policy requires the full applicable local CI-equivalent checks
+to pass for the exact revision before **every** branch push, including candidate,
+main and empty audit commits. Hosted CI for the exact SHA is then verified after
+each push. Candidate-first remote validation is an additional gate, not a waiver
+of local validation. Production remains fail-closed. This workflow is not
+permission to change medical content, visual baselines, credentials, recipients
+or scoring.
 
 ## Candidate
 1. Fetch main. Preserve other work. Use an isolated codex/* branch based on current main.
-2. Make task-owned changes; run relevant local regression tests, syntax/lint and
-   required generators. Commit the exact source and generated artifacts together.
+2. Make task-owned changes; run relevant regression tests, then the full applicable
+   local CI-equivalent checks (locked dependencies, syntax/compile, lint, type
+   checks, complete tests and required generators) on the final content before
+   any push. Commit the exact source and generated artifacts together; after any
+   further edit, integration or rebase, revalidate the changed revision.
 3. Complete existing independent Codex review and Claude Opus 5.5/high read-only review.
    Only confirmed provider quota exhaustion permits pending trailers and scheduled retry.
 4. Install the tracked pre-push hook with the documented existing hook mechanism.
-5. Push the exact SHA to codex/* normally. The hook runs the offline delivery tests.
-   Full tests, types, coverage, browsers and generation drift run on GitHub.
+5. Push the locally validated exact SHA to codex/* normally. The hook runs the
+   offline delivery checks; GitHub then repeats its applicable full checks for
+   that same SHA. Neither the hook nor hosted CI replaces the local prerequisite.
 6. Websites: create a same-repository PR to main and wait for exact-SHA Preview.
    Do not use production screenshots as proof of candidate correctness.
 7. Run: python _delivery.py verify FULL_SHA --phase candidate --wait 1800
@@ -35,7 +43,8 @@ change medical content, visual baselines, credentials, recipients or scoring.
 ## Promotion
 Fetch main again. It must be an ancestor of the exact successful candidate;
 otherwise integrate without overwriting CMS/user changes and revalidate.
-With the clean candidate checked out:
+Before the main push, reconfirm a clean tree and full applicable local checks
+for this exact SHA. With the clean candidate checked out:
     git push origin FULL_SHA:refs/heads/main
 The pre-push hook independently retrieves GitHub evidence; no cached approval flag,
 environment override, skip token or --no-verify is accepted.

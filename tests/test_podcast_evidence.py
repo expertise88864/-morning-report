@@ -97,3 +97,27 @@ def test_packet_contains_opinions_but_fact_registry_does_not():
     assert 'PODCAST_DIGEST' not in packet['market']
     assert 'PRIVATE_FIXTURE' not in json.dumps(packet)
     assert source == before
+
+
+def test_conflicting_podcast_identity_cannot_enter_model_context(capsys):
+    import evidence_packet as ep
+    conflicted = episode(guid='conflict', digest={'summary_points': ['供電討論'],
+        'tickers': [{'name': 'Bloom Energy', 'code': 'BE', 'market': 'US',
+                     'direction_evidence': {'status': 'attributed',
+                                            'quote': 'Blue Energy就是你要去賭的供電'}}]})
+    source = [conflicted, episode(guid='safe')]
+    before = copy.deepcopy(source)
+    result = pe.project(source, as_of='2026-09-12T07:00:00+08:00',
+                        sanitize=mr._external_text)
+    assert result['identity_conflict_episodes'] == 1
+    assert result['omitted_episodes'] == 1 and len(result['episodes']) == 1
+    assert 'Bloom Energy' not in json.dumps(result)
+    assert 'BE' not in json.dumps(result)
+    assert '::warning::podcast_identity_conflict_episode_omitted' in capsys.readouterr().out
+    packet = ep.build({'PODCAST_DIGEST': source}, {}, {}, [], [], {},
+                      as_of='2026-09-12T07:00:00+08:00',
+                      sanitize=mr._external_text)
+    assert packet['schema_version'] == ep.EVIDENCE_SCHEMA_VERSION == 45
+    assert packet['podcast_context']['identity_conflict_episodes'] == 1
+    assert len(packet['podcast_context']['episodes']) == 1
+    assert source == before

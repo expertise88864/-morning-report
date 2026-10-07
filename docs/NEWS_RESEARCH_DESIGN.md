@@ -83,25 +83,30 @@ sections, compact mobile typography, and Python investment authority remain.
   source budget retains all selected current themes, then fairly allocates
   preceding reports and records omissions instead of silently cutting URLs.
 - Offline tests and structural counters do not establish production writing
-  quality. Candidate CI and a non-sending, isolated-state pipeline dry-run must
-  still verify the delivered SHA, actual provider path, HTML and run diagnostics.
+  quality. Candidate CI and offline fixtures verify code and rendering for the
+  delivered SHA; actual provider behavior and final HTML await the next normally
+  scheduled report under the current no-paid-test policy.
   A multi-day as-of comparison must explicitly report archive gaps and requires
   human source-level review of causality, corrections and material omissions.
 - No production SMTP, official state mutation, subscription change, new runtime
   dependency, scoring coefficient change, or automatic model substitution is
   part of the development-time verification.
 
-## Full production-path canary
+## Former full production-path canary (disabled)
 
-Manual CI now runs `tools/preview_morning_report.py --kind full` with `DRY_RUN=1`.
+The following describes the historical canary, not a current test instruction.
+Since 2026-09-07, paid previews, DRY_RUN and canaries are disabled by user policy;
+do not invoke this path for validation. Manual CI formerly ran
+`tools/preview_morning_report.py --kind full` with `DRY_RUN=1`.
 Before importing the production module it copies checked-in historical state to
 a fresh temporary directory, excluding the stale manifest. It runs the existing
 production phase list with actual time/provider settings, including on Sundays;
 scheduled Sunday dispatch itself is unchanged. SMTP, state push and atomic writes
 outside the temporary state tree are explicitly blocked. Strict acceptance binds
 the fresh manifest to the same SHA, Actions run and nonce; HTML and manifest are
-uploaded as evidence. The optional local `--kind scheduled` preview follows actual
-calendar dispatch and is not evidence of weekday specialized-analysis success.
+uploaded as evidence. The former optional local `--kind scheduled` preview followed
+actual calendar dispatch; it is also disabled and cannot establish weekday
+specialized-analysis success.
 
 The first live canary exposed two acceptance gaps: the manifest writer serialized
 absent delivery as null, and the model omitted all three planned deep topics.

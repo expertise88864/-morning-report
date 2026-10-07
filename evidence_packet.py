@@ -103,7 +103,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: —— 世系是單一契約,recap/origin 同世系直接接、不同世系直接否。
 #: v33(2026-08-14 生產):universe 條目本身可引用(`universe:2317`)
 #: —— 「這檔在今天的上市清單裡」的語意單位是條目,不是它的葉子。
-EVIDENCE_SCHEMA_VERSION = 43  # Isolated Podcast opinion context, excluded from fact registry.
+EVIDENCE_SCHEMA_VERSION = 45  # Aggregate news-selection phase counts enter coverage diagnostics.
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -440,10 +440,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     _prompt_recap = packet["market"].get("ANALYSIS_RECAP")
     if isinstance(_prompt_recap, dict):
         packet["market"]["ANALYSIS_RECAP"] = _rc.prompt_recap(
-            _prompt_recap, str(packet.get("target_session_date") or ""), _prev_session)
+            _prompt_recap, str(packet.get("target_session_date") or ""), _prev_session, report_date=str(as_of or "")[:10])
     packet["yesterday_watch"] = _rc.usable_watch(
         packet["market"].get("ANALYSIS_RECAP"),
-        str(packet.get("target_session_date") or ""))
+        str(as_of or "")[:10] or str(packet.get("target_session_date") or ""))
     import event_score as _es
     import finance_editorial as _finance
     packet["finance_analysis_candidates"] = _finance.analysis_candidates(kept_news)
@@ -728,7 +728,6 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
     # 範圍的判準擋住了),而是**誤拒**:一份本來修得好的輸出,因為修補看不到
     # 它需要的證據而修不動、落到 format_only 或 legacy。
     # registry 本來就帶 `value`/`unit`/`as_of`/`source`/`quality`,所以
-    # 「哪些 ID 合法」與「這個 ID 的內容是什麼」從此是同一份資料。
     try:
         reg = evidence_meta(packet) or {}
     except Exception:                       # noqa: BLE001 - registry 壞了只給新聞
@@ -740,6 +739,7 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
         if item is not None:
             body = {"title": str(item.get("title") or "")[:120],
                     "summary": str(item.get("summary") or "")[:240],
+                    "published": str(item.get("published") or "")[:32],
                     "source": str(item.get("source_name")
                                   or item.get("source") or "")[:40],
                     "entities": [str(e) for e in (item.get("entities") or [])][:6]}

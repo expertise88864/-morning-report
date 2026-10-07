@@ -1,9 +1,8 @@
 """Route dated local feed candidates before category caps and global dedup."""
 import re
 
-from news_display_quality import relevant
+from news_display_quality import hospital_news_title, relevant
 from weekend_quality import award_key
-
 
 def region_relevant(title: str, tokens: tuple[str, ...]) -> bool:
     probe = re.sub(r"中科院|最大里|十大里", "", title)
@@ -12,15 +11,16 @@ def region_relevant(title: str, tokens: tuple[str, ...]) -> bool:
 
 def destination(label: str, title: str) -> str:
     """Narrow positive topic signals; keep specialist hospital/school coverage."""
-    if label not in {"彰化重點追蹤", "建設", "房市", "建商動態", "產業/科技", "選情"}:
+    if label not in {"彰基/中國醫", "彰化重點追蹤", "建設", "房市", "建商動態", "產業/科技", "選情"}:
         return label
-    if re.search(r"競總|造勢|後援會|民調|選情|選戰|競選|選舉", title):
+    if re.search(r"競總|造勢|後援會|民調|選情|選戰|競選|選舉|參選", title):
         return "選情"
+    if hospital_news_title(title):
+        return "彰基/中國醫"
     if label in {"建設", "產業/科技"} and re.search(r"推案|預售屋|房價|房市|住宅|建案", title):
         if not re.search(r"晶圓廠|半導體廠|廠房|產線", title):
             return "房市"
     return label
-
 
 def select(candidates: list, queries: list, per_label: int, *, is_dup, seen_entry) -> dict:
     """Keep configured display order/caps; do not let a full bucket claim duplicates."""

@@ -117,6 +117,19 @@ def _get_literals(src: str) -> set:
     return out
 
 
+_RENDERER_READERS = (
+    "analysis_render.py", "analysis_render_depth.py", "news_impact.py",
+    "news_research_context.py", "podcast_comparison.py",
+)
+
+
+def _renderer_read_literals() -> set:
+    rendered = set()
+    for name in _RENDERER_READERS:
+        rendered |= _get_literals(_read(name))
+    return rendered
+
+
 def _depth_literals() -> set:
     """加深「身分」真正提到的欄位 —— 只看那幾個函式與 `_NEWS_KEPT`,
     不是整個檔的字串(整個檔會把註解與訊息裡的欄位名也算進來,
@@ -140,9 +153,7 @@ def test_every_rendered_field_is_protected_from_deepening():
     `why_it_matters` 補進保護清單 —— 而下一個被渲染的新欄位一樣會漏。
     這裡兩邊都用 AST 掃:**渲染器讀得到的新聞/標的欄位,加深不得
     讓它由有變無**。清單漂移這次是機械檢查,不是我記得。"""
-    rendered = set()
-    for name in ("analysis_render.py", "analysis_render_depth.py", "news_research_context.py", "podcast_comparison.py"):
-        rendered |= _get_literals(_read(name))
+    rendered = _renderer_read_literals()
     news = sch.ANALYSIS_OUTPUT_SCHEMA["properties"][
         "top_news_analysis"]["items"]["properties"]
     asset = news["affected_assets"]["items"]["properties"]
@@ -175,8 +186,9 @@ def test_the_deepen_verdict_sees_the_same_advisories_that_triggered_it():
 #: 另一件事 —— 一則新聞底下排五六行標籤,使用者的原話是
 #: 「讀起來像表單不像文章」。省略是決策,不是遺漏,所以要留下理由。
 DELIBERATELY_UNRENDERED = {
-    "confirmation_signal": "2026-08-17 定案:只留失效條件那一半",
-    "why_this_magnitude": "2026-08-17 定案:量級的理由仍被驗證,不排進視線",
+    # 2026-09-06 的結構化新聞段落已顯示 confirmation_signal 與
+    # why_this_magnitude；2026-09-08 又要求保留量級理由但移除表單標籤。
+    # 兩者都由 news_impact.readout 讀取，不能繼續記成「不排進信裡」。
     "persistence": "2026-08-17 定案:同上",
     "relates_to": "橫向綜合那一段已經在講關係",
     # `source_caveat` 自 2026-09-03(全案審查 LM-4)起**會排**:單一來源/未證實的
@@ -197,9 +209,13 @@ DELIBERATELY_UNRENDERED = {
 def test_the_coverage_check_cannot_pass_on_an_empty_set():
     """**空集合不算通過。** 掃不到欄位(renderer 改寫法、schema 換路徑)
     時上面那條會真空通過 —— 這裡釘住兩邊都要有實質內容。"""
-    rendered = set()
-    for name in ("analysis_render.py", "analysis_render_depth.py", "news_research_context.py", "podcast_comparison.py"):
-        rendered |= _get_literals(_read(name))
+    rendered = _renderer_read_literals()
+    # news_impact 會讀 horizon，但 analysis_render_depth 在加入新聞段落前
+    # 依 2026-09-08 要求移除其文字；這是唯一讀取卻不呈現的欄位。
+    assert "horizon" in _get_literals(_read("news_impact.py"))
+    assert all("horizon" not in _get_literals(_read(name))
+               for name in _RENDERER_READERS if name != "news_impact.py")
+    rendered.remove("horizon")
     news = sch.ANALYSIS_OUTPUT_SCHEMA["properties"][
         "top_news_analysis"]["items"]["properties"]
     # **「至少 N 個」擋不住「又少渲染一個」**(2026-08-18):第八段改回

@@ -81,8 +81,17 @@ def memory_material(directory, now_tpe, *, sanitize) -> str:
     return "■ 本週主題與相關原始報導（非本報舊觀點；未存檔的歷史不得補造）\n" + json.dumps(themes, ensure_ascii=False)
 
 
+def material_source_urls(material: str) -> list[str]:
+    """URLs in the exact bounded source material sent to the weekly writer."""
+    themes = json.loads(material.partition("\n")[2])
+    return [row["url"] for theme in themes
+            for row in [theme["representative_source"], *theme["related_sources"]]
+            if isinstance(row, dict) and row.get("url")]
+
+
 def build(now_tpe, *, load_history_state, EVENT_TIMELINE_FILE, _external_text,
-          _DEGRADED_STEPS, _register_state_corrupt, memory_dir=None) -> str:
+          _DEGRADED_STEPS, _register_state_corrupt, memory_dir=None,
+          source_urls_out: list | None = None) -> str:
     """週日綜合的**本週回顧** prompt(2026-08-27 使用者:「做一個本週的
     完整新聞回顧(該週禮拜一到禮拜六)…消息出來後到目前為止的後續變化
     解析…與下週消息關注方向」)。
@@ -120,6 +129,8 @@ def build(now_tpe, *, load_history_state, EVENT_TIMELINE_FILE, _external_text,
         try:
             block = memory_material(memory_dir, now_tpe, sanitize=_external_text)
             if block:
+                if source_urls_out is not None:
+                    source_urls_out[:] = material_source_urls(block)
                 lines.append(block)
         except Exception as exc:
             _DEGRADED_STEPS.append("news_memory")

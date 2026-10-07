@@ -165,6 +165,35 @@ def test_the_answer_is_taken_and_the_reasoning_is_not():
     assert "repair task" not in out["text"], "思考內容混進答案了"
     assert json.loads(out["text"])["executive_summary"]
     assert out["empty_content"] is False and out["refusal"] == ""
+    assert out["answer_text_parts"] == 1
+    assert out["first_answer_part_chars"] == len(out["text"])
+
+
+def test_multiple_final_text_parts_are_counted_without_changing_adoption():
+    r = _real()
+    original = r["output"][1]["content"][0]["text"]
+    midpoint = len(original) // 2
+    r["output"][1]["content"] = [
+        {"type": "output_text", "text": original[:midpoint]},
+        {"type": "output_text", "text": original[midpoint:]},
+    ]
+    out = ds.extract_output(r)
+    assert out["answer_text_parts"] == 2
+    assert out["first_answer_part_chars"] == midpoint
+    assert out["text"] == original
+
+
+def test_first_answer_part_boundary_uses_unwrapped_text_coordinates():
+    fence = chr(96) * 3
+    first = fence + "json\n{}"
+    second = "{}\n" + fence
+    response = {"output": [{"type": "message", "phase": "final_answer",
+                            "content": [{"type": "output_text", "text": first},
+                                        {"type": "output_text", "text": second}]}]}
+    out = ds.extract_output(response)
+    assert out["text"] == "{}{}"
+    assert out["answer_text_parts"] == 2
+    assert out["first_answer_part_chars"] == 2
 
 
 def test_the_reasoning_is_reachable_for_telemetry_only():
@@ -524,12 +553,38 @@ def test_the_repair_round_is_told_every_problem():
     assert '請全部修正' in txt and '請只修正' not in txt
 
 
+def test_a_production_sized_repair_reports_every_problem():
+    """9/26 syntax repair had 55 issues; hiding the last 15 cannot converge."""
+    import llm_postprocess as lp
+    problems = [f'第 {i} 條問題' for i in range(55)]
+    txt = lp.repair_instruction(problems, [])
+    assert all(p in txt for p in problems)
+    assert '另有' not in txt
+
+
+def test_repair_diagnostics_remain_within_original_character_budget():
+    import llm_postprocess as lp
+    problems = [f'p{i:02d} ' + 'x' * 1000 for i in range(80)]
+    shown = lp.repair_diagnostic_lines(problems)
+    assert len(shown) == 80
+    assert all(row.startswith(f'p{i:02d} ') for i, row in enumerate(shown))
+    assert sum(map(len, shown)) <= 16_000
+
+
+def test_repair_keeps_long_specific_diagnostic_when_total_fits():
+    import llm_postprocess as lp
+    specific = 'n089 invalid history ' + 'x' * 330
+    shown = lp.repair_diagnostic_lines([specific] + [f'p{i}' for i in range(54)])
+    assert shown[0] == specific
+    assert len(shown) == 55
+
+
 def test_a_pathological_problem_list_discloses_the_cut():
-    """超過 40 條(驗證器迴圈失控)要說出被截了多少 —— 靜默截斷
+    """超過診斷上限時要說出被截了多少 —— 靜默截斷
     讀起來像「全部都轉告了」。"""
     import llm_postprocess as lp
-    txt = lp.repair_instruction([f'p{i}' for i in range(50)], [])
-    assert '另有 10 條' in txt
+    txt = lp.repair_instruction([f'p{i}' for i in range(100)], [])
+    assert '另有 20 條' in txt
 
 
 def test_the_repair_wiring_uses_the_shared_builder():

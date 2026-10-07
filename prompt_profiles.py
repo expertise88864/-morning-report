@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Optional
 
 import analysis_schema as _sch
@@ -44,7 +43,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 37  # Sept25: price/rate causality and US market observation date.
+DEEPSEEK_LEGACY_VERSION = 40  # Sept29: stale-quote and earnings-time wording safeguards.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -81,7 +80,7 @@ DEEPSEEK_LEGACY_VERSION = 37  # Sept25: price/rate causality and US market obser
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 70  # Sept25: price/rate causality and US market observation date.
+LUNA_XHIGH_VERSION = 72  # Sept29: earnings time and stale US quotes remain unverified.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -111,8 +110,9 @@ _NS_LINES = _ns.prompt_lines()
 _ANCHORS = _ns.anchor_sentence()
 
 LUNA_DEVELOPER_INSTRUCTIONS = f"""\
-你是一位台股與美股的晨報分析師，服務對象是長期持有台股 ETF 與半導體權值股的
-台灣投資人。你的產出不是新聞摘要，而是**把證據轉成當日可行動的判斷**。
+你是一位台股與美股的晨報分析師，服務對象是關注台股 ETF 與半導體權值股的台灣讀者；不假設其持倉。你的產出不是新聞摘要，而是**把證據轉成可驗證的市場判讀**。
+- `EVIDENCE.as_of` 是產報日，`EVIDENCE.target_session_date` 是預測交易日；兩者不同時，尚未開盤的目標交易日要寫「下個交易日」，不可稱「今天盤面」；開盤價預測不是支撐價或買賣門檻，不可從預測價推導加減碼建議。
+- 財報日曆只有日期或標「時間待確認」時，不得推定台北公布時刻，也不得斷言已影響該日期的台股盤中；先核實官方時區與換日。
 
 # 系統立場權威（優先於下方行動與結論要求）
 - `EVIDENCE.market.STANCE_PY` 是 Python 已完成的權威計分，stance.score 與
@@ -134,7 +134,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   每一個都要在 `data_gaps` 用同一個 `gap_id` 寫出來:缺什麼、
   它讓哪些結論說不準。自己另外發現的缺口填 `gap:other`。
   **跑不成的檢查不揭露,收件人會以為查過了。**
-- EVIDENCE 裡標了「不同步」的欄位(例如美股休市那天的美股數字)
+- EVIDENCE 裡標了「不同步」的欄位(例如美股報價未更新的數字；不能僅憑此推定休市)
   仍然可以談,但**高重要性的判斷不能只靠它**。
 - **「這則新聞對股市偏多」是泛論,不是分析。** 高重要性事件要用
   `affected_assets` 拆開:對 2330 是中期中度正面、對指數是即日可忽略、
@@ -518,13 +518,4 @@ def profile_meta(profile_id: str) -> dict:
     return dict(meta)
 
 
-def bundle_debug_json(bundle: dict) -> str:
-    """給 manifest 用的**不含 prompt 內文**的摘要。
-
-    prompt 本體不進 state:它有 9 萬 token,而且 legacy 那份含新聞全文。
-    這裡只留身分與尺寸 —— 要重現 prompt 用 sha 對照原始碼即可。
-    """
-    return json.dumps({k: v for k, v in bundle.items()
-                       if k not in ("developer_instructions", "user_payload",
-                                    "response_schema")},
-                      ensure_ascii=False, sort_keys=True)
+from prompt_bundle_debug import bundle_debug_json as bundle_debug_json  # noqa: E402

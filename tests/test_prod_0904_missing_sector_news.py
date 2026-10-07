@@ -106,7 +106,7 @@ def test_the_rotation_carries_a_full_table_not_just_chips():
     assert rot["strong"] and rot["weak"]                  # 既有欄位不動
 
 
-def test_the_rotation_table_renders_every_sector_with_today_context():
+def test_the_rotation_table_renders_every_sector_with_observation_date_context():
     rot = mr._sector_rotation(_snap())
     html = ru._render_sector_rotation_table(rot, _heat())
     body = html[html.index("<table"):]
@@ -114,7 +114,10 @@ def test_the_rotation_table_renders_every_sector_with_today_context():
     pos = [body.index(ind) for ind in order]
     assert pos == sorted(pos), "要依相對大盤由強到弱排"
     assert "▲" in html and "▼" in html                     # 強勢 / 轉弱標記
-    assert "35.5%" in html and "法人 -288 億" in html       # 全市場口徑的今日欄
+    assert "35.5%" in html and "法人 -288 億" in html       # 全市場口徑的最近交易日欄
+    assert "最近成交占比・法人" in html
+    assert "最近可得交易日成交占比" in html and "按該交易日成交金額選取" in html
+    assert "今日成交占比" not in html
     # The representative is chosen by traded value, not by price performance.
     assert "成交代表 2408 南亞科 -7.8%" in html
     assert "領漲 2408" not in html

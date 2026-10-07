@@ -30,6 +30,47 @@ def test_compacted_paragraphs_keep_small_inline_type_without_css():
                for p in soup.find_all("p"))
 
 
+def test_style_dictionary_does_not_repeat_inline_type_in_head():
+    style = ("font-size:13px;text-align:right;line-height:1.4;"
+             "background:#fef3c7;border:1px solid #e5e7eb;")
+    original = ("<html><head></head><body>" +
+                "".join(f'<p style="{style}">第{i}列</p>' for i in range(8)) +
+                "</body></html>")
+    compact = render.compact_inline_styles(original)
+    soup = BeautifulSoup(compact, "html.parser")
+    sheet = soup.style.string
+    assert sheet and ".s0{" in sheet
+    assert "background:#fef3c7" in sheet and "border:1px solid #e5e7eb" in sheet
+    assert all(prop not in sheet for prop in ("font-size", "text-align", "line-height"))
+    assert [p.text for p in soup.find_all("p")] == [f"第{i}列" for i in range(8)]
+    assert all(all(prop in p["style"] for prop in
+                   ("font-size:13px", "text-align:right", "line-height:1.4"))
+               for p in without_stylesheets(compact).find_all("p"))
+    assert len(compact.encode("utf-8")) < len(original.encode("utf-8"))
+
+
+def test_style_dictionary_leaves_css_string_semicolons_intact():
+    style = ("font-size:13px;text-align:right;line-height:1.4;"
+             "content:'a; b';background:#fef3c7;border:1px solid #e5e7eb;")
+    markup = ("<html><head></head><body>" +
+              "".join(f'<p style="{style}">文字{i}</p>' for i in range(8)) +
+              "</body></html>")
+    compact = render.compact_inline_styles(markup)
+    soup = BeautifulSoup(compact, "html.parser")
+    assert compact == markup
+    assert all("font-size:13px" in p.get("style", "") for p in soup.find_all("p"))
+
+
+def test_style_dictionary_does_not_parse_properties_inside_css_strings():
+    style = ("content:'a; font-size:1px; b';background:#fef3c7;"
+             "border:1px solid #e5e7eb;")
+    markup = ("<html><head></head><body>" +
+              "".join(f'<p style="{style}">文字{i}</p>' for i in range(8)) +
+              "</body></html>")
+    compact = render.compact_inline_styles(markup)
+    assert compact == markup
+
+
 def test_both_cpbl_tables_keep_small_type_and_alignment_without_css():
     raw = render._render_sports_html(standings(), html)
     markup = render.compact_inline_styles("<html><head></head><body>" + raw + "</body></html>")

@@ -72,7 +72,7 @@ def _split_style(value: str, *, protected_table: bool) -> tuple[str, str]:
     # Skip syntax whose declaration boundaries are not unambiguous.
     if protected_table:
         return value, ""
-    if any(x in value.lower() for x in ("url(", "content:", "var(", "!important")):
+    if any(x in value.lower() for x in ("url(", "content:", "var(", "!important", "/*", "*/")):
         return value, ""
     if any(x in value for x in ("&", "\\", "\"", "'")):
         return value, ""

@@ -56,6 +56,10 @@ def select(items: list[dict], forced: set, limit: int) -> tuple[list[dict], dict
     publishers. Never manufacture a story to meet an editorial quota.
     """
     kept = [x for x in items if x["source_item_id"] in forced]
+    # Closed aggregate reasons only: no title, source ID, issuer or model text.
+    # These count the *first* selection phase, not why a claim is true.
+    reasons = {"required_event": len(kept), "editorial_reserve": 0,
+               "rank_fill": 0}
     seen = {x["source_item_id"] for x in kept}
     by_bucket = {b: [x for x in items if b in buckets(x)] for b in BUCKETS}
     # Material obligations must survive selection, not be derived only afterward.
@@ -75,13 +79,17 @@ def select(items: list[dict], forced: set, limit: int) -> tuple[list[dict], dict
             if candidate is not None:
                 kept.append(candidate)
                 seen.add(candidate["source_item_id"])
+                reasons["editorial_reserve"] += 1
     for item in items:
         if len(kept) >= limit:
             break
         if item["source_item_id"] not in seen:
             kept.append(item)
             seen.add(item["source_item_id"])
+            reasons["rank_fill"] += 1
     available, selected = counts(items), counts(kept)
+    reasons["not_selected"] = len(items) - len(kept)
     return kept, {"reserve_per_bucket": RESERVE_PER_BUCKET,
                   "available_articles": available, "selected_articles": selected,
-                  "uncovered_buckets": [b for b in available if b not in selected]}
+                  "uncovered_buckets": [b for b in available if b not in selected],
+                  "selection_reason_counts": reasons}

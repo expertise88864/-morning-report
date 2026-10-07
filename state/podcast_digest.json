@@ -3,6 +3,79 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "0b071f57-45ba-47d3-9f15-2129a0c645a8",
+        "title": "EP703 | 🏈",
+        "published": "Wed, 07 Oct 2026 08:09:40 GMT",
+        "processed_at": "2026-10-07T15:27:50Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為台股5萬點不是終點，以台積電未來1至3年可推算EPS當定海神針，但供應鏈狂潮最終上去怎麼上去就怎麼下去，回檔幅度可能回到2萬多點，須預先規劃避險。",
+            "主持人提出股票核心的避險思維：同時配置缺貨漲價受惠股，以及因缺貨受害但供應鏈穩定、出貨量放大後會受惠的冷門股，讓兩族群互相對沖，現階段不採股債配置。",
+            "主持人認為大盤創新高，但很多標的未創新高甚至月新高都沒突破，應減碼或丟掉這些弱者，避免修正時跌最快；強勢股不追，把現金部位提高、降低槓桿，保留加碼彈性。",
+            "主持人分享趨勢判斷：大盤往多勝率高，不需摸頭；實務上可自己進場按關鍵價位觀察追單力道，技術指標中均線較難造假，但最終要回歸基本面，EPS成長趨勢就是股價趨勢。",
+            "主持人認為台指期轉倉常態正價差是現階段必須付出的成本，因大盤今年漲70%，這點成本不算什麼；等盤面冷卻才會再現逆價差。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人以台積電未來1至3年可推算EPS為定海神針，認為5萬點不是終點，隱含對台積電中長期正面看法。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "5萬點它應該不會是一個終點",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Nebius",
+              "code": "NBIS",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人表示自己沒這麼喜歡 Neo Cloud 相關題材，認為包括 Nebius 在內的 AI 供應鏈公司風險特別大。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "CoreWeave",
+              "code": "CRWV",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 CoreWeave 等 Neo Cloud 題材風險特別大，自己沒這麼喜歡。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人對大盤整體偏多但保持警戒：認為5萬點不是終點，但供應鏈狂潮最終會大幅回檔，回檔可能回到2萬多點；目前盤面相對容易，但很多人戒慎恐懼時多頭有機會延續。",
+          "action_view": "主持人操作思路是汰弱留強：減碼未創新高或破底標的，不追強勢股，提高現金部位、降低槓桿；同時規劃配置缺貨漲價受惠與不漲價受惠的兩類股票做對沖，保留子彈等待修正加碼。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "42301381-6003-4b54-a28d-290a3fd2e258",
         "title": "EP702 | 🐉",
         "published": "Sat, 03 Oct 2026 07:18:09 GMT",
@@ -648,27 +721,6 @@
           "notable_quote": "我覺得市場中突然間產生超級多的機會,所以有機會去期待,看有沒有東西要帶頭,然後再拉一個新一波多頭出來。"
         },
         "shown_at": "2026-08-30T00:18:35Z"
-      },
-      {
-        "guid": "00bd1c70-5749-475b-af00-28c1b8751e41",
-        "title": "EP691 | 🎂",
-        "published": "Wed, 26 Aug 2026 07:30:00 GMT",
-        "processed_at": "2026-08-26T08:55:47Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 AI 並未讓他省下時間，反而工時變長，因為需要投入更多時間了解新工具與狩獵資訊，但能否產出對應報酬仍是問號。",
-            "主持人透露自己目前有三到五成的交易是臨場發揮（improvise）：盤中看到量價訊號後，快速用 AI 研究產業與財報，確認資訊優勢後才下單。",
-            "主持人強調盤中訊號的發現仍靠自己的眼睛與產業敏感度，不靠 AI 尋找，因為 AI 缺乏市場實戰敏感度，這是他認為績效的主要來源之一。",
-            "主持人觀察到因為大家都會用 AI，市場變得更有效率，節奏加快，部分股票可能一次反應完，導致有資訊優勢者反而在回檔中受傷。",
-            "主持人認為 AI 在研究財報方面非常強大，尤其切入新產業時會直接丟給 AI 撈數字，但熟悉格式的資料用 Ctrl+F 更快，不會盲信 AI。",
-            "主持人近期想研究量化交易，試圖將「感覺」量化為可重複的策略，因為擔憂過去十幾年的主觀判斷績效可能是暫時的。"
-          ],
-          "tickers": [],
-          "market_view": "主持人觀察近期盤勢為震盪格局，沒有明確方向性，但出現反彈；同時認為市場因 AI 普及變得更有效率，節奏加快。",
-          "action_view": "主持人的操作思路是：以盤中量價與族群強弱為訊號，搭配 AI 快速研究後下單，並強調靠自身敏感度與資訊優勢，而非單純依賴 AI。",
-          "notable_quote": "市場好像有一點變得更有效率了"
-        },
-        "shown_at": "2026-08-27T00:35:06Z"
       }
     ]
   },

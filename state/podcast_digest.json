@@ -2162,6 +2162,78 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "c2f57401-d681-4276-bba3-efa0d3d3656b",
+        "title": "EP343. SPCX 借錢擴張、前沿模型可取代性、美國期中選舉現狀 | M觀點",
+        "published": "Thu, 08 Oct 2026 16:14:38 GMT",
+        "processed_at": "2026-10-08T20:24:14Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 SpaceX 借 400 億美元買 GPU 是 AI 金融工程過熱的跡象，類比 2007 年 MBS，並提出 4 個 AI 泡沫觀察指標，目前總分 7 顆星仍未達危險線，但開始提高警覺。",
+            "主持人預測 SpaceX 今年底算力達 2.6 GW，明年 6 GW，2027 年 AI 部門營收低標 1500 億美元；認為 GPU 租金至少守住每 GW 300 億美元，不會崩盤。",
+            "主持人認為 AI agent 將帶動今年 10 倍以上的算力需求，2027 年算力仍供不應求，新增算力不足以滿足需求。",
+            "主持人觀察微軟、Meta、美國國防部都減少使用最前沿模型 Anthropic Opus 5.5，認為 81% 工作任務次前沿模型就夠用，但前沿模型在贏者通吃且能力與勝負線性相關的市場仍有不可取代價值。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 AI 建設狂熱帶動 GPU 需求強勁，GPU 租金短期不會崩盤，每 GW 至少守得住 300 億美元。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人預測 SpaceX 明年算力大增、2027 年 AI 部門營收爆發，並表示自己持股仍在增加。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "像我SpaceX的持股還在增加中",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人提到微軟、Meta、國防部都削減對其前沿模型的使用，認為可能影響其上市故事。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "如果最前的模型大家突然開始發現我要少用我要少用會不會影響到Anthropy的上市的一些故事我覺得可能會有",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "主持人表示自己的投資策略是跟著市場上去也跟著市場下來，最多將現金拉高到兩三成，目前不打算因潛在 AI 泡沫提前離場，但已開始拉高警覺。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "5726508f-d13e-4bfd-80a9-b5d4b72e75fb",
         "title": "EP342. 亞馬遜賣掉 GPU、台積電想進 Terafab、Agent 特助 vs 經理 | M觀點",
         "published": "Mon, 05 Oct 2026 05:37:10 GMT",
@@ -2915,57 +2987,6 @@
           "notable_quote": "九月不升息的機率大概八成，降息0%，升息20%。"
         },
         "shown_at": "2026-09-01T00:28:37Z"
-      },
-      {
-        "guid": "9329ca8c-5f45-466e-a79b-0d8c4cf262dd",
-        "title": "EP331. OpenAI 的晶片、蘋果 M6 & M5 Ultra、Meta 的和解方案 | M觀點",
-        "published": "Thu, 27 Aug 2026 15:18:34 GMT",
-        "processed_at": "2026-08-27T19:13:56Z",
-        "digest": {
-          "summary_points": [
-            "OpenAI 的 Halapeno 晶片在 Inference X 推論測試中，每瓦處理量是 NVIDIA GB200 的 1.5~1.9 倍、延遲低 1.7~3.6 倍，主持人認為這是 ASIC 對輝達 GPU 的又一次挑戰，但 Halapeno 未必贏得了 Google TPU 與亞馬遜 Trainium，僅針對自家模型優化可能特別好。",
-            "主持人認為 OpenAI 有龐大內部需求，自研晶片可把原本每年 200 億美元 GPU 支出的效果用 100 億美元達成，開發花 30~50 億美元也划算；且模型商太強時三大公有雲可能被邊緣化，因此公有雲應支持第三方模型如 Grok。",
-            "主持人判斷輝達市占率會一直掉但不會被消滅：靠 Extreme Co-Design、FP4 精度領先對手 1~2 年、支持開源模型等策略，在 AI 晶片市場年化成長 25% 下輝達仍能成長 23~24%，因此他採取輝達與 ASIC 兩邊都壓。",
-            "蘋果 M6 是首顆台積電 2 奈米晶片，M5 Ultra 記憶體可達 512GB，主持人認為 Mac mini/Mac Studio 已能跑得動後前沿開源模型（如 GLM 5.3 Flash、DeepSeek V4 Flash、Qwen 3.8），在地端 AI 需求支撐下未來一兩年 Mac 會賣得很好。",
-            "主持人認為蘋果這代 M6 只出標準版是過渡策略：M5 與 M6 性能接近、3 奈米成熟成本低，先讓台積電 2 奈米練功，資源集中明年 M7，這樣做合理。",
-            "Meta 以 180 億美元與美國多州檢察官和解（分 10 年支付，且其中 30% 視其他平台是否同樣被要求而可能免付），主持人認為這金額對 Meta 影響不大；Meta 快速和解是因官司會揭露黑料，產品讓步更划算。",
-            "主持人評論 Meta 的青少年保護措施（每日 2 小時上限、夜間禁用、上課時段靜音、隱藏按讚數、演算法可關 AI 推薦）是「社群網路版防沈迷機制」，且家長可自行放寬，他認為這是兼顧自由與保護的合理折衷，對 Meta 長期風險可控。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為市占率會下滑但靠 co-design、軟體精度領先與開源策略仍能漂亮成長，長期持有並與 ASIC 兩邊都壓。"
-            },
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好 Mac 未來一兩年在地端 AI 需求下賣得很好，M5 Ultra/M6 定位明確。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "180 億美元分 10 年支付且 30% 有條件免付，產品限制可被家長放寬，影響有限。"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "主持人表示半導體部位壓最大是台積電，且 M6 由台積電 2 奈米代工。"
-            }
-          ],
-          "market_view": "主持人認為 AI 晶片市場未來十年年化成長約 25%，輝達市占率會下滑但仍能漂亮成長，ASIC 陣營成長更快；他對輝達長期不悲觀，也不看空整體 AI 算力需求。",
-          "action_view": "操作上採輝達與 ASIC 兩邊都壓，半導體部位以台積電、美光、SK Hynix 為主；若看好不同陣營就都買，不必二選一。",
-          "notable_quote": "輝達市占率會一直掉，但是呢，它自己還是會很漂亮的成長。"
-        },
-        "shown_at": "2026-08-27T23:56:23Z"
       }
     ]
   },

@@ -4338,6 +4338,11 @@
     "void": true,
     "reason": "corpact_coverage_gap",
     "session": "2026-09-14"
+   },
+   "20": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-07"
    }
   },
   "entry": {
@@ -4479,6 +4484,11 @@
     "void": true,
     "reason": "corpact_coverage_gap",
     "session": "2026-09-15"
+   },
+   "20": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-08"
    }
   },
   "entry": {
@@ -6278,7 +6288,7 @@
     "漲停鎖死"
    ]
   ],
-  "status": "awaiting_entry",
+  "status": "void",
   "res": {}
  },
  {
@@ -6529,7 +6539,13 @@
   ],
   "excluded": [],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-07"
+   }
+  },
   "entry": {
    "8046": 1285.0,
    "6213": 624.0,
@@ -6651,7 +6667,13 @@
   ],
   "excluded": [],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-08"
+   }
+  },
   "entry": {
    "3189": 976.0,
    "3037": 1195.0,
@@ -7081,7 +7103,12 @@
    "ledger_schema": 2,
    "git_sha": "f198539d309b"
   },
-  "git_sha": "f198539d309b"
+  "git_sha": "f198539d309b",
+  "resolved": "2026-10-09",
+  "outcome": true,
+  "actual": 49857.32,
+  "brier_model": 0.5141,
+  "brier_base": 0.1406
  },
  {
   "type": "mz_shadow",
@@ -7160,7 +7187,12 @@
    "ledger_schema": 2,
    "git_sha": "fdc1d12ecb4a"
   },
-  "git_sha": "fdc1d12ecb4a"
+  "git_sha": "fdc1d12ecb4a",
+  "resolved": "2026-10-09",
+  "outcome": false,
+  "actual": 2550.0,
+  "brier_model": 0.0801,
+  "brier_base": 0.2591
  },
  {
   "question": "taiex_open_up",
@@ -7185,7 +7217,12 @@
    "ledger_schema": 2,
    "git_sha": "fdc1d12ecb4a"
   },
-  "git_sha": "fdc1d12ecb4a"
+  "git_sha": "fdc1d12ecb4a",
+  "resolved": "2026-10-09",
+  "outcome": false,
+  "actual": 49783.06,
+  "brier_model": 0.0279,
+  "brier_base": 0.3906
  },
  {
   "type": "mz_shadow",
@@ -7210,6 +7247,10 @@
    "ledger_schema": 2,
    "git_sha": "fdc1d12ecb4a"
   },
-  "git_sha": "fdc1d12ecb4a"
+  "git_sha": "fdc1d12ecb4a",
+  "resolved": "2026-10-09",
+  "actual": 2550.0,
+  "err_raw": 22.35,
+  "err_shadow": 28.26
  }
 ]

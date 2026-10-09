@@ -505,44 +505,45 @@
  ],
  "watch_seq": 59,
  "legacy_report": {
-  "date": "2026-10-08",
+  "date": "2026-10-09",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠）：延續先進封裝擴產主線，法人上修明年資本支出至 800 億美元、CoWoS（先進封裝，把多顆晶片疊成一顆用的製程）月產能拚 22 萬片，日月光等封測廠同步擴軍 （旺得富）。產能規劃直接決定 AI 晶片出貨上限，最快明年上半年反映在 2330 稼動率，但兩數字都仍屬規劃值，量級要看實際下單。[A 級・信心:中]",
+    "statement": "AI 晶片與伺服器族群（NVIDIA、Oracle、CoreWeave 等）：CNBC 確認 OpenAI 告訴投資人 9 月底年化營收約 500 億美元，低於市場期待 （CNBC）。市場開始質疑 AI 投資的回收速度，費半與相關個股同步下殺。傳導：若雲端業者對資本支出轉為保守，CoWoS 訂單能見度會先反映。但今天沒有任何廠商宣布砍單，這裡跌的是估值不是訂單。量級：這則新聞沒有訂單或金額數字，對 2330 的實際影響幅度判斷不出來。[B 級・信心:中-低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiakFVX3lxTE8zUzBfTkJOUmxyenlESEt2YU1QY1NzWGRNYzRnbUxfUFp1aDV6emdCbmVvRUlQcy0yMWdEZkZ5WkoyeXpDMnpTdjVMcEVQT0k0LWlxZkFKWDBwVVllR2JadDhia0V5UkdsUGc?oc=5"
+     "https://www.cnbc.com/2026/10/08/open-ai-revenue-nvidia-oracle-coreweave.html"
     ]
    },
    {
-    "statement": "台積電（2330）與 Terafab 傳聞降溫：馬斯克在 X 明確「我們會建造並營運這座晶圓廠」，台積電至多分租部分產能 （鉅亨）。這降低市場原本預期的台積電主導利多，但同時排除英特爾 14A 遭全數取代的極端情境。無金額與持股結構揭露，這則消息說不出量級，屬題材降溫、基本面不變。[A 級・信心:中]",
+    "statement": "記憶體族群（美光、SK 海力士、南亞科）：三星第三季財測營收 195 兆韓元、營業利益 107.4 兆韓元，雙雙低於市場預期 （鉅亨），美光與 SK 海力士應聲下跌 4.8% 與 5%。但台股南亞科昨日逆勢上漲 3.5%，且 DRAM 合約價傳再漲兩成 （財訊）。兩邊方向相反，原因是三星反映的是供給端成長動能放緩，台廠反映的是報價上漲。傳導：南亞科與 2330 的直接關聯低，這條線對台股的意義在於記憶體漲價是否傳導到模組與伺服器成本。量級：合約價漲幅是市場傳聞價，未經公司證實。[B 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6624420"
+     "https://news.cnyes.com/news/id/6626547",
+     "https://news.google.com/rss/articles/CBMie0FVX3lxTE80OF8tS1VDNmtmN1p1QWo2SnByeGRDaUd2SHZGWWpYZEFyeHJsbnZXZU9sOHQxUDhhUG5pX0lCZjBHZndqTjFHbnhsN0c1UmZEeTFrc0o5dmFTQkpZN1dfWG9taHkySXUtVEJTNnhSbGVUcExIc3RvWkdqTQ?oc=5"
     ]
    },
    {
-    "statement": "Wolfspeed（碳化矽功率半導體廠）：獲美國國防部 15 億美元、30 年期融資承諾，條件是必須在美生產碳化矽與其他功率元件，盤後飆近 24% （鉅亨）。碳化矽用於資料中心與電動車高電壓應用，與台積電成熟製程無直接競爭關係，也非台股直接受惠者。真正值得注意的是美國政府以股權認購權證換取本土材料產能這套模式，若複製到更多材料別，長期會排擠海外供應鏈。[A 級・信心:中]",
+    "statement": "AI 模型競賽（OpenRouter 官方定價與 Polymarket 市場盤）：10 月 7 日上架的 Claude Haiku 5.5，每百萬 tokens 輸入 0.1 美元、輸出 0.5 美元，僅為 GPT-6.1 Sol Pro 的十分之一 （OpenRouter）。同時 GPT-5.6 降價後，OpenAI 的企業支出已直追 Anthropic （鉅亨）。傳導：推理單價下滑會擴大總 token 用量，對算力是數量效應而不是打擊。Polymarket 年底最佳模型市場把 Google 與 Anthropic 各訂在 42%，OpenAI 僅 6%，顯示市場認為領先群已經收斂。量級：定價是硬數據，但對 CoWoS 訂單的傳導要等實際算力採購數字。[A 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6624445"
+     "https://news.google.com/rss/articles/CBMiS0FVX3lxTE9IbTREWHptQjVnSWVuNlJFejNnU3MyaXJpSmJ3bHBtS1pfOUJaT3gxcFNiSnlWRGVqMkhYM1FIUGg0X2RubDhMaXdKcw?oc=5"
     ]
    },
    {
-    "statement": "Microsoft（MSFT）× NVIDIA（NVDA）：推出 2,599 美元的 Surface Laptop Ultra，內建 NVDA AI 晶片 （CNBC），並強調能讓 AI 代理減少依賴雲端。但同篇報導點出記憶體價格飆升推高硬體成本 （CNBC），這與華為稱每支手機因記憶體多出逾 200 美元成本 （經濟日報） 是同一條線——記憶體漲價傳導到品牌廠終端售價，短線對 DRAM 與模組廠偏多，但對終端組裝廠毛利率是壓力。台灣供應鏈受惠的是南亞科、華邦電這類記憶體製造，廣達、緯創組裝端反而要先吸收成本。[B 級・信心:中]",
+    "statement": "日月光投控（3711，全球最大封測廠）等封測三廠：一週內公告 192 億元廠務與設備採購，其中日月光占 167 億元 （鏈新聞）；子公司矽品與日月光半導體也連日公告廠務工程 （MOPS）。這與格羅方德協議指向同一件事：先進封裝產能吃緊，供應鏈正在同步擴軍。量級：廠務採購不等於新增產能上線，實際貢獻要看裝機與投產時程，中間可能差好幾季。[A 級・信心:中]",
     "source_urls": [
-     "https://www.cnbc.com/2026/10/07/microsoft-starts-taking-preorders-for-2599-surface-laptop-ultra.html"
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9ack5oLXZta1VqQkM4WnYyM093R3M2cjZCd2tzLWR4d1Rqby1lbTlaSGR3SUN2MWFrQktYRjBNVUR0YzJnZEJESi1MNjJpc0x1VHFueTNkN3g?oc=5"
     ]
    },
    {
-    "statement": "聯電（2303，全球第三大晶圓代工廠）：9 月合併營收 253.5 億元、年增 27.22%，改寫單月歷史新高；第三季營收 742.39 億元、季增 8%，為歷史次高 （經濟日報）。成熟製程需求回溫、加上記憶體漲價帶動周邊 IC 訂單，這是與台積電先進製程主線互補的一條支線。單月年增 27% 對照上半年幅度偏強，但這則新聞說不出對明年第一季的延續性。[A 級・信心:中]",
+    "statement": "世芯-KY（3661，客製化 ASIC 設計服務商）：市場將其上修 2026 年 EPS 預估，由 129.37 元提高至 141.59 元 （CMoney）；昨日股價上漲 3.7%，三大法人合計買超 850 張。傳導：客製化晶片是 2330 先進製程與 CoWoS 的另一條需求線，客戶排除輝達體系時更容易看到它的動能。量級：這是賣方預估值，不等於訂單已經到手，要看後續月營收是否跟上。[B 級・信心:中-低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiYEFVX3lxTE1wNlk5M1Exa2ROZE9yT2ozaGpqQ1ZqenM1bFlyNDlCMGR6ak93d2RSMHBPTnZRUFNWRENhcS1Damh1SlRQZ3FMVUc2OWx0bGhNaE5pamIwVEk1eXBBdloyONIBYEFVX3lxTE1wNlk5M1Exa2ROZE9yT2ozaGpqQ1ZqenM1bFlyNDlCMGR6ak93d2RSMHBPTnZRUFNWRENhcS1Damh1SlRQZ3FMVUc2OWx0bGhNaE5pamIwVEk1eXBBdloyOA?oc=5"
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBMSnBqMXRfZ3ZuMmZOVHpmS2JfcGhsLWFLaENjbTJQTHBJdVpxWFRYUGJWblgxb3kzNkZzTG81Rlo0eEVsRlRrb2dVU1BOLUNmaVJkNkFKVWI?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】國銀海外獲利首破 800 億：全體國銀海外分行獲利首度突破 800 億元，中信銀以近 200 億元居冠 （卡優新聞）。海外分行獲利是淨息差（銀行放款利率減存款利率）與海外利差擴張的落後指標，中信金（大型金控，銀行＋證券＋人壽）的海外獲利占比高，這條線可支撐其金控整體獲利基期。但 800 億是全體國銀合計，個別銀行受惠比例未揭露，量級要等中信金季報。[B 級・信心:中]",
+    "statement": "緯創（3231，AI 伺服器與筆電代工廠）：第三季營收首度突破 1 兆元 （工商時報），9 月營收年增 166.5%。傳導：AI 伺服器組裝拉貨最終仍受 GPU 供給與封裝產能節奏限制，代工端的營收成長不完全等於獲利成長。量級：單季破兆是規模事實，但毛利率未揭露，對獲利的貢獻還無法判斷。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1zR3Z5dGZoQnBLaXpubmxjUWdZNEtLZ2tGYTJqSWxRVkhnY3Y2dTZtNGlkZTlpSU9WNnRMV1JtYTFTZEx0cXVFUENzVWpYdEhFMTVtVVFOdFVDdw?oc=5"
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE95bzh3Z1ZvUTNnTGItNzJPT3NieHplRENlOUpuUjktVkZvN0d4QlNoWmJndkJwZC1FRm5JU05UOVQ5VGI1VXVOeWJVOFFGLVBsWlhwVDMxc2dfMkVnWnQ0?oc=5"
     ]
    }
   ]

@@ -414,8 +414,8 @@ def test_detect_us_holiday_memorial_day():
 
 def test_detect_us_holiday_normal_tuesday():
     import datetime as dt
-    quotes = {"QQQ": {"date": "2026-05-25"}}    # Mon
-    today = dt.date(2026, 5, 26)                 # Tue
+    quotes = {"QQQ": {"date": "2026-06-01"}}    # An actual open Monday, not Memorial Day.
+    today = dt.date(2026, 6, 2)
     out = mr.detect_us_holiday(quotes, today)
     assert out["detected"] is False
 
@@ -431,8 +431,9 @@ def test_detect_us_holiday_monday_normal():
 
 def test_detect_us_holiday_no_qqq_date():
     import datetime as dt
-    out = mr.detect_us_holiday({"QQQ": {}}, dt.date(2026, 5, 26))
+    out = mr.detect_us_holiday({"QQQ": {}}, dt.date(2026, 10, 9))
     assert out["detected"] is False
+    assert out["stale"] is True
 
 
 def test_us_holiday_triggers_red_alert():

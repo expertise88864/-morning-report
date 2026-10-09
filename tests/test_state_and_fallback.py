@@ -531,6 +531,30 @@ def test_state_schema_contract_has_a_daily_trigger():
         "契約排在晨報之前 —— 失敗會擋掉當天的信,違反「晨報不可斷」"
 
 
+def _is_manifest_node(node) -> bool:
+    """Recognize only the shared manifest's established injection paths."""
+    import ast
+
+    if isinstance(node, ast.Name):
+        return node.id in ("_RUN_MANIFEST", "manifest")
+    if not isinstance(node, ast.Attribute) or node.attr != "data":
+        return False
+    owner = node.value
+    return ((isinstance(owner, ast.Name) and owner.id == "self")
+            or (isinstance(owner, ast.Attribute) and owner.attr == "recorder"
+                and isinstance(owner.value, ast.Name) and owner.value.id == "ctx"))
+
+
+def test_manifest_detector_recognizes_recorder_without_matching_unrelated_data():
+    import ast
+
+    for expression in ("_RUN_MANIFEST", "manifest", "self.data", "ctx.recorder.data"):
+        assert _is_manifest_node(ast.parse(expression, mode="eval").body), expression
+    for expression in ("data", "ctx.data", "other.recorder.data", "ctx.other.data",
+                       "ctx.recorder.metadata", "ctx.recorder.data.child"):
+        assert not _is_manifest_node(ast.parse(expression, mode="eval").body), expression
+
+
 def test_every_manifest_key_written_is_also_persisted():
     """**寫進 `_RUN_MANIFEST` 的診斷鍵,都必須真的落地。**
 
@@ -560,19 +584,6 @@ def test_every_manifest_key_written_is_also_persisted():
     files = sorted(f for f in root.glob("*.py") if not f.name.startswith("_"))
     assert len(files) > 10, f"掃到的模組太少({len(files)}),掃描器可能壞了"
     trees = [ast.parse(f.read_text(encoding="utf-8")) for f in files]
-    def _is_manifest(node) -> bool:
-        """`_RUN_MANIFEST` 或 recorder 內部的 `self.data` —— 兩者是同一個 dict。
-
-        只認前者的話,搬進 `ManifestRecorder` 的鍵就會從守衛的視野消失
-        (第十輪 P1-12 搬走 `state_writes` 時立刻發生)。
-        """
-        if isinstance(node, ast.Name):
-            # `manifest` 是**注入時的約定名稱**(見 `experiment_record`):
-            # 葉模組不碰模組全域,manifest 由呼叫端交進來。
-            return node.id in ("_RUN_MANIFEST", "manifest")
-        return (isinstance(node, ast.Attribute) and node.attr == "data"
-                and isinstance(node.value, ast.Name) and node.value.id == "self")
-
     written = set()
     for node in [n for t in trees for n in ast.walk(t)]:
         targets = []
@@ -581,14 +592,14 @@ def test_every_manifest_key_written_is_also_persisted():
         elif isinstance(node, ast.AugAssign):
             targets = [node.target]
         for t in targets:
-            if (isinstance(t, ast.Subscript) and _is_manifest(t.value)
+            if (isinstance(t, ast.Subscript) and _is_manifest_node(t.value)
                     and isinstance(t.slice, ast.Constant)
                     and isinstance(t.slice.value, str)):
                 written.add(t.slice.value)
         if (isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "setdefault"
-                and _is_manifest(node.func.value)
+                and _is_manifest_node(node.func.value)
                 and node.args
                 and isinstance(node.args[0], ast.Constant)
                 and isinstance(node.args[0].value, str)):

@@ -32,6 +32,7 @@
 from __future__ import annotations
 
 from typing import Optional
+import us_market_session as _us_session
 
 #: 美股單日「顯著」漲跌(%)。QQQ/SOX 的日常波動約 ±0.5%,0.8% 以上
 #: 才值得當成一個方向訊號拿去與本地籌碼對照。**本模組自訂,無 repo 出處。**
@@ -108,7 +109,7 @@ def detect(quotes: Optional[dict]) -> dict:
     macro = q.get("MACRO") if isinstance(q.get("MACRO"), dict) else {}
     # **美股休市 = 美股欄位是上一個交易日的延續值。** 沿用 11 維立場分
     # 用的同一個判準(`detected` 欄位,不是 truthiness —— 平日它也是 dict)。
-    us_stale = bool((q.get("US_HOLIDAY") or {}).get("detected"))
+    us_stale = _us_session.is_stale(q.get("US_HOLIDAY")) or bool((q.get("QQQ") or {}).get("stale"))
     run, gone, items = [], [], []
 
     def _add(tid, kind, topic, left, right, relationship, *, us_side=False):
@@ -120,7 +121,7 @@ def detect(quotes: Optional[dict]) -> dict:
             # **stale 不丟掉,只標不可用** —— 丟掉的話「沒有張力」與
             # 「張力不可用」在下游長得一模一樣。
             "usable_for_inference": not stale,
-            "caveat": ("美股昨日休市,該側為上一個交易日的延續值,"
+            "caveat": (f"{_us_session.status_text(q.get('US_HOLIDAY')) if _us_session.is_stale(q.get('US_HOLIDAY')) else '個別美股行情未更新'},該側新鮮度未通過,"
                        "與本地當日訊號不同步" if stale else ""),
         })
 

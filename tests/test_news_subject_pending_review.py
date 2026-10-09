@@ -34,3 +34,14 @@ def test_plain_now_does_not_turn_fed_story_into_tech_stock():
     card = {"source_item_id": "n1", "why_it_matters": "Interest rate outlook"}
     packet = {"news": [{"source_item_id": "n1", "title": "Fed officials say now is not the time to cut"}]}
     assert not article_is_tech(card, packet)
+
+
+@pytest.mark.parametrize("entity,title", [
+    ("SK Hynix", "SK Hynix to spend $38 billion on two new chip plants"),
+    ("SK hynix", "SK hynix expands chip production"),
+    ("Samsung Electronics", "Samsung Electronics reports earnings"),
+    ("Samsung Electronics", "SAMSUNG ELECTRONICS reports earnings"),
+])
+def test_mixed_case_company_names_are_not_ticker_words(entity, title):
+    packet = {"news": [{"source_item_id": "n1", "title": title, "entities": [entity]}]}
+    assert news_subject({"source_item_id": "n1"}, packet)["name"] == entity

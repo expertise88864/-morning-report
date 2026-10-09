@@ -734,7 +734,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (43, "909a272112fc50b4"),  # Separate opinion context.
+    "evidence_schema_version":  (44, "909a272112fc50b4"),  # New US stale fields covered by session integration tests.
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -813,7 +813,7 @@ _FROZEN = {
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (37, "d30aa4c0cc411e0f"),  # Sept25 combined prose/provenance.
+    "fallback_profile_version":  (38, "f80b3301bc07d86e"),  # US quote lag is not a holiday.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -858,7 +858,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (39, "0a63b6aaa5537093"),  # Collected-source links; explicit ticker identity.
+    "renderer_version":       (40, "0a63b6aaa5537093"),  # Mixed-case headings covered by test_news_subject_pending_review.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

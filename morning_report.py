@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Optional
 
 import llm_telemetry as _lt
+import us_market_session as _us_session
 from macro_observation_time import (observed_market_date as _market_date,
                                     yield_curve_source_note as _curve_source_note,
                                     yield_curve_dates_comparable as _curve_dates_comparable)
@@ -1257,7 +1258,7 @@ def require_quote(quotes: dict, key: str) -> Optional[dict]:
     q = quotes.get(key)
     if not isinstance(q, dict):
         return None
-    if q.get("error") or q.get("close") is None or q.get("prev_close") is None:
+    if q.get("error") or q.get("stale") or q.get("close") is None or q.get("prev_close") is None:
         return None
     return q
 
@@ -2701,7 +2702,7 @@ def _world_evidence_signals(macro: dict, spy: Optional[dict] = None) -> list:
     純函式(吃 macro dict + SPY 報價),供渲染層在超門檻時掛一則提醒——顯示層啟發式、
     僅供參考,不進計分。閾值刻意保守(避免天天觸發破壞「異常才出現」的用意)。"""
     macro = macro or {}
-    spy = spy or {}
+    spy = {} if (spy or {}).get("stale") else (spy or {})
     out: list[str] = []
 
     def _num(d, k):
@@ -7718,7 +7719,7 @@ def _market_regime(quotes: dict) -> str:
     breadth = _safe_number((quotes.get("BREADTH") or {}).get("advance_ratio"), 50.0)
     sox = _safe_number((macro.get("SOX") or {}).get("change_pct"), 0.0)
     severe_absorption = bool((quotes.get("ABSORPTION") or {}).get("severe"))   # 系統性風險早警(ΔAR_z≥2)
-    if (quotes.get("US_HOLIDAY") or {}).get("detected"):
+    if _us_session.is_stale(quotes.get("US_HOLIDAY")):
         return "stale_us"
     if vix >= 25 or breadth <= 35 or sox <= -3 or severe_absorption:
         return "risk_off"
@@ -9859,45 +9860,8 @@ def _foreign_top10_total(snapshot: list[dict]) -> Optional[float]:
 
 
 def detect_us_holiday(quotes: dict, today_tpe_date: dt.date) -> dict:
-    """
-    偵測昨日美股是否休市（美國國定假日如 Memorial Day、Labor Day、Christmas...）。
-
-    邏輯：今日 TW 為 D 日,「最近 US 交易日」期望:
-      - TW Mon  → 期望 Fri (3 天前)
-      - TW Sat  → 期望 Fri (1 天前)
-      - TW Tue-Fri → 期望 昨天 (1 天前)
-    若 QQQ 的 date 比期望日更早 → 中間有 US 假日(美股停市),所有美股資料為延續值。
-
-    回傳 {"detected": bool, "actual_date", "expected_date", "gap_days", "weekday"}
-    """
-    qqq = quotes.get("QQQ", {})
-    qqq_date_str = (qqq.get("date") if isinstance(qqq, dict) else None) or ""
-    if not qqq_date_str:
-        return {"detected": False}
-    try:
-        actual_date = dt.datetime.strptime(qqq_date_str, "%Y-%m-%d").date()
-    except ValueError:
-        return {"detected": False}
-
-    wd = today_tpe_date.weekday()    # 0=Mon, 6=Sun
-    if wd == 0:                                       # Mon TPE
-        expected = today_tpe_date - dt.timedelta(days=3)
-    elif wd == 5:                                     # Sat TPE
-        expected = today_tpe_date - dt.timedelta(days=1)
-    elif wd == 6:                                     # Sun TPE (理論上 workflow 不跑,留著保險)
-        expected = today_tpe_date - dt.timedelta(days=2)
-    else:                                             # Tue-Fri TPE
-        expected = today_tpe_date - dt.timedelta(days=1)
-
-    detected = actual_date < expected
-    weekday_zh = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"][actual_date.weekday()]
-    return {
-        "detected": detected,
-        "actual_date": qqq_date_str,
-        "actual_weekday": weekday_zh,
-        "expected_date": expected.strftime("%Y-%m-%d"),
-        "gap_days": (expected - actual_date).days,
-    }
+    """Separate confirmed exchange holidays from delayed quote observations."""
+    return _us_session.detect(quotes, today_tpe_date)
 
 
 def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi: dict) -> list[dict]:
@@ -9909,13 +9873,13 @@ def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi:
 
     # 0. 美股昨日休市（最優先警告 —— 影響所有美股訊號的可信度）
     us_hol = quotes.get("US_HOLIDAY") or {}
-    if us_hol.get("detected"):
+    if _us_session.is_stale(us_hol):
         alerts.append({
             "level": "red",
-            "title": "美股昨日休市（國定假日）",
+            "title": ("美股昨日休市（國定假日）" if us_hol.get("detected") else "美股行情資料未更新"),
             "detail": (f"美股最新收盤為 {us_hol.get('actual_date')}（{us_hol.get('actual_weekday')}），"
-                       f"與今日台股相隔 {us_hol.get('gap_days', 0)} 個工作天 → 所有美股相關訊號"
-                       f"(QQQ/TSM/SOX/VIX/NQ/ES/WTI/黃金/10Y) 為**延續值,非昨日新資訊**。"
+                       f"預期行情日 {us_hol.get('expected_session_date') or us_hol.get('expected_date')}，"
+                       f"{_us_session.status_text(us_hol)}。美股相關訊號新鮮度未通過，"
                        f"立場評分時應將這些維度視為 stale 給 0 分,只信任 TW 本地訊號(夜盤、外資、市場廣度)。"
                        f"預測模型仍會跑但信心應降至低。"),
         })
@@ -11848,16 +11812,16 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
     # 美股休市旗標 block（單獨拉出來,確保 LLM 一定看到、必須套用 R13）
     us_hol = quotes.get("US_HOLIDAY") or {}
-    if us_hol.get("detected"):
+    if _us_session.is_stale(us_hol):
         us_holiday_block = (
-            f"⚠ 美股昨日休市偵測:US 最新收盤 = {us_hol.get('actual_date')}"
+            f"⚠ {_us_session.status_text(us_hol)}:US 最新收盤 = {us_hol.get('actual_date')}"
             f"({us_hol.get('actual_weekday')}),距今日預期 US 交易日"
-            f" {us_hol.get('expected_date')} 相差 {us_hol.get('gap_days')} 個工作天。\n"
-            f"→ 所有美股資料(QQQ/TSM/SOX/VIX/VIX9D/NQ/ES/WTI/黃金/10Y/DXY/13W)為**延續值**,不是昨日新資訊。\n"
+            f" {us_hol.get('expected_session_date') or us_hol.get('expected_date')}。\n"
+            f"→ 美股訊號新鮮度未通過；資料延遲不可寫成休市。\n"
             f"→ 立場評分中所有美股維度**必須給 0 分並標 [stale]**(見 R13 鐵律),信心等級強制改「低」。"
         )
     else:
-        us_holiday_block = "（美股昨日正常開盤,所有美股資料為昨日新資訊。）"
+        us_holiday_block = "（美股基準行情日期驗證通過；其他來源仍須依各自日期與資料品質判讀。）"
 
     # 資料品質 block（讓 LLM 知道哪些來源失敗，禁止據此腦補）
     dq_list = quotes.get("DATA_QUALITY", []) or []
@@ -11938,7 +11902,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         hl = f"，高/低 {hi}/{lo}" if hi and lo else ""
         vol = d.get("volume")
         vol_s = f"，量 {vol:,}" if isinstance(vol, (int, float)) and vol else ""
-        return f"{d['close']} 美元（{pct_s}）{hl}{vol_s}"
+        return f"{d['close']} 美元（{pct_s}）{hl}{vol_s}" + (f" [資料未更新，觀測日 {d.get('date')}；不可推論今日]" if d.get("stale") else "")
 
     _qqq_s = _fmt_us_quote(quotes.get("QQQ"))
     _tsm_s = _fmt_us_quote(quotes.get("TSM"))
@@ -16968,30 +16932,9 @@ def _poly_divergence_note(rows: list[dict], stance: Optional[dict]) -> str:
 
 def _render_poly_pulse_html(rows: list[dict],
                             stance: Optional[dict] = None) -> str:
-    """預測市場快照卡(Polymarket):Fed 決議/最佳 AI 模型/台積電財報 beat 等。
-    顯示用情報,不入任何模型;無資料回空(卡片自動缺席)。"""
-    if not rows:
-        return ""
-    import html as _h
-    lines = "".join(
-        f"<tr><td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;"
-        f"font-size:13px;color:#0f172a;font-weight:700;'>{_h.escape(str(r.get('label', '')))}</td>"
-        f"<td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;"
-        f"font-size:13px;color:#b45309;font-weight:700;'>{_h.escape(str(r.get('detail', '')))}</td></tr>"
-        for r in rows)
-    div_note = _poly_divergence_note(rows, stance)
-    div_html = (f"<div style='padding:8px 14px;font-size:12px;color:#b45309;"
-                f"background:#fffbeb;border-top:1px solid #fde68a;font-weight:700;'>"
-                f"{_h.escape(div_note)}</div>") if div_note else ""
-    return (
-        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
-        'background:#fefce8;border-left:5px solid #ca8a04;border-radius:4px;">'
-        '預測市場觀點(Polymarket)</h2>'
-        '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;">'
-        '<table style="width:100%;border-collapse:collapse;">' + lines + "</table>"
-        # 2026-08-18 使用者要求移除註腳:「不納入計分」這件事在每天都一樣的
-        # 情況下只是佔版面;段名已寫明是預測市場觀點。
-        + div_html + "</div>")
+    """Display-only prediction market card; rendering lives with the election extension."""
+    from polymarket_local_elections import render_pulse
+    return render_pulse(rows, _poly_divergence_note(rows, stance) if rows else "")
 
 
 #: 11 維的顯示名、**與計分器同一條資料路徑的讀值器**、顯示格式、以及
@@ -17186,7 +17129,7 @@ def _compute_stance_score(quotes: dict) -> dict:
 
     # US_HOLIDAY 平日也是 dict({"detected": False, …}),必須看 detected 欄位——
     # truthiness 判斷會天天誤判休市、美股八維全 0(Codex review 批#14)
-    stale_us = bool((quotes.get("US_HOLIDAY") or {}).get("detected"))
+    stale_us = _us_session.is_stale(quotes.get("US_HOLIDAY"))
     components: dict[str, int] = {}
     missing: list[str] = []
     flags: list[str] = []
@@ -17202,7 +17145,7 @@ def _compute_stance_score(quotes: dict) -> dict:
             return
         components[name] = 1 if pos(value) else (-1 if neg(value) else 0)
 
-    q = (quotes.get("QQQ") or {}).get("change_pct")
+    q = None if (quotes.get("QQQ") or {}).get("stale") else (quotes.get("QQQ") or {}).get("change_pct")
     put("qqq", q if isinstance(q, (int, float)) else None,
         lambda v: v > 0.5, lambda v: v < -0.5, us_dim=True)
     put("sox", _m("SOX"), lambda v: v > 1, lambda v: v < -1, us_dim=True)
@@ -17224,7 +17167,7 @@ def _compute_stance_score(quotes: dict) -> dict:
                 flags.append("vix_conflict")
             else:
                 components["vix"] = 1 if bull else (-1 if bear else 0)
-    t = (quotes.get("TSM") or {}).get("change_pct")
+    t = None if (quotes.get("TSM") or {}).get("stale") else (quotes.get("TSM") or {}).get("change_pct")
     put("tsm_adr", t if isinstance(t, (int, float)) else None,
         lambda v: v > 0, lambda v: v < 0, us_dim=True)
     f10 = quotes.get("FOREIGN_TOP10_TOTAL")
@@ -17274,6 +17217,7 @@ def _compute_stance_score(quotes: dict) -> dict:
                  else ("偏空" if total <= -threshold else "中性"))
     return {"total": total, "label": label, "components": components,
             "missing": missing, "flags": flags, "stale_us": stale_us,
+            "us_status": _us_session.status_text(quotes.get("US_HOLIDAY")),
             "coverage": coverage, "abstain": abstain,
             "mode": mode, "rule_version": 2}
 
@@ -18921,7 +18865,7 @@ def _format_stance_py_block(sp: dict, attrib: Optional[dict] = None) -> str:
         miss_zh = [zh for k, zh in _STANCE_DIM_ZH if k in sp["missing"]]
         notes.append("缺資料(記0):" + "、".join(miss_zh))
     if sp.get("stale_us"):
-        notes.append("美股休市:八個美股維度 stale 記 0(taiwan_only 模式,門檻 ±2)")
+        notes.append((sp.get("us_status") or "美股訊號新鮮度未通過") + ":八個美股維度 stale 記 0(taiwan_only 模式,門檻 ±2)")
     if sp.get("flags"):
         notes.append("旗標:" + "、".join(str(f) for f in sp["flags"]))
     if notes:
@@ -19929,7 +19873,7 @@ def _poly_binary_detail(key: str, markets: list, now_tpe: dt.datetime,
 
 
 def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
-    """總經/地緣/事件預測市場快照 → [{"label","detail"}...]。逐項失敗略過,全失敗回空。
+    """總經/地緣/事件預測市場快照 → [{"label","detail"}...]。無資料不列出。
     每列附「vs 前一日」變化(↑↓pp)與 24h 量低標記(地基批#4,顯示用不入模型)。"""
     now_tpe = now_tpe or dt.datetime.now(TPE)
     now_utc = now_tpe.astimezone(dt.timezone.utc)
@@ -20019,6 +19963,8 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                          "detail": _poly_prob_line(ai_rows)})
     except Exception as e:
         print(f"[poly] 年度 AI 模型盤略過: {e}", file=sys.stderr)
+    from polymarket_local_elections import fetch_rows
+    rows.extend(fetch_rows(_poly_events, _poly_search_events, now_tpe))
     # 「當月最佳 AI 模型」盤已依使用者要求移除(批#26:月底盤常一家獨大 97%,
     # 資訊量低);年底盤保留。
     return rows
@@ -21815,6 +21761,9 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
     rows = []
     for key, label in (("QQQ", "QQQ"), ("TSM", "TSM"), ("SPY", "SPY")):
         q = (quotes or {}).get(key) or {}
+        if isinstance(q, dict) and q.get("stale"):
+            rows.append(f"<tr><td>{_h.escape(label)}</td><td colspan='2'>{_h.escape(_us_session.stale_quote_label(q))}</td></tr>")
+            continue
         if isinstance(q, dict) and q.get("close") is not None:
             rows.append(f"<tr><td>{_h.escape(label)}</td><td>{_num(q.get('close'))}</td>"
                         f"<td>{_num(q.get('change_pct'))}%</td></tr>")
@@ -22047,6 +21996,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # ===== 1. 行情表格 =====
     def fmt_quote(q: dict) -> str:
         # 手機版 3 欄(標的/收盤/漲跌):iPhone Gmail 寬度 ~390px,高低與量在小螢幕沒人看
+        if q.get("stale"):
+            return (f"<tr><td>{_htmllib.escape(str(q.get('ticker', '')))}</td>"
+                    f"<td colspan='2'>{_htmllib.escape(_us_session.stale_quote_label(q))}</td></tr>")
         if "error" in q:
             return (f"<tr><td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>{q['ticker']}</td>"
                     f"<td colspan='2' style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#dc2626'>{q['error']}</td></tr>")
@@ -23842,9 +23794,9 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
 
     # 美股是否休市（國定假日)
     us_hol = quotes.get("US_HOLIDAY") or {}
-    if us_hol.get("detected"):
+    if _us_session.is_stale(us_hol):
         add("美股交易日", "fallback",
-            f"昨日休市:最新收盤 {us_hol.get('actual_date')}({us_hol.get('actual_weekday')}),"
+            f"{_us_session.status_text(us_hol)}:最新收盤 {us_hol.get('actual_date')}({us_hol.get('actual_weekday')}),"
             f"延續值非新資訊")
     elif us_hol:
         add("美股交易日", "ok",
@@ -23855,8 +23807,8 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         q = quotes.get(key, {})
         if isinstance(q, dict) and not q.get("error") and q.get("close") is not None:
             # 若休市,降級標 fallback 提醒「資料延續但非新」
-            status = "fallback" if us_hol.get("detected") else "ok"
-            note = "(休市,延續值)" if us_hol.get("detected") else ""
+            status = "fallback" if _us_session.is_stale(us_hol) or q.get("stale") else "ok"
+            note = f"({_us_session.status_text(us_hol)})" if _us_session.is_stale(us_hol) else ("(行情未更新)" if q.get("stale") else "")
             add(f"美股行情 {label}", status,
                 f"{q.get('date','')} 收 {q.get('close')}{note}")
         else:
@@ -24627,6 +24579,7 @@ def _phase_market_and_macro(ctx) -> None:
         "TSM": fetch_quote("TSM"),
         "SPY": fetch_quote("SPY"),
     }
+    _us_session.refresh_quotes(quotes, now_tpe, lambda ticker: fetch_quote(ticker, period="5d"))
     usdtwd_today, usdtwd_prev = fetch_usdtwd_pair()
     quotes["USDTWD"] = usdtwd_today
     quotes["USDTWD_prev"] = usdtwd_prev
@@ -24924,7 +24877,7 @@ def _phase_taifex_and_chips(ctx) -> None:
                 taiex_hist.loc[last_idx, "Close"] = twse_taiex_close
         macro = quotes.get("MACRO", {}) or {}
         sox_pct = (macro.get("SOX", {}) or {}).get("change_pct")
-        tsm_pct = quotes["TSM"].get("change_pct")
+        tsm_pct = _us_session.usable_value(quotes.get("TSM"), "change_pct")
         night_pct = night_txf.get("night_pct")
         taiex_pred = calc_taiex_prediction(
             taiex_hist, sox_pct, tsm_pct, night_pct,
@@ -25426,6 +25379,7 @@ def _phase_events_and_models(ctx) -> None:
     quotes["MODEL_MONITORING"] = build_model_monitoring_report(
         quotes["MODEL_WALK_FORWARD"])
     quotes["US_HOLIDAY"] = detect_us_holiday(quotes, now_tpe.date())
+    ctx.recorder.data["us_market_session"] = dict(quotes["US_HOLIDAY"])
     try:
         # Absorption Ratio 系統性風險早警(借鏡 Kritzman-Li);失敗不影響晨報
         quotes["ABSORPTION"] = calc_absorption_ratio(model_history)
@@ -25461,8 +25415,8 @@ def _phase_events_and_models(ctx) -> None:
           f"{'：' + calibration['note'] if calibration.get('note') else ''}）")
 
     # 6.55 美股休市偵測:已在上方模型區塊算過 quotes["US_HOLIDAY"],這裡僅記錄,不重複計算
-    if quotes.get("US_HOLIDAY", {}).get("detected"):
-        print(f"[main] ⚠ 偵測到美股休市:QQQ.date={quotes['US_HOLIDAY'].get('actual_date')} "
+    if _us_session.is_stale(quotes.get("US_HOLIDAY")):
+        print(f"[main] {_us_session.status_text(quotes['US_HOLIDAY'])}:QQQ.date={quotes['US_HOLIDAY'].get('actual_date')} "
               f"(預期 {quotes['US_HOLIDAY'].get('expected_date')},gap={quotes['US_HOLIDAY'].get('gap_days')} 天)",
               file=sys.stderr)
 
@@ -25784,7 +25738,7 @@ def _phase_llm_analysis(ctx) -> None:
         print(f"[stance-py] Python 11 維 = {_sp['total']:+d}({_sp['label']})"
               f" components={_sp['components']}"
               + (f" missing={_sp['missing']}" if _sp['missing'] else "")
-              + (" [美股休市 stale]" if _sp['stale_us'] else ""))
+              + (" [美股訊號 stale]" if _sp['stale_us'] else ""))
     except Exception as e:
         print(f"[stance-py] 計算失敗(立場未知,不影響晨報): {e}", file=sys.stderr)
         quotes["STANCE_PY"] = {}
@@ -25899,9 +25853,9 @@ def _phase_render(ctx) -> Optional[int]:
             "generated_at": now_tpe.isoformat(),
             "target_session_date": target_session_date,
             "weekday": now_tpe.strftime("%a"),
-            "qqq_pct": quotes["QQQ"].get("change_pct"),
-            "tsm_pct": quotes["TSM"].get("change_pct"),
-            "spy_pct": quotes["SPY"].get("change_pct"),
+            "qqq_pct": _us_session.usable_value(quotes.get("QQQ"), "change_pct"),
+            "tsm_pct": _us_session.usable_value(quotes.get("TSM"), "change_pct"),
+            "spy_pct": _us_session.usable_value(quotes.get("SPY"), "change_pct"),
             "vix": (quotes.get("MACRO", {}) or {}).get("VIX", {}).get("close"),
             "sox_pct": (quotes.get("MACRO", {}) or {}).get("SOX", {}).get("change_pct"),
             "usdtwd": quotes.get("USDTWD"),
@@ -26036,7 +25990,7 @@ def _phase_deliver(ctx) -> int:
     _write_run_manifest(now_tpe, report_kind=_rq.MORNING_REPORT)
 
     # 10. 寄信
-    subject = f"📈 美股晨報 {report_date} | QQQ {quotes['QQQ'].get('change_pct','?')}% / TSM {quotes['TSM'].get('change_pct','?')}%"
+    subject = f"📈 美股晨報 {report_date} | QQQ {_us_session.subject_change(quotes['QQQ'])} / TSM {_us_session.subject_change(quotes['TSM'])}"
     # SMTP 成功後才把本次 Podcast 標成已顯示並 push 所有 state。
     # 若 state push 失敗，下次最多重複寄送，不會發生未寄出卻永久消失。
     deliver_report(

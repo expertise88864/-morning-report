@@ -36,7 +36,7 @@ import llm_telemetry as _lt
 #: exdiv_preview),所以改成「一處宣告 + AST 掃描比對」,不再靠人記得改兩個地方。
 #: 新增鍵時只要加進這裡;忘了加,測試會指名是哪一個鍵。
 DIAGNOSTIC_KEYS = (
-    "model_history_days", "d1_samples", "d1_ready", "stance_dual",
+    "model_history_days", "d1_samples", "d1_ready", "stance_dual", "us_market_session",
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
     "corporate_actions", "chips", "llm",

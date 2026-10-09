@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 from typing import Optional
+import us_market_session as _us_session
 
 #: 欄位名後綴 → 單位。**只放看得出來的**,推不出來留空。
 _UNIT_SUFFIX = (
@@ -170,7 +171,7 @@ def registry(packet: Optional[dict]) -> dict:
     as_of = str(pk.get("as_of") or "")
     session = str(pk.get("target_session_date") or "")
     market = pk.get("market") if isinstance(pk.get("market"), dict) else {}
-    us_stale = bool((market.get("US_HOLIDAY") or {}).get("detected"))
+    us_stale = _us_session.is_stale(market.get("US_HOLIDAY"))
     out: dict = {}
 
     # 1. 新聞。**每則都有自己的時間與來源** —— 那正是 market 側缺的東西。
@@ -254,14 +255,14 @@ def registry(packet: Optional[dict]) -> dict:
     for block, tree in market.items():
         if block in _NON_EVIDENCE:
             continue
-        stale = us_stale and block in _US_BLOCKS
+        stale = (us_stale and block in _US_BLOCKS) or (block in {"QQQ", "TSM", "SPY"} and isinstance(tree, dict) and bool(tree.get("stale")))
         out.update(_entries(tree, f"market:{block}", {
             "as_of": as_of, "as_of_precision": "packet",
             "observed_session": (tw_session if block in _TW_SESSION_BLOCKS else ""),
             "session": session, "source": f"quotes.{block}",
             "quality": "stale" if stale else "ok",
             "usable_for_inference": not stale,
-            "why_unusable": ("美股昨日休市,本區塊是上一個交易日的延續值,"
+            "why_unusable": (f"{_us_session.status_text(market.get('US_HOLIDAY')) if us_stale else '個別美股行情未更新'},本區塊新鮮度未通過,"
                              "與今天的本地訊號不同步" if stale else ""),
         }))
         # 區塊本身也要引用得到(談「今天沒有這塊資料」時需要)

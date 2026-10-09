@@ -151,7 +151,7 @@ def news_subject(n: dict, packet=None) -> dict:
         if scope != "equity" or status == "invalid":
             continue
         disp = _cp.display_name(c) if _cp else c
-        aliases = (disp,) if disp.casefold() != c.casefold() else ()
+        aliases = ((disp,) if disp.casefold() != c.casefold() else ()) + ((c,) if not c.isupper() else ())
         explicit = (c.upper(), disp) if disp != c else (c.upper(),)
         ticker_named = any(re.search(r"(?<![A-Za-z0-9])" + re.escape(name) + r"(?![A-Za-z0-9])", title) for name in explicit)
         if not ticker_named and not _ne.mentions_entity(title, c, {c: aliases}):

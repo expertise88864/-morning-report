@@ -10,6 +10,50 @@ provider quota; the provider reported a 20:30 Asia/Taipei reset. A follow-up
 heartbeat is scheduled. The repairs themselves still require independent review.
 Neither local tests nor this document constitute that approval or remote CI.
 
+## Reset-Time Follow-Up
+
+After the quota reset, `9ebbcf84691f782d310f3632facf38b31fb8dc3b` received
+an exact-commit APPROVE from `claude-opus-5-5` / high / read-only. The historical
+43-commit inventory is now 20 APPROVE and 23 REQUEST_CHANGES; the latter verdicts
+remain unchanged. Its genuine receipt permits a separate empty audit commit.
+
+Repair commit `a20edc398b0054be4b2c1722b4172f69f56d014c` received REQUEST_CHANGES:
+mixed-case foreign company names (SK Hynix, Samsung Electronics) lost their
+heading subject when the English common-word ticker safeguard was tightened.
+The main agent reproduced and confirmed the finding against the registry and
+heading matcher. The follow-up restores case-insensitive full company aliases,
+retains the uppercase-only ticker safeguard, adds explicit regressions, and
+bumps renderer version 40. It does not mark the original repair as approved.
+
+The same delivery adds the user's eight requested local election offices as
+display-only Polymarket rows. Direct Gamma HTTP checks on 2026-10-09 verified
+six independent markets; searches did not establish Changhua City or Douliu
+City markets. Those cities remain distinct from their counties and get daily
+bounded discovery. The user subsequently requested that missing data be omitted,
+so only verified rows are displayed; operational failures still emit warnings.
+Candidate placeholders
+are excluded; named prices retain liquidity warnings and source links.
+No election price is passed to a stock model or used as a polling estimate.
+
+## Incorrect US Holiday Diagnosis
+
+The user reported repeated false US closure claims. Archived emails on October
+2, 3, 8 and 9 contain that statement. Production run `37868359282`, job
+`113620395017`, explicitly logged QQQ date `2026-10-07` against expected
+`2026-10-08`, then set all eight US stance components to zero. The official NYSE
+calendar confirms October 8 was not a scheduled closure. Inspection found no
+later QQQ date rewrite: the daily-history fetch accepted its first nonempty
+filtered series, while `detect_us_holiday` incorrectly equated stale data with
+a holiday. Raw provider responses were not retained, so the precise upstream
+cause (provider lag, caching, or a filtered invalid row) is not established.
+
+The repair separates verified exchange closure from quote staleness, refreshes
+lagging US quotes before any dependent forecast, and rejects unrecovered stale
+quotes from price estimation. Scoring, evidence, alerts and writing rules use
+the same freshness result without calling a data delay a holiday. Calendar
+coverage is explicit and checked against the NYSE website by HTTP on October 9;
+unsupported dates degrade visibly. No coefficients or scoring weights change.
+
 ## Findings Reconciled Against Current Code
 
 Historical REQUEST_CHANGES verdicts remain unchanged. A later repair does not

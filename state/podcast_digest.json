@@ -1465,6 +1465,79 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmuzo1n0400dx01wx7n6ram7l",
+        "title": "569.【財經時事放大鏡】V3 x VCSEL 二三代半導體元件新需求",
+        "published": "Thu, 08 Oct 2026 23:02:14 GMT",
+        "processed_at": "2026-10-09T00:30:21Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為中國限制鍺、石英出口對台灣半導體影響有限，因高階石英原料與加工多掌握在日本、美國業者手中，新聞誇大了衝擊。",
+            "主持人指出光通訊從 800G 升級到 1.6T/3.2T 時，舊技術 VCSEL 魔改（波長 1060nm、背發光）可能成為磷化銦短缺的低成本替代方案，但通訊協定尚未建立、發酵時間較慢。",
+            "主持人判斷第三代半導體（GaN/SiC）低谷已過，GaN 打入資料中心保護元件、SiC 進入固態變壓器與衛星等新應用，由車用擴大到 AI 基礎建設；股價先動、獲利可能明年下半年轉正。",
+            "主持人提到 Starlink V3 衛星讓 GaN、射頻、PCB 等內含價值明顯增加，TrendForce 估衛星市場 2025/2026/2028 年成長 19%/16%/19%，衛星族群相對低、值得關注。",
+            "主持人對台股 5 萬點表示「每天都怕」，但也怕沒賺到；AI 資本支出佔 GDP 3.6% 為史上最高，高利率反映高報酬，策略是摸著石頭過河並穩住抗通膨資產。"
+          ],
+          "tickers": [
+            {
+              "name": "宏捷科",
+              "code": "8086",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人提到其漲停並宣布轉型光通訊/VCSEL 與 AI 伺服器；但通訊協定未定，屬早期押注，方向偏多但高風險。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "就押嘛。大家就押嘛。因為你說真的。東西出來的便宜。好用。欸。Why not。對。就是這樣。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "漢磊",
+              "code": "3707",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "第三代半導體打入資料中心保護元件，上半年相關營收年增 88%、佔比 40%，主持人認為低谷已過。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "漢雷就是講。Gam這個不錯。對。碳化器。V型反轉。這是他自己搶的。符合搶的。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "嘉晶",
+              "code": "3016",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "與漢磊同屬三五族／碳化矽供應鏈，主持人視為第三代半導體復甦受惠股。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "除了。嘉靖以外就是漢雷嘛。那當然這兩個算同一家啦。好不好。",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為台股漲幅驚人、AI 資本支出佔 GDP 3.6% 為史上最高，高利率反映高報酬，但仍需警惕高利率與資產配置，整體仍偏多但心態上「每天都怕」。",
+          "action_view": "操作上建議摸著石頭過河，不要因怕崩盤而空手，同時穩住抗通膨資產；產業上優先關注發酵速度較快的 GaN 電力元件，其次碳化矽，VCSEL 與相關設備更晚。",
+          "notable_quote": "摸著石頭過河啊各位。",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "摸著石頭過河啊各位。"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "cmupkyfa900er01vchbdo5hje",
         "title": "568.【財經時事放大鏡】高利率 vs 台股冷暖 x 德州不止炸雞",
         "published": "Thu, 01 Oct 2026 23:02:08 GMT",
@@ -2082,79 +2155,6 @@
           "notable_quote": "Eyes on the road, Hands on the wheel."
         },
         "shown_at": "2026-08-27T00:35:06Z"
-      },
-      {
-        "guid": "cmt5x0axz1lzy01wy01wpaxv8",
-        "title": "545.【達人聊投資】13F 報告投資機會: AI 和非 AI",
-        "published": "Sun, 23 Aug 2026 23:02:09 GMT",
-        "processed_at": "2026-08-24T03:52:08Z",
-        "digest": {
-          "summary_points": [
-            "Frank 觀察整體基金經理人偏減碼大型 AI 巨頭，轉向估值合理標的，認為這是六月底市場狂熱後的正常調整。",
-            "AI 線中 Frank 認為電力與設備最有機會，電力是真正的瓶頸且估值相對合理；但 AI 已研究透，現在靠抓敘事情緒，所有板塊都被點過，難猜下一個。",
-            "非AI高品質股（交易所、平台、郵輪）因資金被AI抽走而估值回落至20倍左右，與大盤相當，Frank 認為品質好且增速高，AI衝擊被高估。",
-            "中國ADR估值極低但宏觀環境差、監管風險、金融中介有問題；拼多多太便宜但利潤率難回高峰，富途監管 overshoot 但中國業務僅20%，有資金押注。",
-            "交易所中 Frank 偏好 ICE，因永續期貨影響有限（股權期貨僅5%營收），AI 對高風險資料收入影響僅5-8%，專有資料需求甚至可能增加。",
-            "S&P Global 的 AI 取代擔憂過度（分析部門僅7%營收），評級業務因債務到期高峰、數據中心發債和 M&A 復甦而強勁，估值17-18倍合理。",
-            "平台股 Uber 因 AV 疑慮下跌，但純 AV 車隊經濟不可行，平台價值仍在；Booking 因歐洲精品酒店結構，去中介化難，信心高於 Expedia。",
-            "郵輪股 CCL 財務改善（淨債務/EBITDA 年底降至3以下）但 PE 僅12倍，未 re-rate，相對於 RCL 的17倍有估值空間。"
-          ],
-          "tickers": [
-            {
-              "name": "Intercontinental Exchange",
-              "code": "ICE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Frank 認為永續期貨對其股權期貨收入影響有限，資料收入高風險部分僅5-8%，專有資料需求甚至可能增加。"
-            },
-            {
-              "name": "S&P Global",
-              "code": "SPGI",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "AI 取代擔憂過度，評級業務強勁，估值17-18倍合理。"
-            },
-            {
-              "name": "Uber",
-              "code": "UBER",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因 AV 疑慮下跌，但純 AV 車隊經濟不可行，平台價值仍在，有錯差空間。"
-            },
-            {
-              "name": "Booking Holdings",
-              "code": "BKNG",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "歐洲精品酒店多，去中介化難，信心高於 Expedia。"
-            },
-            {
-              "name": "Carnival Corp",
-              "code": "CCL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財務改善但 PE 僅12倍，未 re-rate，相對於 RCL 有估值空間。"
-            },
-            {
-              "name": "Pinduoduo",
-              "code": "PDD",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "估值極低但業務有問題，利潤率難回高峰，Frank 自己未出手。"
-            },
-            {
-              "name": "Futu Holdings",
-              "code": "FUTU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "監管 overshoot 但中國業務僅20%，港美合法，有人押注，但 Frank 不確定。"
-            }
-          ],
-          "market_view": "Frank 認為市場經歷六月底狂熱後七月修正，基金經理人減碼大型 AI，整體氛圍謹慎；但他個人看好估值合理的非AI高品質股。",
-          "action_view": "Frank 美股以非AI高品質股為主（排除 Visa/Mastercard），AI 動能部位放台股因有量化輔助與停損機制；台股傳產切入半導體因去中化是機會。",
-          "notable_quote": "我覺得 AI 這邊不是你有沒有研究透，反而是你去抓那個情緒的 pattern，下一次大家會把重心放在那個板塊。"
-        },
-        "shown_at": "2026-08-24T22:40:29Z"
       }
     ]
   },

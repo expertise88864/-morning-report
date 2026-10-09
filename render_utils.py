@@ -127,7 +127,7 @@ _SECTION_NUMBER = re.compile(
     r"^[〇零一二三四五六七八九十百]+(?:之[〇零一二三四五六七八九十百]+)?、")
 
 
-def _md_to_html(text: str) -> str:
+def _md_to_html(text: str, *, trusted_urls=()) -> str:
     """
     自製 minimal Markdown → HTML 轉譯器，只用 stdlib `re`，不依賴第三方套件。
     支援：H1-H4 標題、**粗體**、*斜體*、- 與 * 列表、> 引用、空行分段。
@@ -254,10 +254,13 @@ def _md_to_html(text: str) -> str:
 
     # Convert escaped Markdown links before source-label dimming. Keep long RSS
     # destinations in href, not in visible text that expands narrow email tables.
+    allowed_urls = set(trusted_urls)
     def link(m):
         clean_url = safe_href(html_lib.unescape(m.group(2)), max_chars=2048)
         if not clean_url:
             return m.group(0)
+        if clean_url not in allowed_urls:
+            return m.group(1)
         return (f'<a href="{html_lib.escape(clean_url, quote=True)}" '
                 'style="color:#94a3b8;font-size:12px;font-weight:400;'
                 f'font-variant-numeric:normal;">{m.group(1)}</a>')
@@ -1747,6 +1750,8 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
         return html
     counts: dict = {}
     for tag in _TAG_RE.findall(html):
+        if re.search(r"\sclass\s*=", tag, re.I):
+            continue  # Do not introduce duplicate class attributes.
         for _q, value in _STYLE_ATTR_RE.findall(tag):
             counts[value] = counts.get(value, 0) + 1
     # 依「省下的位元組」排序才會先處理長而重複的;同分時用字串排序保證輸出穩定
@@ -1758,15 +1763,23 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
                        if p.partition(":")[0].strip().lower() in
                        {"font-size", "text-align", "line-height"})
 
-    worth = sorted((v for v, n in counts.items() if n >= min_uses
-                    and n * (len(v) - len(retained(v)) - 18) > len(v) + 12),
+    worth = sorted((v for v, n in counts.items() if n >= min_uses),
                    key=lambda v: (-len(v) * counts[v], v))
-    if not worth:
+    names = {}
+    for value in worth:
+        cls = f"s{len(names)}"
+        fallback = retained(value)
+        size = len(value.encode("utf-8"))
+        extra = len(fallback.encode("utf-8")) + 9 if fallback else 0
+        if counts[value] * (size - len(cls) - extra) > size + len(cls) + 3:
+            names[value] = cls
+    if not names:
         return html
-    names = {value: f"s{i}" for i, value in enumerate(worth)}
 
     def _rewrite(m):
         tag = m.group(0)
+        if re.search(r"\sclass\s*=", tag, re.I):
+            return tag
 
         def _sub(sm):
             value = sm.group(2)
@@ -1779,5 +1792,6 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
         return _STYLE_ATTR_RE.sub(_sub, tag)
 
     out = _TAG_RE.sub(_rewrite, html)
-    sheet = "".join(f".{names[v]}{{{v}}}" for v in worth)
-    return out.replace("</head>", f"<style>{sheet}</style></head>", 1)
+    sheet = "".join(f".{names[v]}{{{v}}}" for v in names)
+    out = out.replace("</head>", f"<style>{sheet}</style></head>", 1)
+    return out if len(out.encode("utf-8")) < len(html.encode("utf-8")) else html

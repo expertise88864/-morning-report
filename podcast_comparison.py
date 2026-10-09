@@ -54,45 +54,47 @@ def row_problems(row, packet):
         return ['Podcast 比對新聞不是物件']
     rows = row.get('podcast_comparisons', [])
     if not isinstance(rows, list):
-        return ['podcast_comparisons 必須是陣列']
-    errors = ['podcast_comparisons 超過兩項'] if len(rows) > 2 else []
+        return [f"{row.get('source_item_id')} podcast_comparisons 必須是陣列"]
+    errors = [f"{row.get('source_item_id')} podcast_comparisons 超過兩項"] if len(rows) > 2 else []
     news, opinions = _sources(row, packet)
     seen = set()
-    for item in rows:
+    def problem(message):
+        errors.append(f"{row.get('source_item_id')} podcast_comparisons[{index}] {oid} {message}")
+    for index, item in enumerate(rows):
+        oid = item.get('opinion_id') if isinstance(item, dict) else ''
         if not isinstance(item, dict):
-            errors.append('Podcast 比對不是物件')
+            problem('Podcast 比對不是物件')
             continue
-        oid = item.get('opinion_id')
         if not isinstance(oid, str) or oid not in opinions or news is None:
-            errors.append('Podcast 比對引用不存在的節目或新聞')
+            problem('Podcast 比對引用不存在的節目或新聞')
             continue
         if oid in seen:
-            errors.append('Podcast 比對重複引用同一集')
+            problem('Podcast 比對重複引用同一集')
         seen.add(oid)
         opinion = opinions[oid]
         points = opinion.get('summary_points')
         parts = (points if isinstance(points, list) else []) + [opinion.get('market_view', '')]
         parts += [t.get('reason', '') for t in _rows(opinion.get('tickers'))]
         if not _excerpt(item.get('opinion_excerpt'), parts):
-            errors.append('Podcast 摘錄不在該集可用意見內')
+            problem('Podcast 摘錄不在該集可用意見內')
         if not _excerpt(item.get('news_excerpt'), [news.get(k, '') for k in ('title', 'summary', 'fulltext')]):
-            errors.append('Podcast 比對新聞摘錄不在本則來源內')
+            problem('Podcast 比對新聞摘錄不在本則來源內')
         if item.get('relation') not in RELATIONS:
-            errors.append('Podcast 比對關係無效')
+            problem('Podcast 比對關係無效')
         if mismatch(item.get('opinion_excerpt'), item.get('news_excerpt')):
-            errors.append('Podcast 摘錄主題不同；移除這項對照或選擇同一命題，不以不可比標籤保留無關內容')
+            problem('Podcast 摘錄主題不同；移除這項對照或選擇同一命題，不以不可比標籤保留無關內容')
         for key in ('comparison', 'open_question'):
             value = item.get(key)
             if not isinstance(value, str) or not value.strip():
-                errors.append(f'Podcast 比對缺少 {key}')
+                problem(f'Podcast 比對缺少 {key}')
     return errors
 
 
 def validate(obj, packet):
     errors = []
-    for row in _rows(obj.get('top_news_analysis')):
+    for index, row in enumerate(_rows(obj.get('top_news_analysis'))):
         if isinstance(row, dict):
-            errors.extend(row_problems(row, packet))
+            errors.extend(f'top_news_analysis[{index}] {e}' for e in row_problems(row, packet))
     # Opinion IDs are deliberately never added to the fact registry.
     def walk(node, path=()):
         if isinstance(node, dict):

@@ -5,7 +5,7 @@ from subject_identity import aliases_of
 # Names already present in the fixed query catalog but absent from identity
 # registries. Ingress-only: do not change persistent identity or scoring aliases.
 _CATALOG_NAMES = {"NFLX": ("網飛",), "COST": ("好市多",), "CSCO": ("思科",),
-                  "ADBE": ("奧多比",), "3661": ("世芯-KY",), "6446": ("藥華藥",)}
+                  "ADBE": ("奧多比",), "3661": ("世芯-KY", "世芯"), "6446": ("藥華藥",)}
 # Distinct companies whose names contain the shorter tracked issuer name.
 _OTHER_COMPANY_NAMES = {"2603": ("長榮航空", "長榮航"), "AMD": ("美超微",)}
 

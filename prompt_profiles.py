@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 37  # Sept25: price/rate causality and US market obser
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 70  # Sept25: price/rate causality and US market observation date.
+LUNA_XHIGH_VERSION = 71  # Negative watch results require attributable evidence IDs.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -189,7 +189,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   1–4 週的預期會一直帶著，直到觸發、前提消失或到期）——
   每一條都要在 `watch_review` 逐條回顧(用它的 `watch_id`):
   預期的情況今天出現了(triggered,**要引今天的證據 ID**)、
-  未達（not_triggered，引實際值）、資料不足（insufficient_evidence，說缺什麼）、部分成立（partially_triggered，引成立部分的證據並說待驗證條件）、或前提已消失
+  未達（not_triggered，引實際值及今天的 evidence_ids，無證據改用 insufficient_evidence）、資料不足（insufficient_evidence，說缺什麼）、部分成立（partially_triggered，引成立部分的證據並說待驗證條件）、或前提已消失
   （no_longer_relevant，**同樣要引今天的證據** —— 關掉一條預期是
   今天的事實判斷，不是一句話）。未達、資料不足與部分成立都會**留到明天繼續追**，
   所以不必為了保住它而在今天的 `watch_triggers` 再寫一次同樣的話；

@@ -39,6 +39,8 @@ def test_agreeing_conclusion_retains_real_context(monkeypatch, summary, capsys):
     ("偏空風險升高，偏多仍可全面加碼。", "中性"),
     ("外部訊號：偏多，但本報立場：偏空，立即全面加碼。", "中性"),
     ("全面加碼。", ""),
+    ("外部定價偏多，立即全面加碼。", "中性"),
+    ("本地籌碼偏空，宜減碼。", "中性"),
 ])
 def test_real_conflicts_still_remove_directional_advice(monkeypatch, summary, label, capsys):
     html = render(monkeypatch, summary, label)
@@ -47,6 +49,14 @@ def test_real_conflicts_still_remove_directional_advice(monkeypatch, summary, la
     assert "保留新聞內容" in html
     assert "依系統計分" not in html
     assert "分析師觀點為" not in html
+    assert "宜減碼" not in html
+
+
+@pytest.mark.parametrize('authority', ['偏多', '偏空', '中性'])
+def test_fallback_never_invents_stance_continuity(authority):
+    from conclusion_guard import fallback
+    assert f'今日系統立場：{authority}' in fallback(authority)
+    assert '維持' not in fallback(authority)
 
 
 def test_signal_only_without_any_report_stance_is_not_verified(monkeypatch, capsys):

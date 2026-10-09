@@ -16,11 +16,12 @@ def repair_problems(obj, visible_news, full_context):
     if visible_news is None:
         return []
     errors = []
-    for row in _rows((obj or {}).get('top_news_analysis')):
+    for index, row in enumerate(_rows((obj or {}).get('top_news_analysis'))):
         if row.get('source_item_id') in visible_news:
             continue
         if signatures({'top_news_analysis': [row]}) - full_context:
-            errors.append('新增或改寫 Podcast 對照，但本輪看不到該新聞；只能保留完整脈絡下的原對照')
+            errors.append(f"top_news_analysis[{index}] {row.get('source_item_id')} "
+                          '新增或改寫 Podcast 對照，但本輪看不到該新聞；只能保留完整脈絡下的原對照')
     return errors
 
 

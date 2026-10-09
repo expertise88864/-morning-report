@@ -9,7 +9,7 @@ from backtest_data import prospective_selection as study
 
 def test_registered_implementation_and_future_window_are_fixed():
     source = (Path(__file__).resolve().parents[1]
-              / 'backtest_data/selection_research.py').read_bytes()
+              / 'backtest_data/selection_research_frozen.py').read_bytes()
     got = study.run([], source, today=date(2026, 9, 19))
     assert got['decision'] == 'NO_REPLACEMENT'
     assert got['as_of_date'] == '2026-09-19'
@@ -23,6 +23,21 @@ def test_registered_implementation_and_future_window_are_fixed():
 def test_changed_formula_cannot_reuse_registered_protocol():
     with pytest.raises(ValueError, match='implementation changed'):
         study.run([], b'different formula', today=date(2026, 9, 19))
+
+
+def test_frozen_protocol_with_missing_selected_prices_cannot_report_improvement():
+    from test_selection_research import history
+    days = history()
+    for i, day in enumerate(days):
+        day['session_date'] = str(date(2026, 9, 21) + timedelta(days=i))
+        day['generated_at'] = day['session_date'] + 'T18:00:00+08:00'
+    days[1]['stocks']['0'].pop('open')
+    source = (Path(__file__).resolve().parents[1]
+              / 'backtest_data/selection_research_frozen.py').read_bytes()
+    got = study.run(days, source, today=date(2026, 10, 21))
+    assert got['implementation_sha256'] == study.IMPLEMENTATION_SHA256
+    assert all(row['summary'] is None and row['comparison_status'] == 'invalid_selected_price_coverage'
+               for row in got['evaluations'])
 
 
 def test_explicit_window_does_not_shift_as_history_grows():

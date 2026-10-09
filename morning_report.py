@@ -99,6 +99,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _extract_stance_section,
     _parse_llm_event_json,
 )
+from source_link_policy import collected_urls
 from render_utils import (  # A5-Step2/B2:渲染純函式已抽出,re-export 保相容
     _render_sector_rotation_table,
     compact_inline_styles,
@@ -21840,7 +21841,7 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
         (_RUN_MANIFEST.get("llm") or {}).pop("analysis_cap", None)
         while "render:analysis_capped" in _DEGRADED_STEPS:
             _DEGRADED_STEPS.remove("render:analysis_capped")
-    body = _md_to_html(analysis) if analysis else "<p>（分析未產出）</p>"
+    body = _md_to_html(analysis, trusted_urls=collected_urls(quotes)) if analysis else "<p>（分析未產出）</p>"
     notice = _fwg.reader_notice((_RUN_MANIFEST.get("llm") or {}).get("watch_due_at_start") or {},
                                 _analysis_origin())
     body = notice + body
@@ -22913,7 +22914,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                             f"</td></tr>")
 
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式;過長先在段落邊界截斷） =====
-    analysis_html = _md_to_html(analysis_for_render)
+    analysis_html = _md_to_html(analysis_for_render, trusted_urls=collected_urls(quotes))
     analysis_html = _style_analysis_html(analysis_html)
     analysis_html = _dim_source_citations(analysis_html)   # 批#27:來源淡化,信心標保留
     # 2026-08-20 使用者:來源引用(鉅亨/CNBC…)可點 → 保守比對新聞語料,

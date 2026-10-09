@@ -2,8 +2,10 @@
 import re
 from html.parser import HTMLParser
 
-_BLOCKS = {'br', 'p', 'div', 'li', 'blockquote', 'table', 'tr', 'td', 'th',
-           'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
+_BLOCKS = {'br', 'p', 'div', 'li', 'blockquote', 'table', 'tr',
+           'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'article', 'section',
+           'address', 'aside', 'dd', 'dl', 'dt', 'fieldset', 'figcaption', 'figure',
+           'footer', 'form', 'header', 'hr', 'main', 'nav', 'pre', 'details', 'summary'}
 
 class _Visible(HTMLParser):
     def __init__(self):
@@ -15,6 +17,8 @@ class _Visible(HTMLParser):
         if tag in ('script', 'style'):
             self.hidden += 1
         if not self.hidden and tag in _BLOCKS:
+            self.parts.append('\n')
+        if not self.hidden and tag in ('td', 'th'):
             self.parts.append(' ')
         if not self.hidden and tag == 'img':
             self.parts.append(' ' + str(dict(attrs).get('alt') or '') + ' ')
@@ -22,7 +26,9 @@ class _Visible(HTMLParser):
     def handle_endtag(self, tag):
         if tag in ('script', 'style'):
             self.hidden = max(0, self.hidden - 1)
-        if not self.hidden and (tag in _BLOCKS or tag == 'a'):
+        if not self.hidden and tag in _BLOCKS:
+            self.parts.append('\n')
+        elif not self.hidden and tag in ('a', 'td', 'th'):
             self.parts.append(' ')
 
     def handle_data(self, data):
@@ -40,7 +46,9 @@ def visible_summary(value: str) -> str:
     parser = _Visible()
     parser.feed(text)
     parser.close()
-    return re.sub(r'\s+', ' ', ''.join(parser.parts)).strip()
+    visible = re.sub(r'[^\S\n]+', ' ', ''.join(parser.parts))
+    visible = re.sub(r' *\n *', '\n', visible)
+    return re.sub(r'\n{3,}', '\n\n', visible).strip()
 
 
 def entry_summary(entry: dict, limit: int = 800) -> str:

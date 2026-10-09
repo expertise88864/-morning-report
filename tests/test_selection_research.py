@@ -41,12 +41,32 @@ def test_top_quartile_boundary(n, first):
     assert picks(stocks, True) == [str(j) for j in range(first, first+3)]
 
 
-def test_missing_selected_price_drops_pair_not_loser():
+def test_missing_selected_price_invalidates_aggregate_comparison():
     days = history()
     days[19]['stocks']['0'].pop('open')
     result = evaluate(days, 2, 10, 30, 10)
     assert result['skipped']['missing_selected_price_paired_cohort'] == 1
     assert all(r['signal_date'] != days[18]['session_date'] for r in result['cohorts'])
+    assert result['cohorts']  # Complete survivors must not become the aggregate.
+    assert result['comparison_status'] == 'invalid_selected_price_coverage'
+    assert result['summary'] is None and result['folds'] == {}
+
+
+def test_candidate_outside_top_five_leaving_universe_invalidates_twenty_day_study():
+    days = []
+    for i in range(65):
+        d = str(date(2026, 1, 1) + timedelta(days=i))
+        stocks = {str(j): {'ranking_score': 100-j, 'liquidity_eligible': True,
+                          'pct_5d': 20-j, 'ma20_dist_pct': 20-j,
+                          'open': 100, 'close': 110} for j in range(16)}
+        if i >= 8:
+            stocks.pop('6')
+        days.append({'session_date': d, 'generated_at': d+'T18:00:00+08:00', 'stocks': stocks})
+    assert '6' in picks(days[0]['stocks'], True)
+    result = evaluate(days, 20, 15, 30, 10, start_date=days[0]['session_date'])
+    assert result['skipped']['missing_selected_price_paired_cohort'] == 1
+    assert result['cohorts'] and result['summary'] is None and result['folds'] == {}
+    assert result['decision'] == 'NO_REPLACEMENT'
 
 
 def test_delayed_signal_is_not_available_at_old_open():

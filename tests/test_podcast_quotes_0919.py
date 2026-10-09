@@ -41,7 +41,7 @@ def test_render_uses_producer_evidence_without_mutating_legacy():
     assert legacy == before
 
 
-def test_real_producer_rejects_invented_quote_without_another_paid_call(monkeypatch):
+def test_real_producer_rejects_invented_quote_without_another_paid_call(monkeypatch, capsys):
     import json
     from unittest.mock import Mock
     import podcast_digest as producer
@@ -58,3 +58,5 @@ def test_real_producer_rejects_invented_quote_without_another_paid_call(monkeypa
     assert result['summary_points'] == ['主持人提醒利率仍不確定']
     assert result['notable_quote'] == ''
     assert result['quote_evidence']['status'] == 'unverified'
+    assert any(line.startswith('::warning::Podcast 金句')
+               for line in capsys.readouterr().out.splitlines())

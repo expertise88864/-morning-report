@@ -98,3 +98,12 @@ def test_production_validator_reaches_opinion_reference_guard():
     valid, invalid = validation_probe()
     assert valid == []
     assert any('引用不存在' in e for e in invalid)
+
+
+def test_bad_excerpt_names_exact_news_and_comparison_for_repair_slice():
+    import morning_report as mr
+    packet, row = fixture()
+    row['podcast_comparisons'][0]['news_excerpt'] = '來源中沒有這段文字'
+    problems = pc.validate({'top_news_analysis': [row]}, packet)
+    assert all('top_news_analysis[0] n1 podcast_comparisons[0] opinion:one' in e for e in problems)
+    assert mr._problem_named_ids(problems, [], ['n1', 'n10']) == ['n1']

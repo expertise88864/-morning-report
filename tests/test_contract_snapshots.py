@@ -760,7 +760,7 @@ _FROZEN = {
     #     特化 schema 沒有對應欄位,那一段整個消失(使用者連兩天反映)。
     # v21(2026-08-19 第四批):world_events / 48h 情境 / 敘事變化 /
     #     多空交鋒 / 總經環境 / 在地動態 / primary_target。
-    "output_schema_version":  (31, "a8e768b2ea3ff633"),  # Explicit missing/partial watch evidence.
+    "output_schema_version":  (32, "f802f4e00c9760ab"),  # Negative watches require evidence IDs.
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -809,7 +809,7 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (70, "c22cd2577f2d4f24"),  # Sept25 combined prose/provenance.
+    "primary_profile_version":  (71, "9e095e25b1606974"),  # State negative-watch evidence contract.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
@@ -858,7 +858,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (38, "a5a023abe2b012b7"),  # Labels, adjacent caveats, complete macro cards.
+    "renderer_version":       (39, "0a63b6aaa5537093"),  # Collected-source links; explicit ticker identity.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -925,7 +925,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (45, "9c61a4c823e0ed48"),  # Reject model stance contradicting Python authority.
+    "grounding_version":      (46, "cb966744302cb030"),  # Locate invalid Podcast comparisons for repair.
 }
 
 

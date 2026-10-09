@@ -693,7 +693,7 @@ def validate(obj, evidence_ids) -> list:
                 f"watch_review[{i}]({wid})的 `what_happened` 是空的 —— "
                 "已觸發要說發生了什麼,未觸發要說還在等什麼")
         from reader_revision import watch_status
-        if str(w.get("status") or "") in ("triggered", "no_longer_relevant", "partially_triggered") or watch_status(w) in ("partially_triggered", "not_triggered"):
+        if str(w.get("status") or "") in ("triggered", "not_triggered", "no_longer_relevant", "partially_triggered") or watch_status(w) in ("partially_triggered", "not_triggered"):
             cited = [str(x) for x in (w.get("evidence_ids") or [])]
             from watch_assessment import LABELS
             _verdict_zh = LABELS[str(w['status'])]
@@ -701,7 +701,7 @@ def validate(obj, evidence_ids) -> list:
                 # **關閉一條觀察點是今天的事實判斷**(第三十輪外審 P2-1):
                 # 「前提已經不存在」與「已經發生」一樣需要今天的證據 ——
                 # 少了它,模型可以一句話永久關掉一條還沒驗證的預期。
-                # 舊 not_triggered 無證據會被共享投影標為資料不足；
+                # 新輸出的 not_triggered 必須引證據；舊資料仍保守降級。
                 # 部分成立也須支持已成立部分，過期仍由 Python 判。
                 problems.append(
                     f"watch_review[{i}]({wid})說「{_verdict_zh}」"

@@ -424,9 +424,9 @@ def deepseek_digest(transcript: str, model: str = DEEPSEEK_MODEL) -> dict:
                 continue
             quality = digest['direction_quality']
             if digest.get('quote_evidence', {}).get('status') == 'unverified':
-                log('::warning::Podcast 金句無逐字稿依據，已略過引言；摘要保留')
+                print('::warning::Podcast 金句無逐字稿依據，已略過引言；摘要保留', flush=True)
             if quality['unverified'] or quality['invalid']:
-                log(f"::warning::Podcast 投資方向證據不足或格式異常: {quality}")
+                print(f"::warning::Podcast 投資方向證據不足或格式異常: {quality}", flush=True)
             return digest
         except Exception as e:
             last_err = e

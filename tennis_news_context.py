@@ -7,7 +7,8 @@ def completed_preview(title, results, now):
     from render_utils import _TENNIS_EVENT_ZH, _TENNIS_PLAYER_ZH
     if not re.search(r"爭奪|爭冠|挑戰|力拚|力拼|決賽.*(?:前瞻|預告|將)|final preview", title, re.I):
         return False
-    if re.search(r"擊敗|奪冠|贏得|回顧|重溫|賽後|歷史上的今天|^\s*(?:昔日|當年)|defeated|won|recap", title, re.I):
+    if re.search(r"擊敗|奪冠|贏得|封王|稱王|稱后|加冕|摘冠|捧盃|不敵|敗給|落敗|失利|屈居|亞軍|夢碎|"
+                 r"回顧|重溫|賽後|歷史上的今天|^\s*(?:昔日|當年)|\b(?:defeated|won|recap|beats?|wins?|champion)\b", title, re.I):
         return False
     for result in results or []:
         if not isinstance(result, dict) or result.get('round') != 'Final':

@@ -67,7 +67,8 @@ def test_headline_link_and_caveat_survive_safe_html_as_small_text():
     pk = {'news': [{'source_item_id': 'x', 'title': '模型發布', 'url': 'https://example.com/news?a=1&b=2'}]}
     md = ard._news_line(n, pk)
     assert '需求 → 出貨' in md and '傳導:' not in md
-    html = ru._style_analysis_html(ru._md_to_html(md + '\n\n保留:單一來源。'))
+    html = ru._style_analysis_html(ru._md_to_html(md + '\n\n保留:單一來源。',
+                                               trusted_urls=[pk['news'][0]['url']]))
     assert 'href="https://example.com/news?a=1&amp;b=2"' in html
     assert 'font-size:12px' in html
     assert '<p style="font-size:12px!important;color:#64748b' in html

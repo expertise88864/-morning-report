@@ -140,6 +140,35 @@ def test_self_comparison_is_not_historical_context():
     assert not refs and not contexts["n1"]["evidence_ids"]
 
 
+def test_current_batch_cannot_be_its_own_history_across_outlets():
+    now = "2026-09-06T07:00+08:00"
+    news = [article(5, source_item_id="n1"),
+            article(5, source_item_id="n2", source="中央社", link="https://other.example/story")]
+    batch, _ = memory.observations(news, now, sanitize=str)
+    old = observation(1)
+    contexts, refs = memory.retrieve(news, batch + [old], now)
+    assert refs == [old]
+    assert all(c["evidence_ids"] == [old["evidence_id"]] for c in contexts.values())
+
+
+def test_current_document_and_same_cycle_archive_are_not_prior_reporting():
+    news = [article(1, source_item_id="n1")]
+    # A current document is not a second historical source for another card.
+    # Newly discovered unmatched URLs from this cycle are also fresh.
+    fresh, _ = memory.observations([article(5)], "2026-09-06T07:00+08:00", sanitize=str)
+    contexts, refs = memory.retrieve(news, [observation(1)] + fresh,
+                                    "2026-09-06T07:00+08:00")
+    assert refs == [] and contexts["n1"]["evidence_ids"] == []
+
+
+def test_previous_run_observations_still_support_same_day_source_comparison():
+    prior = observation(5)
+    news = [article(5, source_item_id="n1", link="https://other.example/story")]
+    contexts, refs = memory.retrieve(news, [prior], "2026-09-06T07:00+08:00")
+    assert refs == [prior]
+    assert contexts["n1"]["evidence_ids"] == [prior["evidence_id"]]
+
+
 def test_retrieval_keeps_origin_and_latest_and_reports_omissions():
     archive = [observation(day=d, summary=f'高雄廠擴建工程仍在施工，階段 {d} 完工，尚未正式投產。') for d in range(1, 10)]
     contexts, refs = memory.retrieve([article(10, source_item_id="n1")], archive, "2026-09-11T07:00+08:00")
@@ -220,8 +249,10 @@ def test_deep_topic_accepts_another_current_member_without_duplicate_coverage():
     assert not context.validate(obj, pk)
 
 
-def test_deep_topic_may_be_explicitly_dismissed_under_the_existing_evidence_contract():
+@pytest.mark.parametrize("finance_candidates", [[], [["finance-source"]]])
+def test_deep_topic_may_be_explicitly_dismissed_under_the_existing_evidence_contract(finance_candidates):
     pk = packet()
+    pk["finance_analysis_candidates"] = finance_candidates
     topic = pk["research"]["deep_topics"][0]
     dismissal = {"cluster_id": topic["cluster_id"],
                  "why_not_material": "目前僅例行工地進度，無新增訂單或投產證據支持獲利增量",
@@ -232,6 +263,8 @@ def test_deep_topic_may_be_explicitly_dismissed_under_the_existing_evidence_cont
     assert not context.advisories(obj, pk)
     result = context.metrics(obj, pk)
     assert result["deep_topics_analyzed"] == 0 and result["deep_topics_dismissed"] == 1
+    import finance_editorial
+    assert bool(finance_editorial.coverage_problems(obj, pk)) == bool(finance_candidates)
     for key, invalid in [("why_not_material", ""), ("revisit_trigger", ""),
                          ("supporting_evidence_ids", ["unrelated"])]:
         bad = copy.deepcopy(obj)
@@ -342,6 +375,7 @@ def test_supplementary_fetch_retains_old_dates_and_never_changes_scoring_inputs(
     assert ctx.news == original
     assert len(ctx.quotes["NEWS_RESEARCH_SOURCES"]) == 1
     assert ctx.quotes["NEWS_RESEARCH_SOURCES"][0]["published"].startswith("2026-09-05")
+    assert [r["url"] for r in ctx.quotes["NEWS_RESEARCH_BACKGROUND"]] == [article(1)["link"]]
     archive = memory.load(tmp_path, "2026-09-06T08:00+08:00")
     assert any(r["published_at"].startswith("2026-09-01") and r["observed_at"].startswith("2026-09-06") for r in archive)
     pk = ep.build(ctx.quotes, {}, {}, original, [], {}, as_of=now.isoformat(), sanitize=mr._external_text)

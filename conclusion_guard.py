@@ -15,10 +15,13 @@ def summary_word(summary: str, authority: str) -> str:
     """Prefer any conflicting report claim, not merely the earliest label."""
     text = re.sub(r"[*_`]+", "", str(summary or ""))
     claims = []
+    signals = []
     for match in _LABEL.finditer(text):
         if match.group() != "資料不足" and _SIGNAL.search(text[:match.start()]):
+            signals.append(match.group())
             continue
         claims.append(match.group())
+    claims = claims or signals
     return next((label for label in claims if label != authority),
                 claims[0] if claims else "")
 
@@ -32,4 +35,4 @@ def fallback(authority: str) -> str:
     }
     if authority not in actions:
         return "目前資料不足，暫不提供方向性結論；請留意後續資料更新。"
-    return f"今日維持{authority}。{actions[authority]}價位估算見下方預測表。"
+    return f"今日系統立場：{authority}。{actions[authority]}價位估算見下方預測表。"

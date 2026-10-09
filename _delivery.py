@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+from delivery_destination import matches_repository
 
 ROOT = Path(__file__).resolve().parent
 SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -246,8 +247,7 @@ def preview_url(api: API, sha: str) -> str:
 
 
 def pre_push(lines: list[str], remote: str, cfg: dict) -> None:
-    expected = "https://github.com/" + cfg["repository"] + ".git"
-    if remote != "origin" or git("remote", "get-url", "--push", remote) != expected:
+    if remote != "origin" or not matches_repository(git("remote", "get-url", "--push", remote), cfg["repository"]):
         raise Blocked("Unexpected push destination")
     for line in lines:
         fields = line.split()
@@ -312,7 +312,7 @@ def main() -> int:
                 else:
                     print(json.dumps(verify(sha, args.phase, cfg, api), ensure_ascii=True))
                 return 0
-            except Blocked as exc:
+            except (Blocked, OSError) as exc:
                 message = str(exc)
                 if message != previous:
                     print(message, file=sys.stderr)

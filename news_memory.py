@@ -24,6 +24,7 @@ import official_announcements as announcements
 
 SCHEMA = 1
 LOOKBACK_DAYS = 90
+CURRENT_NEWS_HOURS = 30
 EXCERPT_CHARS = 1200
 MAX_PARTITION_BYTES = 32_000_000
 TPE = dt.timezone(dt.timedelta(hours=8))
@@ -261,10 +262,20 @@ def retrieve(news: list, archive: list, as_of: str, limit: int = 6) -> tuple[dic
         return {}, []
     limit = max(1, min(6, limit))
     cutoff = now.astimezone(TPE).date()
+    current_documents = {(source_url(n.get("url") or n.get("link")), n.get("title")) for n in news}
+    fresh_cutoff = now - dt.timedelta(hours=CURRENT_NEWS_HOURS)
     index: dict = {}
     for row in archive:
         seen, pub = timestamp(row.get("observed_at")), timestamp(row.get("published_at"))
         if seen is None or pub is None or seen > now or pub > now or pub.astimezone(TPE).date() >= cutoff:
+            continue
+        if announcements.issuer(row):
+            # Prior observed official releases support recurring-announcement
+            # detection, but this ingestion batch cannot be its own history.
+            if seen.astimezone(TPE).date() >= cutoff:
+                continue
+        elif ((source_url(row.get("url")), row.get("title")) in current_documents or
+              (seen.astimezone(TPE).date() >= cutoff and pub >= fresh_cutoff)):
             continue
         for entity in identity.canonical_subjects(subjects(row)):
             index.setdefault(entity, []).append(row)

@@ -151,7 +151,7 @@ def enrich(ctx, directory, *, sanitize, atomic_write, fetch_feed, make_url,
     # Today/recent discoveries are fresh source evidence; older articles remain
     # background only. Do not feed the 7-day search window to prediction inputs.
     quotes["NEWS_RESEARCH_SOURCES"] = [n for n in extra
-                                     if memory.timestamp(n["published"]) >= now - dt.timedelta(hours=30)]
+                                     if memory.timestamp(n["published"]) >= now - dt.timedelta(hours=memory.CURRENT_NEWS_HOURS)]
     try:
         as_of = dt.datetime.now(memory.TPE).isoformat()
         rows, skipped = memory.observations((ctx.news or []) + extra +
@@ -165,8 +165,11 @@ def enrich(ctx, directory, *, sanitize, atomic_write, fetch_feed, make_url,
         # Newly found older reports were learned today: retain provenance, don't
         # pretend they were in yesterday's memory. Dedicated context can use them
         # as newly retrieved background, never a historical observation then.
+        extra_urls = {memory.source_url(n.get("link")) for n in extra}
+        current_urls = {memory.source_url(n.get("link") or n.get("url")) for n in ctx.news or []}
         quotes["NEWS_RESEARCH_BACKGROUND"] = [r for r in rows if r["evidence_id"] not in known
-                                              and memory.timestamp(r["published_at"]).astimezone(memory.TPE).date() < now.date()]
+            and r["url"] in extra_urls - current_urls
+            and memory.timestamp(r["published_at"]) < now - dt.timedelta(hours=memory.CURRENT_NEWS_HOURS)]
     except Exception as exc:
         _warn(recorder, "news_memory", exc)
         diag["memory_status"] = "write_failed"

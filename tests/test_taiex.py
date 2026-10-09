@@ -372,7 +372,7 @@ def test_render_stance_display_prefers_python(monkeypatch):
     #  以 -4 乾淨覆蓋;-8 會誤中 charset=utf-8,此處不重複脆弱檢查)
     # Codex r1 P1 合規防線:LLM 相反立場的結論/方向性建議不得殘留
     assert "偏多操作 00662 逢低加碼" not in html
-    assert "今日維持偏空" in html and "留意下行風險" in html
+    assert "今日系統立場：偏空" in html and "留意下行風險" in html
     assert "依系統計分" not in html
     # 批#26:立場變化歸因卡已自信件移除(仍在後台計算)
     assert "立場變化歸因" not in html
@@ -459,7 +459,7 @@ def test_summary_stance_word_catches_a_contrary_claim():
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-07-18 (Sat)", "每日報")
     assert "偏空風險升高,偏多仍可加碼 00662" not in html
-    assert "今日維持偏多" in html and "開盤預測不代表盤中走勢" in html
+    assert "今日系統立場：偏多" in html and "開盤預測不代表盤中走勢" in html
     assert "依系統計分" not in html
 
 
@@ -511,7 +511,7 @@ def test_batch34_stance_defense_catches_unparseable_label():
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-06-02", "每日報")
     assert "全面加碼" not in html            # LLM 的反向建議必須被移除
-    assert "今日維持偏空" in html and "留意下行風險" in html
+    assert "今日系統立場：偏空" in html and "留意下行風險" in html
     assert "依系統計分" not in html           # 確定性摘要不外露內部說明
     assert "偏空" in html                     # 仍呈現 Python 權威立場
 

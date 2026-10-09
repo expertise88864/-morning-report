@@ -13,7 +13,7 @@ from reader_revision import watch_status
     ('核心 PPI 的實際月增數字不在今日證據中，第一段條件仍待驗證。',
      ['n1'], 'insufficient_evidence'),
     ('複合條件部分完成：升息機率超過七成，但核心 PPI 數字仍待驗證。',
-     ['n1'], 'partially_triggered'),
+     ['n1'], 'insufficient_evidence'),
     ('還在等 DRAM 現貨價的官方報價確認；今日沒有報價資訊。',
      [], 'insufficient_evidence'),
     ('官方公布月增 0.2%，未達原定 0.3% 門檻。', ['n1'], 'not_triggered'),
@@ -74,6 +74,23 @@ def test_trigger_with_explicit_missing_evidence_does_not_close_watch():
 def test_negated_partial_does_not_downgrade_full_result(text):
     assert watch_status(dict(status='triggered', what_happened=text,
                              evidence_ids=['n1'])) == 'triggered'
+
+
+@pytest.mark.parametrize('text', ['兩項條件都並未部分成立', '連部分完成都沒有', '沒有部分觸發'])
+def test_negative_watch_is_never_promoted_to_partial_success(text):
+    assert watch_status(dict(status='not_triggered', what_happened=text,
+                             evidence_ids=['n1'])) != 'partially_triggered'
+
+
+def test_new_negative_result_requires_evidence_but_missing_data_can_remain_open():
+    from test_watch_review import _validate
+    row = dict(watch_id='w1', status='not_triggered',
+               what_happened='官方公布月增 0.2%，未達 0.3% 門檻。', evidence_ids=[])
+    assert any('證據 ID' in e for e in _validate({'watch_review': [row]}))
+    row['evidence_ids'] = ['n1']
+    assert not _validate({'watch_review': [row]})
+    row.update(status='insufficient_evidence', evidence_ids=[], what_happened='未取得公告')
+    assert not _validate({'watch_review': [row]})
 
 
 @pytest.mark.parametrize('status', ['partially_triggered', 'not_triggered'])

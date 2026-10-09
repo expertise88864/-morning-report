@@ -52,7 +52,7 @@ def test_delivery_saves_only_rendered_paragraphs(tmp_path):
     from render_utils import _md_to_html
     context = {'text': TEXT, 'news': [{'link': URL}], 'date': '2026-09-11', 'origin': ao.LEGACY_PRIMARY}
     writes, manifest = [], {}
-    runtime.delivered(_md_to_html(TEXT), context, tmp_path / 'recap.json', manifest,
+    runtime.delivered(_md_to_html(TEXT, trusted_urls={URL}), context, tmp_path / 'recap.json', manifest,
                       lambda path, text: writes.append(json.loads(text)))
     assert len(writes) == 1
     assert manifest['llm']['fallback_recap_saved'] == fr.recap.SAVED
@@ -72,7 +72,7 @@ def test_failed_delivery_persistence_is_visible_and_nonfatal(tmp_path):
     def fail(*args):
         raise OSError('disk failure')
 
-    runtime.delivered(_md_to_html(TEXT), context, tmp_path / 'recap.json', manifest, fail)
+    runtime.delivered(_md_to_html(TEXT, trusted_urls={URL}), context, tmp_path / 'recap.json', manifest, fail)
     assert manifest['llm']['fallback_recap_saved'] == fr.recap.FAILED
     assert any(f['code'] == 'fallback_recap_not_saved' for f in run_quality.assess(manifest))
 

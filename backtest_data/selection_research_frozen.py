@@ -145,7 +145,7 @@ def evaluate(days, horizon, fee_bps, sell_tax_bps, slippage_bps, *, start_date=N
                      'exit_date': end['session_date'],
                      'fold': 'early' if i < len(ordered) * .8 else 'late',
                      'baseline': a, 'avoid_heat': b})
-    result = {
+    return {
         'decision': 'NO_REPLACEMENT',
         'study_type': 'exploratory_chronological_comparison_not_untouched_oos',
         'horizon_snapshot_sessions': horizon,
@@ -165,8 +165,6 @@ def evaluate(days, horizon, fee_bps, sell_tax_bps, slippage_bps, *, start_date=N
             'No continuous marked-to-market equity curve or certified drawdown.',
             'Stored rankings span model versions; not a replay of one frozen model.',
         ]}
-    from backtest_data.selection_integrity import qualify
-    return qualify(result)
 
 
 def main():

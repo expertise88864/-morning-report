@@ -25,7 +25,8 @@ def run(days, implementation_bytes, *, today):
     actual = hashlib.sha256(implementation_bytes.replace(b'\r\n', b'\n')).hexdigest()
     if actual != IMPLEMENTATION_SHA256:
         raise ValueError('research implementation changed: register a new future protocol')
-    from backtest_data.selection_research import evaluate
+    from backtest_data.selection_research_frozen import evaluate
+    from backtest_data.selection_integrity import qualify
     observed = [d for d in days if d['session_date'] <= today.isoformat()]
     observed_bytes = json.dumps(observed, ensure_ascii=False, sort_keys=True,
                                 separators=(',', ':')).encode('utf-8')
@@ -34,6 +35,7 @@ def run(days, implementation_bytes, *, today):
         for slip in SLIPPAGE_BPS:
             result = evaluate(observed, horizon, FEE_BPS, SELL_TAX_BPS, slip,
                               start_date=START_DATE)
+            result = qualify(result)
             # Do not present legacy exploratory early/late labels as OOS folds.
             result.pop('folds')
             for row in result['cohorts']:
@@ -72,7 +74,7 @@ def main(argv=None):
     from model_history_store import load_model_history
     days = load_model_history(root / 'state/model_history.json',
                               root / 'state/model_history', strict=True)
-    report = run(days, Path(__file__).with_name('selection_research.py').read_bytes(),
+    report = run(days, Path(__file__).with_name('selection_research_frozen.py').read_bytes(),
                  today=as_of)
     print(json.dumps(report, ensure_ascii=False, indent=2))
 

@@ -161,7 +161,7 @@ def test_direction_quality_accounts_for_invalid_and_missing_evidence():
 
 
 @pytest.mark.parametrize('tickers', [[None], ['invalid'], 'invalid', {'name': 'invalid'}])
-def test_producer_malformed_tickers_do_not_retry_usable_digest(monkeypatch, tickers):
+def test_producer_malformed_tickers_do_not_retry_usable_digest(monkeypatch, tickers, capsys):
     import json
     from unittest.mock import Mock
     import podcast_digest as producer
@@ -176,3 +176,5 @@ def test_producer_malformed_tickers_do_not_retry_usable_digest(monkeypatch, tick
     assert result['summary_points'] == payload['summary_points']
     assert result['tickers'] == []
     assert result['direction_quality']['invalid'] == 1
+    assert any(line.startswith('::warning::Podcast 投資方向')
+               for line in capsys.readouterr().out.splitlines())

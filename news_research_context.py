@@ -131,7 +131,9 @@ def accepted_dismissals(obj: dict, packet: dict) -> set:
         cid = str(row.get("cluster_id") or "")
         if cid not in allowed:
             continue
-        focused = dict(packet, news_clusters=dict(packet.get("news_clusters") or {},
+        # This probe validates one dismissal, not whole-report finance coverage.
+        focused = dict(packet, finance_analysis_candidates=[],
+                       news_clusters=dict(packet.get("news_clusters") or {},
                                                   required_cluster_ids=[cid]))
         if not coverage._coverage_problems({"dismissed_events": [row]}, focused, []):
             accepted.add(cid)

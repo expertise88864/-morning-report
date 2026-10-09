@@ -50,6 +50,11 @@ def test_same_title_different_issuers_and_revisions_survive_normalization():
     sources = official.reader_sources([raw(), raw('2882'), dict(raw(), summary='新增重大資訊')])
     news, _, _ = news_normalize.normalize_news(sources, str)
     assert len(news) == 3
+    import news_clusters
+    by_id = {n['source_item_id']: official.issuer(n) for n in news}
+    groups = news_clusters.clusters(news)
+    assert len(groups) == 2
+    assert all(len({by_id[sid] for sid in group['member_source_ids']}) == 1 for group in groups)
     rows, _ = memory.observations(sources, '2026-09-08T06:00:00+08:00', sanitize=str)
     assert len(rows) == 3
     one = next(n for n in news if official.issuer(n) == '2884' and not n['summary'])
@@ -59,6 +64,16 @@ def test_same_title_different_issuers_and_revisions_survive_normalization():
                   '公告本公司115年8月份自結合併營收及未知重大事件'):
         assert not recurring_revenue(dict(one, title=title), rows, '')
     assert not recurring_revenue(dict(one, summary='年增20%'), rows, '')
+
+
+def test_official_release_first_seen_this_run_is_not_its_own_history():
+    packet = ep.build({'TW_MOPS': [raw()]}, {}, {}, [], [], {},
+        as_of='2026-09-09T06:00:00+08:00', sanitize=str)
+    rows, _ = memory.observations(official.reader_sources([raw()]),
+        packet['as_of'], sanitize=str)
+    contexts, history = memory.retrieve(packet['news'], rows, packet['as_of'])
+    assert history == []
+    assert all(not value['evidence_ids'] for value in contexts.values())
 
 
 def test_editorial_tags_and_lookalike_urls_never_establish_official_identity():

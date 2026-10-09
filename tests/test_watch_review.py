@@ -165,7 +165,7 @@ def test_every_declared_watch_must_be_reviewed():
     """**缺一條,「逐日追蹤」就是宣稱而不是性質。**"""
     assert _validate({"watch_review": []})
     ok = _validate({"watch_review": [
-        {"watch_id": "w1", "status": "not_triggered",
+        {"watch_id": "w1", "status": "insufficient_evidence",
          "what_happened": "還在等財報", "evidence_ids": []}]})
     assert not ok, ok
 
@@ -397,9 +397,9 @@ def test_closing_a_watch_as_irrelevant_needs_todays_evidence():
         {"watch_id": "w1", "status": "no_longer_relevant",
          "what_happened": "政策已撤回", "evidence_ids": ["n1"]}]})
     assert not ok, ok
-    # 「還沒觸發」什麼都沒宣稱,不需要證據(反例只靠 status 分勝負)
+    # 尚缺資料不等於已證實未達標；無證據須保留不確定狀態。
     assert not _validate({"watch_review": [
-        {"watch_id": "w1", "status": "not_triggered",
+        {"watch_id": "w1", "status": "insufficient_evidence",
          "what_happened": "還在等", "evidence_ids": []}]})
 
 

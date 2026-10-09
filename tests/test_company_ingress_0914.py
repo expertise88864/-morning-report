@@ -46,6 +46,7 @@ def test_unrelated_query_results_cannot_become_issuer_news(monkeypatch, label, t
     ("2603", "Evergreen Marine raises outlook"),
     ("2308", "Delta Electronics reports quarterly earnings"),
     ("2308", "台達電表示 Delta 電源產品需求增長"),
+    ("3661", "世芯營收創新高"), ("3661", "ASIC雙雄 創意、世芯營運展望"),
 ])
 def test_named_company_and_existing_subsidiary_coverage_remain(monkeypatch, label, title):
     rows = fetch(monkeypatch, label, title)

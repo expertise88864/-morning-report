@@ -84,7 +84,7 @@ class DeliveryTests(unittest.TestCase):
             run("config", "user.name", "Delivery test")
             run("config", "user.email", "delivery-test@example.invalid")
             (work / ".githooks").mkdir()
-            for name in ("_delivery.py", "_delivery_policy.json", ".githooks/pre-push"):
+            for name in ("_delivery.py", "delivery_destination.py", "_delivery_policy.json", ".githooks/pre-push"):
                 shutil.copyfile(d.ROOT / name, work / name)
             os.chmod(work / ".githooks/pre-push", 0o755)
             run("add", ".")

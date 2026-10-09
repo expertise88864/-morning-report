@@ -6,7 +6,6 @@
 加深要保護的欄位是我手動列的,而渲染器隨時可以多讀一個欄位。
 """
 import ast
-import io
 from pathlib import Path
 
 import analysis_schema as sch
@@ -15,10 +14,14 @@ import claim_map as cm
 import fixtures_analysis as fx
 
 _ROOT = Path(__file__).resolve().parents[1]
+_RENDER_MODULES = (
+    "analysis_render.py", "analysis_render_depth.py", "news_research_context.py",
+    "podcast_comparison.py", "news_impact.py",
+)
 
 
 def _read(name):
-    return io.open(_ROOT / name, encoding="utf-8").read()
+    return (_ROOT / name).read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------- P1-5 矩陣
@@ -141,7 +144,7 @@ def test_every_rendered_field_is_protected_from_deepening():
     這裡兩邊都用 AST 掃:**渲染器讀得到的新聞/標的欄位,加深不得
     讓它由有變無**。清單漂移這次是機械檢查,不是我記得。"""
     rendered = set()
-    for name in ("analysis_render.py", "analysis_render_depth.py", "news_research_context.py", "podcast_comparison.py"):
+    for name in _RENDER_MODULES:
         rendered |= _get_literals(_read(name))
     news = sch.ANALYSIS_OUTPUT_SCHEMA["properties"][
         "top_news_analysis"]["items"]["properties"]
@@ -175,8 +178,6 @@ def test_the_deepen_verdict_sees_the_same_advisories_that_triggered_it():
 #: 另一件事 —— 一則新聞底下排五六行標籤,使用者的原話是
 #: 「讀起來像表單不像文章」。省略是決策,不是遺漏,所以要留下理由。
 DELIBERATELY_UNRENDERED = {
-    "confirmation_signal": "2026-08-17 定案:只留失效條件那一半",
-    "why_this_magnitude": "2026-08-17 定案:量級的理由仍被驗證,不排進視線",
     "persistence": "2026-08-17 定案:同上",
     "relates_to": "橫向綜合那一段已經在講關係",
     # `source_caveat` 自 2026-09-03(全案審查 LM-4)起**會排**:單一來源/未證實的
@@ -190,7 +191,6 @@ DELIBERATELY_UNRENDERED = {
     # packet 的分群證據,量級又回到「刻意不排進信裡」。
     "magnitude_band": "2026-08-18 定案:同上",
     "direction": "2026-08-18 定案:逐則方向詞正是「整篇都是偏多什麼的」;方向在「各標的合計影響」那一段合計後出現一次",
-    "horizon": "2026-08-18 定案:同上",
 }
 
 
@@ -198,7 +198,7 @@ def test_the_coverage_check_cannot_pass_on_an_empty_set():
     """**空集合不算通過。** 掃不到欄位(renderer 改寫法、schema 換路徑)
     時上面那條會真空通過 —— 這裡釘住兩邊都要有實質內容。"""
     rendered = set()
-    for name in ("analysis_render.py", "analysis_render_depth.py", "news_research_context.py", "podcast_comparison.py"):
+    for name in _RENDER_MODULES:
         rendered |= _get_literals(_read(name))
     news = sch.ANALYSIS_OUTPUT_SCHEMA["properties"][
         "top_news_analysis"]["items"]["properties"]
@@ -219,3 +219,4 @@ def test_the_coverage_check_cannot_pass_on_an_empty_set():
     # 仍以句尾「(單一來源)」呈現),而失效條件是留下來的那一半。
     # 哨兵要挑**確定會被渲染**的欄位,否則這條守衛自己會變成假紅。
     assert {"why_it_matters", "invalidation_signal", "materiality", "podcast_comparisons"} <= rendered
+    assert {"horizon", "why_this_magnitude", "confirmation_signal"} <= rendered

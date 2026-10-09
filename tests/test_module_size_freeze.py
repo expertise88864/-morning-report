@@ -172,6 +172,8 @@ MAIN_MODULE_LINE_CEILING = 26_336  # Exact calendar window moved into a leaf hel
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
+    "source_link_policy.py": 40,
+    "delivery_destination.py": 25,
     "macro_observation_time.py": 80,  # Market-date provenance; no networking or state.
     "reader_causality_guard.py": 90,  # Narrow incident guard, not a generic fact checker.
     "reader_hedge_causality_guard.py": 75,  # Correct delivered aggregate-position attribution.
@@ -191,6 +193,7 @@ MODULE_CEILINGS = {
     "news_taxonomy_guard.py": 30,  # Accounting phrase is not a new earnings event.
     "prose_join.py": 25,
     "watch_assessment.py": 60,
+    "watch_expiry.py": 30,
     "fallback_watch_gap.py": 90,
     "conclusion_guard.py": 45,
     "local_news_routing.py": 50,

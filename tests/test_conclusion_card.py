@@ -105,7 +105,7 @@ def test_the_degraded_card_still_says_something_actionable():
     src = _io.open(_SRC, encoding="utf-8").read()
     from conclusion_guard import fallback
     assert "conclusion_fallback(_py_label)" in src
-    assert "今日維持中性" in fallback("中性")
+    assert "今日系統立場：中性" in fallback("中性")
     assert "等待量能" in fallback("中性")
     assert "分析師觀點為" not in src
     # 舊的空話不得留著

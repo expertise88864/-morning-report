@@ -503,9 +503,9 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
             slot["recap_extracted"] = len(rec["items"])
             slot["watch_open"] = len(rec["watch"])
             slot["watch_backlog"] = max(0, len(rec["watch"]) - WATCH_OPEN_MAX)
-            from watch_assessment import expiry_diagnostic
-            (slot["watch_expired_unreviewed"],
-             slot["watch_expired_unreviewed_cases"]) = expiry_diagnostic(_prior_watch, _today)
+            from watch_expiry import expiry_report
+            slot.update(expiry_report(_prior_watch, _today,
+                        str((packet.get("market") or {}).get("LAST_TRADING_SESSION") or "")))
             if _watch_dropped:
                 slot["watch_dropped_capacity"] = _watch_dropped
             # **關閉數要數「原本開著、現在不在帳本上」的那幾條**

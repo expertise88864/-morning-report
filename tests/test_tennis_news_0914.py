@@ -1,6 +1,7 @@
 import datetime as dt
 from copy import deepcopy
 from types import SimpleNamespace
+import pytest
 
 import sports_news_selection as sn
 from tennis_news_context import completed_preview
@@ -9,6 +10,18 @@ NOW = dt.datetime(2026, 9, 14, 7, 32, tzinfo=dt.timezone(dt.timedelta(hours=8)))
 RESULT = dict(event_key='US Open', round='Final', winner='A. Zverev', loser='B. Shelton',
               played_at='2026-09-13T20:00:00Z', tour='ATP')
 PREVIEW = '舒爾頓爭奪美網首個大滿貫冠軍 挑戰茲維列夫望終結美國男單荒'
+
+
+@pytest.mark.parametrize('title', [
+    '茲維列夫美網封王 舒爾頓爭冠夢碎',
+    '舒爾頓挑戰大滿貫首冠失利 不敵茲維列夫 美網屈居亞軍',
+    'US Open final preview revisited: Zverev beats Shelton',
+])
+def test_result_headlines_with_preview_words_remain_visible(title):
+    assert not completed_preview(title, [RESULT], NOW)
+    rows, report = sn.select([{'title': title}], NOW, tennis_results=[RESULT])
+    assert [row['title'] for row in rows] == [title]
+    assert report['excluded'] == 0
 
 
 def test_same_final_preview_does_not_consume_a_news_slot():

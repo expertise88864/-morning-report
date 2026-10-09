@@ -27,20 +27,12 @@ def status(row: dict) -> str:
         return declared
     if declared in ('triggered', 'not_triggered', 'partially_triggered'):
         if _PARTIAL.search(text):
+            if declared == 'not_triggered':
+                return 'insufficient_evidence'
             return 'partially_triggered' if row.get('evidence_ids') else 'insufficient_evidence'
         if _MISSING.search(text) or (declared == 'not_triggered' and not row.get('evidence_ids')):
             return 'insufficient_evidence'
     return declared
-
-
-def expiry_diagnostic(rows: list[dict], today: str) -> tuple[int, list[dict]]:
-    """Count unreviewed expiries; expose only IDs and dates, never trigger text."""
-    expired = [w for w in rows if not w.get('last_reviewed') and w.get('deadline')
-               and today and today > str(w['deadline'])]
-    cases = [{'watch_id': str(w.get('watch_id') or ''),
-              'created': str(w.get('created') or ''),
-              'deadline': str(w.get('deadline') or '')} for w in expired[:8]]
-    return len(expired), cases
 
 
 def expiry_detail(count: int, cases: object) -> str:

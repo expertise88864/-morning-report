@@ -68,8 +68,8 @@ def analysis_candidates(news: list) -> list[list[str]]:
 def material_groups(item: dict) -> set[str]:
     """Admit each dated original on its own merits, not the winning copy's wording."""
     material = re.compile(r"財報|獲利|淨利|盈餘|(?<![A-Za-z])EPS(?![A-Za-z])|"
-                          r"營收|增資|法說|併購|收購|裁罰|違規|金檢|監理|撤照|接管|減損|匯損|"
-                          r"投資|處分|標售|簽約|得標|動工|資本|保費|理賠|股利", re.I)
+                          r"營收|增資|法說|併購|收購|裁罰|違規|金檢|監理(?!論壇|講座|研討)|撤照|接管|減損|匯損|"
+                          r"投資(?!人|理財|論壇|講座|講堂)|處分|標售|簽約|得標|動工|資本(?:適足|支出|缺口|不足|計畫)|保費|理賠|股利", re.I)
     originals = item.get("finance_headlines")
     rows = [item] + (originals if isinstance(originals, list) else [])
     return {group for row in rows if isinstance(row, dict)

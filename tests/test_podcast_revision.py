@@ -11,6 +11,8 @@ def test_unseen_news_cannot_gain_a_new_comparison_even_if_news_id_was_seen_befor
     assert pr.repair_problems(obj, set(), set())
     assert pr.repair_problems(obj, {'n1'}, set()) == []
     assert pr.repair_problems(obj, None, set()) == []
+    from morning_report import _problem_named_ids
+    assert _problem_named_ids(pr.repair_problems(obj, set(), set()), [], ['n1', 'n10']) == ['n1']
 
 
 def test_format_only_may_keep_but_not_rewrite_full_context_comparison():

@@ -156,3 +156,13 @@ def test_email_subject_qualifies_stale_quote_without_sending(monkeypatch):
                           analysis="", news=[], mark_phase=lambda *a: None)
     assert mr._phase_deliver(ctx) == 0
     assert "行情未更新" in seen[0] and "19.876" not in seen[0]
+
+
+def test_missing_adr_and_qqq_explain_unavailable_predictions_but_keep_0050():
+    q = quotes()
+    q["QQQ"]["stale"] = q["TSM"]["stale"] = True
+    q["TW0050_PRED"] = {"pred_open": 114.48, "last": 114.95}
+    html = mr.render_html(q, {"error": "stale"}, {"error": "stale"}, "", "2026-10-10", "每日報")
+    assert "TSM ADR 最新收盤未取得，暫停開盤預測" in html
+    assert "QQQ 最新收盤未取得，暫停公允價估算" in html
+    assert "114.48" in html and "0050 元大台灣50" in html

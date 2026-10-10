@@ -156,7 +156,8 @@ def subject_change(quote: dict[str, Any]) -> str:
 
 
 def refresh_quotes(quotes: dict[str, Any], now_tpe: dt.datetime,
-                   fetch: Callable[[str], dict[str, Any]]) -> None:
+                   fetch: Callable[[str], dict[str, Any]], *,
+                   recover: Callable[[str, str, str], dict[str, Any]] | None = None) -> None:
     """Refresh unusable base quotes once before predictions; tag every symbol.
 
     A valid last-session quote on a holiday remains usable for the existing
@@ -178,10 +179,19 @@ def refresh_quotes(quotes: dict[str, Any], now_tpe: dt.datetime,
             except Exception as exc:
                 # Do not leak provider response bodies into workflow logs.
                 print(f"::warning::{symbol} quote refresh failed ({type(exc).__name__})")
+        if not _complete(replacement, expected) and recover is not None and session:
+            _, previous, _ = _calendar(session)
+            if previous:
+                try:
+                    replacement = recover(symbol, expected, previous.isoformat())
+                except Exception as exc:
+                    print(f"::warning::{symbol} chart recovery failed ({type(exc).__name__})")
         if _complete(replacement, expected):
             replacement = dict(replacement)
             replacement["stale"] = False
             quotes[symbol] = replacement
+            if replacement.get("quote_source") == "yahoo_chart_recovery":
+                print(f"[quote] {symbol} recovered expected session {expected} via Yahoo chart")
         else:
             if not isinstance(prior, dict):
                 prior = {"error": "quote unavailable"}

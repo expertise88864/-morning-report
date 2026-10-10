@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_290  # Market rendering and US session detection moved into leaf helpers.
+MAIN_MODULE_LINE_CEILING = 26_292  # Incident fix: 2 lines wire the leaf quote recovery before predictions.
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
@@ -172,6 +172,7 @@ MAIN_MODULE_LINE_CEILING = 26_290  # Market rendering and US session detection m
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
+    "us_quote_recovery.py": 110,
     "us_market_session.py": 320,
     "polymarket_local_elections.py": 260,
     "source_link_policy.py": 40,

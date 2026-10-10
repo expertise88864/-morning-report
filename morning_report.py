@@ -33,6 +33,7 @@ from typing import Optional
 
 import llm_telemetry as _lt
 import us_market_session as _us_session
+import us_quote_recovery as _us_recovery
 from macro_observation_time import (observed_market_date as _market_date,
                                     yield_curve_source_note as _curve_source_note,
                                     yield_curve_dates_comparable as _curve_dates_comparable)
@@ -22881,10 +22882,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # === 個股開盤預測(2330 / 00662 / 0050 三合一精簡表,置於加權預測下方)===
     # 取代原本分散的三、四、六大卡;頭部 KPI 已有頭條數字,這裡給昨收/預測/幅度即可。
-    def _pred_row(label: str, last_v, pred_v, pct_v) -> str:
+    def _pred_row(label: str, last_v, pred_v, pct_v, reason="資料缺失") -> str:
         if last_v is None or pred_v is None:
             return (f"<tr><td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
-                    f"<td colspan='3' style='padding:9px 12px;border-bottom:1px solid #e2e8f0;color:#dc2626;font-size:13px;'>資料缺失</td></tr>")
+                    f"<td colspan='3' style='padding:9px 12px;border-bottom:1px solid #e2e8f0;color:#dc2626;font-size:13px;'>{_htmllib.escape(reason)}</td></tr>")
         pc = "#dc2626" if (pct_v or 0) >= 0 else "#16a34a"
         sg = "+" if (pct_v or 0) >= 0 else ""
         return (f"<tr>"
@@ -22913,8 +22914,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預測開盤／公允價</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預估漲跌</th>
           </tr>
-          {_pred_row("2330 台積電", _p_last, _p_mid, _p_pct)}
-          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct)}
+          {_pred_row("2330 台積電", _p_last, _p_mid, _p_pct, "TSM ADR 最新收盤未取得，暫停開盤預測" if (quotes.get("TSM") or {}).get("stale") else "資料缺失")}
+          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct, "QQQ 最新收盤未取得，暫停公允價估算" if (quotes.get("QQQ") or {}).get("stale") else "資料缺失")}
           {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
         {_prediction_delta_note(quotes.get("HISTORY") or [], report_date, {
@@ -24579,7 +24580,8 @@ def _phase_market_and_macro(ctx) -> None:
         "TSM": fetch_quote("TSM"),
         "SPY": fetch_quote("SPY"),
     }
-    _us_session.refresh_quotes(quotes, now_tpe, lambda ticker: fetch_quote(ticker, period="5d"))
+    _us_session.refresh_quotes(quotes, now_tpe, lambda ticker: fetch_quote(ticker, period="5d"),
+                              recover=lambda symbol, day, prev: _us_recovery.fetch(symbol, day, prev, _http_get))
     usdtwd_today, usdtwd_prev = fetch_usdtwd_pair()
     quotes["USDTWD"] = usdtwd_today
     quotes["USDTWD_prev"] = usdtwd_prev

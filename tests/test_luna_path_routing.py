@@ -116,8 +116,8 @@ def test_user_approved_high_reaches_specialized_request(luna_on, monkeypatch):
     monkeypatch.setattr(mr, '_call_llm_text', lambda p: pytest.fail('unexpected fallback'))
     assert '我的明確立場' in mr._call_llm_analysis_impl(*_ARGS)
     assert sent[0]['reasoning']['effort'] == 'high'
-    assert sent[0]['max_output_tokens'] == mr._lt.output_cap(
-        'high', mr.LLM_REPORT_MAX_TOKENS, model=mr.DEEPSEEK_MODEL)
+    assert sent[0]['max_output_tokens'] >= 98_304
+    assert mr._RUN_MANIFEST['llm']['primary']['requested_max_output_tokens'] == sent[0]['max_output_tokens']
 
 
 def test_the_legacy_profile_override_is_a_working_escape_hatch(monkeypatch):

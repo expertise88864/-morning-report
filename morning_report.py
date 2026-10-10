@@ -14524,7 +14524,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                       or "")),
         verbosity=OPENAI_TEXT_VERBOSITY,
         response_format=bundle["response_schema"],
-        max_output_tokens=_lt.output_cap(effort, LLM_REPORT_MAX_TOKENS,
+        max_output_tokens=_lt.structured_output_cap(effort, LLM_REPORT_MAX_TOKENS,
                                          model=DEEPSEEK_MODEL),
         store=OPENAI_STORE,
         reasoning_summary=OPENAI_REASONING_SUMMARY,
@@ -14645,7 +14645,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 usage=_dsr.normalize_usage(resp.get("usage")),
                 accepted=accepted, elapsed=elapsed,
                 finish_reason=out["status"], repair=repair,
-                # **這一次的字元數**,配這一次的 token 數(外審 F1)。
+                requested_max_output_tokens=payload.get("max_output_tokens"),
                 request_chars=_req_chars,
                 reject_reason=note, **extra)
 

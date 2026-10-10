@@ -136,6 +136,20 @@ def output_cap(effort: str, base_tokens: int,
     return min(int(base_tokens) * mult, int(cap))
 
 
+def structured_output_cap(effort: str, base_tokens: int, *, model: str) -> int:
+    """Budget the full structured report separately from the legacy prose.
+
+    On 2026-10-10 the report exhausted 70,000 tokens: 55,345 reasoning
+    plus 14,655 non-reasoning tokens, with the JSON still incomplete.
+    Reserve 64 Ki tokens for reasoning and 32 Ki for the structured answer.
+    This is headroom, not a guarantee or a request to produce more text.
+    Keep larger configured budgets and the registered provider ceiling;
+    callers retain their existing deadline and fallback policy.
+    """
+    return min(max(output_cap(effort, base_tokens, model=model), 98_304),
+               max_output_for(model)[0])
+
+
 def reasoning_tokens_of(usage: dict) -> Optional[int]:
     """從 usage 取推理 token。**兩種欄位擇一,不得相加**(第九輪 P2-3)。
 

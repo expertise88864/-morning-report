@@ -505,45 +505,44 @@
  ],
  "watch_seq": 59,
  "legacy_report": {
-  "date": "2026-10-09",
+  "date": "2026-10-12",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "AI 晶片與伺服器族群（NVIDIA、Oracle、CoreWeave 等）：CNBC 確認 OpenAI 告訴投資人 9 月底年化營收約 500 億美元，低於市場期待 （CNBC）。市場開始質疑 AI 投資的回收速度，費半與相關個股同步下殺。傳導：若雲端業者對資本支出轉為保守，CoWoS 訂單能見度會先反映。但今天沒有任何廠商宣布砍單，這裡跌的是估值不是訂單。量級：這則新聞沒有訂單或金額數字，對 2330 的實際影響幅度判斷不出來。[B 級・信心:中-低，資訊有限]",
+    "statement": "台積電供應鏈（設備與材料）：法說會前夕外資目標價掀上修潮，喊出 4,410 元 （民報）。目標價上修是賣方共識的方向性訊號，不是新訂單；它領先反映的是對明年 N2 量產與 CoWoS 擴產的期待。[B 級・信心:中-低,資訊有限]",
     "source_urls": [
-     "https://www.cnbc.com/2026/10/08/open-ai-revenue-nvidia-oracle-coreweave.html"
+     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE1TTUt1dVFkOGFVbmFGNVExdVRPSEN6MUNPOWJLb2lKZHNJRWZGbGVZc29KdDVLVlBhWWZ0Q2hPX1RMSmY1bG84NGxzWHMxT1B6TWJiWjhQSkdzd0JTLW9teW1wVWY?oc=5"
     ]
    },
    {
-    "statement": "記憶體族群（美光、SK 海力士、南亞科）：三星第三季財測營收 195 兆韓元、營業利益 107.4 兆韓元，雙雙低於市場預期 （鉅亨），美光與 SK 海力士應聲下跌 4.8% 與 5%。但台股南亞科昨日逆勢上漲 3.5%，且 DRAM 合約價傳再漲兩成 （財訊）。兩邊方向相反，原因是三星反映的是供給端成長動能放緩，台廠反映的是報價上漲。傳導：南亞科與 2330 的直接關聯低，這條線對台股的意義在於記憶體漲價是否傳導到模組與伺服器成本。量級：合約價漲幅是市場傳聞價，未經公司證實。[B 級・信心:中]",
+    "statement": "南亞科（2408，台灣 DRAM 廠）：法說會前法人喊買、目標價衝 800 元，第 3 季獲利爆發 （TVBS）。該股 9 月營收年增 560.9%，昨日外資買超 21,773 張。DRAM 報價回升先反映在南亞科毛利率，再用「同樣吃 AI 記憶體需求」間接支撐伺服器供應鏈能見度。[B 級・信心:中-低,資訊有限]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6626547",
-     "https://news.google.com/rss/articles/CBMie0FVX3lxTE80OF8tS1VDNmtmN1p1QWo2SnByeGRDaUd2SHZGWWpYZEFyeHJsbnZXZU9sOHQxUDhhUG5pX0lCZjBHZndqTjFHbnhsN0c1UmZEeTFrc0o5dmFTQkpZN1dfWG9taHkySXUtVEJTNnhSbGVUcExIc3RvWkdqTQ?oc=5"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE05Q0ltUmZZYldabVE3SWxvdDhqMHN6RzRSZXlLVzR0Z2UxWC1HLUdYRDlpQ1NsM0hLWjRNRTdVYk0tOGRpd0JCT0NsU3Jfblk?oc=5"
     ]
    },
    {
-    "statement": "AI 模型競賽（OpenRouter 官方定價與 Polymarket 市場盤）：10 月 7 日上架的 Claude Haiku 5.5，每百萬 tokens 輸入 0.1 美元、輸出 0.5 美元，僅為 GPT-6.1 Sol Pro 的十分之一 （OpenRouter）。同時 GPT-5.6 降價後，OpenAI 的企業支出已直追 Anthropic （鉅亨）。傳導：推理單價下滑會擴大總 token 用量，對算力是數量效應而不是打擊。Polymarket 年底最佳模型市場把 Google 與 Anthropic 各訂在 42%，OpenAI 僅 6%，顯示市場認為領先群已經收斂。量級：定價是硬數據，但對 CoWoS 訂單的傳導要等實際算力採購數字。[A 級・信心:中]",
+    "statement": "聯發科（2454，台灣 IC 設計龍頭）：第 3 季營收 1,680 億元優於財測、創新高，但 9 月營收 553.99 億元月減 13.69% （科技新報）。與 2330 的連動主要透過 N3、N5 投片，量級要看 10 月後 ASIC 專案是否放量，單月月減還不足以推翻季增的結論。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiS0FVX3lxTE9IbTREWHptQjVnSWVuNlJFejNnU3MyaXJpSmJ3bHBtS1pfOUJaT3gxcFNiSnlWRGVqMkhYM1FIUGg0X2RubDhMaXdKcw?oc=5"
+     "https://news.google.com/rss/articles/CBMi1gFBVV95cUxPWFF6SnZDamFNQjZFLTVfc0VEdGxBNUotRDI0NGloX0VtTUtnUEdFM1M0ZVN2cmEtSFl2d0hpYl9JSFdFNGtsX2dxWm1oUHdnbUtYRU1BTEhtX2pOaE5LWFlQbGNpTlFRV0liLUJMWkktTTNndU04a25HUlcxaWJDWmtxUFJpV1d4VjJQbWFXczVMdjZoYTZZSzFYYmV4MUluOUx3cmctYS1CTEllODlMWnpYdV92RHltblVVcVQ4dmZ0OHV1T3RKRXVXRTFIOG5MSV9Bekhn?oc=5"
     ]
    },
    {
-    "statement": "日月光投控（3711，全球最大封測廠）等封測三廠：一週內公告 192 億元廠務與設備採購，其中日月光占 167 億元 （鏈新聞）；子公司矽品與日月光半導體也連日公告廠務工程 （MOPS）。這與格羅方德協議指向同一件事：先進封裝產能吃緊，供應鏈正在同步擴軍。量級：廠務採購不等於新增產能上線，實際貢獻要看裝機與投產時程，中間可能差好幾季。[A 級・信心:中]",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9ack5oLXZta1VqQkM4WnYyM093R3M2cjZCd2tzLWR4d1Rqby1lbTlaSGR3SUN2MWFrQktYRjBNVUR0YzJnZEJESi1MNjJpc0x1VHFueTNkN3g?oc=5"
-    ]
-   },
-   {
-    "statement": "世芯-KY（3661，客製化 ASIC 設計服務商）：市場將其上修 2026 年 EPS 預估，由 129.37 元提高至 141.59 元 （CMoney）；昨日股價上漲 3.7%，三大法人合計買超 850 張。傳導：客製化晶片是 2330 先進製程與 CoWoS 的另一條需求線，客戶排除輝達體系時更容易看到它的動能。量級：這是賣方預估值，不等於訂單已經到手，要看後續月營收是否跟上。[B 級・信心:中-低，資訊有限]",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBMSnBqMXRfZ3ZuMmZOVHpmS2JfcGhsLWFLaENjbTJQTHBJdVpxWFRYUGJWblgxb3kzNkZzTG81Rlo0eEVsRlRrb2dVU1BOLUNmaVJkNkFKVWI?oc=5"
-    ]
-   },
-   {
-    "statement": "緯創（3231，AI 伺服器與筆電代工廠）：第三季營收首度突破 1 兆元 （工商時報），9 月營收年增 166.5%。傳導：AI 伺服器組裝拉貨最終仍受 GPU 供給與封裝產能節奏限制，代工端的營收成長不完全等於獲利成長。量級：單季破兆是規模事實，但毛利率未揭露，對獲利的貢獻還無法判斷。[A 級・信心:中]",
+    "statement": "緯創（3231，AI 伺服器代工廠）：第 3 季營收首度突破兆元、單季超車廣達 （工商時報）。組裝量放大會往上游拉 CoWoS 與 HBM 需求，是 2330 先進封裝的間接指標；但組裝毛利率遠低於晶圓代工，這條的意義在「量」不在「值」，與南亞科那條指向同一段伺服器拉貨。[A 級・信心:中]",
     "source_urls": [
      "https://news.google.com/rss/articles/CBMiX0FVX3lxTE95bzh3Z1ZvUTNnTGItNzJPT3NieHplRENlOUpuUjktVkZvN0d4QlNoWmJndkJwZC1FRm5JU05UOVQ5VGI1VXVOeWJVOFFGLVBsWlhwVDMxc2dfMkVnWnQ0?oc=5"
+    ]
+   },
+   {
+    "statement": "【傳產原物料｜台灣】台塑（1301，石化龍頭）：戰事推升油價，台塑昨日爆量上漲 7.82%，外資與投信合計買超 27,192 張 （自由時報）。油價上漲推升在途庫存與產品報價評價，是塑化股毛利率的直接變數。不過台塑 9 月營收年增僅 6.8%、月減 8.5%，報價要真的轉成營收，得看第四季開工率與中國需求。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBRcGZqenNjNy13bHNzY180RjlNVnhsTHllQmFsV0R3X0VnQ1FlM2dVS0c3RW1CZDVRNmJMMnlIVldRbXZIaW1PX05VU2VCQUNXckRMYUZ4ZWM?oc=5"
+    ]
+   },
+   {
+    "statement": "【金融｜台灣】國泰金（2882，台灣最大壽險金控）：FactSet 最新調查上修 EPS 預估至 9.02 元、目標價 126.5 元 （TradingView）。壽險獲利靠的是台美股與債券評價，利率維持高檔雖讓新錢收益率變好，卻同時壓抑舊債部位評價。目標價上修屬賣方方向性訊號，離實際獲利實現還隔著一季財報。[B 級・信心:中-低,資訊有限]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiZkFVX3lxTE5Ra1hLRUpaQWV1UG5DUTFWMzRfdkk1Wm8xY2VkRTZ4UXVUR202eEpDLVloUFNkRnlncTNhQXcyQzZ0NEtoZVZqNmFobTU4QmtUYkJiQ1ZURy1yekJwQzBwYVgzdkVTQQ?oc=5"
     ]
    }
   ]

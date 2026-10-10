@@ -7047,8 +7047,16 @@
    "3044"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "8046": 1505.0,
+   "2404": 1335.0,
+   "3711": 735.0,
+   "4958": 576.0,
+   "3044": 585.0
+  },
+  "taiex_entry": 49857.32
  },
  {
   "question": "2330_open_up",
@@ -7161,8 +7169,16 @@
    "2344"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "3189": 1080.0,
+   "3661": 4165.0,
+   "4958": 593.0,
+   "1303": 314.0,
+   "2344": 181.0
+  },
+  "taiex_entry": 49783.06
  },
  {
   "question": "2330_open_up",
@@ -7252,5 +7268,55 @@
   "actual": 2550.0,
   "err_raw": 22.35,
   "err_shadow": 28.26
+ },
+ {
+  "type": "top5",
+  "created": "2026-10-10",
+  "ledger_schema_version": 2,
+  "created_at": "2026-10-10T08:41:20.628781+08:00",
+  "target_session": "2026-10-12",
+  "base_session": "2026-10-08",
+  "codes": [
+   "3661",
+   "4958",
+   "8996",
+   "6213",
+   "6415"
+  ],
+  "raw_codes": [
+   "3661",
+   "4958",
+   "8996",
+   "6213",
+   "6415"
+  ],
+  "excluded": [],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-10-10",
+  "created_at": "2026-10-10T08:41:20.628781+08:00",
+  "target": "2026-10-12",
+  "threshold": 49313.44,
+  "pred_pct": -0.437,
+  "prob": 0.183,
+  "sigma": 0.578,
+  "sigma_n": 60,
+  "base_rate": 0.621,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "6daf1ee28e3e"
+  },
+  "git_sha": "6daf1ee28e3e"
  }
 ]

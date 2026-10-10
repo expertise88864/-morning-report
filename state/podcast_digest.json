@@ -3,6 +3,93 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "e6664835-0084-491c-acfb-f35535f2c121",
+        "title": "EP704 | 🐘",
+        "published": "Sat, 10 Oct 2026 08:07:02 GMT",
+        "processed_at": "2026-10-10T14:22:44Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 OpenAI 年化營收從 700 億美元被修正到 500 億美元，只是 ARR 年化算法造成的雜訊，不該因此砍倉追價，反而應放慢決策。",
+            "主持人解讀 Marvel 投資人日將 2031 年營收大幅上修至 700-900 億美元、以互連/光通為主菜，但提醒 Marvel 已漲多、部分利多已反映，追高需謹慎。",
+            "主持人認為 Marvel 宣告切入資料中心/整櫃管理晶片，不一定代表搶走信驊、新唐的 BMC 市場，反而可能把 TAM 做大，並反思自己過去太早押注 BMC 的教訓。",
+            "主持人分享自己從高波動交易轉向從容長線思維，例如 SpaceX 部位即使回檔也不恐慌，因已控制 8-10% 風險並確信方向，不因短期利空大幅調整部位。",
+            "主持人回應聽眾降槓桿、去壓力的提問，認為獲利後回檔 25% 仍想轉向大盤與科技巨頭不是沒膽，反而是老水手的正常演化；Allweather 組合可行，但自己未到分散防守階段，仍以追求報酬為主。"
+          ],
+          "tickers": [
+            {
+              "name": "Marvell Technology",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好 Marvel 在互連/光通的主菜地位，並因投資人日大幅上修營收而認為是全面做多，但提醒已漲多、部分利多已反映。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以就是一個對光通的全面做多啦",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Broadcom",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Broadcom 是交換機/光通領頭羊，後面有許多好消息待發表，可望帶動相關光通元件。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我們也是有了解到說Broadcom是有蠻多東西,後面也會出來上秀啦,有可能看到Marvel這樣之後,後面就會看到Hug爺爺這個,輸人不輸陣的出來上秀,大家可以稍微期待一下有這樣的一個機會,因為我們也是注意到他們有蠻多好消息在後面放著",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人表示自己持有 SpaceX 並確信方向正確，即使股價回檔也不恐慌，部位控管在可承受範圍。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "可是我發現說我好像不太在意耶,因為我就知道說我買的方向一定是對的",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "信驊",
+              "code": "5274",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "主持人認為 Marvel 跨入 BMC 不一定搶走信驊市場，反而可能把整體 TAM 做大，對信驊未必需看空。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "可能大家就想像說,有一個大開的搶市場,不一定有,有可能是說那個TN會變超級大,大家都可以分到更多的東西",
+                "direction": "neutral"
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "主持人操作上傾向放慢步調，不因單一營收修正或閃崩急砍部位；已做好風控後讓長線部位跑，對已漲多的熱門題材追高要小心。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 4,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "0b071f57-45ba-47d3-9f15-2129a0c645a8",
         "title": "EP703 | 🏈",
         "published": "Wed, 07 Oct 2026 08:09:40 GMT",
@@ -680,48 +767,6 @@
           "notable_quote": "七月你已經是對這個下半年沒有任何的信心了，那現在竟然可以這樣子爬回來，其實已經算是非常的感恩讚嘆。"
         },
         "shown_at": "2026-09-02T23:33:57Z"
-      },
-      {
-        "guid": "dcff9355-4c66-4b25-8afc-bf70ffd57d0a",
-        "title": "EP692 | 🍺",
-        "published": "Sat, 29 Aug 2026 08:30:14 GMT",
-        "processed_at": "2026-08-29T14:08:45Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Anthropic 與 Salesforce 合作推出 CloudForce，推翻「salespocalypse」論調：企業數據與 know-how 是進入門檻，軟體層不會被 AI 整碗端走；他傾向 Anthropic 拿較多定價權，但 Salesforce 仍可能靠閉鎖數據翻盤。",
-            "主持人解讀 Marvell 上修財測主要來自 XPU（Google ASIC 放量）與 Scale Up 光互連交換晶片，認為光通族群已重新轉強、甚至創新高，這份財報有機會成為族群續攻的催化劑。",
-            "主持人認為 NVIDIA 即使面對 ASIC 競爭仍被低估：它靠大量下單台積電鎖產能、卡住供應鏈，讓對手難出貨、新品易遞延，加上開源模型成長帶動 GPU 需求，認為其競爭優勢非常巨大。",
-            "主持人指出 AI 缺貨最嚴重在載板，記憶體若從 12Hi 改 8Hi 甚至 4Hi，只是把缺貨從記憶體換到載板，整體缺貨不會消失，反而增加板子用量；他看好台股光通、載板、伺服器組裝因供應鏈搶料產生新機會。",
-            "主持人對大盤看法：雖然盤面仍震盪，但近期事件與財報數字佳，認為已具備下一波多頭條件，期待有族群帶頭再拉一波。"
-          ],
-          "tickers": [
-            {
-              "name": "Salesforce",
-              "code": "CRM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "企業數據與 know-how 形成護城河，CloudForce 合作證明其軟體價值不會被 AI 取代。"
-            },
-            {
-              "name": "Marvell",
-              "code": "MRVL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "XPU 放量與 Scale Up 光互連交換晶片上修財測，看好光通成長動能。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "透過大量下單台積電鎖產能，卡住供應鏈讓對手難出貨，GPU 競爭優勢被低估。"
-            }
-          ],
-          "market_view": "主持人認為盤面雖然震盪，但近期事件與財報數字都不錯，已具備發展下一波多頭的條件，期待有族群帶頭再拉一波。",
-          "action_view": "主持人期待下一波多頭，認為供應鏈搶料會讓台股光通、載板、伺服器組裝等族群產生新機會，可留意是否有帶頭族群出現。",
-          "notable_quote": "我覺得市場中突然間產生超級多的機會,所以有機會去期待,看有沒有東西要帶頭,然後再拉一個新一波多頭出來。"
-        },
-        "shown_at": "2026-08-30T00:18:35Z"
       }
     ]
   },

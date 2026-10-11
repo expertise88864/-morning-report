@@ -47,6 +47,29 @@ def test_existing_source_url_limit_is_preserved():
     assert render.safe_href("https://example.com/" + "A" * 530) == ""
 
 
+@pytest.mark.parametrize("length", [753, 956, 2048])
+def test_sports_collected_long_rss_links_survive_rendering(length):
+    import html
+    prefix = "https://news.google.com/rss/articles/"
+    suffix = "?oc=5&hl=zh-TW"
+    url = prefix + "A" * (length - len(prefix) - len(suffix)) + suffix
+    sports = {"news": {"中華職棒": [{"title": "Collected sports story", "link": url}]}}
+    soup = BeautifulSoup(render._render_sports_html(sports, html), "html.parser")
+    assert soup.find("a", href=url) is not None
+    assert url not in soup.get_text()
+
+
+@pytest.mark.parametrize("url", ["javascript:alert(1)", "data:text/html,bad",
+                                 "https://example.com/\nattack",
+                                 "https://example.com/" + "A" * 2048])
+def test_sports_links_still_reject_unsafe_or_oversized_sources(url):
+    import html
+    sports = {"news": {"中華職棒": [{"title": "Collected sports story", "link": url}]}}
+    soup = BeautifulSoup(render._render_sports_html(sports, html), "html.parser")
+    assert soup.find("a") is None
+    assert "Collected sports story" in soup.get_text()
+
+
 def test_model_written_off_list_https_link_stays_plain_text():
     fragment = email_fragment("[Official source](https://uncollected.example/story)",
                               ["https://collected.example/story"])

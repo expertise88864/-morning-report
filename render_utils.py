@@ -1621,7 +1621,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 title = htmllib.escape(str(t.get("title", "")))
                 published = htmllib.escape(str(t.get("published_at") or ""))
                 title += f"（發布 {published}）" if published else "（發布時間未提供）"
-                link = htmllib.escape(safe_href(t.get("link")), quote=True)
+                link = htmllib.escape(safe_href(t.get("link"), max_chars=2048), quote=True)
                 if link:
                     return (f"<li style='margin:3px 0;'><a href='{link}' "
                             f"style='color:#0f172a;text-decoration:none;'>{title}</a></li>")

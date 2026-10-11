@@ -503,7 +503,7 @@ jobs:
         if: ${{ !cancelled() && needs.send-report.outputs.receipt_attempt != ''
             && steps.receipt_source.outcome == 'success' }}
         continue-on-error: true      # 由下一步區分預期缺席與正常無收據
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: delivery-receipt-${{ github.run_id }}-${{ needs.send-report.outputs.receipt_attempt }}
           path: _receipt
@@ -541,7 +541,7 @@ jobs:
         # CR-04:只有預期可發佈時才下載;預期 artifact 缺席必須讓 job 變紅。
         if: ${{ !cancelled() && needs.send-report.outputs.state_dirty == 'true'
             && needs.send-report.outputs.contract_outcome == 'success' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: state-to-publish
 

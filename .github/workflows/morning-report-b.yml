@@ -330,7 +330,7 @@ jobs:
 
       - name: 交棒寄送收據(不等契約,寄出當下就交出去)
         if: ${{ always() && steps.fresh_receipt.outputs.current == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: delivery-receipt-${{ github.run_id }}-${{ github.run_attempt }}
           path: state/delivery_receipt.json
@@ -430,7 +430,7 @@ jobs:
 
       - name: 交棒給發佈 job
         if: ${{ !cancelled() && steps.report.outputs.state_dirty == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: state-to-publish
           path: |

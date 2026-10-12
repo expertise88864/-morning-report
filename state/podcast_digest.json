@@ -2195,6 +2195,65 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "a92ebf6e-121c-42dc-997b-515d48dcd303",
+        "title": "EP344. OpenAI 營收假警報、Anthropic 宗教化、曼報 Pro 完全解析 | M觀點",
+        "published": "Mon, 12 Oct 2026 07:56:14 GMT",
+        "processed_at": "2026-10-12T18:15:20Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出金融時報把 OpenAI 的 500 億美元 ARR 與外界傳的 700 億美元搞混，其實是 OpenAI 與 Anthropic 營收認列方式不同（OpenAI 認淨額、Anthropic 認總額），並非營收不如預期；他以 ARR 數據推算 OpenAI 2024 年底 60 億、2025 年底 200 億、2026 年底可望達 700 億美元，連三年約三倍成長。",
+            "主持人用棒球比喻 OpenAI 是單季 50 轟的強打者，只是今年被 Anthropic 的 55 轟比下去；他回顧 OpenAI 上半年成長停滯（3 月 ARR 僅 250 億），但 7 月起因 GPT-5.6 推出後加速，9 月底已達 500 億，10 月又因 Anthropic Opus/Sonnet/Haiku 5.5 被短暫壓制，但沒有上半年嚴重。",
+            "主持人批評 Anthropic 內部已是「AI神教」，高層傾向相信 AI 有意識，並找宗教領袖尋求認可；他形容 11 月 12 日起禁止用戶「虐待」模型的條款是虛無主義，並認為若真心相信 AI 有意識就應停止發展，否則就是在創造奴隸，這些治理文化可能帶來風險。",
+            "來賓 Manny 分享 Springer Nature 與 RELX 案例：兩家期刊本業相近，但 Springer Nature 將數位工具成長業務留在母公司另一實體，投資人無法參與，因此估值乘數較低；他從中學到「本業賺錢後要 reinvest，並把成長留在可投資實體」的啟發。",
+            "主持人回答聽眾時表示，AI Agent 不會取代像 Palantir 這類已嵌入企業流程的軟體平台，用戶會拿 Agent 去操作系統而非替換系統，因為軟體的可靠性、記錄性與共通操作性無法被取代。"
+          ],
+          "tickers": [
+            {
+              "name": "RELX",
+              "code": "RELX",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "來賓 Manny 認為相較 Springer Nature，RELX 把數位工具成長業務留在自家公司，投資人可以參與，因此估值有溢價。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為 AI Agent 不會取代 Palantir 這類企業已驗證的軟體平台，反而會成為操作系統的勞工。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我今天如果是個企業主的話,我一定不會用Agent去取代軟體,為什麼呢,因為軟體它有它的可靠性,它的可複雜性,它的記錄性,包含的操作性,共通操作性,包含的理解性",
+                "direction": "neutral"
+              }
+            }
+          ],
+          "market_view": "主持人認為 AI 產業仍是 OpenAI 與 Anthropic 雙雄競賽，不能因某段時間單一公司領先就斷定對手完蛋；OpenAI 營收年增仍約三倍，AI 熱潮未因媒體誤解而泡沫化。",
+          "action_view": "操作上應先釐清公司採用的 ARR/營收認列方式，不要只跟著財經網紅的負面標題賣出 AI 股。",
+          "notable_quote": "這代表他每年營收都差不多翻三倍",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "這代表他每年營收都差不多翻三倍"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "c2f57401-d681-4276-bba3-efa0d3d3656b",
         "title": "EP343. SPCX 借錢擴張、前沿模型可取代性、美國期中選舉現狀 | M觀點",
         "published": "Thu, 08 Oct 2026 16:14:38 GMT",
@@ -2978,49 +3037,6 @@
           "notable_quote": "如果你在 2011 年 Tim Cook 上任時持有蘋果股票，配息再投入，15 年總報酬率是 2788%，年化報酬率 25%，遠超過同期 S&P 500 的 15%。"
         },
         "shown_at": "2026-09-03T23:46:20Z"
-      },
-      {
-        "guid": "7827a7b2-6925-4757-969b-b6f402d9821c",
-        "title": "EP332. 聯準會九月升息嗎、Waymo 嗆聲特斯拉、OpenAI 斷供對手 | M觀點",
-        "published": "Mon, 31 Aug 2026 06:22:25 GMT",
-        "processed_at": "2026-08-31T08:20:26Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為聯準會9月升息機率僅約20%、按兵不動約80%，因核心CPI已降到2.5%、月增率0.2%，通膨數據不支持升息。",
-            "他強調就業市場是「低僱用、低裁員」的脆弱均衡，失業率4.1%雖不差，但非農偏弱、單位勞動成本年增僅1.4%，沒有升息打破均衡的動機。",
-            "他認為AI公司大量發債推升長天期美債殖利率，已等於「市場偷偷幫聯準會升息」，因此Fed更沒必要實際升息。",
-            "主持人逐條檢視Waymo十堂課，認為攻擊特斯拉純視覺、高精地圖、黑盒子不信任等的論點證據不足，第6到9點只是產業標準，第10點根本是口號。",
-            "他判斷Waymo發文是面對特斯拉Cybertaxi壓力而「急了」，並認為特斯拉純視覺端到端路線最終會被證明正確，Waymo路線反而會被打臉。",
-            "OpenAI停止供應模型給Cursor，主持人指OpenAI模型僅佔Cursor使用量5%，此舉對雙方影響都極小，是不損人也不利己；長期只會加速企業分散模型依賴、支持開源與第三方模型。"
-          ],
-          "tickers": [
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為Waymo的批評站不住腳，特斯拉純視覺/端到端路線最終會被證明正確，Cybertaxi將讓Waymo感到壓力。"
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Waymo為Alphabet旗下自駕事業，主持人認為其十堂課多為廢話或口號，路線可能被特斯拉證明錯誤。"
-            },
-            {
-              "name": "OpenAI",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為OpenAI切斷Cursor模型供應是不損人也不利己的意氣之爭，長期將使企業更不願單壓OpenAI/Anthropic，轉而支持開源或第三方模型。"
-            }
-          ],
-          "market_view": "主持人認為目前通膨與就業數據都不支持聯準會9月升息，預估按兵不動機率80%；長天期美債殖利率因AI公司發債而上升，市場已先行緊縮，降低Fed實際升息必要。",
-          "action_view": "主持人未給明確加減碼，但認為9月升息機率低、市場已自動緊縮，不需要因升息恐慌而調整部位；自駕競爭上他偏向特斯拉陣營。",
-          "notable_quote": "九月不升息的機率大概八成，降息0%，升息20%。"
-        },
-        "shown_at": "2026-09-01T00:28:37Z"
       }
     ]
   },

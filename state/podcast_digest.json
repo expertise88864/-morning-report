@@ -7978,6 +7978,108 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "dca3db23-859a-41ac-814d-17d45ca87d42",
+        "title": "Unpacking Marvell's Analyst Day, OpenAI Revenue Rumors, and the Heterogeneous Rack",
+        "published": "Mon, 12 Oct 2026 07:25:10 -0700",
+        "processed_at": "2026-10-12T21:58:31Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Marvell 分析師日成功翻轉公司敘事：從過去只被追問在 Amazon 流失多少 ASIC 份額，轉向更廣的資料中心基礎設施（XPU 周邊、網通與交換器晶片），並開出高於市場（原本不存在）五年共識的營收與 EPS 目標，是他偏多的主因之一。",
+            "Marvell 在分析師日預告一款刻意不稱作 BMC 的「AI 基礎設施管理晶片」；主持人藉此指出，現代運算板上的 BMC（臺灣 Aspeed 為商用領導者）與 FPGA（Lattice）含量持續增加，BMC 到 2030 年可能是 30 億至 80 億美元的市場，許多過去只是角落小產品的品項，因資料中心規模變大而變成數億甚至十億美元等級。",
+            "主持人預測推論晶片會持續分眾化——訓練與推論分開之外，prefill 與 decode 也會用不同晶片（Google TPU 已有多代對應不同環節）；他認為這會替 Nvidia 與 Broadcom 以外的業者開更多門，但也讓各家市占追蹤變得更困難。",
+            "主持人認為 OpenAI 營收「大幅低於預期」的報導只是 gross 與 net 等會計認列差異造成的假警報（當天半導體股因此下殺）；他真正在意的是半導體交易的脆弱性——整體支出集中在少數、實質上只有兩家且大幅虧損的公司身上。",
+            "主持人認為電力是這輪最大瓶頸：美國電網明年估只能新增 20 至 30GW，明顯低於算力預測的需求，且明年會是限制最緊的一年、要到 2028-29 才逐步緩解；他並提出若某座 GW 級資料中心被延後六個月的假設情境。",
+            "主持人以 Lisa Su 表示 AMD 明年可取得高於預期的 TSMC 產能為引，提出「陰謀論」：TSMC 把增產的產能給 AMD，藉此壓抑 Intel 的現金流；同時指出 PC 市場未來兩年很糟（IDC 估約 -20%）反而釋出晶圓，對有晶圓廠、能把產能轉向高單價伺服器 CPU 的 Intel 未必是壞事。"
+          ],
+          "tickers": [
+            {
+              "name": "Marvell",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為分析師日把敘事轉向資料中心基礎設施與網通晶片，五年營收與 EPS 目標高於市場預期，看好推論與 scale-up 運算域對其有利。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "they put out these five-year revenue and EPS targets that, there's no five-year consensus number, but if there were, these would have been above them. So they seem very, very upbeat and very constructive.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人引述 Lisa Su 表示明年可從 TSMC 取得高於預期的產能，認為對 AMD 是好消息（產能是最大限制）。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "but she basically said they expect to get greater than expected capacity from TSMC next year, right? Which is good news for them, right?",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人提出 TSMC 可能藉由把產能給 AMD 來壓抑 Intel 現金流的「陰謀論」，但同時認為 PC 需求疲弱釋出晶圓，對擁有晶圓廠、能把產能轉往高單價伺服器 CPU 的 Intel 未必全然不利。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "when you have a foundry and you have wafers that you need that you're happy to shift to a higher ASP server CPU, perhaps for the first time ever, abysmal PC sales is actually a very good thing for Intel",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Nvidia 在推論晶片布局上持續領先、產品線最廣，但推論晶片分眾化也為其他形式的運算開了更多空間。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人觀察 TSMC 近幾季談論 Intel 的口氣明顯轉為競爭者，並推測其把新增產能分配給 AMD 以牽制 Intel 的現金流。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "I think TSMC is giving that extra capacity to AMD to do what it can to throttle Intel's cashflow generation.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "整體偏建設性但不無警覺：主持人認為 AI 需求真實、不需使用者先添購新硬體今天就能用，所以願意給這輪循環 benefit of the doubt；但他提醒交易結構脆弱——支出高度集中於少數、實質上兩家且大幅虧損的公司，且電力供給（美國電網明年估僅新增 20 至 30GW）可能跟不上算力預測，任何非需求因素都可能拖累半導體族群。",
+          "action_view": "",
+          "notable_quote": "But the real issue is the fragility of the semiconductor trade. There is growing awareness that all of this spend is being driven by six companies, really two and those two are massively loss generating.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "But the real issue is the fragility of the semiconductor trade. There is growing awareness that all of this spend is being driven by six companies, really two and those two are massively loss generating."
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "5271c60e-08eb-453e-b78e-a8ded9829dea",
         "title": "Has the Memory Cycle Broken? Plus: Nvidia & Broadcom’s $40B+ Financing Playbook",
         "published": "Mon, 05 Oct 2026 16:07:05 -0700",

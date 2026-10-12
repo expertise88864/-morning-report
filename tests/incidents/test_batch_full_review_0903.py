@@ -369,9 +369,16 @@ def test_fr2_the_event_calendar_escapes_external_text():
 
 
 def test_fr3_the_nba_finals_line_escapes_the_abbreviation():
-    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
-    i = src.index("                def _fmt(t):")
-    assert ".escape(str((t.get(\"team\") or {}).get(\"abbreviation\"" in src[i:i + 500]
+    import html
+    import nba_scoreboard
+    game = {"date": "2026-10-12T01:00Z", "status": {"type": {"state": "post", "completed": True}},
+            "competitions": [{"competitors": [
+                {"homeAway": "away", "winner": True, "score": "100", "team": {"abbreviation": "<script>"}},
+                {"homeAway": "home", "score": "90", "team": {"abbreviation": "<img>"}}]}]}
+    row = nba_scoreboard.game_row(game, "10/11")
+    out = mr._render_sports_html({"nba": [row]}, html)
+    assert "<script>" not in out and "<img>" not in out
+    assert "<b>&lt;script&gt;</b>" in out and "&lt;img&gt;" in out
 
 
 # ================================================================ LLM pipeline
@@ -503,11 +510,16 @@ def test_codex_r1_p2_the_watchlist_strip_uses_one_heading_grammar_and_removes_al
 
 
 def test_codex_r1_p2_nba_finals_scores_are_escaped_too():
-    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
-    i = src.index("                def _fmt(t):")
-    window = src[i:i + 1200]
-    assert "def _sc(t):" in window and "_html.escape(str(t.get(\"score\"" in window
-    assert '"text": f"{_fmt(away)} {_sc(away)}:{_sc(home)} {_fmt(home)}"' in window
+    import html
+    import nba_scoreboard
+    game = {"date": "2026-10-12T01:00Z", "status": {"type": {"state": "post", "completed": True}},
+            "competitions": [{"competitors": [
+                {"homeAway": "away", "score": "<script>", "team": {"abbreviation": "CHI"}},
+                {"homeAway": "home", "score": "<img>", "team": {"abbreviation": "DEN"}}]}]}
+    row = nba_scoreboard.game_row(game, "10/11")
+    out = mr._render_sports_html({"nba": [row]}, html)
+    assert "<script>" not in out and "<img>" not in out
+    assert "&lt;script&gt;:&lt;img&gt;" in out
 
 
 def test_codex_r1_p3_the_deadline_exit_reports_the_latest_attempt(monkeypatch):

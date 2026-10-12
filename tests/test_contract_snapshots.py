@@ -734,7 +734,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (44, "909a272112fc50b4"),  # New US stale fields covered by session integration tests.
+    "evidence_schema_version":  (45, "909a272112fc50b4"),  # Uncapped fixture unchanged; dropped representatives covered in test_news_cluster_selection/test_evidence_packet.
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。

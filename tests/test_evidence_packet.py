@@ -41,6 +41,29 @@ def test_the_same_evidence_always_hashes_to_the_same_value():
     assert len(shas) == 1, f"同樣的輸入算出 {len(shas)} 個不同的 sha"
 
 
+def test_cluster_representative_must_survive_news_selection(monkeypatch):
+    import news_clusters
+    original = news_clusters.required_analysis
+
+    def before_selection(news):
+        info = original(news)
+        info['clusters'][0]['representative_source_id'] = 'nremoved'
+        info['clusters'][0]['member_source_ids'].append('nremoved')
+        return info
+
+    monkeypatch.setattr(news_clusters, 'required_analysis', before_selection)
+    packet = _build()
+    ids = {n["source_item_id"] for n in packet["news"]}
+    for cluster in packet["news_clusters"]["clusters"]:
+        assert cluster["representative_source_id"] in ids
+        assert set(cluster["member_source_ids"]) <= ids
+    import news_research_runtime as runtime
+    import news_research_context as research
+    runtime.search_plan(_NEWS, [], '2026-08-02T06:00:00+08:00', sanitize=str)
+    block = research.legacy_block(_NEWS, [], '2026-08-02T06:00:00+08:00', sanitize=str)
+    assert 'nremoved' not in block
+
+
 def test_the_hash_ignores_quote_keys_that_are_not_evidence():
     """主流程往 `quotes` 塞一個渲染用的鍵,**不得**讓十天樣本分裂。
 

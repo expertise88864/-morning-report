@@ -14403,11 +14403,11 @@ _REPAIR_ROUND_DEADLINE: Optional[float] = None
 def _repair_round_viable(remaining: float, elapsed: float) -> tuple:
     """修補一輪放不放行 + 這一輪的預算 `(ok, round_budget)`。
 
-    成本估計 = min(上一輪耗時, _REPAIR_ROUND_CAP):慢的第一輪不再
-    一票否決修補;放行後這一輪的請求被 round_budget 鉗住,legacy 保留
+    入場最低時間 = min(上一輪耗時, 120 秒):允許有限時間的修補，
+    不要求一定有完整 300 秒;請求仍被 round_budget 鉗住,legacy 保留
     (_LEGACY_FALLBACK_RESERVE)動不到。
     """
-    cost = min(max(0.0, float(elapsed)), _REPAIR_ROUND_CAP)
+    cost = min(max(0.0, float(elapsed)), 120.0, _REPAIR_ROUND_CAP)
     if remaining < cost + _LEGACY_FALLBACK_RESERVE:
         return False, 0.0
     return True, min(_REPAIR_ROUND_CAP,
@@ -14562,7 +14562,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             _ok, _round_budget = _repair_round_viable(_remaining, elapsed)
             if not _ok:
                 print(f"[llm] 剩餘預算 {_remaining:.0f}s 裝不下修補一輪"
-                      f"(成本估 min(上一輪 {elapsed:.0f}s, cap "
+                      f"(最低 min(上一輪 {elapsed:.0f}s, 120s, cap "
                       f"{_REPAIR_ROUND_CAP:.0f}s))+ legacy 保留 "
                       f"{_LEGACY_FALLBACK_RESERVE:.0f}s,放棄修補",
                       file=sys.stderr)
@@ -14857,7 +14857,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 # 95 條「是什麼」要當天答得出來(2026-08-13 生產)——
                 # 只有總數與前兩條訊息,分不開「一種規則爆 90 次」與
                 # 「95 種各一次」,而兩者的處置完全不同。
-                problems_kinds=_problem_kinds(problems))
+                problems_kinds=_problem_kinds(problems), validation_problems=[str(p)[:500] for p in problems[:50]])
         _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
         print(f"[llm] Luna 輸出不合格({'修補後' if repair else '將修補一次'}):"
               f"{problems[:2]}", file=sys.stderr)

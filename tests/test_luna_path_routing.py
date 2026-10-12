@@ -536,6 +536,10 @@ def test_an_ungrounded_report_is_rejected_and_falls_back(luna_on, monkeypatch):
         f"應該把修補上限打滿再放棄(1 初始 + 3 語意),實際送了 {len(calls)} 次")
     problems = (mr._RUN_MANIFEST.get("llm") or {}).get("luna_problems") or []
     assert any("證據" in p for p in problems), f"拒收原因沒有說清楚:{problems}"
+    rejected = [a for a in mr._RUN_MANIFEST['llm']['attempts'] if a.get('problems_total')]
+    assert rejected
+    for attempt in rejected:
+        assert len(attempt['validation_problems']) == min(attempt['problems_total'], 50)
 
 
 def test_the_rejected_report_never_reaches_the_renderer():

@@ -194,9 +194,8 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
         seen_fp[fp] = x
         deduped.append(x)
     items = deduped
-    # 第十九輪 P1-3:**先分群、先保障,再截斷。** 先前是排序後直接留前 220,
-    # 而必分析清單是在**截斷後**才算的 —— 於是排在第 221 的央行政策公告
-    # 既不會進 packet,也不會成為必分析事件,而覆蓋率仍然顯示 100%。
+    # Group and reserve required sources before selecting articles; otherwise
+    # an omitted central-bank announcement can disappear from coverage checks.
     # 分母一開始就把真正重要的事件排除掉了。
     info = _nc.required_analysis(items)
     forced = _forced_ids(items, info)
@@ -211,7 +210,8 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
              "coverage": coverage,
              "near_duplicates_dropped": near_dropped,
              "summaries_truncated": sum(1 for x in kept if x["summary_truncated"])}
-    return kept, trunc, info
+    from news_cluster_selection import project
+    return kept, trunc, project(info, kept)
 
 
 #: 每個必分析事件群強制保留幾則。**三則**:分群時選中的代表

@@ -427,6 +427,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 外審:跨語言前置條件要認法域的中英對應
     # (`entity_alias` 刻意不收國家)。**實測 225 行**。
     "news_clusters.py": 235,
+    "news_cluster_selection.py": 45,
     # Commit B 新增:來源註冊表(誰跟誰是同一個編輯台)與
     # 兩階段抓取計畫(全文預算逐事件群分配)。兩個都是純規則層。
     # 第二十三輪 P1-4:ASCII 別名 token 邊界 + 未知來源去重。實測 251。

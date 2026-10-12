@@ -75,6 +75,11 @@ def test_repair_round_has_its_own_budget():
     assert mr._repair_round_viable(651, 546) == (True, 300.0)
     assert mr._repair_round_viable(400, 546)[0] is False, "保留被吃掉了"
     assert mr._repair_round_viable(450, 100) == (True, 150.0)
+    # October 12: first attempt 417s, 530s left. A bounded 230s repair
+    # must be possible without consuming the 300s legacy reserve.
+    assert mr._repair_round_viable(530, 417) == (True, 230.0)
+    assert mr._repair_round_viable(419, 417) == (False, 0.0)
+    assert mr._repair_round_viable(420, 417) == (True, 120.0)
     # r2:round 鉗制是**作用域制**(整個修補傳輸期間持續生效,含退避
     # 重試),由 _call_deepseek_responses 的 finally 清除;
     # call_llm_analysis 的 finally 是 gate 駁回等未送出路徑的安全網。

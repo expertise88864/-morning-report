@@ -1408,7 +1408,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for g in nba)
         _mark("NBA")
         blocks.append(
-            f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 冠軍賽</b>{rows}"
+            f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 最新賽況（台北時間）</b>{rows}"
             + _nba_poly_lines() + "</div>")
         _nba_champ_shown = True
     if nba_fav:

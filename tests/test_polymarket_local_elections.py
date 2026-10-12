@@ -74,8 +74,8 @@ def test_reversed_yes_no_order_quality_and_real_low_probability():
     prices = pe._prices(event(markets=[market(
         outcomes='["No", "Yes"]', outcomePrices='["0.99", "0.01"]',
         volume24hr=10, spread=0.1)]))
-    assert prices == [(0.01, "Real Candidate 1.0%（量低、價差大）")]
-    assert "量未知、價差未知" in pe._prices(event(markets=[market(volume24hr=None, spread=None)]))[0][1]
+    assert prices == [(0.01, "Real Candidate 1.0%")]
+    assert pe._prices(event(markets=[market(volume24hr=None, spread=None)]))[0][1] == "Real Candidate 70.0%"
 
 
 @pytest.mark.parametrize("end", ["2026-10-08T00:00:00Z", "bad", "2026-11-29"])

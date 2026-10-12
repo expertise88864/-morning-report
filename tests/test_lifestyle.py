@@ -43,7 +43,7 @@ def test_render_sports_html():
     h = mr._render_sports_html(sports, htmllib)
     assert "體育快訊" in h
     assert "中華職棒戰績" in h and "味全龍" in h and "33-0-16" in h
-    assert "NBA 冠軍賽" in h and "紐約尼克 leads series 3-1" in h   # 縮寫轉繁中(2026-07-16)
+    assert "NBA 最新賽況" in h and "紐約尼克 leads series 3-1" in h
     assert "MLB 戰績" in h and "坦帕灣光芒" in h and "40-25" in h   # 表格化,中文隊名
     assert "MLB 昨日比分" not in h          # 使用者要求移除逐場比分
     assert "兄弟逆轉勝" in h
@@ -1348,7 +1348,7 @@ def test_render_sports_shows_nba_offseason_when_no_games():
     h2 = mr._render_sports_html(
         {"nba": [{"text": "BOS 110:104 NYK", "date": "06/12"}],
          "nba_offseason": "NBA 球季尾聲;選秀即將登場"}, htmllib)
-    assert "NBA 冠軍賽" in h2 and "球季尾聲" not in h2 and "選秀" not in h2
+    assert "NBA 最新賽況" in h2 and "球季尾聲" not in h2 and "選秀" not in h2
 
 
 def test_audit_dramatic_macro_claims():
@@ -1898,7 +1898,7 @@ def test_fetch_nba_week_fixtures_matches_full_team_names(monkeypatch):
 
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
     monkeypatch.setenv("NBA_FAVORITE_TEAMS", "Celtics,Lakers")
-    out = mr.fetch_nba_week_fixtures()
+    out = mr.fetch_nba_week_fixtures(mr.dt.datetime(2026, 10, 21, 8, tzinfo=mr.TPE))
     texts = [g["text"] for g in out]
     assert "LAL @ BOS" in texts                       # 全名關鍵字命中兩隊之一
     assert "MIA @ NYK" not in texts                   # 非關注隊剔除
@@ -1929,7 +1929,7 @@ def test_fetch_nba_week_fixtures_den_not_matching_golden_state(monkeypatch):
 
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
     monkeypatch.setenv("NBA_FAVORITE_TEAMS", "den")
-    out = mr.fetch_nba_week_fixtures()
+    out = mr.fetch_nba_week_fixtures(mr.dt.datetime(2026, 10, 21, 8, tzinfo=mr.TPE))
     texts = [g["text"] for g in out]
     assert "DEN @ PHX" in texts                       # 縮寫整詞命中金塊
     assert "GSW @ MIA" not in texts                   # 不誤中 Golden State

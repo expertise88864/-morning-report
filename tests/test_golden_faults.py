@@ -58,9 +58,9 @@ def test_golden_section_order_stable():
     html = mr.render_html(_golden_quotes(), fair, preds, analysis,
                           "2026-07-14 (Tue)", "每日報")
     markers = [
-        "一、美股收盤行情",       # 行情表
         "二、總經指標",           # 總經表
         "市場結構訊號",           # G3 門檻警示(緊接總經)
+        "美股收盤行情",           # 整合於個股預測上方
         "個股開盤預測",           # 六、預測與公允價
         # G1 曝險卡已依使用者要求刪除(2026-07-15),不再是 golden 合約的一部分
         "長線趨勢參考",           # 200 日均線

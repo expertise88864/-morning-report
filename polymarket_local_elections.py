@@ -28,6 +28,9 @@ NAMES = {
     "Chen Su-yueh": "陳素月", "Wei Ping-cheng": "魏平政",
     "Chang Chia-chun": "張嘉郡", "Liu Chien-kuo": "劉建國",
     "Ko Chih-en": "柯志恩", "Lai Jui-lung": "賴瑞隆",
+    "Hsu Chih-chieh": "許智傑", "Huang Kuo-chang": "黃國昌",
+    "Kuo Hsi": "郭璽", "Yang Chiung-ying": "楊瓊瓔",
+    "Huang Hsiu-fang": "黃秀芳",
 }
 _SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 _PLACEHOLDER = re.compile(r"(?:candidate|party|player|team)\s+[a-z0-9]+\Z", re.I)
@@ -97,18 +100,8 @@ def _prices(event: dict, now: dt.datetime | None = None) -> list[tuple[float, st
             assert p is not None
         except (TypeError, ValueError):
             continue
-        volume, spread = _number(market.get("volume24hr")), _number(market.get("spread"))
-        flags = []
-        if volume is None or volume < 0:
-            flags.append("量未知")
-        elif volume < 10000:
-            flags.append("量低")
-        if spread is None or not 0 <= spread <= 1:
-            flags.append("價差未知")
-        elif spread > 0.05:
-            flags.append("價差大")
         text = f"{NAMES.get(name, name)} {p * 100:.1f}%"
-        rows.append((p, text + (f"（{'、'.join(flags)}）" if flags else "")))
+        rows.append((p, text))
     return sorted(rows, key=lambda row: row[0], reverse=True)
 
 
@@ -136,8 +129,6 @@ def fetch_rows(events: Callable, search: Callable, now: dt.datetime) -> list[dic
                 if not prices:
                     raise ValueError("no valid named candidate prices")
                 detail = "・".join(text for _, text in prices[:3])
-                if len(prices) > 3:
-                    detail += "（僅列報價前 3 名）"
                 rows.append({"label": f"2026 {label}", "kind": "tw_local_election",
                              "as_of": now.astimezone(_TPE).strftime("%m/%d %H:%M 台北"),
                              "detail": detail,

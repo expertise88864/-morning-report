@@ -21019,11 +21019,16 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
     """
     span = (f"{now_tpe.strftime('%Y%m%d')}"
             f"-{(now_tpe + dt.timedelta(days=days)).strftime('%Y%m%d')}")
-    r = _http_get(f"https://site.api.espn.com/apis/site/v2/sports/{league_path}/scoreboard",
-                  params={"dates": span}, timeout=20)
-    r.raise_for_status()
+    if league_path == "basketball/nba":
+        from nba_scoreboard import week_events
+        events = week_events(_http_get, now_tpe, days)
+    else:
+        r = _http_get(f"https://site.api.espn.com/apis/site/v2/sports/{league_path}/scoreboard",
+                      params={"dates": span}, timeout=20)
+        r.raise_for_status()
+        events = r.json().get("events", [])
     out = []
-    for ev in r.json().get("events", []):
+    for ev in events:
         st = (((ev.get("status") or {}).get("type")) or {})
         if st.get("state") != "pre":
             continue   # 只列未開打
@@ -21032,6 +21037,8 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
             ko = dt.datetime.fromisoformat(iso).astimezone(TPE)
         except Exception:
             continue   # 無可靠開賽時間就不列
+        if league_path == "basketball/nba" and not now_tpe <= ko < now_tpe + dt.timedelta(days=days):
+            continue
         name = str(ev.get("shortName") or ev.get("name") or "")
         slug = str((ev.get("season") or {}).get("slug") or "").lower()
         special = "all-star" in slug or "All-Star" in str(ev.get("name") or "")
@@ -21235,35 +21242,14 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             r = _http_get(
                 "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
                 params={"dates": day}, timeout=15)
+            r.raise_for_status()
             events = r.json().get("events", [])
+            from nba_scoreboard import game_row
             finals = []
             for e in events:
-                comp = (e.get("competitions") or [{}])[0]
-                teams = comp.get("competitors", [])
-                if len(teams) != 2:
-                    continue
-                away = next((t for t in teams if t.get("homeAway") == "away"), teams[0])
-                home = next((t for t in teams if t.get("homeAway") == "home"), teams[1])
-
-                import html as _html
-
-                def _fmt(t):
-                    # 與 `fetch_nba_favorite_games._name` 同一條防線(全案審查
-                    # FR-3):ESPN 縮寫是受控詞彙,但外部文字進 HTML 一律 escape。
-                    name = _html.escape(str((t.get("team") or {}).get("abbreviation", "?")))
-                    return f"<b>{name}</b>" if t.get("winner") else name
-
-                def _sc(t):
-                    # 分數也是外部文字(Codex deep r1 P2):渲染端刻意不 escape
-                    # 這段 text(要保住 <b>),所以每一格都得在這裡先洗過。
-                    return _html.escape(str(t.get("score", "-")))
-                series = (comp.get("series") or {}).get("summary", "")
-                note = ((comp.get("notes") or [{}])[0].get("headline") or "")
-                finals.append({
-                    "text": f"{_fmt(away)} {_sc(away)}:{_sc(home)} {_fmt(home)}",
-                    "series": series, "note": note[:50],
-                    "date": f"{day[4:6]}/{day[6:]}",
-                })
+                row = game_row(e, f"{day[4:6]}/{day[6:]}")
+                if row:
+                    finals.append(row)
             if finals:
                 out["nba"] = finals
                 break
@@ -22906,7 +22892,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     _t_last = _tw.get("last")
     _t_pct = ((_t_pred / _t_last - 1) * 100) if (_t_pred and _t_last) else None
     combined_pred_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、個股開盤預測與公允價（2330 / 0050 開盤;00662 公允價）</h2>
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、美股收盤行情與個股開盤預測、公允價</h2>
+        <h3>美股收盤行情</h3>
+        <table data-mobile-layout="table" style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
+          <tr><th>標的</th><th>收盤</th><th>漲跌</th></tr>
+          {quote_rows}
+        </table>
+        <h3>個股開盤預測與公允價（2330 / 0050 開盤；00662 公允價）</h3>
         <table data-mobile-layout="table" style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr style="background:#f1f5f9;">
             <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">標的</th>
@@ -23006,16 +22998,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {event_timeline_html}
 
             {weekly_recap_html}
-
-            <h2 style="color:#0f172a;font-size:20px;margin:0 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">一、美股收盤行情</h2>
-            <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
-              <tr style="background:#f1f5f9;">
-                <th style="padding:10px 14px;text-align:left;color:#475569;font-size:12px;letter-spacing:1px;">標的</th>
-                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">收盤</th>
-                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">漲跌</th>
-              </tr>
-              {quote_rows}
-            </table>
 
             {macro_table_html}
 

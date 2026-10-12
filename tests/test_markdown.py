@@ -227,7 +227,7 @@ def test_render_html_size_guard_truncates_low_priority(monkeypatch):
     assert "醫學文獻" not in html and "Podcast" not in html   # 砍到體育就停,沒續砍
     assert "中華職棒 最新賽果" not in html                    # 體育確實被移除(closure 重組生效)
     # 核心永不被剪
-    assert "一、美股收盤行情" in html and "個股開盤預測" in html and "2330" in html
+    assert "美股收盤行情" in html and "個股開盤預測" in html and "2330" in html
 
 
 def test_render_html_has_preheader_with_key_numbers():
@@ -311,7 +311,7 @@ def test_render_html_portfolio_redacted_in_archive_but_present_in_email():
     assert "昨日帳上" not in html and "PF_ROW_START" not in html
     redacted = mr._redact_private_for_archive(html)
     assert "昨日帳上" not in redacted and "PF_ROW_START" not in redacted  # 存檔去識別
-    assert "一、美股收盤行情" in redacted                          # 其餘保留
+    assert "美股收盤行情" in redacted                          # 其餘保留
 
 
 def test_render_html_size_guard_quiet_when_small(monkeypatch):
@@ -349,7 +349,7 @@ def test_render_html_size_guard_reduces_podcast_before_nuking(monkeypatch):
     assert html.count("EPMARK") == 3                  # 縮到 3 集
     assert "Podcast 已縮減集數" in html                # 提示局部縮減
     assert "已暫略:Podcast" not in html               # 未被整塊移除
-    assert "一、美股收盤行情" in html                  # 核心永不被剪
+    assert "美股收盤行情" in html                  # 核心永不被剪
 
 
 def test_render_html_size_guard_compacts_points_for_few_large_episodes(monkeypatch):
@@ -366,7 +366,7 @@ def test_render_html_size_guard_compacts_points_for_few_large_episodes(monkeypat
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-15", "每日報")
     assert 0 < html.count("PTMARK") <= 12              # 條數被壓低,但未清空
     assert "已暫略:Podcast" not in html               # 沒被整塊砍
-    assert "一、美股收盤行情" in html
+    assert "美股收盤行情" in html
 
 
 def test_render_html_reports_only_shown_podcast_episodes(monkeypatch):
@@ -469,7 +469,7 @@ def test_render_html_stays_within_gmail_ceiling_with_huge_podcast(monkeypatch):
     q = {**_full_quotes(), "PODCAST_DIGEST": _podcast_episodes(30)}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-15", "每日報")
     assert mr._estimated_email_kb(html) <= 102
-    assert "一、美股收盤行情" in html and "2330" in html
+    assert "美股收盤行情" in html and "2330" in html
 
 
 def test_render_html_keep_mode_does_not_omit_sections(monkeypatch):
@@ -513,7 +513,7 @@ def test_render_html_user_requested_trims_2026_06():
     assert "非開盤價" not in html and "刻意保守" not in html         # 5. 個股冗長註腳
     # --- 核心保留 ---
     assert "訊號共識" in html                                      # 訊號共識保留
-    assert "一、美股收盤行情" in html and "個股開盤預測" in html
+    assert "美股收盤行情" in html and "個股開盤預測" in html
 
 
 def test_render_html_contains_required_sections():
@@ -521,7 +521,7 @@ def test_render_html_contains_required_sections():
                           "## 測試分析", "2026-05-14 (Wed)", "每日報")
     assert html.startswith("<!DOCTYPE html>")
     # 2330/00662/0050 已濃縮成「個股開盤預測」一段;資料品質/8-K/回顧已移到後台不顯示
-    for section in ("一、美股收盤行情", "個股開盤預測", "2330"):
+    for section in ("美股收盤行情", "個股開盤預測", "2330"):
         assert section in html
 
 
@@ -723,7 +723,7 @@ def test_render_html_includes_kpi_strip_with_full_data():
     html = mr.render_html(q, fair, preds, analysis, "2026-05-16", "每日報")
     # KPI 條:5 個欄位都顯示;批#26 立場只顯示標籤、不顯示淨分數字
     assert "偏空" in html
-    _kpi = html.split("一、美股收盤行情")[0]
+    _kpi = html.split("六、美股收盤行情")[0]
     assert "-4" not in _kpi                       # 淨分不外露於 KPI
     assert "2192.5" in html
     assert "116.99" in html
@@ -731,12 +731,12 @@ def test_render_html_includes_kpi_strip_with_full_data():
     # KPI 顯示 0050 取代 VIX
     assert "0050 預測" in html and "95.4" in html
     # VIX 仍在「總經指標」表，但不在 KPI 條
-    kpi_section = html.split("一、美股收盤行情")[0]
+    kpi_section = html.split("六、美股收盤行情")[0]
     assert "VIX" not in kpi_section.split("MARKET ALERTS")[0] or "VIX 預測" not in html
     # 結論橫條
     assert "今日結論" in html and "SOX 暴跌減碼" in html
     # KPI 在 alerts 之前
-    assert html.find("立場") < html.find("一、美股收盤行情")
+    assert html.find("立場") < html.find("六、美股收盤行情")
     # 0050 在濃縮的「個股開盤預測」段
     assert "個股開盤預測" in html and "0050" in html
 
@@ -863,7 +863,7 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections(monkey
     assert "外資台指期未平倉" not in html   # 該區塊已依使用者要求隱藏
     # 結論在頂端,五檔在後(政策/醫界卡已於 2026-08-07 移除)。
     assert summary_idx < top5_idx
-    assert "偏多但控風險" in html[:html.find("一、美股收盤行情")]   # 一句話在頂端
+    assert "偏多但控風險" in html[:html.find("六、美股收盤行情")]   # 一句話在頂端
 
 
 def test_render_html_warns_when_watchlist_scores_are_low_confidence(monkeypatch):

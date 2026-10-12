@@ -510,39 +510,39 @@
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電供應鏈（設備與材料）：法說會前夕外資目標價掀上修潮，喊出 4,410 元 （民報）。目標價上修是賣方共識的方向性訊號，不是新訂單；它領先反映的是對明年 N2 量產與 CoWoS 擴產的期待。[B 級・信心:中-低,資訊有限]",
+    "statement": "台積電（2330，全球最大晶圓代工廠）：9 月營收 5,118.57 億元、年增 54.6%，第三季營收 1 兆 4,942 億元創單季新高，超越財測高標 （鉅亨）。營收超標直接墊高 Q3 每股盈餘基期，先進製程與先進封裝稼動率是主要推力。這屬於已實現數字而非展望，量級上 Q3 季增 17.62%、年增 50.94%，等於把 10/15 法說會的基本門檻拉高。[A 級・信心:高]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE1TTUt1dVFkOGFVbmFGNVExdVRPSEN6MUNPOWJLb2lKZHNJRWZGbGVZc29KdDVLVlBhWWZ0Q2hPX1RMSmY1bG84NGxzWHMxT1B6TWJiWjhQSkdzd0JTLW9teW1wVWY?oc=5"
+     "https://news.cnyes.com/news/id/6627622"
     ]
    },
    {
-    "statement": "南亞科（2408，台灣 DRAM 廠）：法說會前法人喊買、目標價衝 800 元，第 3 季獲利爆發 （TVBS）。該股 9 月營收年增 560.9%，昨日外資買超 21,773 張。DRAM 報價回升先反映在南亞科毛利率，再用「同樣吃 AI 記憶體需求」間接支撐伺服器供應鏈能見度。[B 級・信心:中-低,資訊有限]",
+    "statement": "台積電（2330，全球最大晶圓代工廠）：法說會將於 10/15 登場，元大投顧上調今年 EPS 預估至逾 111 元、目標價 3,500 元，並看好明年毛利率挑戰 70% （自由財經）。若毛利率站上七成，代表 N2 與 CoWoS 的定價權兌現，有助推升整體晶圓代工評價。不過這是券商預估不是公司指引，量級要等 10/15 正式數字驗證，在那之前不宜把目標價當已定價。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE05Q0ltUmZZYldabVE3SWxvdDhqMHN6RzRSZXlLVzR0Z2UxWC1HLUdYRDlpQ1NsM0hLWjRNRTdVYk0tOGRpd0JCT0NsU3Jfblk?oc=5"
+     "https://ec.ltn.com.tw/article/paper/1774167"
     ]
    },
    {
-    "statement": "聯發科（2454，台灣 IC 設計龍頭）：第 3 季營收 1,680 億元優於財測、創新高，但 9 月營收 553.99 億元月減 13.69% （科技新報）。與 2330 的連動主要透過 N3、N5 投片，量級要看 10 月後 ASIC 專案是否放量，單月月減還不足以推翻季增的結論。[A 級・信心:中]",
+    "statement": "鴻海（2317，全球最大電子代工集團）、台達電（2308，電源與散熱龍頭）、廣達（2382，AI 伺服器代工大廠）：美國 ITC 就 Vicor 指控的 VPD 垂直供電專利立案 337 調查，20 家業者入列，最重為禁止侵權品輸美 （鉅亨）。VPD 是把電源轉換器放到 GPU 封裝下方、縮短路徑的供電方案，屬 AI 伺服器「最後一吋」瓶頸。但 337 審理通常要一年到一年半、期間可正常出貨，真正風險是代工廠須改規避設計或買授權，推升成本。量級取決於最終排除令是否只鎖定特定模組，這則新聞目前說不出金額。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMi1gFBVV95cUxPWFF6SnZDamFNQjZFLTVfc0VEdGxBNUotRDI0NGloX0VtTUtnUEdFM1M0ZVN2cmEtSFl2d0hpYl9JSFdFNGtsX2dxWm1oUHdnbUtYRU1BTEhtX2pOaE5LWFlQbGNpTlFRV0liLUJMWkktTTNndU04a25HUlcxaWJDWmtxUFJpV1d4VjJQbWFXczVMdjZoYTZZSzFYYmV4MUluOUx3cmctYS1CTEllODlMWnpYdV92RHltblVVcVQ4dmZ0OHV1T3RKRXVXRTFIOG5MSV9Bekhn?oc=5"
+     "https://news.cnyes.com/news/id/6627587"
     ]
    },
    {
-    "statement": "緯創（3231，AI 伺服器代工廠）：第 3 季營收首度突破兆元、單季超車廣達 （工商時報）。組裝量放大會往上游拉 CoWoS 與 HBM 需求，是 2330 先進封裝的間接指標；但組裝毛利率遠低於晶圓代工，這條的意義在「量」不在「值」，與南亞科那條指向同一段伺服器拉貨。[A 級・信心:中]",
+    "statement": "艾司摩爾（ASML，全球微影設備龍頭）：對銷往韓國的設備替換備品全面調漲價格 10% （科技新報）。備品漲價反映記憶體廠稼動率拉高、設備商議價力回升，而三星、SK 海力士增產最終仍要走先進製程與封裝，對 2330 是需求面間接正向。但漲價只涵蓋備品、不含新機台，對 ASML 營收貢獻的量級判斷不出來。[B 級・信心:中-低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE95bzh3Z1ZvUTNnTGItNzJPT3NieHplRENlOUpuUjktVkZvN0d4QlNoWmJndkJwZC1FRm5JU05UOVQ5VGI1VXVOeWJVOFFGLVBsWlhwVDMxc2dfMkVnWnQ0?oc=5"
+     "https://technews.tw/2026/10/12/asml-raises-component-prices-by-10-to-share-profits/"
     ]
    },
    {
-    "statement": "【傳產原物料｜台灣】台塑（1301，石化龍頭）：戰事推升油價，台塑昨日爆量上漲 7.82%，外資與投信合計買超 27,192 張 （自由時報）。油價上漲推升在途庫存與產品報價評價，是塑化股毛利率的直接變數。不過台塑 9 月營收年增僅 6.8%、月減 8.5%，報價要真的轉成營收，得看第四季開工率與中國需求。[A 級・信心:中]",
+    "statement": "三星電子（005930.KS，全球最大記憶體廠）：財測不如預期，美光、SK 海力士單日跌約 5%、記憶體股倒一片 （LINE TODAY）。延續這條記憶體超級循環的追蹤線，今日轉折在於「報價漲」與「財測弱」出現分歧。若韓系大廠擴產保守，供給紀律反而有利報價維持，台灣的南亞科、華邦電受惠程度要看它是否同步收斂資本支出。[B 級・信心:中-低，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBRcGZqenNjNy13bHNzY180RjlNVnhsTHllQmFsV0R3X0VnQ1FlM2dVS0c3RW1CZDVRNmJMMnlIVldRbXZIaW1PX05VU2VCQUNXckRMYUZ4ZWM?oc=5"
+     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE1pZVVGdTQzRUJzRlhBcFhGa2g0UlBWNl9Cby11dnU1bjRUbFdnN19ERWZ3SkhqcVJ5OHllSVNBNFcySGpKdGhYRy1qSExwd1JfMXhnVEJpeUxCRUJQVDBVN2tHSzc?oc=5"
     ]
    },
    {
-    "statement": "【金融｜台灣】國泰金（2882，台灣最大壽險金控）：FactSet 最新調查上修 EPS 預估至 9.02 元、目標價 126.5 元 （TradingView）。壽險獲利靠的是台美股與債券評價，利率維持高檔雖讓新錢收益率變好，卻同時壓抑舊債部位評價。目標價上修屬賣方方向性訊號，離實際獲利實現還隔著一季財報。[B 級・信心:中-低,資訊有限]",
+    "statement": "輝達（NVDA，AI GPU 龍頭）：10-Q 揭露表外財務承諾飆至約 5,300 億美元，較上季 1,840 億大增逾 180% （鉅亨）。這意味輝達從賣晶片進一步變成 AI 基建的信用背書方，把供應承諾、雲協議、租約綁進生態系，等於用資本鎖住未來算力需求，中長期有利 2330 的 CoWoS 與 HBM 拉貨。但這也是集中度風險：若 AI 資本支出放緩，這些承諾可能產生取消成本，屬兩面刃。[B 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiZkFVX3lxTE5Ra1hLRUpaQWV1UG5DUTFWMzRfdkk1Wm8xY2VkRTZ4UXVUR202eEpDLVloUFNkRnlncTNhQXcyQzZ0NEtoZVZqNmFobTU4QmtUYkJiQ1ZURy1yekJwQzBwYVgzdkVTQQ?oc=5"
+     "https://news.cnyes.com/news/id/6627653"
     ]
    }
   ]

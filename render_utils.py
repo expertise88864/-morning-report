@@ -498,9 +498,16 @@ def _link_source_citations(html: str, sources: list) -> str:
         cited_medias = [t.strip() for t in _re.split("[／/、]", inner)
                         if t.strip()]
         if len(cited_medias) > 1:
-            # 群組引用(鉅亨/CNBC)不連:單一 <a> 蓋住整組,點到另一家的
-            # 名字也會進同一篇 —— 錯誤歸屬,錯連比不連糟(外審 2026-08-20)。
-            return m.group(0)
+            # Match each publisher independently; never assign one URL to a group.
+            parts = []
+            for media in cited_medias:
+                candidates = [it for it in sources if it.get("m") and _media_ok(media, it["m"])]
+                single = m.group(0).replace(inner, media, 1)
+                # Pass only plain context, so earlier citations are not processed again.
+                context = _h.escape(_h.unescape(line)[-200:])
+                linked = _link_source_citations(context + single, candidates)[len(context):]
+                parts.append(linked)
+            return "／".join(parts)
         best_u, best, second = "", 0, 0
         for it in sources:
             if cited_medias and not any(_media_ok(c, it["m"])
@@ -512,7 +519,7 @@ def _link_source_citations(html: str, sources: list) -> str:
             elif score > second:
                 second = score
         if best >= 3 and best > second and best_u:
-            clean = safe_href(best_u)
+            clean = safe_href(best_u, max_chars=2048)
             if not clean:
                 return m.group(0)
             return (f'<a href="{_h.escape(clean, quote=True)}" target="_blank" '

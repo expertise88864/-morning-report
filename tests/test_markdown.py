@@ -723,7 +723,7 @@ def test_render_html_includes_kpi_strip_with_full_data():
     html = mr.render_html(q, fair, preds, analysis, "2026-05-16", "每日報")
     # KPI 條:5 個欄位都顯示;批#26 立場只顯示標籤、不顯示淨分數字
     assert "偏空" in html
-    _kpi = html.split("六、美股收盤行情")[0]
+    _kpi = html.split("五、行情與開盤展望")[0]
     assert "-4" not in _kpi                       # 淨分不外露於 KPI
     assert "2192.5" in html
     assert "116.99" in html
@@ -731,12 +731,12 @@ def test_render_html_includes_kpi_strip_with_full_data():
     # KPI 顯示 0050 取代 VIX
     assert "0050 預測" in html and "95.4" in html
     # VIX 仍在「總經指標」表，但不在 KPI 條
-    kpi_section = html.split("六、美股收盤行情")[0]
+    kpi_section = html.split("五、行情與開盤展望")[0]
     assert "VIX" not in kpi_section.split("MARKET ALERTS")[0] or "VIX 預測" not in html
     # 結論橫條
     assert "今日結論" in html and "SOX 暴跌減碼" in html
     # KPI 在 alerts 之前
-    assert html.find("立場") < html.find("六、美股收盤行情")
+    assert 0 <= html.find("立場") < html.find("五、行情與開盤展望")
     # 0050 在濃縮的「個股開盤預測」段
     assert "個股開盤預測" in html and "0050" in html
 

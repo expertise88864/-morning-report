@@ -24,7 +24,7 @@ def test_the_taiex_card_shows_the_close_only_once():
     """藍色大字卡的「較昨收 46331.45」與下方獨立格「加權昨收 46331.45」
     是同一個數字印兩次 —— 使用者:「不用寫」。"""
     src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
-    i = src.index("五、加權指數開盤預測</h2>")   # 錨 h2 本體,不是註解
+    i = src.index("加權指數開盤預測</h3>")
     seg = src[max(0, i - 4000):i + 2000]
     assert "較昨收" in seg
     assert ">加權昨收<" not in seg, "那一格又回來了"
@@ -43,7 +43,7 @@ def test_world_events_render_as_one_flowing_paragraph():
     assert "。:" not in md and "。:" not in md, md[:400]
     line = [ln for ln in md.splitlines() if "美伊戰爭" in ln][0]
     # 三段都在同一行(段落),而且「後續可能影響」不是另起縮排行
-    assert "下一階" in line and "後續可能影響:" in line and "油價續跌" in line
+    assert "下一階" in line and "後續可能影響:" not in line and "油價續跌" in line
 
 
 def test_industry_level_tech_news_lands_in_the_tech_section():

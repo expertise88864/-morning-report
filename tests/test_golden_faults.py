@@ -59,7 +59,7 @@ def test_golden_section_order_stable():
                           "2026-07-14 (Tue)", "每日報")
     markers = [
         "二、總經指標",           # 總經表
-        "市場結構訊號",           # G3 門檻警示(緊接總經)
+        "五、行情與開盤展望",     # Unified market overview
         "美股收盤行情",           # 整合於個股預測上方
         "個股開盤預測",           # 六、預測與公允價
         # G1 曝險卡已依使用者要求刪除(2026-07-15),不再是 golden 合約的一部分
@@ -69,6 +69,7 @@ def test_golden_section_order_stable():
     pos = [html.find(m) for m in markers]
     missing = [m for m, p in zip(markers, pos) if p < 0]
     assert not missing, f"區塊消失: {missing}"
+    assert "市場結構訊號" not in html
     assert pos == sorted(pos), (
         "區塊順序改變: " + " → ".join(f"{m}@{p}" for m, p in zip(markers, pos)))
 

@@ -99,10 +99,11 @@ def test_actual_email_renderer_labels_fallback_gap_without_dropping_analysis(mon
     analysis = "## 一、今日結論\n原本分析正文保留。"
     html = mr.render_html(_golden_quotes(), {"error": "fixture"}, {"error": "fixture"},
                           analysis, "2026-09-22", "每日報")
-    assert "跨日觀察提醒" in html and "原本分析正文保留" in html
+    assert "跨日觀察提醒" not in html and "原本分析正文保留" in html
     assert "私人原文" not in html and "w49" not in html
     minimal = mr._render_minimal_html(_golden_quotes(), {"error": "fixture"},
                                       {"error": "fixture"}, analysis,
                                       "2026-09-22", "每日報")
-    assert "跨日觀察提醒" in minimal and "原本分析正文保留" in minimal
+    assert "跨日觀察提醒" not in minimal and "原本分析正文保留" in minimal
+    assert any(f["code"] == "watch_due_unreviewed" for f in run_quality.assess(mr._RUN_MANIFEST))
     assert "私人原文" not in minimal and "w49" not in minimal

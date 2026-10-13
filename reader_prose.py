@@ -15,6 +15,7 @@ def _clean_prose(text: str) -> str:
     """Remove schema echoes, not the economic explanation following them."""
     from reader_fact_labels import medical_terms
     text = medical_terms(text).replace("Python 模型", "模型").replace("把表合起來讀：", "")
+    text = re.sub(r"(?:\*\*)?(?:所以會怎樣|後續可能影響)(?:\*\*)?\s*[:：]\s*", "", text)
     text = re.sub(r"(?:抄錄系統計分\s*)?`?STANCE_PY\.total`?\s*=\s*[+-]?\d+"
                   r"\s*[（(]\s*label\s*[:：]\s*[^）)]+[）)]\s*[。. ]*", "", text)
     text = re.sub(r"[（(]見\s*`?asset_net_effects`?[^）)]*[）)]", "", text)

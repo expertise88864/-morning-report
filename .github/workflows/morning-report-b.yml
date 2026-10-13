@@ -106,7 +106,9 @@ jobs:
     # job timeout 只是最後的兜底。
     # 2026-08-27:40 → 50(LLM 總預算 1800s + run 預算 2700s 的連動;
     # 最壞情況信 ~06:55 寄達,正常日子不受影響)。
-    timeout-minutes: 50
+    # Reserve post-send validation time separately from the unchanged 2700s report budget.
+    # Oct 13: SMTP succeeded at minute 41, but the 50-minute job killed schema validation.
+    timeout-minutes: 75
     # 批#93(第九輪 P1-10):**「信沒寄出」與「信寄出了但事後檢查失敗」是兩件事。**
     # 2026-07-31 就發生過:信正常寄達,而寄信**之後**的 state schema 契約失敗
     # 讓 job 變紅 → 告警信說「晨報未寄出,收件人可能沒有收到信」。
@@ -365,10 +367,11 @@ jobs:
 
       - name: 驗證落地 state 的 schema 契約
         id: contract
+        timeout-minutes: 20
         if: ${{ always() && !cancelled() && steps.report.outputs.state_dirty == 'true' }}
         env:
           TZ: Asia/Taipei
-        run: python -m pytest tests/test_state_schema_contract.py -q
+        run: python -m pytest tests/test_state_schema_contract.py -v --durations=10
 
       # **本班自己判品質**(2026-08-31 外審 P1:completion race)。
       # 品質判準先前只由看門狗事後跑,而看門狗可能在主班**還在跑**的時候

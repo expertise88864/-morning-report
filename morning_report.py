@@ -21778,9 +21778,6 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
         while "render:analysis_capped" in _DEGRADED_STEPS:
             _DEGRADED_STEPS.remove("render:analysis_capped")
     body = _md_to_html(analysis, trusted_urls=collected_urls(quotes)) if analysis else "<p>（分析未產出）</p>"
-    notice = _fwg.reader_notice((_RUN_MANIFEST.get("llm") or {}).get("watch_due_at_start") or {},
-                                _analysis_origin())
-    body = notice + body
     return _finalize_email(analysis, (
         "<div style=\"font-family:-apple-system,'Noto Sans TC',sans-serif;"
         "max-width:680px;margin:0 auto;padding:16px;color:#1f2937;\">"
@@ -21971,8 +21968,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     event_calendar_html = _safe_block("風險事件日曆", _render_event_calendar_html,
                                       quotes.get("EVENT_CALENDAR") or [])
     event_timeline_html = ""  # Hide display only; cross-day tracking remains active.
-    tw_calendar_html = _safe_block("台股行事曆", _render_tw_calendar_html,
-                                   quotes.get("TW_CALENDAR") or {})
+    tw_calendar_html = ""  # Reader preference; collection and quality checks remain.
     journals_html = _safe_block("醫學文獻", _render_journals_html,
                                 quotes.get("MEDICAL_JOURNALS") or [], _htmllib)
     weekly_recap_html = (_safe_block("週回顧", _render_weekly_recap_html,
@@ -22181,7 +22177,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             _pred_grid_rows = (f"<tr>{_cell_cons}"
                                '<td style="width:50%;"></td></tr>')
         taiex_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
+        <h3 style="font-size:16px;margin:18px 0 8px;">加權指數開盤預測</h3>
         {signal_rows}
         <div style="margin:12px 0;padding:16px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);border-radius:10px;color:#fff;">
           <div style="font-size:13px;opacity:.9;">{_htmllib.escape(str(quotes.get('TARGET_SESSION') or '目標交易日'))} 開盤預估</div>
@@ -22228,6 +22224,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # === 台股客觀關注排名 Top 5（固定公式分項 + 可回測價格預測）===
     # 2026-07-15 使用者刪 → 2026-07-18 使用者要求加回,位置=Podcast 卡上方。
     smart_money_html = ""
+    sector_rotation_html = ""
     universe_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT", []) or []
     if universe_snapshot and _RENDER_TOP5_CARD:
         scored = _rank_attention_candidates(universe_snapshot)
@@ -22472,7 +22469,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             smart_money_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">{title_text}</h2>
         {regime_note}
-        {sector_rotation_html}
         {low_confidence_note}
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
           {''.join(rows_html)}
@@ -22489,6 +22485,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # === 大盤成交額 + 市場廣度卡 ===
     breadth = quotes.get("BREADTH", {}) or {}
     breadth_html = ""
+    sector_heat_html = ""
     if breadth.get("total"):
         adv = breadth.get("advance", 0)
         dec = breadth.get("decline", 0)
@@ -22568,7 +22565,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             _heat_readout_html = (
                 f"<div style='font-size:12px;color:#b45309;margin-top:6px;'>"
                 f"{_htmllib.escape(_heat_line)}</div>" if _heat_line else "")
-            breadth_html += f"""
+            sector_heat_html = f"""
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;margin:12px 0;">
           <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:4px;">類股熱度表（依成交值前 5;全市場口徑）</div>
           {''.join(_hrows)}{_heat_readout_html}
@@ -22630,8 +22627,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     macro_table_html += _render_macro_vintage_html(
         quotes.get("MACRO_VINTAGE") or [])
     # G3 世界證據門檻警示(平日空字串;異常時掛總經卡下方一則白話)
-    world_evidence_html = _render_world_evidence_html(
-        _world_evidence_signals(quotes.get("MACRO") or {}, quotes.get("SPY") or {}))
+    world_evidence_html = ""  # Hide the heuristic card, not model inputs or diagnostics.
 
     # ===== 2. KPI 卡片 (00662) =====
     if "error" not in fair:
@@ -22862,8 +22858,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_html = _link_source_citations(
         analysis_html, quotes.get("NEWS_LINK_INDEX") or [])
     analysis_html = _wrap_stance(analysis_html)
-    analysis_html = (_fwg.reader_notice(
-        (_RUN_MANIFEST.get("llm") or {}).get("watch_due_at_start") or {}, _analysis_origin()) + analysis_html)
     # (llm_label 已隨信尾三行移除而不再需要,2026-07-14)
 
     # === 個股開盤預測(2330 / 00662 / 0050 三合一精簡表,置於加權預測下方)===
@@ -22892,12 +22886,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     _t_last = _tw.get("last")
     _t_pct = ((_t_pred / _t_last - 1) * 100) if (_t_pred and _t_last) else None
     combined_pred_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、美股收盤行情與個股開盤預測、公允價</h2>
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、行情與開盤展望</h2>
         <h3>美股收盤行情</h3>
         <table data-mobile-layout="table" style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr><th>標的</th><th>收盤</th><th>漲跌</th></tr>
           {quote_rows}
         </table>
+        {taiex_html}
+        {breadth_html}
         <h3>個股開盤預測與公允價（2330 / 0050 開盤；00662 公允價）</h3>
         <table data-mobile-layout="table" style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr style="background:#f1f5f9;">
@@ -23003,10 +22999,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {world_evidence_html}
 
-            {taiex_html}
-
-            {breadth_html}
-
             {combined_pred_html}
 
             {portfolio_risk_html}
@@ -23020,6 +23012,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <div style="margin-top:32px;">{analysis_html}</div>
 
             {smart_money_html}
+
+            {sector_heat_html}
+
+            {sector_rotation_html}
 
             {podcast_html}
 
@@ -23096,6 +23092,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 continue
             if key == "top5":
                 was_present, smart_money_html = bool(smart_money_html), ""
+                sector_rotation_html = ""
             elif key == "sports":
                 was_present, sports_html = bool(sports_html), ""
             elif key == "journals":

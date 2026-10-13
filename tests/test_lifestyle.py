@@ -2034,7 +2034,7 @@ def test_night_txf_embedded_in_taiex_section():
                         "ci_lower": 45900, "ci_upper": 46500, "consensus": "偏多"},
          "NIGHT_TXF": {"date": "2026/07/14", "night_close": 45058.0, "night_pct": -1.11}}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-14", "每日報")
-    i5 = html.find("五、加權指數開盤預測")
+    i5 = html.find("加權指數開盤預測")
     i_n = html.find("夜盤台指期")
     i6 = html.find("個股開盤預測")
     assert 0 < i5 < i_n < i6                 # 夜盤列位於第五段內

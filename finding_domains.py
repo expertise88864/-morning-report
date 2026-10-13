@@ -85,6 +85,8 @@ _FINDING_DOMAINS = {
     "analysis_not_specialized": DOMAIN_CONTENT,
     "luna_rejected": DOMAIN_CONTENT,
     "news_upstream_empty": DOMAIN_CONTENT,
+    "polymarket_pulse": DOMAIN_CONTENT,
+    "weekend_polymarket": DOMAIN_CONTENT,
     "recap_extraction_dead": DOMAIN_CONTENT,
     "recap_not_previous_session": DOMAIN_CONTENT,
     "recap_not_saved": DOMAIN_CONTENT,

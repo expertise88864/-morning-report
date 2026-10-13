@@ -10,4 +10,5 @@ def test_pulse_failure_is_explicit_not_silenced_or_unknown(label):
     assert not any(row["code"] == "unknown_degradation" for row in findings)
     finding = next(row for row in findings if row["code"] == label)
     assert finding["severity"] == "degraded"
+    assert finding["domain"] == run_quality.DOMAIN_CONTENT
     assert "Polymarket" in finding["detail"] and "缺席" in finding["detail"]

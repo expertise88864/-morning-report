@@ -35,3 +35,8 @@ pytest-report.xml
 
 # Local audit trail for the mandatory Claude Opus 5 diff gate.
 .claude-review/
+
+# Cloudflare local credentials and emulator state must never be committed.
+.wrangler/
+.dev.vars*
+node_modules/

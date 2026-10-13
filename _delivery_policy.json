@@ -20,6 +20,8 @@
           "required": [
             "Setup Python",
             "Install dependencies",
+            "Setup Node for trigger tests",
+            "Offline external trigger tests",
             "Syntax check",
             "Lint",
             "Type check (boundary modules)",

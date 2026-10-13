@@ -863,7 +863,9 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections(monkey
     assert "外資台指期未平倉" not in html   # 該區塊已依使用者要求隱藏
     # 結論在頂端,五檔在後(政策/醫界卡已於 2026-08-07 移除)。
     assert summary_idx < top5_idx
-    assert "偏多但控風險" in html[:html.find("六、美股收盤行情")]   # 一句話在頂端
+    overview_idx = html.find("五、行情與開盤展望")
+    assert overview_idx >= 0
+    assert "偏多但控風險" in html[:overview_idx]   # 一句話在頂端
 
 
 def test_render_html_warns_when_watchlist_scores_are_low_confidence(monkeypatch):

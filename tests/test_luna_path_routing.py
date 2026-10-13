@@ -375,6 +375,72 @@ def test_deepen_consumes_budget_and_is_recorded(luna_on, monkeypatch):
     assert llm["repair_budget"]["used"]["semantic"] == 1, llm["repair_budget"]
 
 
+def test_deepen_transport_timeout_keeps_report_recap_and_billing(luna_on, monkeypatch, tmp_path):
+    import requests
+
+    ledger = tmp_path / "recap.json"
+    monkeypatch.setattr(mr, "ANALYSIS_RECAP_FILE", ledger)
+    monkeypatch.setattr(mr, "_LLM_DEADLINE", None)
+    monkeypatch.setattr(mr, "_REPAIR_ROUND_DEADLINE", None)
+    calls = []
+
+    def offline(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return _response(_shallow())
+        raise requests.exceptions.ReadTimeout("offline deepen timeout")
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", offline)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("valid kept report must not fall back"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    llm = mr._RUN_MANIFEST["llm"]
+    assert mr._analysis_complete_enough(text)
+    assert len(calls) == 2 and llm["repair_modes"] == ["deepen"]
+    assert llm["deepen_failed"] is True
+    assert llm["recap_saved"] != mr._arc.FAILED
+    assert ledger.exists() and json.loads(ledger.read_text(encoding="utf-8"))["items"]
+    assert llm["primary_metrics"] and llm["stance_structured"]["label"]
+    assert llm["primary"]["calls"] == 1
+    assert llm["primary"]["prompt_tokens"] == 90_000
+    attempts = [a for a in llm["attempts"] if a.get("role") == "primary"]
+    assert len(attempts) == 1
+    assert attempts[0]["repair"] is True
+    assert attempts[0]["billable_unmeasured"] is True
+    assert "offline deepen timeout" in attempts[0]["error"]
+    assert not any(s.startswith("llm:luna_path_failed") for s in mr._DEGRADED_STEPS)
+
+
+def test_initial_transport_timeout_still_raises_and_records_billing(luna_on, monkeypatch, tmp_path):
+    import requests
+
+    ledger = tmp_path / "recap.json"
+    monkeypatch.setattr(mr, "ANALYSIS_RECAP_FILE", ledger)
+    packet = mr._ep.build(*_ARGS, as_of="2026-10-14T06:00:00+08:00",
+                          target_session_date="2026-10-14", sanitize=mr._external_text)
+    failure = requests.exceptions.ReadTimeout("offline initial timeout")
+    calls = []
+
+    def offline(payload):
+        calls.append(payload)
+        raise failure
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", offline)
+    mr._RUN_MANIFEST.pop("llm", None)
+    with pytest.raises(requests.exceptions.ReadTimeout) as caught:
+        mr._luna_analysis(packet, "max")
+    assert caught.value is failure and len(calls) == 1
+    llm = mr._RUN_MANIFEST["llm"]
+    assert not ledger.exists() and "recap_saved" not in llm
+    assert "deepen_failed" not in llm and "primary" not in llm
+    attempts = [a for a in llm["attempts"] if a.get("role") == "primary"]
+    assert len(attempts) == 1
+    assert attempts[0].get("repair", False) is False
+    assert attempts[0]["billable_unmeasured"] is True
+    assert "offline initial timeout" in attempts[0]["error"]
+
+
 def test_deepen_does_not_grant_extra_semantic_rounds(luna_on, monkeypatch):
     """加深扣掉一格之後,語意只剩一輪 —— 不得因為加深而多拿一次呼叫。"""
     calls = []

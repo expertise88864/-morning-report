@@ -1,5 +1,21 @@
 """Unique binary-market selection, shared by display and snapshot capture."""
+import math
 import re
+
+
+def current_probability(row):
+    """Prefer the unique structured quote; reject invalid data, not reinterpret it."""
+    if "outcomes" in row:
+        outcomes = row["outcomes"]
+        if not isinstance(outcomes, list) or len(outcomes) != 1 or not isinstance(outcomes[0], dict):
+            return None
+        value = outcomes[0].get("prob_raw", outcomes[0].get("prob"))
+    else:
+        match = re.match(r"機率 ([0-9]+(?:\.[0-9]+)?)%(?:$|\()", str(row.get("detail") or ""))
+        value = float(match[1]) if match else None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 100:
+        return None
+    return value if math.isfinite(value) else None
 
 
 def detail(key, markets, now, question_re, capture, *, yes_prob, track,

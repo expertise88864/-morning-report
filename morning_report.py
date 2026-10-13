@@ -14628,6 +14628,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 accepted=False, elapsed=time.monotonic() - t0,
                 error=_redact_secret_text(str(e)), repair=repair,
                 billable_unmeasured=_lt.billable_unmeasured(e))
+            # Recover a valid first draft through the shared recap finalizer.
+            if _kept is not None:
+                break
             raise
         out = _dsr.extract_output(resp)
         elapsed = time.monotonic() - t0
@@ -16907,27 +16910,26 @@ def fetch_openrouter_new_models(days: int = 14, limit: int = 8) -> list[str]:
 
 def _poly_divergence_note(rows: list[dict], stance: Optional[dict]) -> str:
     """批#17 分歧標記:Polymarket 定價方向與本報立場明顯相反時提示一行。
-    規則表可擴充;v1 只看「年內 Fed 再升息」(升息=貨幣逆風,偏空訊號)。
+    只看「2026年12月決議完成前 Fed 再升息」合約(貨幣逆風)。
     純顯示,不入模型。"""
-    import re as _re
+    from polymarket_binary import current_probability
     label = str((stance or {}).get("label") or "")
     if label not in ("偏多", "偏空"):
         return ""
     for r in rows or []:
-        if str(r.get("label")) != "2026 年內 Fed 再升息":
+        if r.get("source_url") != "https://polymarket.com/event/another-fed-rate-hike-in-2026":
             continue
-        m = _re.search(r"機率 (\d+)%", str(r.get("detail") or ""))
-        if not m:
+        prob = current_probability(r)
+        if prob is None:
             return ""
-        prob = int(m.group(1))
         if label == "偏多" and prob >= 55:
             # 措辭限定為「條件性逆風」:升息與股市走多可並存,僅憑總立場標籤
             # 推不出「必有一方錯」(Codex r1 P2)
-            return (f"分歧提示:市場對年內 Fed 再升息定價 {prob}%(貨幣面條件性"
+            return (f"分歧提示:市場對2026年12月決議完成前 Fed 再升息定價 {prob:g}%(貨幣面條件性"
                     f"逆風)——本報今日「偏多」若倚重利率寬鬆預期,與市場定價相左,"
                     f"宜自行檢視偏多理由是否依賴利率面")
         if label == "偏空" and prob <= 15:
-            return (f"分歧提示:市場僅對年內 Fed 再升息定價 {prob}%(貨幣面壓力有限),"
+            return (f"分歧提示:市場僅對2026年12月決議完成前 Fed 再升息定價 {prob:g}%(貨幣面壓力有限),"
                     f"若本報「偏空」理由主要繫於利率,與市場定價分歧")
     return ""
 
@@ -21184,10 +21186,10 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                 params={"dates": day}, timeout=15)
             r.raise_for_status()
             events = r.json().get("events", [])
-            from nba_scoreboard import game_row
+            from nba_scoreboard import result_row
             finals = []
             for e in events:
-                row = game_row(e, f"{day[4:6]}/{day[6:]}")
+                row = result_row(e, f"{day[4:6]}/{day[6:]}")
                 if row:
                     finals.append(row)
             if finals:

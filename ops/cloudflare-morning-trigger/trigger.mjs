@@ -34,7 +34,8 @@ function apiClient(token, fetcher) {
         "Cache-Control": "no-cache",
       },
       body: body === undefined ? undefined : JSON.stringify(body),
-      redirect: "error",
+      // workerd supports manual/follow; strict status checks reject redirects.
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     });
     if (body !== undefined) {

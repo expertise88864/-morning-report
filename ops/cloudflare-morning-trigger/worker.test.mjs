@@ -29,7 +29,7 @@ function fixture(override = () => undefined) {
   const fetcher = async (url, options) => {
     calls.push({ url, options });
     assert.ok(url.startsWith("https://api.github.com/repos/expertise88864/-morning-report/"));
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     assert.equal(options.headers.Authorization, "Bearer test-only-token");
     assert.ok(options.signal instanceof AbortSignal);
     const altered = await override(url, options);
@@ -99,6 +99,32 @@ for (const kind of ["lost response", "HTTP error"]) {
     });
     await assert.rejects(trigger(TICK, ENV, db, io));
     assert.equal(await trigger(TICK, ENV, db, io), "already_reserved");
+    assert.equal(io.calls.filter(c => c.options.method === "POST").length, 1);
+  });
+}
+
+for (const status of [301, 302, 303, 307, 308]) {
+  test(`GET ${status} redirect fails closed before dispatch or reservation`, async () => {
+    const db = storage();
+    const io = fixture(() => new Response(null, {
+      status, headers: { Location: "https://example.com/redirect-target" },
+    }));
+    await assert.rejects(trigger(TICK, ENV, db, io), /github_read_failed/);
+    assert.equal(io.calls.length, 1);
+    assert.equal(io.calls[0].options.method, "GET");
+    assert.equal(await db.get("dispatch:2026-10-14"), undefined);
+  });
+
+  test(`POST ${status} redirect is unconfirmed and keeps reservation without retry`, async () => {
+    const db = storage();
+    const io = fixture((url, options) => options.method === "POST"
+      ? new Response(null, { status, headers: { Location: "https://example.com/redirect-target" } })
+      : undefined);
+    await assert.rejects(trigger(TICK, ENV, db, io), /dispatch_not_confirmed/);
+    assert.equal((await db.get("dispatch:2026-10-14")).status, "reserved");
+    const count = io.calls.length;
+    assert.equal(await trigger(TICK, ENV, db, io), "already_reserved");
+    assert.equal(io.calls.length, count);
     assert.equal(io.calls.filter(c => c.options.method === "POST").length, 1);
   });
 }

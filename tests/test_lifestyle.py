@@ -3353,11 +3353,12 @@ def test_poly_binary_detail_spread_note(monkeypatch):
 
 def test_poly_divergence_note_rules():
     """批#17:Fed 再升息定價與本報立場分歧才提示;一致/非方向立場不提示。"""
-    rows = [{"label": "2026 年內 Fed 再升息", "detail": "機率 62%(↑3pp)"}]
+    url = "https://polymarket.com/event/another-fed-rate-hike-in-2026"
+    rows = [{"label": "2026年12月決議完成前 Fed 再升息", "source_url": url, "detail": "機率 62%(↑3pp)"}]
     assert "分歧提示" in mr._poly_divergence_note(rows, {"label": "偏多"})
     assert mr._poly_divergence_note(rows, {"label": "偏空"}) == ""
     assert mr._poly_divergence_note(rows, {"label": "中性"}) == ""
-    low = [{"label": "2026 年內 Fed 再升息", "detail": "機率 8%"}]
+    low = [{"label": "2026年12月決議完成前 Fed 再升息", "source_url": url, "detail": "機率 8%"}]
     assert "分歧提示" in mr._poly_divergence_note(low, {"label": "偏空"})
     assert mr._poly_divergence_note(low, {"label": "偏多"}) == ""
     assert mr._poly_divergence_note([], {"label": "偏多"}) == ""

@@ -30,6 +30,17 @@ def week_events(get, now: dt.datetime, days: int = 7) -> list[dict]:
     return events
 
 
+def result_row(event: dict, fallback_date: str) -> dict | None:
+    """Filter lookback results without letting a scheduled game stop the search."""
+    comp = (event.get("competitions") or [{}])[0]
+    status = (event.get("status") or comp.get("status") or {}).get("type") or {}
+    if status.get("name") in {"STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_DELAYED", "STATUS_SUSPENDED"}:
+        return None
+    if status.get("state") not in {"in", "post"} and not status.get("completed"):
+        return None
+    return game_row(event, fallback_date)
+
+
 def game_row(event: dict, fallback_date: str) -> dict | None:
     """Never present scheduled 0:0 as a result; event timestamps are Taipei-local."""
     comp = (event.get("competitions") or [{}])[0]
@@ -44,7 +55,7 @@ def game_row(event: dict, fallback_date: str) -> dict | None:
         value = html.escape(str((team.get("team") or {}).get("abbreviation") or "?"))
         return f"<b>{value}</b>" if status.get("completed") and team.get("winner") else value
     text = f"{name(away)} vs {name(home)}"
-    if state in {"in", "post"}:
+    if state in {"in", "post"} or status.get("completed"):
         text = f"{name(away)} {html.escape(str(away.get('score', '-')))}:{html.escape(str(home.get('score', '-')))} {name(home)}"
     label = "已完賽" if status.get("completed") else {"in": "進行中", "pre": "未開賽"}.get(state, "狀態未確認")
     status_name = str(status.get("name") or "")

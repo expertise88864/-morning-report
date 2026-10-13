@@ -77,6 +77,8 @@ KNOWN_DEGRADED = frozenset({
     "weekend_week_review_rows",
     # Sunday reading links unavailable; warning and manifest retain the source failure.
     "weekend_podcast_context",
+    # Explicit quality findings report pulse absence in both report routes.
+    "polymarket_pulse", "weekend_polymarket",
     # 備援班的新鮮寄送紀錄讀取失敗(r2 外審 P1):守衛退回只看工作區
     "backup_idempotence_probe",
     # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。

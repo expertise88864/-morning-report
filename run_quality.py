@@ -758,14 +758,13 @@ def assess(manifest, *, mode: str = "watchdog",
 
 
     # ---- 10b. **登記過 ≠ 可以靜音**(2026-08-30 外審)
-    # 上一批為了修「沒見過的降級步驟:gazette」,把 17 個標籤一次補進
-    # `KNOWN_DEGRADED` —— 而那個集合的語意是「已知**且可接受**」。
-    # 結果 `story_ledger_corrupt`(120 天敘事連續性讀不動)、
-    # `delivery_receipt_publish`(防重複寄信的收據沒發佈成功)、
-    # `analysis_recap_unreadable`(明天的昨日觀點會缺)這三個**安全機制
-    # 失效**的訊號,從「至少會報 unknown」變成完全不出聲 —— 修正比缺陷
-    # 更糟的形狀。登記讓掃描守衛過得去,能不能靜音是另一個問題。
+    # 登記表只避免 unknown 誤分類。安全機制失效或讀者區塊缺席，
+    # 仍須在此產生具體 finding，不能因為已註冊就靜音。
     _ALARMING = {
+        "polymarket_pulse": (
+            "degraded", "預測市場資料或處理失敗，今日 Polymarket 區塊缺席；未以舊報價冒充今日資料"),
+        "weekend_polymarket": (
+            "degraded", "週日預測市場資料或處理失敗，Polymarket 與較週一回顧區塊缺席"),
         "stance:score_failed": (
             "defect", "Python 立場計分失敗,權威立場未知;未採 LLM 自算替代"),
         "stance:attribution_failed": (

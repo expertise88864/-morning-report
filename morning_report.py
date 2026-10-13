@@ -19779,7 +19779,7 @@ _POLY_MONTH_ZH = {
 _POLY_PULSE_BINARY: tuple[tuple, ...] = (
     # (顯示名, slug)——Yes 價=機率。
     # 2026-07-17 使用者刪減:衰退/台海封鎖/武力犯台/賴清德任期 四列移除
-    ("2026 年內 Fed 再升息", "fed-rate-hike-in-2026"),
+    ("2026年12月決議完成前 Fed 再升息", "another-fed-rate-hike-in-2026"),
 )
 # 多選型盤(取市場最看好前 N;政治盤 2026-07-16 使用者要求。選後 slug 換屆更新)
 _POLY_PARTY_ZH = {"Democratic Party": "民主黨", "Republican Party": "共和黨",
@@ -19795,7 +19795,7 @@ _POLY_PULSE_OUTRIGHT: tuple[tuple, ...] = (
     ("2028 美國總統大選執政黨", "which-party-wins-2028-us-presidential-election",
      _POLY_PARTY_ZH, 2),
     # 台灣九合一(2026-11-28;實測 KMT 86%/DPP 14%/TPP 1%,Party A/Other 佔位自動剔除)
-    ("2026 台灣九合一選舉最大贏家", "2026-taiwanese-local-elections-party-winner",
+    ("2026 台灣縣市長最多當選席次政黨", "2026-taiwanese-local-elections-party-winner",
      _POLY_TW_PARTY_ZH, 3),
 )
 
@@ -19879,28 +19879,22 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     now_tpe = now_tpe or dt.datetime.now(TPE)
     now_utc = now_tpe.astimezone(dt.timezone.utc)
     rows: list[dict] = []
-    # 1) 最近一次 Fed 利率決議(slug 含流水號 → 搜尋「Fed Decision in <月>?」取最近未來場)
-    try:
-        cands = [e for e in _poly_search_events("Fed decision")
-                 if not e.get("closed")
-                 and str(e.get("title", "")).startswith("Fed Decision in")
-                 and _poly_event_is_future(e, now_utc)]
-        cands.sort(key=lambda e: str(e.get("endDate") or "9999"))
-        if cands:
-            slug = str(cands[0].get("slug") or "")
-            month_en = str(cands[0].get("title", "")).replace(
-                "Fed Decision in", "").strip(" ?")
-            outs = _poly_outright(slug, _POLY_FED_OUTCOME_ZH, top=3, min_prob=0.03)
-            if outs:
-                label = f"Fed {_POLY_MONTH_ZH.get(month_en, month_en)}決議"
-                _poly_annotate_deltas(f"pulse|{label}", outs, now_tpe)
-                rows.append({"label": label, "detail": _poly_prob_line(outs)})
-    except Exception as e:
-        print(f"[poly] Fed 決議盤略過: {e}", file=sys.stderr)
+    from polymarket_rates import decision_rows, total_hikes_row
+    def poly_warn(message):
+        print(f"::warning::[poly] {message}", file=sys.stderr)
+    rate_helpers = dict(outright=_poly_outright, annotate=_poly_annotate_deltas,
+                        format_line=_poly_prob_line, is_future=_poly_event_is_future,
+                        warn=poly_warn)
+    rows.extend(decision_rows(now_tpe, search=_poly_search_events,
+                             months=_POLY_MONTH_ZH, outcomes=_POLY_FED_OUTCOME_ZH,
+                             **rate_helpers))
+    rows.extend(total_hikes_row(now_tpe, events=_poly_events, **rate_helpers))
     # 2) 年度二元盤(Yes 機率)
     for label, slug in _POLY_PULSE_BINARY:
         try:
             events = _poly_events({"slug": slug})
+            if not events or events[0].get("closed") or not _poly_event_is_future(events[0], now_utc):
+                continue
             markets = [m for m in (events[0].get("markets") or [])
                        if not m.get("closed")] if events else []
             detail = _poly_binary_detail(f"pulse|{label}", markets, now_tpe)
@@ -19911,7 +19905,8 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     # 3) 多選型盤(S&P 年底區間 + 政治盤,各取市場最看好前 N)
     for label, slug, zh, top in _POLY_PULSE_OUTRIGHT:
         try:
-            outs = _poly_outright(slug, zh, top=top, min_prob=0.05)
+            outs = _poly_outright(slug, zh, top=top,
+                                  min_prob=0.0 if zh is _POLY_TW_PARTY_ZH else 0.05)
             if outs:
                 _poly_annotate_deltas(f"pulse|{label}", outs, now_tpe)
                 rows.append({"label": label, "detail": _poly_prob_line(outs)})

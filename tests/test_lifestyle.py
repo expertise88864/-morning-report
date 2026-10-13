@@ -2750,8 +2750,9 @@ def test_fetch_polymarket_pulse_rows(monkeypatch):
                 {"groupItemTitle": "25 bps increase", "outcomePrices": '["0.285", "0.715"]'},
                 {"groupItemTitle": "25 bps decrease", "outcomePrices": '["0.04", "0.96"]'},
             ]}]
-        if slug == "fed-rate-hike-in-2026":
-            return [{"markets": [{"outcomePrices": '["0.515", "0.485"]'}]}]
+        if slug == "another-fed-rate-hike-in-2026":
+            return [{"endDate": "2026-12-10T04:59:00Z",
+                     "markets": [{"outcomePrices": '["0.515", "0.485"]'}]}]
         if slug == "spx-close-dec-2026":
             return [{"markets": [
                 {"groupItemTitle": ">$8,000", "outcomePrices": '["0.275", "0.725"]'},
@@ -2770,8 +2771,8 @@ def test_fetch_polymarket_pulse_rows(monkeypatch):
     import datetime as dt
     rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE))
     by_label = {r["label"]: r["detail"] for r in rows}
-    assert by_label["Fed 9月決議"] == "利率不變 66%・升息1碼 28%・降息1碼 4%"
-    assert by_label["2026 年內 Fed 再升息"] == "機率 52%"
+    assert by_label["Fed 2026年9月決議"] == "利率不變 66%・升息1碼 28%・降息1碼 4%"
+    assert by_label["2026年12月決議完成前 Fed 再升息"] == "機率 52%"
     assert by_label["台積電本季財報優於市場預期"] == "機率 100%"
     # 批#14 使用者刪減:衰退/台海/賴清德/S&P/眾參院 不再出現
     for gone in ("美國 2026 年底前衰退", "S&P 500 年底收盤區間",
@@ -2779,7 +2780,7 @@ def test_fetch_polymarket_pulse_rows(monkeypatch):
         assert gone not in by_label
 
     h = mr._render_poly_pulse_html(rows)
-    assert "預測市場觀點(Polymarket)" in h and "Fed 9月決議" in h
+    assert "預測市場觀點(Polymarket)" in h and "Fed 2026年9月決議" in h
     # 2026-08-18 使用者要求移除註腳:每天一模一樣的免責句只佔版面,
     # 段名本身已寫明是「預測市場觀點(Polymarket)」。
     assert "不納入本報任何模型計分" not in h
@@ -3057,7 +3058,7 @@ def test_pulse_taiwan_markets(monkeypatch):
     monkeypatch.setattr(mr, "_poly_search_events", fake_search)
     now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
     rows = {r["label"]: r["detail"] for r in mr.fetch_polymarket_pulse(now)}
-    assert rows["2026 台灣九合一選舉最大贏家"] == "國民黨 86%・民進黨 14%・民眾黨 6%"
+    assert rows["2026 台灣縣市長最多當選席次政黨"] == "國民黨 86%・民進黨 14%・民眾黨 6%"
     assert "賴清德總統 2026 年底前去職" not in rows        # 批#14 使用者刪減
     assert "台灣總統大選" not in rows                      # 2028 盤未開 → 不出行
     search_results["n"] = 1                               # 模擬市場開盤

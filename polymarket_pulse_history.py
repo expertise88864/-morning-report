@@ -131,13 +131,25 @@ def _detail(row, baseline, missing):
 
 def _render(rows, days, today):
     yesterday = days.get((today - dt.timedelta(days=1)).isoformat(), {})
-    monday = days.get((today - dt.timedelta(days=today.weekday())).isoformat(), {})
+    monday = today - dt.timedelta(days=today.weekday())
     for row in rows:
         url = row["source_url"]
         row["detail"] = _detail(row, yesterday.get(url, {}), "昨日無快照")
         row.pop("weekly_detail", None)
+        row.pop("weekly_baseline_label", None)
         if today.weekday() == 6:
-            row["weekly_detail"] = _detail(row, monday.get(url, {}), "週一無快照")
+            displayed = row["outcomes"][:row.get("display_limit")]
+            keys = {option.get("hist_key", option["name"]) for option in displayed}
+            baseline = {}
+            for date, label in ((monday, "週一"), (monday + dt.timedelta(days=1), "週二"),
+                                (monday - dt.timedelta(days=1), "上週日")):
+                candidate = days.get(date.isoformat(), {}).get(url, {})
+                if keys.intersection(candidate):
+                    baseline = candidate
+                    row["weekly_baseline_label"] = f"較{label} {date.isoformat()}"
+                    break
+            row.setdefault("weekly_baseline_label", "無可用基準")
+            row["weekly_detail"] = _detail(row, baseline, "基準日無快照")
     return rows
 
 

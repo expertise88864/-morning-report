@@ -58,7 +58,8 @@ def test_sunday_compares_same_week_monday_and_missing_baselines(tmp_path):
     assert result["weekly_detail"] == "甲 50.5%(↑10.5pp)"
     next_week = history.prepare(rows(60), now(25), path, write)[0]
     assert "昨日無快照" in next_week["detail"]
-    assert "週一無快照" in next_week["weekly_detail"]
+    assert next_week["weekly_detail"] == "甲 60%(↑9.5pp)"
+    assert next_week["weekly_baseline_label"] == "較上週日 2026-10-18"
     assert "weekly_detail" not in history.prepare(rows(), now(26), path, write)[0]
 
 
@@ -121,7 +122,8 @@ def test_collect_preserves_prices_warns_and_never_overwrites_corrupt_state(tmp_p
     result = history.collect(fetch, now(18), path, lambda *a: writes.append(a), warnings.append)
     assert len(fetches) == 1 and len(warnings) == 1 and not writes
     assert result[0]["detail"] == "甲 50.5%(昨日無快照)"
-    assert result[0]["weekly_detail"] == "甲 50.5%(週一無快照)"
+    assert result[0]["weekly_detail"] == "甲 50.5%(基準日無快照)"
+    assert result[0]["weekly_baseline_label"] == "無可用基準"
     assert path.read_text(encoding="utf-8") == "broken"
 
 
@@ -198,7 +200,32 @@ def test_sunday_zero_and_per_outcome_missing_baselines(tmp_path):
     current[0]["outcomes"].append({"name": "新選項", "prob": 0})
     result = history.prepare(current, now(18), path, write)[0]
     assert result["detail"] == "甲 50%(0pp)・新選項 0%(昨日無快照)"
-    assert result["weekly_detail"] == "甲 50%(0pp)・新選項 0%(週一無快照)"
+    assert result["weekly_detail"] == "甲 50%(0pp)・新選項 0%(基準日無快照)"
+
+
+@pytest.mark.parametrize("dates,expected_label,expected_change", [
+    ([11, 12, 13], "較週一 2026-10-12", "↑8pp"),
+    ([11, 13], "較週二 2026-10-13", "↑7pp"),
+    ([11], "較上週日 2026-10-11", "↑9pp"),
+    ([10, 14], "無可用基準", "基準日無快照"),
+])
+def test_weekly_baseline_priority_and_no_arbitrary_substitution(tmp_path, dates, expected_label, expected_change):
+    path = tmp_path / "history.json"
+    for day in dates:
+        history.prepare(rows(day), now(day), path, write)
+    result = history.prepare(rows(20), now(18), path, write)[0]
+    assert result["weekly_baseline_label"] == expected_label
+    assert result["weekly_detail"] == f"甲 20%({expected_change})"
+    assert result["detail"] == "甲 20%(昨日無快照)"
+
+
+def test_fallback_is_market_specific_and_does_not_use_unrelated_options(tmp_path):
+    path = tmp_path / "history.json"
+    history.prepare(rows(10, key="other"), now(12), path, write)
+    history.prepare(rows(20), now(13), path, write)
+    result = history.prepare(rows(30), now(18), path, write)[0]
+    assert result["weekly_baseline_label"] == "較週二 2026-10-13"
+    assert result["weekly_detail"] == "甲 30%(↑10pp)"
 
 
 @pytest.mark.parametrize("previous,current,expected", [

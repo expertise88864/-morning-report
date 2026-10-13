@@ -1252,7 +1252,7 @@ def test_sunday_polymarket_alone_sends_daily_and_monday_comparison(monkeypatch, 
     assert len(delivered) == 1
     assert "預測市場觀點(Polymarket)" in delivered[0]
     assert "↑3pp" in delivered[0] and "↑5pp" in delivered[0]
-    assert "本週回顧（較週一）" in delivered[0]
+    assert "本週回顧（較週一 2026-10-12）" in delivered[0]
     assert str(path) in pushed and str(path) in mr._state_push_paths()
 
 

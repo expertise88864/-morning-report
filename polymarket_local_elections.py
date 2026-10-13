@@ -163,7 +163,8 @@ def render_pulse(rows: list[dict], divergence_note: str = "") -> str:
         f"font-size:13px;color:#0f172a;font-weight:700;'>{_label(r)}</td>"
         f"<td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;"
         f"font-size:13px;color:#b45309;font-weight:700;'>{html.escape(str(r.get('detail', '')))}"
-        + (f"<br><span style='font-size:12px;color:#475569;'>本週回顧（較週一）："
+        + (f"<br><span style='font-size:12px;color:#475569;'>本週回顧"
+           f"（{html.escape(str(r.get('weekly_baseline_label', '較週一')))}）："
            f"{html.escape(str(r['weekly_detail']))}</span>" if r.get("weekly_detail") else "")
         + "</td></tr>"
         for r in rows)
@@ -177,7 +178,7 @@ def render_pulse(rows: list[dict], divergence_note: str = "") -> str:
                      "百分比為市場報價，非民調或保證勝率；獨立合約不強制加總 100%。</div>")
     if any(r.get("outcomes") for r in rows):
         div_html += ("<div style='padding:8px 14px;font-size:12px;color:#64748b;'>"
-                     "括號為較昨日變化，pp 代表百分點；週日另列較本週一的變化。"
+                     "括號為較昨日變化，pp 代表百分點；週回顧依序採本週一、本週二、上週日快照，並標示基準日期。"
                      "無快照表示缺少該日比較基準，並非沒有變動。</div>")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'

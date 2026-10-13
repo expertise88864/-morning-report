@@ -8762,6 +8762,51 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "878c6810-c65a-11f1-a1d2-f34a21d3c508",
+        "title": "Robinhood & Lighter: Why Wall Street Is Moving Onchain",
+        "published": "Tue, 13 Oct 2026 10:00:00 -0000",
+        "processed_at": "2026-10-13T15:15:49Z",
+        "digest": {
+          "summary_points": [
+            "與談者(主持人與兩位業者)認為傳統金融與加密原生產品正雙向收斂,關鍵解鎖有兩個:一是大型機構與美國監管者(CFTC、SEC)對區塊鏈已有深度理解;二是鏈上金融已能達到傳統金融要求的低延遲,同時保有安全性與可驗證性。",
+            "Robinhood 的股票代幣產品有超過 70% 的成交量落在交易所非交易時段(週末與隔夜),與談者以此論證全球時區正在融合、24/7 市場的需求是真實的。",
+            "與談者認為永續合約是「時候到了」的形式,與 CFD 最大差別在於有明確的訂單簿、不是跟莊家對賭;但不是萬靈丹,像算力這類有特定交付時程的市場仍需要到期期貨,部分市場用選擇權更合適。",
+            "與談者指出,用戶可以用股票代幣當抵押品在鏈上開永續倉,不必先賣出持股、避免觸發稅務事件,這是資本效率與策略延續性的賣點。",
+            "與談者表示美國聯邦層級的統一框架並未如預期出現,但 CFTC 與 SEC 的提案仍在推進;美國境內鏈上永續合約「還在很早期」,而 Robinhood 在美國有 2,700 萬個資金帳戶。"
+          ],
+          "tickers": [
+            {
+              "name": "Robinhood",
+              "code": "HOOD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "與談者談的是股票代幣、永續合約與自建鏈等產品布局及美國 2,700 萬資金帳戶,並未對股價或投資價值表態。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I think for a lot of markets, it's the most natural way to trade leveraged exposure to the market.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I think for a lot of markets, it's the most natural way to trade leveraged exposure to the market."
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 1,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "b2292f38-bfff-11f1-b8d6-df047071f5f3",
         "title": "America’s AI Boom Is Squeezing Main Street | Weekly Roundup",
         "published": "Sun, 04 Oct 2026 14:27:00 -0000",
@@ -9286,36 +9331,6 @@
           "market_view": "主持人認為美股近期反彈只是避險基金清算後的技術性彈升，經濟數據轉弱，可能正處於熊市初期。",
           "action_view": "主持人做多短期利率（SOFR與兩年期），減碼能源、看空金融股，轉向醫療保健與必需消費品等防禦板塊，並看好黃金築底。",
           "notable_quote": "I look at it as the starting gun in a bear market."
-        }
-      },
-      {
-        "guid": "8393634e-8c6c-11f1-a678-3775e93a2bc9",
-        "title": "The AI Unwind And Warsh's Long-End Gamble | Weekly Roundup",
-        "published": "Mon, 03 Aug 2026 14:19:00 -0000",
-        "processed_at": "2026-08-03T16:09:10Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為，AI 與半導體這波修正主要是槓桿清洗而非基本面轉向：Leo Polt 旗下基金被迫出清公開市場與部分私募持股（包括 Anthropic），由 Citadel 的 Ken Griffin 承接。先前 3 倍槓桿 ETF 與韓國保證金買盤將半導體推至高點，如今槓桿大幅消除，短期要重回歷史高點並不容易。",
-            "主持人不同意市場把 Warsh 記者會視為災難的共識。他解讀 Warsh 想要優先透過縮表的長期效果（讓長天期殖利率重新定價，可能再走高 50-100 個基點）來收緊金融條件，而不是直接升息；短率其實離中性水準不遠，升息並非現階段主要工具。",
-            "主持人指出市場反應情緒化且矛盾：會前本來僅約六成機率押注按兵不動，事後卻批評 Warsh 因不升息而喪失信譽；實際上長端利率上升、信用利差走擴、實質利率走高，正是 Warsh 想看到的結果，不能算失去信用。",
-            "主持人認為 Warsh 的鷹派立場難以長期維持；這屆政府擅長透過製造波動來達成政策目標，一旦股市出現 5-10% 修正，升息預期會快速降溫，Fed 便有理由轉向寬鬆。中期（如期中選舉前）市場可能被人為引導至某種均衡。",
-            "成長前景方面，主持人強調 Q2 GDP 表面疲弱（1.5% vs 預期 2.1%）主要受淨出口拖累，國內民間最終銷售其實很強；但世界盃、退稅紅利與 AI 財富效應等一次性動能消退，加上金融條件收緊，未來幾季成長與獲利預估可能下修，但因為財政赤字巨大，不至於進入衰退。",
-            "主持人提醒，接下來進入 8、9 月季節性弱勢（尤其期中選舉年），且緊縮的實質利率與融資條件不會只影響 AI 族群，可能擴散到等權重、小型股等經濟敏感資產，需留意資金輪動方向。",
-            "油市方面，伊朗戰爭風險逐漸退居幕後，油價遠月曲線並未像第一次飆漲時那樣反應，油波動率也出現更低的次高點，對市場情緒算是正面。",
-            "下一次重要觀察點是 Jackson Hole 研討會，Warsh 可能利用演說進一步闡述資產負債表政策與長端殖利率的傳導機制，主持人認為他需要改善與市場的溝通。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人以 Meta 單日下跌 8-9% 為例，說明市場開始質疑超大規模資本支出的可持續性，並聯想到 AI 交易槓桿清洗的擴散效應。"
-            }
-          ],
-          "market_view": "主持人認為目前是成長減速、但非衰退的環境；股市仍接近高點，短期上行空間有限，長端殖利率上升與金融條件收緊將壓制成長，後續成長與獲利預估可能下修。",
-          "action_view": "操作上，主持人建議對 AI/半導體相關部位先採取冷卻期，不要急於接刀；若基於長線邏輯可分批佈局，但不要期待 V 型反轉。同時留意長端殖利率上升對成長股的壓力，並觀望 Jackson Hole 的政策訊號。",
-          "notable_quote": "It's totally price that drives narrative that drives price, and not the other way around."
         }
       }
     ]

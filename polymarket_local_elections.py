@@ -65,7 +65,7 @@ def _identity(event: dict, office: str, now: dt.datetime) -> bool:
             and "2026" in str(event.get("description") or ""))
 
 
-def _prices(event: dict, now: dt.datetime | None = None) -> list[tuple[float, str]]:
+def _prices(event: dict, now: dt.datetime | None = None, *, capture: list | None = None) -> list[tuple[float, str]]:
     markets = event.get("markets")
     if not isinstance(markets, list):
         raise ValueError("missing markets")
@@ -101,6 +101,9 @@ def _prices(event: dict, now: dt.datetime | None = None) -> list[tuple[float, st
         except (TypeError, ValueError):
             continue
         text = f"{NAMES.get(name, name)} {p * 100:.1f}%"
+        if capture is not None:
+            capture.append({"hist_key": str(market.get("id") or name),
+                            "name": NAMES.get(name, name), "prob_raw": p * 100})
         rows.append((p, text))
     return sorted(rows, key=lambda row: row[0], reverse=True)
 
@@ -125,13 +128,15 @@ def fetch_rows(events: Callable, search: Callable, now: dt.datetime) -> list[dic
                 raise ValueError("ambiguous election markets")
             if matches:
                 event = matches[0]
-                prices = _prices(event, now)
+                outcomes: list[dict] = []
+                prices = _prices(event, now, capture=outcomes)
                 if not prices:
                     raise ValueError("no valid named candidate prices")
                 detail = "・".join(text for _, text in prices[:3])
                 rows.append({"label": f"2026 {label}", "kind": "tw_local_election",
                              "as_of": now.astimezone(_TPE).strftime("%m/%d %H:%M 台北"),
-                             "detail": detail,
+                             "detail": detail, "outcomes": sorted(outcomes, key=lambda r: r["prob_raw"], reverse=True),
+                             "display_limit": 3,
                              "source_url": "https://polymarket.com/event/" + event["slug"]})
             elif slug:
                 print(f"::warning::[poly-local] {label}: unavailable known market", file=sys.stderr)
@@ -157,7 +162,10 @@ def render_pulse(rows: list[dict], divergence_note: str = "") -> str:
         f"<tr><td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;"
         f"font-size:13px;color:#0f172a;font-weight:700;'>{_label(r)}</td>"
         f"<td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;"
-        f"font-size:13px;color:#b45309;font-weight:700;'>{html.escape(str(r.get('detail', '')))}</td></tr>"
+        f"font-size:13px;color:#b45309;font-weight:700;'>{html.escape(str(r.get('detail', '')))}"
+        + (f"<br><span style='font-size:12px;color:#475569;'>本週回顧（較週一）："
+           f"{html.escape(str(r['weekly_detail']))}</span>" if r.get("weekly_detail") else "")
+        + "</td></tr>"
         for r in rows)
     div_html = (f"<div style='padding:8px 14px;font-size:12px;color:#b45309;"
                 f"background:#fffbeb;border-top:1px solid #fde68a;font-weight:700;'>"
@@ -167,6 +175,10 @@ def render_pulse(rows: list[dict], divergence_note: str = "") -> str:
         div_html += ("<div style='padding:8px 14px;font-size:12px;color:#64748b;'>"
                      f"選舉盤查詢：{html.escape(str(local.get('as_of', '')))}。"
                      "百分比為市場報價，非民調或保證勝率；獨立合約不強制加總 100%。</div>")
+    if any(r.get("outcomes") for r in rows):
+        div_html += ("<div style='padding:8px 14px;font-size:12px;color:#64748b;'>"
+                     "括號為較昨日變化，pp 代表百分點；週日另列較本週一的變化。"
+                     "無快照表示缺少該日比較基準，並非沒有變動。</div>")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#fefce8;border-left:5px solid #ca8a04;border-radius:4px;">'

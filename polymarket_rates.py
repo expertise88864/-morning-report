@@ -31,11 +31,13 @@ def decision_rows(now, *, search, outright, annotate, format_line, is_future,
         if len(seen) > 3:
             break
         try:
-            options = outright(slug, outcomes, top=5, min_prob=0.0)
+            complete = []
+            options = outright(slug, outcomes, top=5, min_prob=0.0, capture=complete)
             if options:
                 label = f"Fed {year}年{months[month]}決議"
                 annotate(f"pulse|fed-decision|{slug}", options, now)
-                rows.append({"label": label, "detail": format_line(options),
+                rows.append({"label": label, "detail": format_line(options), "outcomes": complete,
+                             "display_limit": len(options),
                              "source_url": "https://polymarket.com/event/" + slug})
         except Exception as exc:
             warn(f"Fed {year} {month}: {exc}")
@@ -51,11 +53,13 @@ def total_hikes_row(now, *, events, outright, annotate, format_line, is_future, 
         found = events({"slug": HIKE_TOTAL_SLUG})
         if not found or found[0].get("closed") or not is_future(found[0], now.astimezone(dt.timezone.utc)):
             return []
-        options = outright(HIKE_TOTAL_SLUG, HIKE_TOTAL_ZH, top=6, min_prob=0.0)
+        complete = []
+        options = outright(HIKE_TOTAL_SLUG, HIKE_TOTAL_ZH, top=6, min_prob=0.0, capture=complete)
         if not options:
             return []
         annotate(f"pulse|{HIKE_TOTAL_SLUG}", options, now)
-        return [{"label": "2026 全年累計升息幅度（1碼=25基點）", "detail": format_line(options),
+        return [{"label": "2026 全年累計升息幅度（1碼=25基點）", "detail": format_line(options), "outcomes": complete,
+                 "display_limit": len(options),
                  "source_url": "https://polymarket.com/event/" + HIKE_TOTAL_SLUG}]
     except Exception as exc:
         warn(f"Fed annual hikes: {exc}")

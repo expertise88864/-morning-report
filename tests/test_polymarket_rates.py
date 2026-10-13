@@ -15,7 +15,9 @@ def event(month, year, number, *, closed=False):
 def helpers(calls, warnings):
     def outright(slug, zh, **kwargs):
         calls.append((slug, kwargs))
-        return [{"name": "升息1碼", "prob": 1, "hist_key": slug}]
+        options = [{"name": "升息1碼", "prob": 1, "hist_key": slug}]
+        kwargs["capture"].extend(options)
+        return options
     return dict(outright=outright, annotate=lambda *_: None,
                 format_line=mr._poly_prob_line, is_future=mr._poly_event_is_future,
                 warn=warnings.append)
@@ -29,7 +31,8 @@ def test_three_future_meetings_include_year_and_small_outcomes():
     rows = rates.decision_rows(NOW, search=lambda *_, **kw: events,
         months=mr._POLY_MONTH_ZH, outcomes=mr._POLY_FED_OUTCOME_ZH, **helpers(calls, warnings))
     assert [r['label'] for r in rows] == ['Fed 2026年10月決議', 'Fed 2026年12月決議', 'Fed 2027年1月決議']
-    assert len(calls) == 3 and all(c[1] == {'top': 5, 'min_prob': 0.0} for c in calls)
+    assert len(calls) == 3 and all(c[1]['top'] == 5 and c[1]['min_prob'] == 0.0 for c in calls)
+    assert all(row['outcomes'] and row['display_limit'] == 1 for row in rows)
     assert all('升息1碼 1%' in r['detail'] for r in rows)
     assert not warnings
 

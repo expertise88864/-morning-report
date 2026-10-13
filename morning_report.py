@@ -10589,6 +10589,7 @@ def _state_push_paths() -> list[str]:
             str(STORY_LEDGER_FILE),   # 批#44:線索狀態機,不跨日累積則每天都是「第一天」
             str(NEWS_MEMORY_DIR),     # 原始來源觀測分區；跨日可追溯，不存生成觀點
             str(POLY_HISTORY_FILE),   # Polymarket 昨日機率快照(delta 顯示,地基批#4)
+            str(POLY_PULSE_HISTORY_FILE),
             str(SECTOR_RANK_FILE),   # 類股熱度昨日排名快照(delta 顯示,地基批#5)
             str(FORECAST_LEDGER_FILE),   # 預測記分帳本:不入 commit 清單=CI 每日歸零(Codex 批#18 P1)
             str(EXDIV_HISTORY_FILE),   # 批#66:除權息事件史。預告表在除權息日後就把該筆移除,不跨日累積則結算當下查不到
@@ -19437,47 +19438,12 @@ _POLY_WIDE_SPREAD = 0.05
 
 
 def _poly_outright(slug: str, zh_map: Optional[dict] = None,
-                   top: int = 5, min_prob: float = 0.02) -> list[dict]:
-    """單一 outright event(每個候選一個 Yes/No market)→
-    [{'name','prob','low_vol'}] 依機率降序。
-    佔位項(Team A / Player A / Party A / Other)與已 closed 一律剔除。"""
-    events = _poly_events({"slug": slug})
-    if not events:
-        return []
-    rows = []
-    for m in events[0].get("markets") or []:
-        if m.get("closed"):
-            continue
-        name = str(m.get("groupItemTitle") or "").strip()
-        if (not name or name.lower() == "other"
-                or name.startswith(("Team ", "Player ", "Party "))):
-            continue   # 佔位項(Team A/Player A/Party A/Other)一律剔除
-        p = _poly_yes_prob(m)
-        if p is None or p < min_prob:
-            continue
-        # 欄位缺席=未知,不標(只有「確知量低」才提醒,避免對假陰性喊狼來了)
-        low_vol = False
-        if m.get("volume24hr") is not None:
-            try:
-                low_vol = float(m.get("volume24hr")) < _POLY_LOW_VOLUME_USD
-            except (TypeError, ValueError):
-                low_vol = False
-        # 批#17 品質欄:gamma 自帶 spread(bid-ask,0-1)——價差寬=顯示價不可
-        # 盡信(midpoint 夾在寬買賣價之間);歷史身分改用 market id(hist_key),
-        # 中文譯名改動不再讓 delta 歷史斷線
-        wide = False
-        if m.get("spread") is not None:
-            try:
-                wide = float(m.get("spread")) >= _POLY_WIDE_SPREAD
-            except (TypeError, ValueError):
-                wide = False
-        rows.append({"name": (zh_map or {}).get(name, name),
-                     "hist_key": str(m.get("id") or name),
-                     "prob": round(p * 100),
-                     "prob_raw": round(p * 100, 2),   # 全精度供 delta(修正批B)
-                     "low_vol": low_vol, "wide": wide})
-    rows.sort(key=lambda r: -r["prob"])
-    return rows[:top]
+                   top: int = 5, min_prob: float = 0.02, *, capture: Optional[list] = None) -> list[dict]:
+    """Capture every valid option, then rank and filter the display subset."""
+    from polymarket_outcomes import outright
+    return outright(slug, zh_map, top, min_prob, capture, events=_poly_events,
+                    yes_prob=_poly_yes_prob, low_volume=_POLY_LOW_VOLUME_USD,
+                    wide_spread=_POLY_WIDE_SPREAD)
 
 
 # ===== Polymarket delta(地基批#4):昨日機率快照 → 今日顯示 ↑↓pp =====
@@ -19485,6 +19451,7 @@ def _poly_outright(slug: str, zh_map: Optional[dict] = None,
 # 結構 {key: {"prev": {"date","probs"}, "curr": {"date","probs"}}};
 # 同日重跑只覆蓋 curr(delta 穩定),跨日輪替 prev←curr。顯示用,不入模型。
 POLY_HISTORY_FILE = STATE_ROOT / "poly_history.json"
+POLY_PULSE_HISTORY_FILE = STATE_ROOT / "poly_pulse_history.json"
 POLY_HISTORY_KEEP_DAYS = 14   # 死盤(世足決賽後等)的紀錄修剪
 
 
@@ -19831,51 +19798,17 @@ def _poly_event_is_future(event: dict, now_utc: dt.datetime) -> bool:
 
 
 def _poly_binary_detail(key: str, markets: list, now_tpe: dt.datetime,
-                        question_re: str = "") -> Optional[str]:
-    """二元盤 → 「機率 52%(↑3pp)」;附 24h 量低標記。無法取價回 None。
-
-    market 依內容確定性選擇,不吃 API 回傳順序(三審 P1-7:盲取 markets[0],
-    event 若含 EPS/營收/不同門檻多個子盤會讀錯):有 question_re 先過濾;
-    可取價候選唯一才用,多於一個=無從辨識 → 寧缺勿錯回 None。"""
-    cands = [m for m in (markets or []) if _poly_yes_prob(m) is not None]
-    if question_re:
-        import re as _re
-        cands = [m for m in cands
-                 if _re.search(question_re, str(m.get("question") or ""), _re.I)]
-    if not cands:
-        return None
-    if len(cands) > 1:
-        print(f"[poly] {key}: {len(cands)} 個可取價子盤無從辨識,略過(寧缺勿錯)",
-              file=sys.stderr)
-        return None
-    market = cands[0]
-    p = _poly_yes_prob(market)
-    pct = round(p * 100)
-    d = _poly_track_deltas(key, {"yes": round(p * 100, 2)}, now_tpe).get("yes") or {}
-    low_vol = False
-    if market.get("volume24hr") is not None:   # 欄位缺席=未知,不標
-        try:
-            low_vol = float(market.get("volume24hr")) < _POLY_LOW_VOLUME_USD
-        except (TypeError, ValueError):
-            low_vol = False
-    # 批#17 品質升級:價差 ≥5pp 時附可成交價(買=ask、賣=bid)——midpoint
-    # 夾在寬買賣價之間時,「機率 58%」不可精確解讀
-    spread_note = ""
-    try:
-        if (float(market.get("spread")) >= _POLY_WIDE_SPREAD
-                and market.get("bestBid") is not None
-                and market.get("bestAsk") is not None):
-            spread_note = (f"(買{round(float(market['bestAsk']) * 100)}"
-                           f"/賣{round(float(market['bestBid']) * 100)})")
-    except (TypeError, ValueError):
-        spread_note = ""
-    return (f"機率 {pct}%" + _poly_delta_suffix(d.get("pp"), d.get("days", 1))
-            + spread_note + ("(量低)" if low_vol else ""))
+                        question_re: str = "", *, capture: Optional[list] = None) -> Optional[str]:
+    """Select only an unambiguous binary contract; capture raw prices for the pulse."""
+    from polymarket_binary import detail
+    return detail(key, markets, now_tpe, question_re, capture, yes_prob=_poly_yes_prob,
+                  track=_poly_track_deltas, suffix=_poly_delta_suffix,
+                  low_volume=_POLY_LOW_VOLUME_USD, wide_spread=_POLY_WIDE_SPREAD,
+                  warn=lambda message: print(message, file=sys.stderr))
 
 
 def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
-    """總經/地緣/事件預測市場快照 → [{"label","detail"}...]。無資料不列出。
-    每列附「vs 前一日」變化(↑↓pp)與 24h 量低標記(地基批#4,顯示用不入模型)。"""
+    """Display-only market rows with structured outcomes for exact-date comparisons."""
     now_tpe = now_tpe or dt.datetime.now(TPE)
     now_utc = now_tpe.astimezone(dt.timezone.utc)
     rows: list[dict] = []
@@ -19897,19 +19830,24 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                 continue
             markets = [m for m in (events[0].get("markets") or [])
                        if not m.get("closed")] if events else []
-            detail = _poly_binary_detail(f"pulse|{label}", markets, now_tpe)
+            options: list[dict] = []
+            detail = _poly_binary_detail(f"pulse|{label}", markets, now_tpe, capture=options)
             if detail:
-                rows.append({"label": label, "detail": detail})
+                rows.append({"label": label, "detail": detail, "outcomes": options,
+                             "source_url": "https://polymarket.com/event/" + slug})
         except Exception as e:
             print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
     # 3) 多選型盤(S&P 年底區間 + 政治盤,各取市場最看好前 N)
     for label, slug, zh, top in _POLY_PULSE_OUTRIGHT:
         try:
+            complete: list[dict] = []
             outs = _poly_outright(slug, zh, top=top,
-                                  min_prob=0.0 if zh is _POLY_TW_PARTY_ZH else 0.05)
+                                  min_prob=0.0 if zh is _POLY_TW_PARTY_ZH else 0.05, capture=complete)
             if outs:
                 _poly_annotate_deltas(f"pulse|{label}", outs, now_tpe)
-                rows.append({"label": label, "detail": _poly_prob_line(outs)})
+                rows.append({"label": label, "detail": _poly_prob_line(outs), "outcomes": complete,
+                             "display_limit": len(outs),
+                             "source_url": "https://polymarket.com/event/" + slug})
         except Exception as e:
             print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
     # 4) 台積電本季財報 beat(財報季才有市場;slug 含日期 → 動態搜尋)
@@ -19923,12 +19861,14 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
             events = _poly_events({"slug": str(tsm[0].get("slug") or "")})
             markets = [m for m in (events[0].get("markets") or [])
                        if not m.get("closed")] if events else []
+            options = []
             detail = _poly_binary_detail("pulse|台積電本季財報優於市場預期",
                                          markets, now_tpe,
-                                         question_re=r"beat.*earnings")
+                                         question_re=r"beat.*earnings", capture=options)
             if detail:
                 rows.append({"label": "台積電本季財報優於市場預期",
-                             "detail": detail})
+                             "detail": detail, "outcomes": options,
+                             "source_url": "https://polymarket.com/event/" + str(tsm[0].get("slug") or "")})
     except Exception as e:
         print(f"[poly] TSMC 財報盤略過: {e}", file=sys.stderr)
     # 5) 台灣總統大選(2028 盤截至 2026-07 尚未開;動態搜尋,市場一開自動出現。
@@ -19940,23 +19880,28 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
               and _poly_event_is_future(e, now_utc)]
         tw.sort(key=lambda e: str(e.get("endDate") or "9999"))
         if tw:
+            complete = []
             outs = _poly_outright(str(tw[0].get("slug") or ""),
-                                  _POLY_TW_PARTY_ZH, top=3, min_prob=0.03)
+                                  _POLY_TW_PARTY_ZH, top=3, min_prob=0.03, capture=complete)
             if outs:
                 _poly_annotate_deltas("pulse|台灣總統大選", outs, now_tpe)
-                rows.append({"label": "台灣總統大選", "detail": _poly_prob_line(outs)})
+                rows.append({"label": "台灣總統大選", "detail": _poly_prob_line(outs), "outcomes": complete,
+                             "display_limit": len(outs),
+                             "source_url": "https://polymarket.com/event/" + str(tw[0].get("slug") or "")})
     except Exception as e:
         print(f"[poly] 台灣總統大選盤略過: {e}", file=sys.stderr)
     # 6) 最佳 AI 模型盤(批#17,2026-07-18 使用者要求;呼應科技板塊「AI 模型
     #    競賽」條目)。年度=固定 slug;當月=動態搜尋(slug 帶流水號,如
     #    which-company-has-best-ai-model-end-of-july-299,live 實測)。
     try:
+        complete = []
         ai_rows = _poly_outright("which-company-has-best-ai-model-end-of-2026",
-                                 top=5, min_prob=0.03)
+                                 top=5, min_prob=0.03, capture=complete)
         if ai_rows:
             _poly_annotate_deltas("pulse|年底最佳AI模型", ai_rows, now_tpe)
             rows.append({"label": "年底最佳 AI 模型",
-                         "detail": _poly_prob_line(ai_rows)})
+                         "detail": _poly_prob_line(ai_rows), "outcomes": complete, "display_limit": len(ai_rows),
+                         "source_url": "https://polymarket.com/event/which-company-has-best-ai-model-end-of-2026"})
     except Exception as e:
         print(f"[poly] 年度 AI 模型盤略過: {e}", file=sys.stderr)
     from polymarket_local_elections import fetch_rows
@@ -24233,7 +24178,8 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
                                calendar_html: str,
                                local_news_html: str = "",
                                policy_analysis_html: str = "",
-                               week_review_html: str = "") -> str:
+                               week_review_html: str = "",
+                               polymarket_html: str = "") -> str:
     """週日綜合輕量信:天氣/風險事件/政策解析/在地/Podcast/體育/文獻。
 
     **段落順序與平日晨報一致**(2026-08-23 使用者):天氣 → 未來 7 天風險
@@ -24252,6 +24198,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
         # 本週回顧(2026-08-27 使用者):放在政策解析之後、在地快訊之前 ——
         # 它是「本週的總結」,收在硬資料(天氣/行事曆/政策)之後最順。
         week_review_html,
+        polymarket_html,
         local_news_html,
         podcast_html,
         sports_html,
@@ -24340,13 +24287,24 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         print(f"[weekend] CWA 警特報抓取失敗: {e}", file=sys.stderr)
         cwa_alerts = []
 
+    try:
+        from polymarket_pulse_history import collect
+        poly_rows = collect(lambda: fetch_polymarket_pulse(now_tpe), now_tpe,
+                            POLY_PULSE_HISTORY_FILE, _atomic_write_text,
+                            lambda message: print(f"::warning::{message}", file=sys.stderr))
+        from polymarket_local_elections import render_pulse
+        polymarket_html = render_pulse(poly_rows)
+    except Exception as e:
+        print(f"::warning::[weekend] Polymarket: {type(e).__name__}", file=sys.stderr)
+        _DEGRADED_STEPS.append("weekend_polymarket")
+        polymarket_html = ""
     _mark_phase("週末:抓取(天氣/體育/文獻/日曆/在地/警特報)")
 
     try:
         _wr_ready = bool(_build_week_review_prompt(now_tpe))
     except Exception:                       # noqa: BLE001 - 素材壞了不擋信
         _wr_ready = False
-    if not _weekend_digest_has_content(sports, podcast_eps, journals, now_tpe,
+    if not polymarket_html and not _weekend_digest_has_content(sports, podcast_eps, journals, now_tpe,
                                        alerts=cwa_alerts,
                                        suspension=suspension,
                                        week_review_ready=_wr_ready):
@@ -24433,7 +24391,8 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         journals_html, calendar_html,
         local_news_html=local_news_html,
         policy_analysis_html=policy_analysis_html,
-        week_review_html=week_review_html)
+        week_review_html=week_review_html,
+        polymarket_html=polymarket_html)
 
     if os.environ.get("DRY_RUN") == "1":
         # **manifest 要在早退之前寫**(2026-08-09 外審 F1):CI 的 canary
@@ -24490,6 +24449,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
                                    # 不列進來 manifest 的 cpbl_venues ok:true 是假的
          str(PODCAST_DIGEST_FILE),
          str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照
+         str(POLY_PULSE_HISTORY_FILE),
          str(RUN_MANIFEST_FILE),   # r1(Codex,P1):不列進來就等於沒寫(看門狗讀 repo)
          str(DELIVERY_RECEIPT_FILE),  # r8 外審:見上方週日無內容路徑的說明
          str(EMAIL_ARCHIVE_DIR)]),   # §B:週末信件存檔一併 push
@@ -24703,9 +24663,13 @@ def _phase_news_policy_sports(ctx) -> None:
         _DEGRADED_STEPS.append("gazette")
     # Polymarket 總經/地緣預測市場快照(顯示卡,不入模型;失敗回空、卡片自動缺席)
     try:
-        quotes["POLY_PULSE"] = fetch_polymarket_pulse(now_tpe)
+        from polymarket_pulse_history import collect
+        quotes["POLY_PULSE"] = collect(lambda: fetch_polymarket_pulse(now_tpe), now_tpe,
+                                       POLY_PULSE_HISTORY_FILE, _atomic_write_text,
+                                       lambda message: print(f"::warning::{message}", file=sys.stderr))
     except Exception as e:
-        print(f"[main] 預測市場快照略過: {e}", file=sys.stderr)
+        print(f"::warning::[main] 預測市場快照略過: {e}", file=sys.stderr)
+        _DEGRADED_STEPS.append("polymarket_pulse")
         quotes["POLY_PULSE"] = []
     # 批#17:最佳 AI 模型盤同步餵給「AI 模型競賽」條目的 prompt 素材
     # (市場真金定價與新聞敘事互補;失敗只是少一段素材)

@@ -187,7 +187,7 @@ def test_week_review_material_alone_triggers_the_sunday_email(monkeypatch):
     # 接線:呼叫端在早退判斷前真的算了素材、傳了進去
     src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index("_wr_ready = bool(_build_week_review_prompt(now_tpe))")
-    j = src.index("if not _weekend_digest_has_content", i)
+    j = src.index("if not polymarket_html and not _weekend_digest_has_content", i)
     assert i < j and "week_review_ready=_wr_ready" in src[j:j + 400]
 
 

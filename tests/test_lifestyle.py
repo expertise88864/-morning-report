@@ -877,7 +877,7 @@ def test_weekend_digest_content_gate():
     import io as _io
     import re
     src = _io.open(mr.__file__, encoding="utf-8").read()
-    call = re.search(r"if not _weekend_digest_has_content\((.{0,300}?)\):",
+    call = re.search(r"if not polymarket_html and not _weekend_digest_has_content\((.{0,300}?)\):",
                      src, re.S)
     assert call and "alerts=cwa_alerts" in call.group(1), call
     assert "suspension=suspension" in call.group(1), call.group(1)
@@ -1091,6 +1091,7 @@ def _stub_weekend_sources(monkeypatch, *, podcast):
     monkeypatch.setattr(mr, "fetch_medical_journal_articles", lambda: [])
     monkeypatch.setattr(mr, "translate_journal_titles", lambda a: [])
     monkeypatch.setattr(mr, "fetch_event_calendar", lambda now: [])
+    monkeypatch.setattr(mr, "fetch_polymarket_pulse", lambda *a, **k: [])
     # 在地快訊(2026-07-15 新增於週日流程)也要 stub,否則既有週日測試打真 Google News
     # ——5 條查詢的重試/逾時讓測試變慢且看網路臉色(Codex review)
     monkeypatch.setattr(mr, "fetch_local_news", lambda *a, **k: {})
@@ -1099,6 +1100,7 @@ def _stub_weekend_sources(monkeypatch, *, podcast):
     # 封鎖之後則固定走降級路徑(測試照樣綠,但驗的是失敗分支)。
     # 這裡給**成功**路徑的確定性資料,讓測試驗的是實際會寄出的那條路。
     monkeypatch.setattr(mr, "fetch_suspension_news", lambda *a, **k: [])
+    monkeypatch.setattr(mr, "fetch_cwa_alerts", lambda *a, **k: [])
     import tw_policy_sources as _tps_mod
     monkeypatch.setattr(_tps_mod, "fetch_gazette", lambda *a, **k: _GAZETTE_STUB)
     monkeypatch.setattr(mr, "analyze_weekend_policy",
@@ -1143,6 +1145,7 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     assert pushes and pushes[0][1] == [str(mr.CPBL_VENUE_FILE),
                                        str(mr.PODCAST_DIGEST_FILE),
                                        str(mr.POLY_HISTORY_FILE),
+                                       str(mr.POLY_PULSE_HISTORY_FILE),
                                        str(mr.RUN_MANIFEST_FILE),
                                        # r8 外審:收據若留成 untracked,之後
                                        # 這批的 rebase 會被 git 拒絕
@@ -1223,6 +1226,34 @@ def test_run_weekend_digest_skips_when_no_new_content(monkeypatch):
     assert pushes == [[str(mr.RUN_MANIFEST_FILE),
                        str(mr.CPBL_VENUE_FILE),       # DL-7:抓過體育卡,場地快取可能重寫
                        str(mr.DELIVERY_RECEIPT_FILE)]],         "無內容的週日沒有更新 manifest → 看門狗會誤報"
+
+
+def test_sunday_polymarket_alone_sends_daily_and_monday_comparison(monkeypatch, tmp_path):
+    import datetime as dt
+    from polymarket_pulse_history import prepare
+
+    _stub_weekend_sources(monkeypatch, podcast=[])
+    monkeypatch.setattr(mr, "_build_week_review_prompt", lambda *a: "")
+    monkeypatch.setattr(mr, "analyze_week_in_review", lambda *a: "")
+    path = tmp_path / "poly_pulse_history.json"
+    monkeypatch.setattr(mr, "POLY_PULSE_HISTORY_FILE", path)
+    row = {"label": "Fed 測試", "source_url": "https://polymarket.com/event/test-fed",
+           "outcomes": [{"hist_key": "stable", "name": "升息", "prob_raw": 20}]}
+    monday = dt.datetime(2026, 10, 12, 6, tzinfo=mr.TPE)
+    prepare([row], monday, path, mr._atomic_write_text)
+    row["outcomes"][0]["prob_raw"] = 22
+    prepare([row], monday + dt.timedelta(days=5), path, mr._atomic_write_text)
+    row["outcomes"][0]["prob_raw"] = 25
+    monkeypatch.setattr(mr, "fetch_polymarket_pulse", lambda *a: [row])
+    delivered, pushed = [], []
+    monkeypatch.setattr(mr, "deliver_report", lambda body, *a, **k: delivered.append(body))
+    monkeypatch.setattr(mr, "_git_commit_and_push_state", lambda paths, *a: pushed.extend(paths))
+    assert mr.run_weekend_digest(monday + dt.timedelta(days=6)) == 0
+    assert len(delivered) == 1
+    assert "預測市場觀點(Polymarket)" in delivered[0]
+    assert "↑3pp" in delivered[0] and "↑5pp" in delivered[0]
+    assert "本週回顧（較週一）" in delivered[0]
+    assert str(path) in pushed and str(path) in mr._state_push_paths()
 
 
 def test_fetch_worldcup_off_season_returns_empty(monkeypatch):
@@ -3336,10 +3367,13 @@ def test_monthly_ai_market_removed_annual_kept(monkeypatch):
     """批#26:當月最佳 AI 模型盤已移除(月底盤常一家獨大、資訊量低);
     年底盤保留。"""
     import datetime as dt
-    def fake_outright(slug, zh_map=None, top=5, min_prob=0.02):
+    def fake_outright(slug, zh_map=None, top=5, min_prob=0.02, *, capture=None):
         if "2026" in slug:                      # 年度盤
-            return [{"name": "Anthropic", "prob": 66, "prob_raw": 66.0,
-                     "hist_key": "1", "low_vol": False, "wide": False}]
+            options = [{"name": "Anthropic", "prob": 66, "prob_raw": 66.0,
+                        "hist_key": "1", "low_vol": False, "wide": False}]
+            if capture is not None:
+                capture.extend(options)
+            return options
         return []   # 若當月盤仍被查(不該),回空
     monkeypatch.setattr(mr, "_poly_outright", fake_outright)
     monkeypatch.setattr(mr, "_poly_search_events", lambda q, limit=8: [])
@@ -3643,7 +3677,8 @@ def test_weekend_manifest_records_real_elapsed_time(monkeypatch, tmp_path):
                       ("fetch_medical_journal_articles", []),
                       ("translate_journal_titles", []),
                       ("fetch_event_calendar", []), ("fetch_local_news", {}),
-                      ("fetch_suspension_news", []), ("fetch_cwa_alerts", [])):
+                      ("fetch_suspension_news", []), ("fetch_cwa_alerts", []),
+                      ("fetch_polymarket_pulse", [])):
         monkeypatch.setattr(mr, name, lambda *a, _v=val, **k: _v)
     monkeypatch.setattr(mr, "_git_commit_and_push_state", lambda *a, **k: None)
     monkeypatch.setattr(mr, "_mark_delivery_in_manifest", lambda **k: None)

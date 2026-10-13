@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_275  # Fed meeting extension extracted to polymarket_rates.
+MAIN_MODULE_LINE_CEILING = 26_235  # Outcome selection and pulse history live outside main.
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
@@ -176,6 +176,9 @@ MODULE_CEILINGS = {
     "us_market_session.py": 320,
     "polymarket_local_elections.py": 260,
     "polymarket_rates.py": 90,
+    "polymarket_binary.py": 55,
+    "polymarket_outcomes.py": 55,
+    "polymarket_pulse_history.py": 240,
     "nba_scoreboard.py": 100,
     "source_link_policy.py": 40,
     "delivery_destination.py": 25,

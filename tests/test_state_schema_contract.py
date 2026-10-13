@@ -562,6 +562,7 @@ STATE_CONTRACTS = {
     "podcast_digest.json": Contract(dict, _v_nonempty_mapping),
     "policy_keywords.json": Contract(list, _v_nonempty_rows),
     "poly_history.json": Contract(dict, _v_nonempty_mapping),
+    "poly_pulse_history.json": Contract(dict, _v_nonempty_mapping),
     "sector_rank_history.json": Contract(dict, _v_nonempty_mapping),
     "history.json": Contract(list, _v_nonempty_rows),
     "cpbl_venues.json": Contract(dict, _v_nonempty_mapping),

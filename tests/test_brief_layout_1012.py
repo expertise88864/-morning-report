@@ -92,7 +92,7 @@ def test_us_quotes_and_tw_forecasts_share_one_section(monkeypatch):
                             "## 我的明確立場\nPython 模型中性。把表合起來讀：維持觀察。", "2026-10-12", "每日報")
     soup = BeautifulSoup(output, "html.parser")
     assert "一、美股收盤行情" not in output
-    heading = next(h for h in soup.find_all("h2") if "美股收盤行情" in h.get_text())
+    heading = next(h for h in soup.find_all("h2") if "行情與開盤展望" in h.get_text())
     tables = heading.find_all_next("table", limit=2)
     assert all(symbol in tables[0].get_text() for symbol in ("QQQ", "TSM", "SPY"))
     assert all(symbol in tables[1].get_text() for symbol in ("2330", "0050", "00662"))

@@ -775,6 +775,107 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2417993178",
+        "title": "2026/10/13(二)記憶體重挫 買股趁現在?美債殖利率突破5% AI巨頭反而加速舉債？【早晨財經速解讀】",
+        "published": "Tue, 13 Oct 2026 01:06:20 +0000",
+        "processed_at": "2026-10-13T02:05:07Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為美股創高不是全面追多，而是低本益比造成的價值回調：標普75%成分股距52週高點跌逾10%、37%跌逾20%，前五大股市值等於後434家總和，等權指數只漲20%，但資安股CIBR卻因AI資安熱潮逆勢創高、9月以來流入9.5億美元。",
+            "主持人指出本波回調的瓶頸不是AI需求消失，而是電力與資金成本跟不上：瑞銀預估電力追不上GPU、資料中心2030前無法完成，博通CEO稱最大瓶頸是「錢」，AI算力租金高達合理報酬4倍，促使博通、甲骨文、SpaceX相繼安排數百億美元晶片融資，並把當前5%利率視為最後便宜資金。",
+            "主持人對費半與台積電偏多：費半回檔2.67%，台積電ADR從7月370美元上漲至10月初480美元後拉回，財報前賣壓常是財報後機會，均值回調後下半年本益比更低，且費半是唯一賺到錢的板塊，機會陸續存在。",
+            "主持人說美債殖利率突破5.3%創2002年新高，黃金連六週下跌但突破當日反而收漲，顯示部分資金已把債券視為風險來源；黃金最大壓力是利率預期反壓與央行買盤成為市場假設，全球央行每月買60噸難再提供邊際動能。",
+            "主持人以台韓分歧提醒市場謹慎：台股在歷史新高附近震盪、韓股破底，Hynix與三星三角收斂跌破，但本益比低至8倍，靠獲利拉升創高才健康；當前AI融資循環像科技巨頭認為5%利率可能是最後一天便宜資金。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電 (TSM)",
+              "code": "TSM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為財報前賣壓形成均值回調，下半年本益比更低，費半唯一賺錢板塊，機會存在。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "適度拉回表現並不差",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "年線支撐明顯，沿200日線慢慢上推，不容易跌破。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "上升三角形整理準備挑戰歷史新高，上方無賣壓。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "突破後三角形整理，挑戰短線下降壓力區，下方集體買盤支撐。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "CIBR ETF",
+              "code": "CIBR",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "AI資安熱潮下沿上升通道走高，9月以來流入9.5億美元。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為美股大盤仍高檔但內部高度分化，標普/那指創高不是全面樂觀追高，而是本益比回調與少數權值股撐盤；本波回調主因是電力、資金成本等供給瓶頸而非AI需求消失，市場整體謹慎。",
+          "action_view": "主持人傾向把費半/台積電的均值回調視為布局機會，認為下半年本益比更低、費半是唯一賺錢板塊；但對大盤因內部分化與高資金成本保持謹慎，提醒「拉回就買」的週期邏輯須思考4.8萬點是否該進場。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 4,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2417294517",
         "title": "2026/10/12(一)美俄協議 壓得住油價?中東打不垮經濟 卻拖垮債市?【早晨財經速解讀】",
         "published": "Mon, 12 Oct 2026 01:03:58 +0000",
@@ -1372,124 +1473,6 @@
           }
         },
         "shown_at": "2026-09-25T00:19:22Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2405724486",
-        "title": "2026/9/23(三)5%殖利率也擋不住FOMO？AI狂潮推那指再創新高【早晨財經速解讀】",
-        "published": "Wed, 23 Sep 2026 01:07:42 +0000",
-        "processed_at": "2026-09-23T06:48:14Z",
-        "digest": {
-          "summary_points": [
-            "主持人判斷納指創高但追價意願低，是FOMO下的「半信半疑」行情；他認為油價、殖利率、AI資本支出、資金退潮四大壓力仍在，但基本面良好，若回調至低基期且本益比快速下滑，就會是買點。",
-            "主持人指出輝達杯柄型態接近完成，若順勢站上創高，對大盤拉抬力道會更大；但他也提醒輝達潛在擔保與採購承諾約3000億美元、廣義債務可能快速膨脹，風險會累積。",
-            "主持人以軟銀為反例警告AI過度投資：軟銀為OpenAI籌資發行殖利率8.2%至8.6%的高利美元債、CDS創3年高，財務狀況接近垃圾債，直言投資過頭市場也會教訓。",
-            "主持人認為美光、SanDisk已突破套牢壓力區、上方賣壓不大，收復跌幅不難；台積電、聯發科同樣上方無壓力，但權值大，需外資流動性全面回升才能有效推升。",
-            "主持人分析Meta Muse AI登上App Store免費下載榜首，帶動Meta單週漲11%、擺脫下行通道；亞馬遜封鎖Muse代表AI代理正在爭奪網路入口與消費數據，AI潛力仍大。",
-            "主持人認為油價回跌是風險情緒改善的關鍵，但仍在9字頭偏貴；沙烏地紅海管線重啟與美伊談判僅屬緩解，成品油供給仍不足，後續取決於川習會能否釋出利多。",
-            "主持人判斷期中選舉前川普無意引爆新關稅戰，只想救民調與緩和局勢；美中在AI安全／治理共同準則上最有可能達成共識，有助降低地緣風險。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為Muse AI帶動股價單週大漲、突破下行通道，今年回到正報酬。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "兩週的行情瞬間就站回去了,今年又回到正報酬了。",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為杯柄型態接近完成，若突破創高對大盤拉抬更大；但提醒風險累積。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "如果能夠順勢站上,那輝達能夠創高,對於整個大盤的動力肯定影響來得更大",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為已站穩、突破盤整壓力區，上方無太大賣壓，收復跌幅不難。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "美光是已經站穩了,就是上方其實是沒有什麼太大賣壓的。",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "SanDisk",
-              "code": "SNDK",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為已突破1750-1800美元壓力區，上方無太大壓力。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "所以從數據上來做觀察,現在已經剛剛好正式突破前波的密集套牢區了。上方其實也沒有什麼太大的壓力",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "軟銀",
-              "code": "SFTBY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為軟銀為OpenAI籌資背負高利債，財務狀況接近垃圾債，投資過頭會被市場教訓。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "投資過頭,市場也會教訓你,軟銀就是很明顯的",
-                "direction": "bearish"
-              }
-            },
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為AI代理繞過電商平台入口與資料掌控，對亞馬遜等平台構成壓力。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "如果最後變成AI助理的公司掌握了這項數據,壓力就很大了。",
-                "direction": "bearish"
-              }
-            }
-          ],
-          "market_view": "主持人認為目前股市創高但追價意願弱，屬「半信半疑」行情；油價、殖利率、AI資本支出、資金退潮是四大壓力，但基本面良好，除非AI算力供給過剩，否則只是中期回調而非泡沫破滅。",
-          "action_view": "主持人傾向不追高：股價創高時不追，等回調至基期偏低、本益比快速下滑再考慮進場；操作上依本益比或周乖離情緒擇時。",
-          "notable_quote": "只要沒有迎來泡沫破滅的前兆,也就是供給過剩。AI算力過剩。什麼殖利率的問題、油價的問題、美中貿易戰的問題、市場估值、建置延後的問題,那個都是估值回調。那個都是中期回調,那個都不是泡沫破滅。這是我給予市場的態度",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "只要沒有迎來泡沫破滅的前兆,也就是供給過剩。AI算力過剩。什麼殖利率的問題、油價的問題、美中貿易戰的問題、市場估值、建置延後的問題,那個都是估值回調。那個都是中期回調,那個都不是泡沫破滅。這是我給予市場的態度"
-          },
-          "direction_quality": {
-            "attributed": 6,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-23T23:54:14Z"
       }
     ]
   },

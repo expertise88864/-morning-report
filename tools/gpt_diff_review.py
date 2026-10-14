@@ -223,18 +223,22 @@ def _error_text(events: list[dict]) -> str:
 
 
 def _terminal_failure(events: list[dict], stderr: str) -> str:
-    """讓這次執行終止的那個失敗:turn.failed;沒有就最後一個 error;再沒有就 stderr 末行。
+    """讓這次執行終止的那個失敗:turn.failed;沒有就 stderr 末行;再沒有,只有當事件流
+    **結束在**一個 error 上才用它。查不出來就回空字串(→ 擋下,不延後)。
 
-    額度 pending 只能看這一個 —— 前面已經重試成功的 429 不可讓之後別的終止原因
-    (例如認證失敗)被誤判成額度不足而延後。
+    額度 pending 只能看這一個,而且要有正面證據 —— 前面已經重試成功的 429(後面還有
+    事件)不可讓之後別的終止原因(認證失敗、CLI 當掉只寫 stderr)被誤判成額度不足而延後。
     """
-    for kinds in (("turn.failed",), ("error",)):
-        texts = [_error_text([item]) for item in events if item.get("type") in kinds]
-        texts = [t for t in texts if t]
-        if texts:
-            return texts[-1]
+    failed = [t for t in (_error_text([item]) for item in events
+                          if item.get("type") == "turn.failed") if t]
+    if failed:
+        return failed[-1]
     lines = [line for line in (stderr or "").splitlines() if line.strip()]
-    return lines[-1] if lines else ""
+    if lines:
+        return lines[-1]
+    if events and events[-1].get("type") == "error":
+        return _error_text([events[-1]])
+    return ""
 
 
 def _turn_completed(events: list[dict]) -> bool:

@@ -236,6 +236,26 @@ def test_recovered_rate_limit_does_not_turn_a_later_failure_into_pending(monkeyp
     assert gpt.main(["staged"]) == 3
 
 
+@pytest.mark.parametrize("tail, stderr, expected", [
+    # 推送審查 2026-10-14 P2:重試成功的 429 之後 CLI 當掉,終止原因只在 stderr → 擋下
+    ((_READ,), "panic: failed to write final output", 4),
+    # 重試成功後無聲結束:沒有任何終止證據 → 擋下,不延後
+    ((_READ,), "", 4),
+    # 事件流就結束在額度錯誤上:正面證據 → 才延後
+    (({"type": "error", "message": "You've hit your usage limit. Try again at 3:05 PM."},), "", 3),
+])
+def test_quota_deferral_needs_affirmative_terminal_evidence(monkeypatch, tmp_path, tail, stderr, expected):
+    _isolate(monkeypatch, tmp_path)
+    out = "\n".join(json.dumps(e) for e in (
+        {"type": "thread.started", "thread_id": THREAD},
+        {"type": "error", "message": "stream error: 429 Too Many Requests (rate limit); retrying 1/5"},
+        *tail))
+    monkeypatch.setattr(gpt.subprocess, "run", lambda *a, **k: _Proc(1, out, stderr))
+    monkeypatch.setattr(gpt, "staged_fingerprint", lambda: "f" * 64)
+    assert gpt.main(["staged"]) == expected
+    assert gpt.PENDING_PATH.exists() == (expected == 3)
+
+
 def test_unsupported_model_is_blocked_not_deferred(monkeypatch, tmp_path):
     """2026-10-14 實測:舊 CLI 對 gpt-6.1-sol 回 400 —— 那不是額度問題,要擋下而不是 pending。"""
     _isolate(monkeypatch, tmp_path)

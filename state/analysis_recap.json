@@ -505,44 +505,45 @@
  ],
  "watch_seq": 59,
  "legacy_report": {
-  "date": "2026-10-12",
+  "date": "2026-10-14",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠）：9 月營收 5,118.57 億元、年增 54.6%，第三季營收 1 兆 4,942 億元創單季新高，超越財測高標 （鉅亨）。營收超標直接墊高 Q3 每股盈餘基期，先進製程與先進封裝稼動率是主要推力。這屬於已實現數字而非展望，量級上 Q3 季增 17.62%、年增 50.94%，等於把 10/15 法說會的基本門檻拉高。[A 級・信心:高]",
+    "statement": "台積電（2330，全球最大晶圓代工廠）：延續這條連六季創新高的線索 （PChome），Q3 營收 1.49 兆元寫新猷、市場估獲利年增約 65%，法說明（10/15）登場，焦點在 AI 需求、漲價、資本支出與 Terafab。外資對 2330 的定價核心是先進封裝與 N2 稼動率，因此法說釋出的資本支出指引比單季 EPS 更能左右評價。法說前後兩天走勢可能脫離 ADR 連動，量級判斷不出來，因為財測尚未公布。[A 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6627622"
+     "https://news.google.com/rss/articles/CBMijAFBVV95cUxQTjROSFRFLTVzcVRtTjZlb0o0RU40Z1NmcGd2ejljTEZ3ZHZfTXhRTTFRdDk3Tktwams3c082bEFNUjVZTGd3RzlfOU10Qk9PZk0xSktjVHZ1ZUI0dHNuT0x1aXVkUGhMcUFqblBnTnZ6em9RbzBBTXUyU1NQUFpWeHQ0T3pMcnJNcGRCZA?oc=5"
     ]
    },
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠）：法說會將於 10/15 登場，元大投顧上調今年 EPS 預估至逾 111 元、目標價 3,500 元，並看好明年毛利率挑戰 70% （自由財經）。若毛利率站上七成，代表 N2 與 CoWoS 的定價權兌現，有助推升整體晶圓代工評價。不過這是券商預估不是公司指引，量級要等 10/15 正式數字驗證，在那之前不宜把目標價當已定價。[A 級・信心:中]",
+    "statement": "應用材料（AMAT，半導體沉積與蝕刻設備龍頭）：延續這條 7 月以來設備股評價的線索，今日重挫 6.69% （Yahoo）。其中國營運的矽谷 EPIC 中心同日開幕，台積電魏哲家到場稱合作加速 2 奈米以下量產 （科技新報），但股價未領情。設備股是台積電資本支出的領先指標，跌勢反映市場對設備循環轉保守；不過台積電擴產金額具剛性，短線設備股與 2330 股價可能脫鉤。[A 級・信心:中]",
     "source_urls": [
-     "https://ec.ltn.com.tw/article/paper/1774167"
+     "https://news.google.com/rss/articles/CBMiqwJBVV95cUxNQUdWcFdraDBuT2QyNnZjaERXaUJyZWpGbEFkV0hSLVJNM2VOZXYyU2JYM1p5eGF1SGF0N01HbFBDTjV3bGZuZk1zQ0lLQXlwTjdKbjZIcTRzenZhd0ZyZ0VEZ0xaLUdqNk5YQkdIV3hUOFlXb21LUVJBN2RWR3B3MGNjM3lBV0tpT1oxQnhfb1Fhb1RzWFFFLVpmQmhlSno2N1NuV2IyUmYzVEwtNXhLTXRxLUo2eElUOHBxN3lqbmdpZVZrczlyaTF0TTQ1Z1lFTHlvSDJzdWEyUVIzWjhmRDdCM3NpNlYtRE9qTm1Tc3FMNnQ2LXlQQ0t4akJmZTBMOTk3QkwwSDVFZUx2QTI2c0NwOGFDdlRtenpLSlRkdV9LWHhwR0pqQ0hwOA?oc=5",
+     "https://technews.tw/2026/10/13/applied-materials-epic-center/"
     ]
    },
    {
-    "statement": "鴻海（2317，全球最大電子代工集團）、台達電（2308，電源與散熱龍頭）、廣達（2382，AI 伺服器代工大廠）：美國 ITC 就 Vicor 指控的 VPD 垂直供電專利立案 337 調查，20 家業者入列，最重為禁止侵權品輸美 （鉅亨）。VPD 是把電源轉換器放到 GPU 封裝下方、縮短路徑的供電方案，屬 AI 伺服器「最後一吋」瓶頸。但 337 審理通常要一年到一年半、期間可正常出貨，真正風險是代工廠須改規避設計或買授權，推升成本。量級取決於最終排除令是否只鎖定特定模組，這則新聞目前說不出金額。[A 級・信心:中]",
+    "statement": "先進封裝主題（CoWoS，把多顆晶片疊在一起當一顆用的製程）：先進封裝成為 AI 晶片效能新戰場，台積電已把舊廠轉作封裝、產能擴增數倍 （鉅亨）／（WSJ）。CoWoS 產能過去是輝達銷售成長瓶頸，供應鏈從並排連接走向立體堆疊。這條線與上一則設備股弱勢互相牴觸：設備商看淡的是週期，先進封裝缺的卻是產能，兩者短期不會同時成立。[A 級・信心:中-高]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6627587"
+     "https://news.cnyes.com/news/id/6629780"
     ]
    },
    {
-    "statement": "艾司摩爾（ASML，全球微影設備龍頭）：對銷往韓國的設備替換備品全面調漲價格 10% （科技新報）。備品漲價反映記憶體廠稼動率拉高、設備商議價力回升，而三星、SK 海力士增產最終仍要走先進製程與封裝，對 2330 是需求面間接正向。但漲價只涵蓋備品、不含新機台，對 ASML 營收貢獻的量級判斷不出來。[B 級・信心:中-低，資訊有限]",
+    "statement": "日月光投控（3711，全球最大封測代工廠）：9 月與第三季營收雙創新高，AI 先進封測扮要角 （科技新報）；同日 MOPS 公告子公司矽品取得達十億元營業用機器設備與廠務工程 （MOPS）。封測廠擴產正是回應 CoWoS 外溢需求，設備與廠務資本支出代表投產時程已排定。這與先進封裝主題同向，兩者共同指向封裝產能吃緊，最快下一季反映在稼動率。[A 級・信心:中]",
     "source_urls": [
-     "https://technews.tw/2026/10/12/asml-raises-component-prices-by-10-to-share-profits/"
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1wMkFFV2c3VlhVdVM4d0NkMnBscW9zTExhS1NJZ2hPaTQteUwxZERuQjZyMkZhZkhNamhTVEY5a3o4Vk5GNzVTQnB1T3Nmd2xhNDljamR5MHFPQQ?oc=5"
     ]
    },
    {
-    "statement": "三星電子（005930.KS，全球最大記憶體廠）：財測不如預期，美光、SK 海力士單日跌約 5%、記憶體股倒一片 （LINE TODAY）。延續這條記憶體超級循環的追蹤線，今日轉折在於「報價漲」與「財測弱」出現分歧。若韓系大廠擴產保守，供給紀律反而有利報價維持，台灣的南亞科、華邦電受惠程度要看它是否同步收斂資本支出。[B 級・信心:中-低，資訊有限]",
+    "statement": "台股 AI 網通供應鏈（聯發科、達發）：兩家公司推三箭攻 AI 網通，協助電信業者打造下一代網路 （經濟日報）。網通晶片與邊緣 AI 需求若能落地，將分散台積電在手機單一應用的波動，但目前無訂單金額與客戶名單，量級判斷不出來。[B 級・信心:低-中，資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiZEFVX3lxTE1pZVVGdTQzRUJzRlhBcFhGa2g0UlBWNl9Cby11dnU1bjRUbFdnN19ERWZ3SkhqcVJ5OHllSVNBNFcySGpKdGhYRy1qSExwd1JfMXhnVEJpeUxCRUJQVDBVN2tHSzc?oc=5"
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTFBRS3hLejNqclAtdmhhVGhkdV83djl0MTM1Nm5RckROcXNkaXNvdjhrRkt2cXl6VUM0Q20tb21PQ2NRbmZoWFNNTDFPX1FiM251RnV5eklyZTI0d9IBX0FVX3lxTE5jUGFKdDd4WHduODVSbWZKVzU0TUhvNUp3V2trLUxsdGlQdFFKVmJQSUpOcWdsaE5yaU5UbndfMUNhUmVHVDF1MEl1TklMeEV3cjQ4TVNneUNwb3JWYWw4?oc=5"
     ]
    },
    {
-    "statement": "輝達（NVDA，AI GPU 龍頭）：10-Q 揭露表外財務承諾飆至約 5,300 億美元，較上季 1,840 億大增逾 180% （鉅亨）。這意味輝達從賣晶片進一步變成 AI 基建的信用背書方，把供應承諾、雲協議、租約綁進生態系，等於用資本鎖住未來算力需求，中長期有利 2330 的 CoWoS 與 HBM 拉貨。但這也是集中度風險：若 AI 資本支出放緩，這些承諾可能產生取消成本，屬兩面刃。[B 級・信心:中]",
+    "statement": "【金融｜台灣】三金控前三季獲利齊創峰：元大金稅後純益 549 億元、EPS 3.96；華南金前三季稅後純益 263.67 億元、EPS 1.88、年增 32.4%，雙雙改寫同期新高 （經濟日報）／（鉅亨）。證券子公司受惠台股成交量放大，銀行子公司利差穩，兩者直接墊高金控 EPS，是防禦型資金今日的落點。[A 級・信心:中]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6627653"
+     "https://news.google.com/rss/articles/CBMidEFVX3lxTE1xQlppd1M2YzlyNzQ4VndtQ3pEUllzQ0lmTWVzWmlGYlN2cktZWGxGTE1yVXB0SFd2VmVRSk1VQWZ6eWpnSFc0Nmp6Y0ZVMDNIY1FUSHd6Q0lyV0FkZkJjeXNpQjNqOE1WNG43WV9vckJkSzAy0gFfQVVfeXFMTVFPSUx4RW1mdlRqcHY1ZjgtUUwycWxVbnJ2aTB6Q2VURGg0Vm0xbU90UVVTb01Vd1FXYnVpVThyY1ptRks4XzNObnpvWEhVel9EUEEwbjMtRl9OZTY5NWc?oc=5"
     ]
    }
   ]

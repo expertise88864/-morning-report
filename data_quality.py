@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import datetime as _dt
+import datetime as dt   # 搬來的覆蓋率判準本體逐字沿用 `dt`
 
 WARN = "warn"
 ERROR = "error"
@@ -443,3 +444,75 @@ def exdiv_lead_stats(history: dict, lookahead_days: int = 7) -> tuple:
                 f"短於覆蓋守衛假設的 {lookahead_days} 天"
                 "——抓取一中斷,那些事件就會被漏記而守衛仍放行")
     return stats, warnings
+
+
+# ---------------------------------------------------------------------------
+# 公司行動 / 除權息的收集覆蓋率(2026-10-14 自 morning_report 逐字搬入;mr 同名 re-export)
+# ---------------------------------------------------------------------------
+def corpact_coverage_ok(days, start: str, end: str) -> bool:
+    """(start, end] 這段期間的公司行動,是否確定都已被收集到。
+
+    r6(Codex,P1):原本只用**今天**的 `fetch_failed` 旗標擋 —— 那是**暫態**的。
+    一個 D+3 到期的橫向,窗口涵蓋 D..D+3;若 D+1 那天抓取失敗,那個空洞不會被
+    任何東西記住,到了 D+3 抓取成功、`fetch_failed` 是 False,於是照常寫值 ——
+    而我們從來沒有觀察過 D+1 那天新出現的停牌。結算結果又是**永不重算**的,
+    所以那是永久錯誤。
+
+    判準刻意最保守:窗口內**每一天**都要有成功收集紀錄。
+    `_record_corpact_span` 目前還量不出 TWTAWU 的保留窗口(往回幾天),
+    在拿到那個分佈之前,任何「收集日 C 可以代表 C-k 那天」的放寬都是猜的。
+    (除權息那邊之所以能用 7 天 lookahead,是因為預告表**往前**看,
+     一次收集就涵蓋未來數十天;停牌表是**回顧性**的,方向相反。)
+
+    抓取失敗當天不會被寫進 `days`(`update_corporate_actions` 沒被呼叫),
+    所以這條判準自動涵蓋了原本的 `fetch_failed` 情境,不需要另一個暫態旗標。
+    """
+    have = {str(x) for x in days or [] if x}
+    if not (have and start and end):
+        return False
+    try:
+        d0 = dt.date.fromisoformat(start)
+        d1 = dt.date.fromisoformat(end)
+    except (ValueError, TypeError):
+        return False
+    if d1 < d0:
+        return False
+    day = d0 + dt.timedelta(days=1)
+    while day <= d1:
+        if day.isoformat() not in have:
+            return False
+        day += dt.timedelta(days=1)
+    return True
+
+
+#: 除權息**預告**表往前看的天數。實際約兩週,取 7 天當保守值:
+#: 只要 D 之前 7 天內有成功收集過一次,D 當天的除權息就一定被記下來了。
+_EXDIV_PREVIEW_LOOKAHEAD_DAYS = 7
+
+
+def exdiv_coverage_ok(days, start: str, end: str) -> bool:
+    """(start, end] 這段期間的除權息事件,是否確定都已被收集到。
+
+    判準:區間內**每一天** D,都要在 [D − lookahead, D] 之內有過一次成功收集
+    ——因為預告表只往前看,收集日在 D 之後才開始的話,D 當天的除權息早已從
+    表上消失。這也順帶擋掉「排程連續失敗數日」造成的空洞,不只是上線那一刻。
+    """
+    have = sorted({str(x) for x in days or [] if x})
+    if not (have and start and end):
+        return False
+    try:
+        d0 = dt.date.fromisoformat(start)
+        d1 = dt.date.fromisoformat(end)
+    except (ValueError, TypeError):
+        return False
+    if d1 < d0:
+        return False
+    have_set = set(have)
+    day = d0 + dt.timedelta(days=1)
+    while day <= d1:
+        window = {(day - dt.timedelta(days=k)).isoformat()
+                  for k in range(_EXDIV_PREVIEW_LOOKAHEAD_DAYS + 1)}
+        if not (window & have_set):
+            return False
+        day += dt.timedelta(days=1)
+    return True

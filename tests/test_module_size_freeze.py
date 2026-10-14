@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_235  # Outcome selection and pulse history live outside main.
+MAIN_MODULE_LINE_CEILING = 26_215  # 2026-10-14: coverage checks moved to data_quality; ratchet down.
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
@@ -258,7 +258,7 @@ MODULE_CEILINGS = {
     "news_events.py": 1_450,  # 2026-08-22 外審 P2-3:兩條入口共用 action→event_type;現況 1425  # 2026-08-22 外審 P1-2:別名/literal 共用 _usable_alias(裸數字不算指名);現況 1409
     "story_ledger.py": 2_000,
     "render_utils.py": 1_900,
-    "data_quality.py": 500,
+    "data_quality.py": 520,   # 2026-10-14 自主檔逐字搬入覆蓋率判準 73 行(主檔淨減 67)
     "model_history_store.py": 600,
     # 批#95:這兩個是批#89–#93 抽出來的接收端。**沒有被列進來就是後門** ——
     # 本檔的宣稱是「葉模組也有上限,否則只是把膨脹換個檔案繼續」,

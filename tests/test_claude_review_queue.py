@@ -368,3 +368,43 @@ def test_claude_finding_can_be_resolved_by_a_gpt_reviewed_repair(repo, monkeypat
     assert queue.pending_commits(gate) == [] and queue.pending_commits(gpt) == []
     queue.validate_push(gpt, [gate.PushRange(
         "refs/heads/main", "refs/heads/main", git("rev-parse", f"{original}^"), git("rev-parse", "HEAD"))])
+
+
+@pytest.mark.parametrize("gpt_repair", [False, True])
+def test_repair_closure_must_be_reachable_from_the_resolution(repo, monkeypatch, gpt_repair):
+    """gpt-6.1-sol 推送審查 2026-10-14:修正的結案 audit 只在另一條分支時,推送交付分支後
+    別的 clone 看不到它 —— 不可據此接受 resolved。結案 audit 合進來之後才接受。"""
+    from tools import gpt_diff_review as gpt
+    root, git = repo
+    monkeypatch.setattr(gpt, "STATE_DIR", root / ".claude-review" / "gpt")
+    repair_gate = gpt if gpt_repair else gate
+    original = pending_commit(repo)
+    (root / "sample.txt").write_text("repaired", encoding="utf-8")
+    git("add", "sample.txt")
+    path = root / "message.txt"
+    path.write_text("Repair the finding\n", encoding="utf-8")
+    assert queue.commit_message(repair_gate, str(path)) == 0
+    git("commit", "-F", str(path))
+    fix = git("rev-parse", "HEAD")
+    git("switch", "-q", "-c", "review-only")       # 結案 audit 只在這條分支
+    queue.save_approvals(repair_gate, [queue.commit_range(repair_gate, fix)], "verified-diff-fingerprint")
+    status, effort, reviewed = queue.keys(repair_gate)
+    path.write_text(f"Record review\n\n{status}: passed\n{effort}: high\n{reviewed}: {fix}\n",
+                    encoding="utf-8")
+    assert queue.commit_message(repair_gate, str(path)) == 0
+    git("commit", "--allow-empty", "-F", str(path))
+    closing = git("rev-parse", "HEAD")
+    git("switch", "-q", "main")
+    assert fix not in queue.pending_commits(repair_gate)   # 全域清單看得到別的分支
+    path = _audit(repo, "resolved", original, fix)
+    with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+        gpt.commit_message(str(path))
+    git("commit", "--allow-empty", "-F", str(path))       # 不經 hook 硬塞:佇列與推送也不採信
+    audit = git("rev-parse", "HEAD")
+    assert queue.audit_target(gate, audit, queue.trailers(gate, queue.message_for(gate, audit))) is None
+    git("reset", "-q", "--hard", fix)                      # 測試 repo:丟掉硬塞的 audit
+    git("merge", "-q", "--ff-only", closing)               # 結案 audit 進到交付分支
+    path = _audit(repo, "resolved", original, fix)
+    assert gpt.commit_message(str(path)) == 0
+    git("commit", "--allow-empty", "-F", str(path))
+    assert original not in queue.pending_commits(gate)

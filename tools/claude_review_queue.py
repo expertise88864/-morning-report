@@ -30,14 +30,33 @@ def resolved_key(gate=None) -> str:
     return getattr(gate, "TRAILER_RESOLVED_BY", RESOLVED_BY)
 
 
-def trailers(gate, message: str) -> dict[str, list[str]]:
-    raw = gate._git_bytes("interpret-trailers", "--parse", stdin=message.encode())
+#: 已提交 commit 的 trailer:git 自己的解析器(與 `interpret-trailers --parse` 同一套,
+#: 2026-10-14 在本 repo 218 個審查 commit 上逐筆比對一致),一次 `git log` 就取回全部。
+_TRAILER_FORMAT = "%(trailers:only,unfold)"
+_METAS: dict[str, dict[str, list[str]]] = {}
+
+
+def _parse_trailers(raw: bytes | str) -> dict[str, list[str]]:
+    text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
     result: dict[str, list[str]] = {}
-    for line in raw.decode("utf-8", errors="replace").splitlines():
+    for line in text.splitlines():
         key, sep, value = line.partition(":")
         if sep:
             result.setdefault(key.lower(), []).append(value.strip())
     return result
+
+
+def trailers(gate, message: str) -> dict[str, list[str]]:
+    """尚未提交的訊息(commit-msg hook)用 interpret-trailers 解析。"""
+    return _parse_trailers(gate._git_bytes("interpret-trailers", "--parse", stdin=message.encode()))
+
+
+def meta_for(gate, sha: str) -> dict[str, list[str]]:
+    """已提交 commit 的 trailer;SHA 是內容定址的,同一行程內記住。"""
+    if sha not in _METAS:
+        _METAS[sha] = _parse_trailers(
+            gate._git_bytes("show", "-s", f"--format={_TRAILER_FORMAT}", sha))
+    return dict(_METAS[sha])
 
 
 def message_for(gate, sha: str) -> str:
@@ -58,21 +77,22 @@ def is_empty_commit(gate, sha: str) -> bool:
 
 def pending_commits(gate) -> list[str]:
     """Include topic and remote branches, not just the currently checked-out one."""
-    raw = gate._git_bytes("log", "--reverse", "--topo-order", "-z", "--format=%H%n%B",
-                         "--branches", "--remotes", "HEAD")
+    raw = gate._git_bytes("log", "--reverse", "--topo-order", "-z",
+                         f"--format=%H%n{_TRAILER_FORMAT}", "--branches", "--remotes", "HEAD")
     pending: dict[str, None] = {}
     for block in raw.decode("utf-8").split("\0"):
-        sha, sep, message = block.strip().partition("\n")
+        sha, sep, text = block.strip().partition("\n")
         if not sep:
             continue
         # Most repository commits do not participate in the queue.
-        if keys(gate)[0].lower() not in message.lower():
+        if keys(gate)[0].lower() not in text.lower():
             continue
-        meta = trailers(gate, message)
+        meta = _parse_trailers(text)
+        _METAS.setdefault(sha, meta)
         if is_pending(meta, gate):
             pending[sha] = None
         else:
-            target = audit_target(gate, sha, meta, pending)
+            target = audit_target(gate, sha, meta)
             if target:
                 pending.pop(target, None)
     return list(pending)
@@ -115,7 +135,7 @@ def commit_message(gate, path: str) -> int:
         status = meta.get(status_key.lower())
         pending = pending_commits(gate) if len(targets) == 1 else []
         if status == ["resolved"]:
-            evidence = resolution_valid(gate, targets[0], meta, "HEAD", pending)
+            evidence = resolution_valid(gate, targets[0], meta, "HEAD")
         else:
             evidence = status == ["passed"] and has_approval(gate, targets[0])
         if (gate.staged_fingerprint() is not None or len(targets) != 1
@@ -152,7 +172,7 @@ def _is_ancestor(gate, older: str, newer: str) -> bool:
     return gate._try_git_bytes("merge-base", "--is-ancestor", older, newer) is not None
 
 
-def resolution_valid(gate, target: str, meta: dict, tip: str, pending) -> bool:
+def resolution_valid(gate, target: str, meta: dict, tip: str) -> bool:
     """A "resolved" audit names one repair that is itself a closed review item.
 
     The repair must descend from the target and precede the audit, and it must
@@ -166,15 +186,31 @@ def resolution_valid(gate, target: str, meta: dict, tip: str, pending) -> bool:
     if (fix == target or not _is_ancestor(gate, target, fix)
             or not _is_ancestor(gate, fix, tip)):
         return False
-    meta_fix = trailers(gate, message_for(gate, fix))
-    for repair_gate in _repair_gates(gate):
-        if not is_pending(meta_fix, repair_gate):
+    meta_fix = meta_for(gate, fix)
+    return any(is_pending(meta_fix, repair_gate) and _closed_within(repair_gate, fix, tip)
+               for repair_gate in _repair_gates(gate))
+
+
+def _closed_within(gate, sha: str, tip: str) -> bool:
+    """`sha` 的有效結案 audit 在 `tip` 的歷史裡。
+
+    只看 tip 可達的 commit:結案 audit 若只在另一條分支(或只在本機),推送 tip 之後
+    別的 clone 看不到它,這筆 resolved 就不成立(gpt-6.1-sol 推送審查 2026-10-14)。
+    不用全域 pending 清單 —— 那份清單掃所有分支,答的是另一個問題。
+    """
+    raw = gate._git_bytes("log", "-z", "--fixed-strings", f"--grep={sha}",
+                          f"--format=%H%n{_TRAILER_FORMAT}", tip)
+    reviewed = keys(gate)[2].lower()
+    for block in raw.decode("utf-8").split("\0"):
+        audit, sep, text = block.strip().partition("\n")
+        if not sep or audit == sha:
             continue
-        if repair_gate is not gate:
-            return fix not in pending_commits(repair_gate)
-        if pending is None:
-            pending = pending_commits(gate)
-        return fix not in pending
+        meta = _parse_trailers(text)
+        # 只看審的就是 sha 的 audit。在 Resolved-By 提到 sha 的 resolved audit(包括正在
+        # 驗證的那一筆)不是 sha 的結案;拿它們去驗證會繞回這裡無限遞迴。resolved 的修正
+        # 必須是嚴格後代,所以「sha 本身被 resolved」那條鏈一定會走到底。
+        if meta.get(reviewed) == [sha] and audit_target(gate, audit, meta) == sha:
+            return True
     return False
 
 
@@ -188,12 +224,25 @@ def _repair_gates(gate) -> list:
     return [gate] + ([importlib.import_module(successor)] if successor else [])
 
 
-def audit_target(gate, sha: str, meta: dict, pending=None) -> str | None:
+_AUDITS: dict[tuple, str | None] = {}
+
+
+def audit_target(gate, sha: str, meta: dict) -> str | None:
     """A durable, empty audit for an exact pending ancestor survives cache loss.
 
     commit-msg requires the machine-verified receipt when creating the audit;
     subsequent transport must not depend on that ignored, disposable cache.
+
+    結果只取決於 `sha` 這個 commit 與它的祖先 —— SHA 是內容定址的,同一個 SHA 就是同一段
+    歷史 —— 所以同一行程內記住它(結案鏈 21 筆 audit 共用一條鏈,不記住要跑一分多鐘)。
     """
+    key = (getattr(gate, "__name__", repr(gate)), sha, repr(sorted(meta.items())))
+    if key not in _AUDITS:
+        _AUDITS[key] = _audit_target(gate, sha, meta)
+    return _AUDITS[key]
+
+
+def _audit_target(gate, sha: str, meta: dict) -> str | None:
     status_key, effort_key, reviewed_key = keys(gate)
     targets = meta.get(reviewed_key.lower(), [])
     status = meta.get(status_key.lower())
@@ -204,12 +253,12 @@ def audit_target(gate, sha: str, meta: dict, pending=None) -> str | None:
     target = targets[0]
     if not _is_ancestor(gate, target, sha):
         return None
-    if status == ["resolved"] and not resolution_valid(gate, target, meta, sha, pending):
+    if status == ["resolved"] and not resolution_valid(gate, target, meta, sha):
         return None
-    return target if is_pending(trailers(gate, message_for(gate, target)), gate) else None
+    return target if is_pending(meta_for(gate, target), gate) else None
 
 
-def accepted_outgoing(gate, sha: str, meta: dict, legacy_pending=None) -> bool:
+def accepted_outgoing(gate, sha: str, meta: dict) -> bool:
     """這個 outgoing commit 是否已在佇列中(pending)或是有效的 audit。
 
     閘門可以宣告 `LEGACY_GATE`(2026-10-14 起 GPT 閘門宣告 Claude 閘門):切換前已排進
@@ -221,12 +270,7 @@ def accepted_outgoing(gate, sha: str, meta: dict, legacy_pending=None) -> bool:
     legacy = getattr(gate, "LEGACY_GATE", None)
     # 切換前排進舊佇列的內容 commit 本身也接受:它仍留在舊佇列等補審(`pending` 列得到)
     return legacy is not None and (is_pending(meta, legacy)
-                                   or audit_target(legacy, sha, meta, legacy_pending) is not None)
-
-
-def _legacy_pending(gate):
-    legacy = getattr(gate, "LEGACY_GATE", None)
-    return pending_commits(legacy) if legacy is not None else None
+                                   or audit_target(legacy, sha, meta) is not None)
 
 
 def _fast_forward(gate, ref) -> bool:
@@ -238,7 +282,6 @@ def quota_push_allowed(gate, ranges) -> bool:
     """Quota deferral is allowed only for explicitly queued, fast-forward branches."""
     if not ranges:
         return False
-    legacy_pending = _legacy_pending(gate)
     for ref in ranges:
         if (not ref.remote_ref.startswith("refs/heads/") or ref.local_ref == "(delete)"
                 or not _fast_forward(gate, ref)):
@@ -247,23 +290,22 @@ def quota_push_allowed(gate, ranges) -> bool:
         if not commits:
             return False
         for sha in commits:
-            meta = trailers(gate, message_for(gate, sha))
-            if not accepted_outgoing(gate, sha, meta, legacy_pending):
+            meta = meta_for(gate, sha)
+            if not accepted_outgoing(gate, sha, meta):
                 return False
     return True
 
 
 def validate_push(gate, ranges) -> None:
     """Policy applies even when Claude is available, before any paid review."""
-    legacy_pending = _legacy_pending(gate)
     for ref in ranges:
         if ref.remote_ref.startswith("refs/tags/") and not ref.is_new_ref:
             raise gate.ReviewError("published tags are immutable; replacing them requires a forbidden force push")
         if ref.local_ref == "(delete)" or not _fast_forward(gate, ref):
             raise gate.ReviewError("push must be fast-forward; deletions and history rewrites are blocked")
         for sha in gate._outgoing_commits(ref.base, ref.tip):
-            meta = trailers(gate, message_for(gate, sha))
-            if not accepted_outgoing(gate, sha, meta, legacy_pending):
+            meta = meta_for(gate, sha)
+            if not accepted_outgoing(gate, sha, meta):
                 raise gate.ReviewError("outgoing commits require pending/high trailers or verified empty audits")
     # Tags and ref creations with no outgoing commits may proceed normally.
     # Their quota-only restrictions belong in quota_push_allowed, not here.

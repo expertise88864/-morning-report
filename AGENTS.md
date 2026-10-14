@@ -127,7 +127,8 @@
   裁決為 REQUEST_CHANGES 的 commit,在 findings 由後續修正處理後,以空 audit commit 結案,帶
   `Claude-Opus-5-Review: resolved`、`Claude-Opus-5-Review-Effort: high`、
   `Claude-Opus-5-Reviewed-Commit: <完整 SHA>`、`Claude-Opus-5-Resolved-By: <修正完整 SHA>`。
-  hook 只接受「修正是目標的後代、已在 HEAD、本身曾排入佇列且已結案」;沒有審查 trailer
+  hook 只接受「修正是目標的後代、已在 HEAD、本身曾排入佇列且已結案,而且那筆結案 audit 就在
+  這筆 resolved audit 的歷史裡」(只在別的分支結案不算,推出去別人看不到);沒有審查 trailer
   的 commit(例如自動資料更新)不能充當修正。本文寫明原 finding、審查紀錄出處與修正對應。
   這是**人工聲明**:hook 能驗證修正 commit 的關係,不能驗證原審查真的發生過,所以本文
   必須指出審查紀錄(例如 `CODE_REVIEW_2026-10-09.md`)。切換後的修正排進 GPT 佇列,

@@ -524,3 +524,41 @@ def test_overlapping_date_buckets_keep_the_complete_final():
     except ValueError:
         return
     raise AssertionError("兩個完整但矛盾的版本被默默擇一")
+
+
+def test_unknown_opponents_never_count_as_the_playoff_winner():
+    """推送審查(xhigh):挑戰賽與台灣大賽都有「待定」對手時,兩個待定不是同一隊。"""
+    playoff_game = yahoo("p1", "Sat, 10 Oct 2026 10:35:00 +0000", game_type="Playoff Series",
+                         away="cpbl.t.3", home="cpbl.t.98")
+    ts_game = yahoo("t1", "Sat, 17 Oct 2026 09:05:00 +0000", away="cpbl.t.1", home="cpbl.t.99")
+    series = ss.cpbl_postseason(cpbl_games(playoff_game, ts_game), dt.datetime(2026, 10, 9, 6, tzinfo=TPE))["series"]
+    playoff = next(s for s in series if s["label"] == "季後挑戰賽")
+    assert not playoff["decided"] and playoff["next"]["game"] == 1
+
+
+def test_stale_tennis_final_still_closes_the_championship_market(monkeypatch):
+    """推送審查(xhigh):72 小時前的美網決賽不進賽果,但仍要讓「冠軍盤已結束」成立,
+    否則已結束的冠軍盤會被當成目前的預測、冠軍顯示成 100%。"""
+    def event():
+        return {"shortName": "US Open", "date": "2026-08-24T04:00Z", "endDate": "2026-09-14T03:59Z",
+                "status": {"type": {"state": "post", "completed": True}},
+                "groupings": [{"grouping": {"slug": "mens-singles"}, "competitions": [{
+                    "id": "f1", "date": "2026-09-13T20:00Z", "round": {"displayName": "Final"},
+                    "status": {"type": {"completed": True}},
+                    "competitors": [{"athlete": {"shortName": "J. Sinner"}, "winner": True},
+                                    {"athlete": {"shortName": "C. Alcaraz"}, "winner": False}]}]}]}
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [event()]}
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: Response())
+    tennis = mr.fetch_tennis_digest(dt.datetime(2026, 9, 18, 6, tzinfo=TPE))
+    assert tennis["results"] == [] and len(tennis["final_evidence"]) == 1
+    market = [{"name": "Jannik Sinner", "prob": 100, "event_slug": "2026-mens-us-open-winner-tennis"}]
+    out = mr._render_sports_html({"tennis": tennis, "poly": {"tennis_m": market}}, html)
+    assert "美網冠軍盤" not in out
+    import inspect
+    assert 'tennis.get("final_evidence")' in inspect.getsource(mr.fetch_sports_digest), "證據要帶進 digest"

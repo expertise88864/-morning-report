@@ -20319,6 +20319,7 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     seen_comp = set()
     seen_tourn = set()
     by_label: dict = {"ATP": [], "WTA": []}
+    final_evidence: list = []
     for tour in ("atp", "wta"):
         try:
             r = _http_get(
@@ -20365,8 +20366,7 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                             continue  # 兩端點重複的同一場去重
                         st = (((comp.get("status") or {}).get("type")) or {})
                         cs = comp.get("competitors", [])
-                        if (len(cs) != 2 or not st.get("completed")
-                                or not fresh(comp.get("date") or ev.get("date"), now_tpe)):
+                        if len(cs) != 2 or not st.get("completed"):
                             continue
                         # 批#30:記錄輪次(冠軍行判定的依據——實測 ESPN 有
                         # Qualifying 1st/2nd Round、Qualifying Final、Round 1-4、
@@ -20387,7 +20387,13 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                         # 沒有比分更誤導。
                         from sports_quality import tennis_note, tennis_score
                         score = tennis_score(win, lose)
-                        by_label[label].append({
+                        # 超過 72 小時的賽果不進信(使用者 2026-10-14),但過期的**決賽**仍是
+                        # 「冠軍盤已結束」的證據(market_has_final),另外保留、不顯示
+                        keep = (by_label[label] if fresh(comp.get("date") or ev.get("date"), now_tpe)
+                                else final_evidence if round_name == "Final" else None)
+                        if keep is None:
+                            continue
+                        keep.append({
                             "finish_note": tennis_note(comp),
                             "tour": label, "score": score,
                             "winner": _an(win), "loser": _an(lose),
@@ -20422,6 +20428,11 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         m.pop("_ts", None)
         m.pop("_tier", None)
     out["results"] = combined[:6]
+    from tennis_market_context import result_dates as _result_dates   # 上面的迴圈可能一次都沒跑
+    for m in final_evidence:
+        m.update(_result_dates(m.pop("_ts", "")))
+        m.pop("_tier", None)
+    out["final_evidence"] = final_evidence
     out["tournaments"].sort(key=lambda t: (t["status"] != "進行中", t["_tier"]))   # 進行中排第一
     for t in out["tournaments"]:
         t.pop("_tier", None)
@@ -21210,7 +21221,8 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     # 網球 ATP/WTA 賽況
     try:
         tennis = fetch_tennis_digest(now_tpe)
-        if tennis.get("tournaments") or tennis.get("results"):
+        # 只剩過期決賽證據時也要帶著:否則冠軍盤是否已結束沒有依據可查
+        if tennis.get("tournaments") or tennis.get("results") or tennis.get("final_evidence"):
             out["tennis"] = tennis
     except Exception as e:
         print(f"[sports] 網球抓取失敗: {e}", file=sys.stderr)

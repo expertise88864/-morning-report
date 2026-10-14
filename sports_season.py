@@ -32,6 +32,8 @@ MLB_ROUNDS = {
 _EXCEPTIONAL = {"STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_DELAYED", "STATUS_SUSPENDED"}
 #: 中職季後賽回看天數與完整性餘裕:系列第一場離回看起點不到 _MIN_LEAD 天,就不能確定前面沒有被截掉的場次
 LOOKBACK_DAYS, _MIN_LEAD = 21, 7
+#: 對手未定的顯示名。它不是一支球隊:不可拿來比對誰晉級(兩邊都「待定」會被當成同一隊)
+TBD = "待定"
 #: (中文名, 幾戰幾勝的總場數)。季後挑戰賽:五戰三勝,第一名帶一勝優勢 —— 來源比分看不到那一勝,
 #: 所以挑戰賽**不重建系列戰績、不據此判定結束**(只有台灣大賽排出它的隊伍才算結束)。
 CPBL_SERIES = {"Taiwan Series": ("台灣大賽", 7), "Playoff Series": ("季後挑戰賽", 5)}
@@ -139,7 +141,7 @@ def yahoo_cpbl_games(scoreboard: Any) -> list[dict]:
             found = (teams.get(g.get(key)) or {}).get("display_name")
             if not found and final and g.get("season_phase_id") == "season.phase.postseason":
                 raise ValueError(f"中職季後賽完賽場次缺球隊身分:{gid}")   # 勝場會合併到同一個未知隊
-            return str(found or "待定")
+            return str(found or TBD)
         out.append({"gid": gid, "start": _when(g.get("start_time")),
                     "postseason": g.get("season_phase_id") == "season.phase.postseason",
                     "game_type": str(g.get("game_type") or ""), "status": str(g.get("status_type") or ""),
@@ -170,7 +172,8 @@ def cpbl_postseason(games: list[dict], now: dt.datetime, since: dt.date | None =
             bucket = by_type.setdefault(g["game_type"], {})
             bucket[g["gid"]] = _better(bucket.get(g["gid"]), g)
     # 台灣大賽已排入的隊伍 = 挑戰賽晉級者(挑戰賽唯一可靠的「結束」訊號)
-    advanced = {g[side] for g in by_type.get("Taiwan Series", {}).values() for side in ("away", "home")}
+    advanced = {g[side] for g in by_type.get("Taiwan Series", {}).values()
+                for side in ("away", "home")} - {TBD}
     found = [s for s in (_cpbl_series(game_type, list(by_type[game_type].values()), now, advanced)
                          for game_type in by_type
                          if since is None or min(g["start"] for g in by_type[game_type].values()).date()

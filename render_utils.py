@@ -1157,9 +1157,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 return _TENNIS_PLAYER_ZH.get(surname, str(name or ""))
             return [{**r, "name": _short(r.get("name"))} for r in rows or []]
         lines = []
-        if p.get("tennis_m") and not market_has_final(p["tennis_m"], tennis.get("results")):
+        finals = (tennis.get("results") or []) + (tennis.get("final_evidence") or [])   # 含過期決賽
+        if p.get("tennis_m") and not market_has_final(p["tennis_m"], finals):
             lines.append(f"男:{line_fn(_zh_rows(p['tennis_m']))}")
-        if p.get("tennis_w") and not market_has_final(p["tennis_w"], tennis.get("results")):
+        if p.get("tennis_w") and not market_has_final(p["tennis_w"], finals):
             lines.append(f"女:{line_fn(_zh_rows(p['tennis_w']))}")
         return _poly_odds_block("美網冠軍盤", lines)
     # Polymarket 冠軍盤本身也是可渲染內容:傳統來源全掛時不可讓整張體育卡消失

@@ -86,6 +86,8 @@ KNOWN_DEGRADED = frozenset({
     # 中職未來賽程有場次、但一場都對不到球場(CPBL 官網對 Actions 的海外
     # IP 可能 geo-block)。賽程照出、只少場地;明細在 manifest.sports。
     "sports:cpbl_venue_missing",
+    # 季後賽版面抓不到(sports_season 經 degrade 回呼)→ 退回例行賽樣式;登記 ≠ 靜音,另發 ::warning::
+    "sports:mlb_postseason_failed", "sports:cpbl_postseason_failed",
     # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
     # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
     "chips:pcr_site_fallback", "chips:large_site_fallback",

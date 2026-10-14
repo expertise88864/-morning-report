@@ -11,7 +11,7 @@ def test_results_skip_pre_day_and_find_previous_completed_game(monkeypatch):
     finished = event("post", id="finished", date="2026-10-10T01:00Z")
     teams = finished["competitions"][0]["competitors"]
     teams[0]["score"], teams[1]["score"] = "101", "99"
-    scheduled = event()
+    scheduled = event(season={"type": 2})   # 例行賽:季前賽賽程在抓取端就濾掉(2026-10-14)
 
     class Response:
         def __init__(self, events):
@@ -53,8 +53,9 @@ def test_results_skip_pre_day_and_find_previous_completed_game(monkeypatch):
     assert digest["nba_fixtures"][0]["when"] == "10/12 09:00"
 
 
+# 使用者 2026-10-14:進行中的比分不是賽果 —— 只收來源明確標示完賽的場次
 @pytest.mark.parametrize("state,completed,accepted", [
-    ("pre", False, False), ("in", False, True), ("post", False, True),
+    ("pre", False, False), ("in", False, False), ("post", False, False),
     (None, True, True), (None, False, False),
 ])
 def test_result_status_eligibility_and_score_display(state, completed, accepted):

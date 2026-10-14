@@ -77,15 +77,13 @@ def test_individually_stale_tsm_cannot_feed_price_estimation_or_stance():
     assert not evidence["usable_for_inference"] and "休市" not in evidence["why_unusable"]
 
 
-def test_stale_tsm_is_excluded_from_real_taiex_and_0050_phase(monkeypatch):
-    q = quotes()
-    q["TSM"].update(stale=True, change_pct=10)
-    q["MACRO"] = {"SOX": {"change_pct": 0}}
+def _phase3_offline(monkeypatch, retry_quote):
     for name in ("fetch_taifex_foreign_futures", "fetch_taifex_large_traders",
                  "fetch_taifex_options_pc_ratio", "fetch_twse_margin", "fetch_weekly_momentum",
                  "fetch_taifex_basis", "fetch_twse_market_breadth"):
         monkeypatch.setattr(mr, name, lambda: {})
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network")))
+    monkeypatch.setattr(mr, "fetch_quote", lambda ticker, period=None: dict(retry_quote.get(ticker, {})))
     monkeypatch.setattr(mr, "check_tsmc_earnings_proximity", lambda: {"note": "fixture"})
     monkeypatch.setattr(mr, "load_history_state", lambda **k: [])
     monkeypatch.setattr(mr, "fetch_taifex_night_session", lambda: {"night_pct": 0})
@@ -95,9 +93,43 @@ def test_stale_tsm_is_excluded_from_real_taiex_and_0050_phase(monkeypatch):
     monkeypatch.setattr(mr, "fetch_twse_close", lambda code: 100.)
     monkeypatch.setattr(mr, "calibrate_predictions", lambda f, p, t, h: (f, p, t))
     monkeypatch.setattr(mr, "calibrate_0050_bias", lambda p, h: p)
-    ctx = SimpleNamespace(ex_div={}, fair={}, predictions={"error": "TSM stale"},
-                          quotes=q, mark_phase=lambda *a: None)
+
+
+def _phase3_ctx(q):
+    return SimpleNamespace(ex_div={}, fair={}, predictions={"error": "TSM stale"}, quotes=q,
+                           mark_phase=lambda *a: None, now_tpe=dt.datetime(2026, 10, 9, 6),
+                           hist_2330=None, us_pred_inputs={"usdtwd_today": None, "usdtwd_prev": None,
+                                                           "last_00662": None})
+
+
+def test_retry_before_predictions_recovers_late_us_quotes_and_feeds_the_chain(monkeypatch):
+    """使用者 2026-10-14 選 A:第一次抓不到的美股日線,在預測鏈開始前同一來源再試一次。
+    補到 → 兩檔預測重算、加權預測真的用上 TSM;整封信用同一份資料。"""
+    q = quotes()
+    q["TSM"].update(stale=True, date="2026-10-07")
+    q["QQQ"].update(stale=False, date="2026-10-08")
+    q["MACRO"] = {"SOX": {"change_pct": 0}}
+    fresh = {"TSM": {"date": "2026-10-08", "close": 460., "prev_close": 450., "change_pct": 2.22}}
+    _phase3_offline(monkeypatch, fresh)
+    seen = []
+    monkeypatch.setattr(mr, "_us_price_predictions",
+                        lambda quotes_, inputs, hist, ex_div: seen.append(quotes_["TSM"]["close"])
+                        or ({"fixture": "fair"}, {"fixture": "pred"}))
+    ctx = _phase3_ctx(q)
     mr._phase_taifex_and_chips(ctx)
+    assert q["TSM"]["stale"] is False and q["TSM"]["close"] == 460.
+    assert seen == [460.] and ctx.predictions == {"fixture": "pred"}
+    assert ctx.taiex_pred["pred_open"] != 20000., "補回的 TSM 漲幅必須進到加權預測"
+
+
+def test_stale_tsm_is_excluded_from_real_taiex_and_0050_phase(monkeypatch):
+    q = quotes()
+    q["TSM"].update(stale=True, change_pct=10, date="2026-10-07")  # stale = 日期落後預期交易日
+    q["MACRO"] = {"SOX": {"change_pct": 0}}
+    _phase3_offline(monkeypatch, {})          # 預測前重試仍抓不到 → 維持 stale
+    ctx = _phase3_ctx(q)
+    mr._phase_taifex_and_chips(ctx)
+    assert q["TSM"]["stale"] is True and ctx.predictions == {"error": "TSM stale"}
     assert ctx.taiex_pred["pred_open"] == 20000.
     assert ctx.tw0050_pred["pred_open"] == 100.
 

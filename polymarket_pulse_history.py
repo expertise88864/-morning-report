@@ -111,13 +111,18 @@ def _number(value):
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
-def _detail(row, baseline, missing):
+def _detail(row, baseline):
+    """沒有比較基準的選項只顯示機率(使用者 2026-10-14:不顯示「昨日無快照」)。
+
+    缺基準時**不加括號**,絕不拿更早的快照或 0pp 頂替 —— 沒括號就代表沒有比較。
+    """
     parts = []
     for outcome in row["outcomes"][:row.get("display_limit")]:
         key = outcome.get("hist_key", outcome["name"])
         value = Decimal(str(outcome.get("prob_raw", outcome.get("prob"))))
         if key not in baseline:
-            change = missing
+            parts.append(f"{outcome['name']} {_number(value)}%")
+            continue
         else:
             delta = value - Decimal(str(baseline[key]))
             if not delta:
@@ -134,12 +139,13 @@ def _render(rows, days, today):
     monday = today - dt.timedelta(days=today.weekday())
     for row in rows:
         url = row["source_url"]
-        row["detail"] = _detail(row, yesterday.get(url, {}), "昨日無快照")
+        displayed = row["outcomes"][:row.get("display_limit")]
+        keys = {option.get("hist_key", option["name"]) for option in displayed}
+        row["detail"] = _detail(row, yesterday.get(url, {}))
+        row["compared"] = bool(keys.intersection(yesterday.get(url, {})))
         row.pop("weekly_detail", None)
         row.pop("weekly_baseline_label", None)
         if today.weekday() == 6:
-            displayed = row["outcomes"][:row.get("display_limit")]
-            keys = {option.get("hist_key", option["name"]) for option in displayed}
             baseline = {}
             for date, label in ((monday, "週一"), (monday + dt.timedelta(days=1), "週二"),
                                 (monday - dt.timedelta(days=1), "上週日")):
@@ -148,8 +154,8 @@ def _render(rows, days, today):
                     baseline = candidate
                     row["weekly_baseline_label"] = f"較{label} {date.isoformat()}"
                     break
-            row.setdefault("weekly_baseline_label", "無可用基準")
-            row["weekly_detail"] = _detail(row, baseline, "基準日無快照")
+            if baseline:  # 三個基準日都沒有快照 → 不畫週回顧(不顯示「無可用基準」)
+                row["weekly_detail"] = _detail(row, baseline)
     return rows
 
 

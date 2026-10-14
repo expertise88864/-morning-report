@@ -176,10 +176,11 @@ def render_pulse(rows: list[dict], divergence_note: str = "") -> str:
         div_html += ("<div style='padding:8px 14px;font-size:12px;color:#64748b;'>"
                      f"選舉盤查詢：{html.escape(str(local.get('as_of', '')))}。"
                      "百分比為市場報價，非民調或保證勝率；獨立合約不強制加總 100%。</div>")
-    if any(r.get("outcomes") for r in rows):
+    # 使用者 2026-10-14:沒有任何變化數字時不顯示這段說明;有括號才需要解釋括號
+    if any(r.get("compared") for r in rows):
+        weekly = "；週回顧標示比較基準日" if any(r.get("weekly_detail") for r in rows) else ""
         div_html += ("<div style='padding:8px 14px;font-size:12px;color:#64748b;'>"
-                     "括號為較昨日變化，pp 代表百分點；週回顧依序採本週一、本週二、上週日快照，並標示基準日期。"
-                     "無快照表示缺少該日比較基準，並非沒有變動。</div>")
+                     f"括號為較昨日變化，pp 代表百分點{weekly}。</div>")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#fefce8;border-left:5px solid #ca8a04;border-radius:4px;">'

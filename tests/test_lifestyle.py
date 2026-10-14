@@ -353,7 +353,7 @@ def test_fetch_tennis_grand_slam_first(monkeypatch):
                                 "competitions": [_m("s1", "ATP250win", 14)]}]},
                 {"shortName": "Wimbledon", "status": {"type": {}},        # 大滿貫,日期較舊
                  "groupings": [{"grouping": {"slug": "mens-singles"},
-                                "competitions": [_m("w1", "SLAMwin", 11)]}]},
+                                "competitions": [_m("w1", "SLAMwin", 13)]}]},   # 72h 新鮮度內
             ]})
         return R({"events": []})
     monkeypatch.setattr(mr.requests, "get", fake_get)
@@ -1055,12 +1055,12 @@ def test_batch30_fetch_final_survives_per_tour_cap(monkeypatch):
             return R({"events": [
                 {"shortName": "Estoril Open", "status": {"type": {}},
                  "groupings": [{"grouping": {"slug": "mens-singles"},
-                                "competitions": [_match("f1", "CHAMP", 10, "Final")]}]},
+                                "competitions": [_match("f1", "CHAMP", 12, "Final")]}]},   # 72h 內
                 {"shortName": "Kitzbühel Open", "status": {"type": {}},
                  "groupings": [{"grouping": {"slug": "mens-singles"},
                                 "competitions": [
-                                    _match(f"r{d}", f"REG{d}", d, "Round 1")
-                                    for d in (11, 12, 13)]}]},
+                                    _match(f"r{i}", f"REG{i}", d, "Round 1")
+                                    for i, d in ((1, 13), (2, 14), (3, 14))]}]},
             ]})
         return R({"events": []})
     monkeypatch.setattr(mr.requests, "get", fake_get)
@@ -1898,7 +1898,10 @@ def test_fetch_mlb_week_fixtures_filters_top_teams(monkeypatch):
             ]}
 
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
-    out = mr.fetch_mlb_week_fixtures(top_teams={"TB", "NYY", "LAD"})
+    # 報告時間要明寫:MLB 改逐日查詢後只留「此刻起一週內」(ESPN 拒絕日期區間,2026-10-14)
+    import datetime as dt
+    out = mr.fetch_mlb_week_fixtures(dt.datetime(2026, 7, 16, 6, tzinfo=mr.TPE),
+                                     top_teams={"TB", "NYY", "LAD"})
     texts = [g["text"] for g in out]
     assert "TB @ BOS" in texts                        # 強隊對戰保留
     assert "PIT @ CLE" not in texts                   # 非強隊剔除

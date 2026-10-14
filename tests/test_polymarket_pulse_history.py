@@ -32,7 +32,7 @@ def test_persistence_copy_exact_yesterday_zero_and_fractional(tmp_path):
     untouched = copy.deepcopy(original)
     first = history.prepare(original, now(12), path, write)
     assert original == untouched and first is not original
-    assert first[0]["detail"] == "甲 50.25%(昨日無快照)"
+    assert first[0]["detail"] == "甲 50.25%" and first[0]["compared"] is False
     assert history.prepare(rows(50.25), now(13), path, write)[0]["detail"] == "甲 50.25%(0pp)"
     assert history.prepare(rows(50.5), now(13, 8), path, write)[0]["detail"] == "甲 50.5%(↑0.25pp)"
     assert history.prepare(rows(50.1), now(14), path, write)[0]["detail"] == "甲 50.1%(↓0.4pp)"
@@ -43,10 +43,10 @@ def test_persistence_copy_exact_yesterday_zero_and_fractional(tmp_path):
 def test_gaps_never_compare_last_available_or_another_market(tmp_path):
     path = tmp_path / "history.json"
     history.prepare(rows(), now(12), path, write)
-    assert "昨日無快照" in history.prepare(rows(60), now(14), path, write)[0]["detail"]
+    assert history.prepare(rows(60), now(14), path, write)[0]["detail"] == "甲 60%"
     other = rows(60)
     other[0]["source_url"] += "-other"
-    assert "昨日無快照" in history.prepare(other, now(15), path, write)[0]["detail"]
+    assert history.prepare(other, now(15), path, write)[0]["detail"] == "甲 60%"
 
 
 def test_sunday_compares_same_week_monday_and_missing_baselines(tmp_path):
@@ -57,7 +57,7 @@ def test_sunday_compares_same_week_monday_and_missing_baselines(tmp_path):
     assert result["detail"] == "甲 50.5%(↑0.5pp)"
     assert result["weekly_detail"] == "甲 50.5%(↑10.5pp)"
     next_week = history.prepare(rows(60), now(25), path, write)[0]
-    assert "昨日無快照" in next_week["detail"]
+    assert next_week["detail"] == "甲 60%" and next_week["compared"] is False
     assert next_week["weekly_detail"] == "甲 60%(↑9.5pp)"
     assert next_week["weekly_baseline_label"] == "較上週日 2026-10-18"
     assert "weekly_detail" not in history.prepare(rows(), now(26), path, write)[0]
@@ -121,9 +121,8 @@ def test_collect_preserves_prices_warns_and_never_overwrites_corrupt_state(tmp_p
         return rows(50.5)
     result = history.collect(fetch, now(18), path, lambda *a: writes.append(a), warnings.append)
     assert len(fetches) == 1 and len(warnings) == 1 and not writes
-    assert result[0]["detail"] == "甲 50.5%(昨日無快照)"
-    assert result[0]["weekly_detail"] == "甲 50.5%(基準日無快照)"
-    assert result[0]["weekly_baseline_label"] == "無可用基準"
+    assert result[0]["detail"] == "甲 50.5%"
+    assert "weekly_detail" not in result[0] and "weekly_baseline_label" not in result[0]
     assert path.read_text(encoding="utf-8") == "broken"
 
 
@@ -187,7 +186,7 @@ def test_collect_write_failure_does_not_retry_or_reuse_old_baseline(tmp_path):
         attempts.append(True)
         raise OSError("fixture")
     result = history.collect(lambda: rows(50), now(13), path, fail, warnings.append)
-    assert result[0]["detail"] == "甲 50%(昨日無快照)"
+    assert result[0]["detail"] == "甲 50%"
     assert len(attempts) == len(warnings) == 1
     assert path.read_bytes() == original
 
@@ -199,24 +198,24 @@ def test_sunday_zero_and_per_outcome_missing_baselines(tmp_path):
     current = rows(50)
     current[0]["outcomes"].append({"name": "新選項", "prob": 0})
     result = history.prepare(current, now(18), path, write)[0]
-    assert result["detail"] == "甲 50%(0pp)・新選項 0%(昨日無快照)"
-    assert result["weekly_detail"] == "甲 50%(0pp)・新選項 0%(基準日無快照)"
+    assert result["detail"] == "甲 50%(0pp)・新選項 0%" and result["compared"] is True
+    assert result["weekly_detail"] == "甲 50%(0pp)・新選項 0%"
 
 
 @pytest.mark.parametrize("dates,expected_label,expected_change", [
     ([11, 12, 13], "較週一 2026-10-12", "↑8pp"),
     ([11, 13], "較週二 2026-10-13", "↑7pp"),
     ([11], "較上週日 2026-10-11", "↑9pp"),
-    ([10, 14], "無可用基準", "基準日無快照"),
+    ([10, 14], None, None),
 ])
 def test_weekly_baseline_priority_and_no_arbitrary_substitution(tmp_path, dates, expected_label, expected_change):
     path = tmp_path / "history.json"
     for day in dates:
         history.prepare(rows(day), now(day), path, write)
     result = history.prepare(rows(20), now(18), path, write)[0]
-    assert result["weekly_baseline_label"] == expected_label
-    assert result["weekly_detail"] == f"甲 20%({expected_change})"
-    assert result["detail"] == "甲 20%(昨日無快照)"
+    assert result.get("weekly_baseline_label") == expected_label
+    assert result.get("weekly_detail") == (f"甲 20%({expected_change})" if expected_change else None)
+    assert result["detail"] == "甲 20%"
 
 
 def test_fallback_is_market_specific_and_does_not_use_unrelated_options(tmp_path):
@@ -250,4 +249,18 @@ def test_precision_and_small_changes_in_daily_and_weekly_detail(tmp_path, previo
 
 def test_missing_baseline_also_formats_probability_to_two_places(tmp_path):
     result = history.prepare(rows(.146 * 100), now(13), tmp_path / "history.json", write)
-    assert result[0]["detail"] == "甲 14.6%(昨日無快照)"
+    assert result[0]["detail"] == "甲 14.6%"
+
+
+def test_footnote_only_explains_brackets_that_are_actually_shown(tmp_path):
+    """使用者 2026-10-14:沒有任何較昨日變化時,不顯示「(昨日無快照)」也不顯示括號說明。"""
+    import polymarket_local_elections as pulse
+    path = tmp_path / "history.json"
+    first = history.prepare(rows(50), now(12), path, write)
+    html_first = pulse.render_pulse(first)
+    assert "無快照" not in html_first and "括號為較昨日變化" not in html_first
+    assert "甲 50%" in html_first
+    second = history.prepare(rows(52), now(13), path, write)
+    html_second = pulse.render_pulse(second)
+    assert "甲 52%(↑2pp)" in html_second and "括號為較昨日變化" in html_second
+    assert "週回顧" not in html_second  # 週日才有週回顧

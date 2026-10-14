@@ -11,12 +11,13 @@ TPE = ZoneInfo("Asia/Taipei")
 ET = ZoneInfo("America/New_York")
 
 
-def week_events(get, now: dt.datetime, days: int = 7) -> list[dict]:
-    """NBA rejects date ranges with HTTP 400; use at most eight daily requests."""
-    start, end = now.astimezone(ET).date(), (now + dt.timedelta(days=days)).astimezone(ET).date()
+def week_events(get, now: dt.datetime, days: int = 7, url: str = URL, back: int = 0) -> list[dict]:
+    """NBA (and since 2026-10 MLB) reject date ranges with HTTP 400; at most eight daily requests."""
+    start = (now - dt.timedelta(days=back)).astimezone(ET).date()
+    end = (now + dt.timedelta(days=days)).astimezone(ET).date()
     events, seen = [], set()
     for offset in range(min((end - start).days + 1, 8)):
-        response = get(URL, params={"dates": (start + dt.timedelta(days=offset)).strftime("%Y%m%d")}, timeout=10)
+        response = get(url, params={"dates": (start + dt.timedelta(days=offset)).strftime("%Y%m%d")}, timeout=10)
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload.get("events"), list):
@@ -36,7 +37,7 @@ def result_row(event: dict, fallback_date: str) -> dict | None:
     status = (event.get("status") or comp.get("status") or {}).get("type") or {}
     if status.get("name") in {"STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_DELAYED", "STATUS_SUSPENDED"}:
         return None
-    if status.get("state") not in {"in", "post"} and not status.get("completed"):
+    if not status.get("completed"):   # 進行中的比分不是賽果(2026-10-14 晚寄的信列出「第 2 節」)
         return None
     return game_row(event, fallback_date)
 

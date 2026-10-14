@@ -213,6 +213,31 @@ def test_every_emitted_degradation_label_is_registered():
                    if s != "llm:"), rq.SURFACE_AS_UNKNOWN
 
 
+def test_callback_producers_register_their_labels():
+    """降級標籤也可能由**別的模組經回呼**產生(sports_season.fetch_posts 的 `degrade(...)`,
+    生產接 `_DEGRADED_STEPS.append`)—— 上面那條只掃 morning_report.py,看不到它們。
+    2026-10-14 xhigh 審查:兩個季後賽標籤發得出來卻沒登記,hermetic 測試因此紅。
+    參數必須是字面值(掃描器看不懂就紅);一個都沒掃到也紅(不可對空集合真空通過)。"""
+    import ast
+    import run_quality as rq
+    callback_producers = {"sports_season.py": "degrade"}
+    found, opaque = set(), []
+    for module, callback in callback_producers.items():
+        tree = ast.parse((_ROOT / module).read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == callback):
+                arg = node.args[0] if node.args else None
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    found.add(arg.value)
+                else:
+                    opaque.append((module, node.lineno))
+    assert not opaque, f"回呼的降級標籤要寫成字面值:{opaque}"
+    assert found, "一個回呼標籤都沒掃到 —— 掃描器或接線壞了"
+    missing = sorted(e for e in found if e not in rq.KNOWN_DEGRADED and not e.startswith(rq.OPEN_FAMILIES))
+    assert not missing, f"這些標籤會在告警信裡變成「沒見過的降級步驟」:{missing}"
+
+
 def test_a_run_that_crosses_midnight_stamps_the_day_it_started(tmp_path,
                                                                monkeypatch):
     """r1 外審:第一版把收據日期改成「寄送完成時的牆鐘」—— 手動觸發

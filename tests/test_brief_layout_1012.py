@@ -32,10 +32,13 @@ def test_nba_status_and_taipei_time(state, label):
     assert row["date"] == "10/12 09:00"
     assert label in row["note"] and "季前賽" in row["note"]
     assert ("0:0" in row["text"]) is (state != "pre")
+    # 使用者 2026-10-14:季前賽整塊縮短、進行中的比分不當賽果(10/12 版列出「第 2 節」)
     rendered = mr._render_sports_html({"nba": [row]}, html)
+    assert "季前賽進行中" in rendered and "第 2 節" not in rendered and "NBA 最新賽況" not in rendered
+    assert (nba.result_row(event(state), "10/11") is None) is (state != "post")
+    regular = nba.game_row(event(state, season={"type": 2}), "10/11")
+    rendered = mr._render_sports_html({"nba": [regular]}, html)
     assert "NBA 最新賽況" in rendered and "NBA 冠軍賽" not in rendered
-    if state == "in":
-        assert "第 2 節 03:12" in rendered
 
 
 def test_nba_escapes_source_names_and_scores():
@@ -51,8 +54,9 @@ def test_nba_daily_schedule_bounded_deduplicated_and_future_only(monkeypatch):
         def raise_for_status(self):
             pass
         def json(self):
-            return {"events": [event(), event(id="past", date="2026-10-11T01:00Z"),
-                    event(id="late", date="2026-10-20T01:00Z"), event("post", id="done")]}
+            regular = {"season": {"type": 2}}   # 季前賽賽程在抓取端就濾掉(2026-10-14),這裡測的是排程機制
+            return {"events": [event(**regular), event(id="past", date="2026-10-11T01:00Z", **regular),
+                    event(id="late", date="2026-10-20T01:00Z", **regular), event("post", id="done", **regular)]}
     def get(url, params, timeout):
         assert url == nba.URL and timeout <= 10
         dates.append(params["dates"])

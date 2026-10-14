@@ -40,7 +40,7 @@ class AppContext:
         "recorder", "now_tpe", "mode", "report_date",
         "target_session_date", "target_session_day",
         # 相位一:行情 / 總經 / FX / 除息 / 兩檔預測
-        "quotes", "hist_2330", "ex_div", "fair", "predictions",
+        "quotes", "hist_2330", "ex_div", "fair", "predictions", "us_pred_inputs",
         # 相位二:新聞 / 政策 / 體育
         "news", "sec_filings",
         # 相位三:TAIFEX 籌碼、台指與 0050 預測、融資券與週動能

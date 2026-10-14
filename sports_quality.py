@@ -60,7 +60,9 @@ def tennis_note(comp: dict) -> str:
 def news_allowed(entry: dict) -> bool:
     title = str(entry.get('title') or '')
     # Promotional programme schedules are not result/news reports, even if freshly reposted.
-    return not re.search(r'轉播預告|轉播表|直播連結|無廣告.*體育|免費直播|回饋列車.*小球員|特別感謝.*支持與陪伴', title)
+    # 2026-10-14 使用者:門票/賽程懶人包與 365Scores 機翻比賽報告也是低資訊頁。
+    return not re.search(r'轉播預告|轉播表|直播連結|無廣告.*體育|免費直播|回饋列車.*小球員|特別感謝.*支持與陪伴'
+                         r'|怎麼買|懶人包|整理一次看|-\s*365Scores\s*$|比賽報告、統計數據', title)
 
 
 def tennis_score(win: dict, lose: dict) -> str:

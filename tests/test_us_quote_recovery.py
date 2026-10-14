@@ -51,7 +51,7 @@ def test_exact_daily_dates_restore_the_expected_close_and_change():
 def test_malformed_or_stale_chart_cannot_restore_predictions(mutation):
     data = payload()
     mutation(data["chart"]["result"][0])
-    with pytest.raises((KeyError, ValueError)):
+    with pytest.raises(recovery.Rejected):
         fetch(data)
 
 
@@ -76,3 +76,34 @@ def test_failed_recovery_preserves_stale_guard_and_does_not_log_response(capsys)
                       recover=Mock(side_effect=ValueError("private response")))
     assert all(q["stale"] for q in quotes.values())
     assert "private response" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("mutation, reason", [
+    (lambda r: r["indicators"]["quote"][0].update(close=[100., None]), "session_close_missing"),
+    (lambda r: r.update(timestamp=[1791379800, 1791466200]), "session_bar_missing"),
+    (lambda r: r.update(timestamp=[1791466200, 1791466200]), "duplicate_or_future_bar"),
+    (lambda r: r["meta"].update(symbol="SPY"), "provenance_mismatch"),
+])
+def test_rejection_reason_is_a_fixed_code_that_reaches_the_log(mutation, reason, capsys):
+    """2026-10-14:三檔備援都只記到「ValueError」,查不出是哪一關。拒收代碼要進 log,
+    例外訊息本文(可能含供應商內容)仍然不進。"""
+    data = payload()
+    mutation(data["chart"]["result"][0])
+    with pytest.raises(recovery.Rejected) as caught:
+        fetch(data)
+    assert caught.value.reason == reason
+    quotes = {s: {"date": "2026-10-08", "close": 100., "prev_close": 99.} for s in ("QQQ", "TSM", "SPY")}
+    us.refresh_quotes(quotes, dt.datetime(2026, 10, 10, 6), Mock(return_value={}),
+                      recover=Mock(side_effect=caught.value))
+    out = capsys.readouterr().out
+    assert f"chart recovery failed (Rejected: {reason})" in out
+    assert all(q["stale"] for q in quotes.values())
+
+
+def test_reason_attribute_that_is_not_a_plain_code_is_not_logged(capsys):
+    exc = ValueError("x")
+    exc.reason = "private response body <html>"
+    quotes = {s: {"date": "2026-10-08", "close": 100., "prev_close": 99.} for s in ("QQQ", "TSM", "SPY")}
+    us.refresh_quotes(quotes, dt.datetime(2026, 10, 10, 6), Mock(return_value={}), recover=Mock(side_effect=exc))
+    out = capsys.readouterr().out
+    assert "private" not in out and "chart recovery failed (ValueError)" in out

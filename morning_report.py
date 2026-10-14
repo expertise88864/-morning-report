@@ -20332,12 +20332,12 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                          key=lambda e: _tennis_tier(
                              str(e.get("shortName") or e.get("name") or ""))[0])[:12]
             for ev in evs:
-                st_type = (((ev.get("status") or {}).get("type")) or {})
+                from sports_season import fresh, tennis_state
                 name = str(ev.get("shortName") or ev.get("name") or "")
                 tier_rank, tier_label = _tennis_tier(name)
                 # 賽事列表只列「進行中/即將開打」(已完賽的混在列表裡只是雜訊——賽果區已涵蓋;
                 # 舊版顯示 "7/5 - 11:05 AM EDT" 這種美東原始字串,使用者反映混亂,改台北日期)
-                state = str(st_type.get("state") or "")
+                state = tennis_state(ev, now_tpe)
                 if name and name not in seen_tourn and state in ("pre", "in"):
                     seen_tourn.add(name)
                     if state == "in":
@@ -20365,7 +20365,8 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                             continue  # 兩端點重複的同一場去重
                         st = (((comp.get("status") or {}).get("type")) or {})
                         cs = comp.get("competitors", [])
-                        if len(cs) != 2 or not st.get("completed"):
+                        if (len(cs) != 2 or not st.get("completed")
+                                or not fresh(comp.get("date") or ev.get("date"), now_tpe)):
                             continue
                         # 批#30:記錄輪次(冠軍行判定的依據——實測 ESPN 有
                         # Qualifying 1st/2nd Round、Qualifying Final、Round 1-4、
@@ -20421,7 +20422,7 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         m.pop("_ts", None)
         m.pop("_tier", None)
     out["results"] = combined[:6]
-    out["tournaments"].sort(key=lambda t: t["_tier"])
+    out["tournaments"].sort(key=lambda t: (t["status"] != "進行中", t["_tier"]))   # 進行中排第一
     for t in out["tournaments"]:
         t.pop("_tier", None)
     out["tournaments"] = out["tournaments"][:6]
@@ -20794,7 +20795,7 @@ def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
                 seen.add(gid)
                 away = str((teams.get(g.get("away_team_id")) or {}).get("display_name") or "?")
                 home = str((teams.get(g.get("home_team_id")) or {}).get("display_name") or "?")
-                out.append({"away": away, "home": home,
+                out.append({"away": away, "home": home, "gid": gid,
                             "date": gdt.strftime("%m/%d"),
                             "start": gdt.strftime("%H:%M"), "_ko": gdt})
         except Exception as e:
@@ -20894,9 +20895,10 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
     """
     span = (f"{now_tpe.strftime('%Y%m%d')}"
             f"-{(now_tpe + dt.timedelta(days=days)).strftime('%Y%m%d')}")
-    if league_path == "basketball/nba":
+    if league_path in ("basketball/nba", "baseball/mlb"):   # 兩者都拒絕日期區間(HTTP 400)
         from nba_scoreboard import week_events
-        events = week_events(_http_get, now_tpe, days)
+        events = week_events(_http_get, now_tpe, days,
+                             f"https://site.api.espn.com/apis/site/v2/sports/{league_path}/scoreboard")
     else:
         r = _http_get(f"https://site.api.espn.com/apis/site/v2/sports/{league_path}/scoreboard",
                       params={"dates": span}, timeout=20)
@@ -20912,7 +20914,7 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
             ko = dt.datetime.fromisoformat(iso).astimezone(TPE)
         except Exception:
             continue   # 無可靠開賽時間就不列
-        if league_path == "basketball/nba" and not now_tpe <= ko < now_tpe + dt.timedelta(days=days):
+        if league_path in ("basketball/nba", "baseball/mlb") and not now_tpe <= ko < now_tpe + dt.timedelta(days=days):
             continue
         name = str(ev.get("shortName") or ev.get("name") or "")
         slug = str((ev.get("season") or {}).get("slug") or "").lower()
@@ -20936,7 +20938,7 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
         _date_us = (ko.astimezone(dt.timezone.utc)
                     - dt.timedelta(hours=4)).strftime("%Y-%m-%d")
         out.append({"text": name, "when": ko.strftime("%m/%d %H:%M"),
-                    "special": special, "odds": _odds,
+                    "special": special, "odds": _odds, "phase": (ev.get("season") or {}).get("type"),
                     "away_abbr": _abbr_by_side.get("away", ""),
                     "home_abbr": _abbr_by_side.get("home", ""),
                     "date_us": _date_us,
@@ -20985,7 +20987,8 @@ def fetch_nba_week_fixtures(now_tpe: Optional[dt.datetime] = None) -> list[dict]
                         for c in (g.get("_competitors") or []) for f in favs)]
     for g in games:
         g.pop("_competitors", None)
-    return games[:10]
+    # 季前賽先濾再截:否則一週十場季前賽會把例行賽開幕戰擠出前 10(使用者 2026-10-14:季前賽縮短)
+    return [g for g in games if g.get("phase") != 1][:10]
 
 
 def _nba_offseason_note(now_tpe: dt.datetime) -> str:
@@ -21086,7 +21089,7 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     世足要最新/昨日戰績、分組表與今日賽程;加台灣旅外 MLB 球員與網球賽況。
     """
     now_tpe = now_tpe or dt.datetime.now(TPE)
-    out: dict = {"news": {}}
+    out: dict = {"news": {}, "as_of": now_tpe.isoformat()}   # as_of:今日焦點的時間基準
     try:
         _cpbl_meta: dict = {}
         out["cpbl"] = fetch_cpbl_standings(_cpbl_meta)
@@ -21169,9 +21172,13 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         out["standings"] = standings
     except Exception as e:
         print(f"[sports] MLB 戰績抓取失敗: {e}", file=sys.stderr)
+    # 季後賽:系列戰況 + 昨日比分 + 下一場(使用者 2026-10-14;見 sports_season)
+    from sports_season import fetch_posts
+    out.update(fetch_posts(_http_get, now_tpe, print, _DEGRADED_STEPS.append))   # ::warning:: 走 stdout
     # MLB 未來一週焦點賽程(強隊對戰;台北時間)——使用者要求 MLB 也要有賽程
     try:
-        mf = fetch_mlb_week_fixtures(now_tpe, _mlb_top_abbrs)
+        # 季後賽:晉級隊不一定是例行賽前段班,不篩(單場賭盤要掛在這份賽程上)
+        mf = fetch_mlb_week_fixtures(now_tpe, None if out.get("mlb_post") else _mlb_top_abbrs)
         if mf:
             out["mlb_fixtures"] = mf
     except Exception as e:
@@ -22099,6 +22106,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # === 台股客觀關注排名 Top 5（固定公式分項 + 可回測價格預測）===
     # 2026-07-15 使用者刪 → 2026-07-18 使用者要求加回,位置=Podcast 卡上方。
     smart_money_html = ""
+    # 段落標題與名單分開:標題留在段首,名單排在類股熱度表與資金輪動之後(使用者 2026-10-14)
+    smart_money_heading_html = ""
     sector_rotation_html = ""
     universe_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT", []) or []
     if universe_snapshot and _RENDER_TOP5_CARD:
@@ -22341,8 +22350,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             else:
                 track_note = ('<div style="font-size:11px;color:#94a3b8;margin:4px 0;">'
                               '五檔策略帳本已啟動（非上方 Top3 成績），5/20 日超額成績累積中</div>')
+            smart_money_heading_html = f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">{title_text}</h2>"""
             smart_money_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">{title_text}</h2>
+        <div style="font-size:13px;color:#475569;font-weight:700;margin:20px 0 4px;">個股排名（Top {len(top5)}）</div>
         {regime_note}
         {low_confidence_note}
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
@@ -22886,11 +22897,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
-            {smart_money_html}
+            {smart_money_heading_html}
 
             {sector_heat_html}
 
             {sector_rotation_html}
+
+            {smart_money_html}
 
             {podcast_html}
 
@@ -22967,6 +22980,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 continue
             if key == "top5":
                 was_present, smart_money_html = bool(smart_money_html), ""
+                smart_money_heading_html = ""  # 名單被剪掉時,段落標題不可留著冒充有名單
                 sector_rotation_html = ""
             elif key == "sports":
                 was_present, sports_html = bool(sports_html), ""
@@ -24502,13 +24516,25 @@ def _phase_market_and_macro(ctx) -> None:
     quotes["EX_DIV_TODAY"] = ex_div
 
     # 4. 計算（升級版：NAV + 折溢價 + 匯率變動 + ADR 衰減）
-    #    QQQ / TSM 任一抓取失敗時走降級：回傳 error dict，render_html 會顯示「資料缺失」而非整包爆掉。
+    us_pred_inputs = {"usdtwd_today": usdtwd_today, "usdtwd_prev": usdtwd_prev,
+                      "last_00662": last_00662}
+    fair, predictions = _us_price_predictions(quotes, us_pred_inputs, hist_2330, ex_div)
+    ctx.quotes, ctx.hist_2330, ctx.ex_div = quotes, hist_2330, ex_div
+    ctx.fair, ctx.predictions, ctx.us_pred_inputs = fair, predictions, us_pred_inputs
+
+
+def _us_price_predictions(quotes: dict, inputs: dict, hist_2330, ex_div: dict) -> tuple[dict, dict]:
+    """00662 公允價與 2330 開盤預測(相位一算一次;美股晚到時相位三開頭再算一次)。
+
+    QQQ / TSM 任一抓取失敗時走降級：回傳 error dict，render_html 會顯示「資料缺失」而非整包爆掉。
+    """
+    usdtwd_today, usdtwd_prev = inputs["usdtwd_today"], inputs["usdtwd_prev"]
     qqq_q = require_quote(quotes, "QQQ")
     tsm_q = require_quote(quotes, "TSM")
     if qqq_q is not None:
         fair = calc_00662_fair_value(
             qqq_q["close"], qqq_q["prev_close"],
-            usdtwd_today, last_00662, usdtwd_prev=usdtwd_prev,
+            usdtwd_today, inputs["last_00662"], usdtwd_prev=usdtwd_prev,
             ex_div_amt=ex_div.get("00662", 0.0),
         )
     else:
@@ -24522,8 +24548,7 @@ def _phase_market_and_macro(ctx) -> None:
     else:
         predictions = {"error": "TSM ADR 行情抓取失敗，無法預測 2330 開盤價"}
         print("[main] TSM 行情缺失 → 2330 預測降級", file=sys.stderr)
-    ctx.quotes, ctx.hist_2330, ctx.ex_div = quotes, hist_2330, ex_div
-    ctx.fair, ctx.predictions = fair, predictions
+    return fair, predictions
 
 
 def _phase_news_policy_sports(ctx) -> None:
@@ -24685,10 +24710,15 @@ def _phase_taifex_and_chips(ctx) -> None:
 
     共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
     """
+    ctx.mark_phase("TAIFEX/籌碼/預測", time.monotonic())
+    # A(2026-10-14):美股日線晚到 → 預測鏈開始前同一來源再試一次,補到就重算兩檔預測
+    if _us_session.retry_stale(ctx.quotes, ctx.now_tpe, lambda t: fetch_quote(t, period="5d"),
+                               lambda sym, day, prev: _us_recovery.fetch(sym, day, prev, _http_get)):
+        ctx.fair, ctx.predictions = _us_price_predictions(
+            ctx.quotes, ctx.us_pred_inputs, ctx.hist_2330, ctx.ex_div)
     ex_div, fair, predictions, quotes = ctx.ex_div, ctx.fair, ctx.predictions, ctx.quotes
 
     # 5.4 (Task E) TAIFEX 外資台指期未平倉
-    ctx.mark_phase("TAIFEX/籌碼/預測", time.monotonic())
     print("[main] 抓 TAIFEX 三大法人台指期未平倉…")
     try:
         taifex_oi = fetch_taifex_foreign_futures()

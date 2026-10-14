@@ -209,6 +209,7 @@ MODULE_CEILINGS = {
     "company_ingress.py": 35,
     "scenario_window.py": 85,
     "sports_quality.py": 85,
+    "sports_season.py": 450,   # 季後賽/今日焦點/賽季排序(2026-10-14);純函式 + 注入的 get
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,
     "journal_selection.py": 55,

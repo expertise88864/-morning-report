@@ -94,9 +94,13 @@ def test_sector_order_and_rotation_remains_trimmed_with_watchlist(monkeypatch):
     result = render_email()
     watchlist = BeautifulSoup(result, "html.parser").find('h2', string=lambda s: s and 'Top 1' in s)
     assert watchlist is not None
-    assert result.index(watchlist.get_text()) < result.index("類股熱度表") < result.index("ROTATION_FIXTURE")
+    # 使用者 2026-10-14:段首標題 → 類股熱度表 → 近 5 日資金輪動 → Top 名單(放最下面)
+    assert (result.index(watchlist.get_text()) < result.index("類股熱度表")
+            < result.index("ROTATION_FIXTURE") < result.index("個股排名（Top 1）"))
+    assert "2330" in result[result.index("個股排名（Top 1）"):]
     monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")
     monkeypatch.setattr(mr, "_estimated_email_kb", lambda _: 999)
     trimmed = render_email()
     assert "ROTATION_FIXTURE" not in trimmed
     assert "類股熱度表" in trimmed
+    assert watchlist.get_text() not in trimmed, "名單被剪掉時段落標題不可留著"

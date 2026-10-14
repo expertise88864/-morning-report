@@ -6,6 +6,7 @@ refreshing uses only the supplied callback, once per affected symbol.
 
 import datetime as dt
 import math
+import re
 from collections.abc import Callable
 from typing import Any, TypeGuard
 
@@ -20,6 +21,7 @@ _HOLIDAYS = {
 }
 _WEEKDAYS = ("週一", "週二", "週三", "週四", "週五", "週六", "週日")
 _TPE = dt.timezone(dt.timedelta(hours=8))
+_REASON = re.compile(r"[a-z_]{1,40}")
 
 
 def _date(value: object) -> dt.date | None:
@@ -185,7 +187,10 @@ def refresh_quotes(quotes: dict[str, Any], now_tpe: dt.datetime,
                 try:
                     replacement = recover(symbol, expected, previous.isoformat())
                 except Exception as exc:
-                    print(f"::warning::{symbol} chart recovery failed ({type(exc).__name__})")
+                    # 只寫固定拒收代碼(us_quote_recovery.Rejected),絕不寫例外訊息本文
+                    reason = getattr(exc, "reason", "")
+                    code = f": {reason}" if isinstance(reason, str) and _REASON.fullmatch(reason) else ""
+                    print(f"::warning::{symbol} chart recovery failed ({type(exc).__name__}{code})")
         if _complete(replacement, expected):
             replacement = dict(replacement)
             replacement["stale"] = False
@@ -199,3 +204,26 @@ def refresh_quotes(quotes: dict[str, Any], now_tpe: dt.datetime,
             prior["stale"] = True
             print(f"::warning::{symbol} quote unavailable for expected session "
                   f"{expected or 'unknown (calendar unavailable)'}; retained prior data as stale")
+
+
+def retry_stale(quotes: dict[str, Any], now_tpe: dt.datetime,
+                fetch: Callable[[str], dict[str, Any]],
+                recover: Callable[[str, str, str], dict[str, Any]]) -> list[str]:
+    """第一次抓不到(stale)的美股日線,用**同一來源**再試一次;回傳補回的代號。
+
+    使用者 2026-10-14 選 A:晚一點再抓,不改資料口徑。呼叫端放在預測鏈開始前
+    (加權預測、校正、0050、立場與 LLM 都還沒用到美股):補到就重算預測,整封信用同一份
+    資料。放到組版前才補,立場與預測已寫好,信會前後矛盾。永不拋例外(晨報不可斷)。
+    """
+    stale = [s for s in ("QQQ", "TSM", "SPY") if (quotes.get(s) or {}).get("stale")]
+    if not stale:
+        return []
+    print(f"[quote] 預測前重試美股日線:{'、'.join(stale)}")
+    try:
+        refresh_quotes(quotes, now_tpe, fetch, recover=recover)
+    except Exception as exc:
+        print(f"::warning::US quote retry failed ({type(exc).__name__}); keeping stale data")
+        return []
+    recovered = [s for s in stale if not (quotes.get(s) or {}).get("stale")]
+    print(f"[quote] 預測前重試補回:{'、'.join(recovered) or '無,維持 stale'}")
+    return recovered

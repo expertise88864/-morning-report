@@ -34,7 +34,7 @@ param(
 # 刻意用 Continue 而非 Stop:PS 5.1 對 native exe 做 2>&1 會把每行 stderr 包成 NativeCommandError,
 # 在 Stop 模式下被誤判為終止錯誤。本腳本改以 $LASTEXITCODE 與明確 Die() 控制流程。
 $ErrorActionPreference = 'Continue'
-$Model = 'gpt-5.6-sol'
+$Model = 'gpt-6.1-sol'   # 使用者 2026-10-14 定案:任何 diff review 一律 gpt-6.1-sol / high
 $Harden = if ($env:CODEX_REVIEW_HARDEN) { $env:CODEX_REVIEW_HARDEN } else { '1' }
 $Strict = if ($env:CODEX_REVIEW_STRICT) { $env:CODEX_REVIEW_STRICT } else { '1' }
 
@@ -59,12 +59,19 @@ if (-not (Test-Path $UsageTsv)) {
 }
 
 switch ($Mode) {
-    'diff'     { $Effort = 'medium'; $ExtraFileLimit = 3;  $FindingLimit = 3 }
-    'targeted' { $Effort = 'medium'; $ExtraFileLimit = 12; $FindingLimit = 5 }
+    'diff'     { $Effort = 'high';   $ExtraFileLimit = 3;  $FindingLimit = 3 }
+    'targeted' { $Effort = 'high';   $ExtraFileLimit = 12; $FindingLimit = 5 }
     'deep'     { $Effort = 'high';   $ExtraFileLimit = 30; $FindingLimit = 8 }
     'resume'   { $Effort = '';       $ExtraFileLimit = ''; $FindingLimit = '' }
     default    { Die "未知 mode '$Mode'(可用:diff | targeted | deep | resume)" }
 }
+
+# CLI 與強制閘門同一個選擇邏輯(gpt-6.1-sol 需要較新的 Codex CLI;不降級)
+$PyBin = (Get-Command python3, python -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $PyBin) { Die '找不到 Python,無法決定要用哪一支 Codex CLI。' }
+$CodexBin = (& $PyBin (Join-Path $RepoRoot 'tools\gpt_diff_review.py') which 2>$null | Select-Object -First 1)
+if (-not $CodexBin) { Die '找不到可用的 Codex CLI(見 tools/gpt_diff_review.py which);不降級到其他模型。' }
+$CodexBin = $CodexBin.Trim()
 
 function Build-Flags([string]$EffortValue, [string]$Kind = 'exec') {
     # 不含內層引號的 -c key=value:codex 對 value 先試 TOML,失敗即當字面字串。
@@ -176,7 +183,7 @@ if ($Mode -eq 'resume') {
     }
 
     $last = (Get-Content $UsageTsv | Select-Object -Last 1) -split "`t"
-    $ResumeEffort = if ($last.Count -ge 5 -and $last[4]) { $last[4] } else { 'medium' }
+    $ResumeEffort = 'high'   # 2026-10-14:一律 high,不沿用舊紀錄裡可能的 medium
     $ResumeBase   = if ($last.Count -ge 6 -and $last[5]) { $last[5] } else { 'unavailable' }
 
     $ResumePrompt = @"
@@ -223,7 +230,7 @@ report REVIEW_NOT_COMPLETED. End with exactly APPROVE or REQUEST_CHANGES.
     $args2 = @('exec', 'resume', $Sid) + $flags + @($ResumePrompt)
     # resume 無 --cd:改在 repo 目錄內執行,讓 Codex 在正確目錄跑 git。
     Push-Location $RepoRoot
-    try { & codex @args2 2>&1 | Tee-Object -FilePath $RawLog } finally { Pop-Location }
+    try { & $CodexBin @args2 2>&1 | Tee-Object -FilePath $RawLog } finally { Pop-Location }
     $codexRc = $LASTEXITCODE
     # codex 啟動失敗且完全沒產生 review → 不消耗額度、不計為第二輪。
     if ($codexRc -ne 0 -and -not (Test-Path $LastMsg -PathType Leaf) ) {
@@ -384,7 +391,7 @@ Write-Host "[codex-review] mode=$Mode effort=$Effort base=$BaseRef model=$Model 
 # 真正 0 位元組初始化(理由同 resume 區塊:Out-File utf8 會寫 BOM+CRLF,啟動失敗守門失效)。
 [System.IO.File]::WriteAllText($LastMsg, '')
 $args1 = @('exec') + $flags + @($prompt)
-& codex @args1 2>&1 | Tee-Object -FilePath $RawLog
+& $CodexBin @args1 2>&1 | Tee-Object -FilePath $RawLog
 $codexRc = $LASTEXITCODE
 # codex 啟動失敗且完全沒產生 review → 不消耗額度、不記為一輪。
 if ($codexRc -ne 0 -and (Get-Item $LastMsg).Length -eq 0) {

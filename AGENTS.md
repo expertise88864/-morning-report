@@ -17,7 +17,7 @@
 - HsiaoEye 視覺基準只能由 Ubuntu 產生並人工確認，不自動接受差異；保留 CMS 新修改，衝突停止，不 force-push。CMS 存檔不等於正式發佈完成。
 - 晨報候選 CI 不得寄信、寫回正式 state 或觸發正式排程；變更產報/LLM/外部資料關鍵路徑時另做不寄信 dry-run。既有正式寄信排程不得因候選驗證中斷。
 - CI 失敗持續診斷並修正可確認缺陷，修正後重跑完整遠端驗證；取消、逾時、缺失、讀不到及應跑卻跳過皆不通過。禁止 skip-ci、降門檻或繞 hook 製造全綠。
-- Claude 固定 claude-opus-5-5 / high / read-only；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
+- 強制 diff review 自 2026-10-14 起固定 gpt-6.1-sol / high / read-only(取代 Claude Opus 5.5;切換前的 Claude 佇列仍以 claude-opus-5-5 / high 補審)；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
 - main 發佈後還要驗證 exact-SHA 正式 CI／部署及適用 smoke checks，才可宣告交付；純文件與空 audit commit 也走候選流程。
 - 詳細入口、範圍與限制見 REMOTE_CI_DELIVERY.md。不得把本機快速檢查說成完整 CI，也不得把候選 CI 綠燈當作正式部署成功。
 
@@ -90,30 +90,51 @@
 - 本機必要檢查無法執行時回報並取得決定；禁止跳過 hook、加 skip-CI、停用測試／job
   或放寬門檻來製造全綠。CI 真缺陷修正後以新 commit 走同一流程，不改寫已發佈歷史。
 
-### Claude Opus 5.5 強制 diff review
+### GPT-6.1-Sol 強制 diff review(使用者 2026-10-14 定案,取代 Claude Opus 5.5 閘門)
 
-- **所有 diff 都要審,沒有文件/tests/cosmetic 例外。** commit 或 push 前執行
-  `python tools/claude_diff_review.py worktree`。取得精確 `APPROVE` 才可稱審查通過;
-  使用者 2026-09-05 定案:僅額度不足可先推送已驗證的 task-owned 變更並補審。
-- reviewer 固定使用完整模型 ID `claude-opus-5-5`、effort `high`、唯讀工具白名單;
-  **不得 fallback** 到 alias、Sonnet、舊 Opus 或其他模型。未登入、模型證據缺失、
-  非明確裁決仍阻擋;只有可確認的 provider 額度／限流錯誤可延後。
-- 遇到 Claude 額度或限流時,wrapper 必須在被忽略的
-  `.claude-review/pending_review.json` 以 atomic write 記錄 `PENDING`、diff fingerprint
-  與可安全解析的 reset 時間,不得保存 diff 或完整錯誤輸出。代理必須在同一 task 建立／更新
-  reset 後的自動補審排程;補審仍須使用 `claude-opus-5-5`、effort `high`。
-  commit-msg hook 為內容變更加入 `Claude-Opus-5-Review: pending` 與
-  `Claude-Opus-5-Review-Effort: high`。**PENDING 是未審,不是 APPROVE**。
-  `python tools/claude_diff_review.py pending` 掃描所有本機／遠端追蹤分支的未審 commit;
-  逐筆執行 `python tools/claude_diff_review.py commit --commit <完整 SHA>`。
-  通過後建立空的後續 audit commit,帶 `Claude-Opus-5-Review: passed`、
-  `Claude-Opus-5-Review-Effort: high`、`Claude-Opus-5-Reviewed-Commit: <完整 SHA>`。
-  不得 amend 或 force-push 已發佈歷史。補審 findings 驗證後才修;修正仍需重新審核。
-- finding 必須逐項由主代理驗證;只修 `CONFIRMED`,修正後 diff 已改變就必須重新 review。
-- Git 的 `.githooks/pre-commit`、`commit-msg` 與 `.githooks/pre-push` 負責審查與待審標記;
-  執行 `powershell -NoProfile -ExecutionPolicy Bypass -File tools/install_claude_review_hooks.ps1`
-  安裝。**禁止**以 `--no-verify`、改 `core.hooksPath`、刪 audit trail 或其他方式繞過。
-- 這條是 Claude 第二意見;原有 Codex review 規則仍然適用,不可拿其中一個取代另一個。
+- **之後任何 diff review 一律由 `gpt-6.1-sol`、effort `high` 執行**;所有 diff 都要審,
+  沒有文件/tests/cosmetic 例外。commit 或 push 前執行
+  `python tools/gpt_diff_review.py worktree`。取得精確 `APPROVE` 才可稱審查通過。
+- reviewer 固定 `gpt-6.1-sol` / `high`,經 Codex CLI 以 `--sandbox read-only`、
+  `--ignore-user-config`、關閉 web search 與 apps 執行;**不得 fallback** 到其他模型或較低
+  effort。實際模型的證據取自該次執行的 Codex session rollout(每一回合的 `turn_context`
+  都必須是 `gpt-6.1-sol` / `high` / read-only);證明不了、未登入、非明確裁決一律阻擋。
+  gpt-6.1-sol 需要較新的 Codex CLI(2026-10-14 實測 npm 0.155.1 被拒、Codex 桌面版內附的
+  0.162.0-alpha 可用);`python tools/gpt_diff_review.py which` 顯示實際選用的 CLI,
+  也可用環境變數 `GPT_REVIEW_CODEX_BIN` 明示。
+- **額度不足時標記 pending,照常 commit + push**(使用者 2026-10-14 定案):只有可確認的
+  provider 額度／限流錯誤可延後。wrapper 在被忽略的 `.gpt-review/pending_review.json`
+  以 atomic write 記錄 `PENDING`、diff fingerprint 與 reset 時間;commit-msg hook 為內容
+  變更加入 `GPT-6-1-Sol-Review: pending` 與 `GPT-6-1-Sol-Review-Effort: high`。
+  **PENDING 是未審,不是 APPROVE**。額度恢復後:`python tools/gpt_diff_review.py pending`
+  列出未審 commit,逐筆 `python tools/gpt_diff_review.py commit --commit <完整 SHA>`;
+  通過後建立空 audit commit,帶 `GPT-6-1-Sol-Review: passed`、
+  `GPT-6-1-Sol-Review-Effort: high`、`GPT-6-1-Sol-Reviewed-Commit: <完整 SHA>`。
+  不得 amend 或 force-push 已發佈歷史。
+- **審查意見不照單全收**:finding 必須逐項由主代理對目前程式碼驗證(CONFIRMED / REJECTED /
+  UNCERTAIN 附證據);只修 `CONFIRMED`,修正後 diff 已改變就必須重新 review。
+- Git 的 `.githooks/pre-commit`、`commit-msg` 與 `.githooks/pre-push`(經 `_delivery.py`
+  與 `_delivery_policy.json` 的 `review_gate`)負責審查與待審標記;執行
+  `powershell -NoProfile -ExecutionPolicy Bypass -File tools/install_claude_review_hooks.ps1`
+  安裝(檔名沿用)。**禁止**以 `--no-verify`、改 `core.hooksPath`、刪 audit trail 或其他方式繞過。
+- **歷史的 Claude 佇列**:切換前帶 `Claude-Opus-5-Review: pending` 的 commit 仍以
+  `claude-opus-5-5` / `high` 補審(`python tools/claude_diff_review.py pending` 與
+  `commit --commit <SHA>`),通過後的 audit commit 沿用 `Claude-Opus-5-*` trailer;
+  commit-msg hook 用 Claude 規則驗證這類 audit(需要真的 Claude 收據);它是空 commit、
+  不是新 diff,所以**不**排進 GPT 佇列,push 時照 Claude 佇列規則接受。切換前的 Claude
+  pending 內容 commit 本身在 push 範圍內也照舊接受(仍留在舊佇列等補審)。新的 diff 不再送 Claude 審。
+- **「Claude 審過即可結案」**(使用者 2026-10-14 定案):已被 Claude(Opus 5 或 5.5)審查但
+  裁決為 REQUEST_CHANGES 的 commit,在 findings 由後續修正處理後,以空 audit commit 結案,帶
+  `Claude-Opus-5-Review: resolved`、`Claude-Opus-5-Review-Effort: high`、
+  `Claude-Opus-5-Reviewed-Commit: <完整 SHA>`、`Claude-Opus-5-Resolved-By: <修正完整 SHA>`。
+  hook 只接受「修正是目標的後代、已在 HEAD、本身曾排入佇列且已結案」;沒有審查 trailer
+  的 commit(例如自動資料更新)不能充當修正。本文寫明原 finding、審查紀錄出處與修正對應。
+  這是**人工聲明**:hook 能驗證修正 commit 的關係,不能驗證原審查真的發生過,所以本文
+  必須指出審查紀錄(例如 `CODE_REVIEW_2026-10-09.md`)。切換後的修正排進 GPT 佇列,
+  只要它在 GPT 佇列結案(GPT passed/resolved audit),就能當舊 Claude 項目的修正
+  (`claude_diff_review.SUCCESSOR_GATE`)。GPT 佇列有對應的 `GPT-6-1-Sol-Resolved-By`。
+- 手動外審 `tools/codex_review.sh` / `.ps1`(targeted / deep / resume 迭代到 APPROVE)
+  同樣固定 `gpt-6.1-sol` / `high`,三種模式只差在範圍,不再差在 effort。
 
 - **驗證一律取真退出碼**:`pytest -q > f 2>&1; E=$?`。
   **絕不可用 `pytest | grep`**——管線會吃掉非零退出碼,曾因此把壞掉的樹推上線。

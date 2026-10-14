@@ -13,9 +13,10 @@ elif command -v python3 >/dev/null 2>&1; then
 elif command -v python >/dev/null 2>&1; then
   PYTHON=python
 else
-  echo '[claude-review] BLOCKED: Python 3 was not found on PATH.' >&2
+  echo '[gpt-review] BLOCKED: Python 3 was not found on PATH.' >&2
   exit 4
 fi
 
-# The delivery wrapper preserves stdin and then runs the unchanged Claude gate.
+# The delivery wrapper preserves stdin and then runs the policy's review gate
+# (gpt-6.1-sol high since 2026-10-14; see _delivery_policy.json review_gate).
 exec "$PYTHON" _delivery.py pre-push --remote "${1:-origin}"

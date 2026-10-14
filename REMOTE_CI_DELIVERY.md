@@ -23,7 +23,9 @@ change medical content, visual baselines, credentials, recipients or scoring.
 1. Fetch main. Preserve other work. Use an isolated codex/* branch based on current main.
 2. Make task-owned changes; run relevant local regression tests, syntax/lint and
    required generators. Commit the exact source and generated artifacts together.
-3. Complete existing independent Codex review and Claude Opus 5.5/high read-only review.
+3. Complete the mandatory GPT-6.1-Sol/high read-only diff review (`tools/gpt_diff_review.py`;
+   user decision 2026-10-14, replacing the Claude Opus 5.5 gate). Historical commits already
+   queued for Claude are still caught up with claude-opus-5-5/high.
    Only confirmed provider quota exhaustion permits pending trailers and scheduled retry.
 4. Install the tracked pre-push hook with the documented existing hook mechanism.
 5. Push the exact SHA to codex/* normally. The hook runs the offline delivery tests.

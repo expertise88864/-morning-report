@@ -14,7 +14,9 @@ SHA = "a" * 40
 
 class DeliveryTests(unittest.TestCase):
     def test_cli_preserves_claude_gate_failure_and_stdin(self):
-        cfg = {**d.policy(), "claude_hook": True}
+        # 舊 policy(沒有 review_gate)仍然走 Claude 閘門 —— 相容路徑不得變成「沒有審查」
+        cfg = {k: v for k, v in d.policy().items() if k != "review_gate"}
+        cfg["claude_hook"] = True
         updates = f"HEAD {SHA} refs/heads/codex/test {'0'*40}\n"
         with patch.object(d, "policy", return_value=cfg), \
              patch.object(d.sys, "argv", ["_delivery.py", "pre-push"]), \
@@ -25,6 +27,26 @@ class DeliveryTests(unittest.TestCase):
             gate.assert_called_once_with([updates], "origin", cfg)
             self.assertEqual(review.call_args.args[0][1:4], ["tools/claude_diff_review.py", "push", "--remote-name"])
             self.assertEqual(review.call_args.kwargs["input"], updates)
+
+    def test_policy_routes_pre_push_to_the_gpt_gate_with_stdin(self):
+        """2026-10-14 起強制 diff review 是 gpt-6.1-sol high。"""
+        cfg = d.policy()
+        self.assertEqual(cfg.get("review_gate"), "tools/gpt_diff_review.py")
+        updates = f"HEAD {SHA} refs/heads/codex/test {'0'*40}\n"
+        with patch.object(d, "policy", return_value=cfg), \
+             patch.object(d.sys, "argv", ["_delivery.py", "pre-push"]), \
+             patch.object(d.sys, "stdin", io.StringIO(updates)), \
+             patch.object(d, "pre_push"), \
+             patch.object(d.subprocess, "run", return_value=subprocess.CompletedProcess([], 4)) as review:
+            self.assertEqual(d.main(), 4)
+            self.assertEqual(review.call_args.args[0][1:4], ["tools/gpt_diff_review.py", "push", "--remote-name"])
+            self.assertEqual(review.call_args.kwargs["input"], updates)
+
+    def test_unknown_review_gate_blocks_instead_of_skipping_review(self):
+        with self.assertRaises(d.Blocked):
+            d.review_gate({"review_gate": "tools/anything_else.py"})
+        self.assertEqual(d.review_gate({}), "")
+        self.assertEqual(d.review_gate({"claude_hook": True}), "tools/claude_diff_review.py")
 
     def test_failed_delivery_gate_never_reaches_claude_or_success(self):
         with patch.object(d, "policy", return_value={**d.policy(), "claude_hook": True}), \

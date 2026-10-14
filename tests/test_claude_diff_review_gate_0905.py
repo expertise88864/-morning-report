@@ -245,10 +245,12 @@ def test_hooks_cover_commit_and_push_and_installer_is_used_by_batch_entrypoint()
         encoding="utf-8"
     )
 
-    assert "claude_diff_review.py staged" in pre_commit
+    # 2026-10-14 起強制閘門是 gpt-6.1-sol(tools/gpt_diff_review.py);Claude 閘門只補審歷史佇列
+    assert "gpt_diff_review.py staged" in pre_commit
     assert '_delivery.py pre-push --remote' in pre_push
     delivery = (ROOT / '_delivery.py').read_text(encoding='utf-8')
-    assert '[sys.executable, "tools/claude_diff_review.py", "push", "--remote-name", args.remote]' in delivery
+    assert '[sys.executable, gate, "push", "--remote-name", args.remote]' in delivery
+    assert 'REVIEW_GATES = ("tools/gpt_diff_review.py", "tools/claude_diff_review.py")' in delivery
     assert 'cwd=ROOT, input="".join(lines)' in delivery
     assert "install_claude_review_hooks.ps1" in batch
     assert "config --local core.hooksPath .githooks" in installer

@@ -11,4 +11,4 @@ elif command -v python3 >/dev/null 2>&1; then
 else
   PYTHON=python
 fi
-exec "$PYTHON" tools/claude_diff_review.py commit-msg --message-file "$1"
+exec "$PYTHON" tools/gpt_diff_review.py commit-msg --message-file "$1"

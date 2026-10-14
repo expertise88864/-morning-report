@@ -11,7 +11,8 @@ $Required = @(
     (Join-Path $RepoRoot '.githooks\pre-push'),
     (Join-Path $RepoRoot '.githooks\commit-msg'),
     (Join-Path $RepoRoot 'tools\claude_review_queue.py'),
-    (Join-Path $RepoRoot 'tools\claude_diff_review.py')
+    (Join-Path $RepoRoot 'tools\claude_diff_review.py'),
+    (Join-Path $RepoRoot 'tools\gpt_diff_review.py')
 )
 foreach ($Path in $Required) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
@@ -33,5 +34,6 @@ if ($Actual -ne '.githooks') {
     throw "core.hooksPath verification failed (got '$Actual')."
 }
 
-Write-Host '[claude-review] Review hooks installed (quota-only marked deferral).'
-Write-Host '[claude-review] Exact reviewer: claude-opus-5-5, effort=high.'
+Write-Host '[gpt-review] Review hooks installed (quota-only marked deferral).'
+Write-Host '[gpt-review] Exact reviewer: gpt-6.1-sol, effort=high (Codex CLI, read-only).'
+Write-Host '[gpt-review] Historical Claude-queued commits still use tools/claude_diff_review.py commit --commit <SHA>.'

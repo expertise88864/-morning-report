@@ -31,6 +31,8 @@ from tools import claude_review_queue as queue  # noqa: E402
 STATE_DIR = ROOT / ".claude-review"
 MODEL = "claude-opus-5-5"
 EFFORT = "high"
+#: 2026-10-14 起新 diff 改由 gpt-6.1-sol 審;本佇列的舊項目可由在那裡結案的修正結案
+SUCCESSOR_GATE = "tools.gpt_diff_review"
 PENDING_PATH = STATE_DIR / "pending_review.json"
 
 # No shell tool is exposed to untrusted diff content. The gate prepares the

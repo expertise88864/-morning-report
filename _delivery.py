@@ -205,12 +205,23 @@ def verify(sha: str, phase: str, cfg: dict, api: API) -> list:
     return evidence
 
 
+# Mandatory diff gate: gpt-6.1-sol/high since 2026-10-14; policies without review_gate keep Claude.
+REVIEW_GATES = ("tools/gpt_diff_review.py", "tools/claude_diff_review.py")
+
+
+def review_gate(cfg: dict) -> str:
+    gate = cfg.get("review_gate") or ("tools/claude_diff_review.py" if cfg.get("claude_hook") else "")
+    if gate and gate not in REVIEW_GATES:  # a typo must block, never mean "no review"
+        raise Blocked(f"unknown review_gate in policy: {gate!r}")
+    return gate
+
+
 def needs_morning_preview(paths: list[str]) -> bool:
     """Conservative production-change routing; docs/tests/gate-only need no paid LLM run."""
     for path in paths:
         if path.startswith(("tests/", "docs/", ".githooks/")) or path in ("_delivery.py", "_test_delivery.py"):
             continue
-        if path.startswith("tools/claude_"):
+        if path.startswith(("tools/claude_", "tools/gpt_diff_review")):
             continue
         if path.endswith(".py") or path.startswith("requirements"):
             return True
@@ -295,9 +306,10 @@ def main() -> int:
         if args.command == "pre-push":
             lines = list(sys.stdin)
             pre_push(lines, args.remote, cfg)
-            if cfg.get("claude_hook"):
+            gate = review_gate(cfg)
+            if gate:
                 return subprocess.run(
-                    [sys.executable, "tools/claude_diff_review.py", "push", "--remote-name", args.remote],
+                    [sys.executable, gate, "push", "--remote-name", args.remote],
                     cwd=ROOT, input="".join(lines), text=True, encoding="utf-8",
                 ).returncode
             return 0

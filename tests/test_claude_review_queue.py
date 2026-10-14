@@ -72,6 +72,79 @@ def test_only_empty_verified_audit_resolves_its_exact_target(repo):
         "refs/heads/main", "refs/heads/main", second, audit)])
 
 
+def _audit(repo, status, target, resolver=None):
+    root, git = repo
+    lines = [f"Claude-Opus-5-Review: {status}", "Claude-Opus-5-Review-Effort: high",
+             f"Claude-Opus-5-Reviewed-Commit: {target}"]
+    if resolver:
+        lines.append(f"Claude-Opus-5-Resolved-By: {resolver}")
+    path = root / "message.txt"
+    path.write_text("Record review\n\n" + "\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def _passed_audit(repo, target):
+    _, git = repo
+    queue.save_approvals(gate, [queue.commit_range(gate, target)], "verified-diff-fingerprint")
+    path = _audit(repo, "passed", target)
+    assert queue.commit_message(gate, str(path)) == 0
+    git("commit", "--allow-empty", "-F", str(path))
+
+
+def test_resolved_audit_requires_a_closed_descendant_repair(repo):
+    root, git = repo
+    original = pending_commit(repo)
+    fix = pending_commit(repo, "repaired")
+    path = _audit(repo, "resolved", original, fix)
+    with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+        queue.commit_message(gate, str(path))  # The repair itself is still unreviewed.
+    _passed_audit(repo, fix)
+    for bad in (None, original, "f" * 40, fix[:12],
+                f"{fix}\nClaude-Opus-5-Resolved-By: {fix}"):
+        bad_path = _audit(repo, "resolved", original, bad)
+        with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+            queue.commit_message(gate, str(bad_path))
+    path = _audit(repo, "resolved", original, fix)
+    assert queue.commit_message(gate, str(path)) == 0
+    git("commit", "--allow-empty", "-F", str(path))
+    assert queue.pending_commits(gate) == []
+    audit = git("rev-parse", "HEAD")
+    gate.STATE_DIR.joinpath("commits").rename(root / "receipts-moved")  # test cache only
+    assert queue.audit_target(gate, audit, queue.trailers(gate, queue.message_for(gate, audit))) == original
+    assert queue.pending_commits(gate) == []
+
+
+def test_unreviewed_or_unrelated_commit_cannot_resolve(repo):
+    _, git = repo
+    side = git("rev-parse", "HEAD")
+    earlier = pending_commit(repo, "earlier reviewed work")
+    _passed_audit(repo, earlier)
+    original = pending_commit(repo)
+    path = _audit(repo, "resolved", original, earlier)  # Closed and on HEAD, but older.
+    with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+        queue.commit_message(gate, str(path))
+    git("commit", "--allow-empty", "-m", "automated data update without review trailers")
+    unmarked = git("rev-parse", "HEAD")
+    path = _audit(repo, "resolved", original, unmarked)
+    with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+        queue.commit_message(gate, str(path))
+    git("commit", "--allow-empty", "-F", str(path))  # Hookless commit: queue must still ignore it.
+    assert queue.pending_commits(gate) == [original]
+    git("switch", "-q", "-c", "side", side)
+    other = pending_commit(repo, "other branch")
+    _passed_audit(repo, other)
+    git("switch", "-q", "-c", "detached-repair", original)
+    unpublished = pending_commit(repo, "repair never merged into main")
+    _passed_audit(repo, unpublished)
+    git("switch", "-q", "main")
+    path = _audit(repo, "resolved", original, other)  # Not a descendant of the target.
+    with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+        queue.commit_message(gate, str(path))
+    path = _audit(repo, "resolved", original, unpublished)  # Repair absent from HEAD.
+    with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+        queue.commit_message(gate, str(path))
+
+
 def test_quota_push_requires_every_outgoing_commit_to_be_marked(repo):
     _, git = repo
     base = git("rev-parse", "HEAD")
@@ -233,3 +306,65 @@ def test_existing_tag_replacement_is_blocked_even_with_commit_ancestry(repo, ann
     assert queue._fast_forward(gate, update)  # Commit ancestry alone misses tag rewrites.
     with pytest.raises(gate.ReviewError, match="published tags are immutable"):
         queue.validate_push(gate, [update])
+
+
+def test_gpt_gate_accepts_historical_claude_audits_without_requeueing(repo):
+    """2026-10-14 切換到 gpt-6.1-sol 後:切換前排進 Claude 佇列的 commit 仍以 Claude 補審;
+    它的**空** audit 不是新 diff,不該被加上 GPT pending,但 push 時仍要被接受。
+    新的內容 commit 則排進 GPT 佇列。沒有任何標記的 commit 照樣被擋。"""
+    from tools import gpt_diff_review as gpt
+    root, git = repo
+    original = pending_commit(repo)                      # 切換前的 Claude 佇列
+    queue.save_approvals(gate, [queue.commit_range(gate, original)], "verified-diff-fingerprint")
+    path = _audit(repo, "passed", original)
+    assert gpt.commit_message(str(path)) == 0
+    assert "GPT-6-1-Sol" not in path.read_text(encoding="utf-8")
+    git("commit", "--allow-empty", "-F", str(path))
+    (root / "sample.txt").write_text("new work", encoding="utf-8")
+    git("add", "sample.txt")
+    path.write_text("New work\n", encoding="utf-8")
+    assert gpt.commit_message(str(path)) == 0
+    assert "GPT-6-1-Sol-Review: pending" in path.read_text(encoding="utf-8")
+    git("commit", "-F", str(path))
+    new = git("rev-parse", "HEAD")
+    assert queue.pending_commits(gpt) == [new]
+    assert queue.pending_commits(gate) == []
+    # 推送範圍從舊 Claude 內容 commit **之前**開始:它本身(Claude pending)也要被接受
+    before = git("rev-parse", f"{original}^")
+    queue.validate_push(gpt, [gate.PushRange("refs/heads/main", "refs/heads/main", before, new)])
+    git("commit", "--allow-empty", "-m", "unmarked")
+    with pytest.raises(gate.ReviewError, match="pending/high trailers or verified empty audits"):
+        queue.validate_push(gpt, [gate.PushRange(
+            "refs/heads/main", "refs/heads/main", before, git("rev-parse", "HEAD"))])
+
+
+def test_claude_finding_can_be_resolved_by_a_gpt_reviewed_repair(repo, monkeypatch):
+    """切換後,舊 Claude REQUEST_CHANGES 項目的修正會排進 GPT 佇列;修正在 GPT 佇列結案
+    (passed audit)後,Claude 的 resolved audit 就能指名它結案。修正尚未審過時仍擋下。"""
+    from tools import gpt_diff_review as gpt
+    root, git = repo
+    monkeypatch.setattr(gpt, "STATE_DIR", root / ".claude-review" / "gpt")
+    original = pending_commit(repo)                      # 切換前的 Claude 佇列
+    (root / "sample.txt").write_text("repaired after the switch", encoding="utf-8")
+    git("add", "sample.txt")
+    path = root / "message.txt"
+    path.write_text("Repair the finding\n", encoding="utf-8")
+    assert gpt.commit_message(str(path)) == 0
+    git("commit", "-F", str(path))
+    fix = git("rev-parse", "HEAD")
+    assert queue.pending_commits(gpt) == [fix]
+    path = _audit(repo, "resolved", original, fix)
+    with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
+        gpt.commit_message(str(path))                   # 修正本身還沒經 GPT 審過
+    queue.save_approvals(gpt, [queue.commit_range(gpt, fix)], "verified-diff-fingerprint")
+    path.write_text("Record review\n\nGPT-6-1-Sol-Review: passed\nGPT-6-1-Sol-Review-Effort: high\n"
+                    f"GPT-6-1-Sol-Reviewed-Commit: {fix}\n", encoding="utf-8")
+    assert gpt.commit_message(str(path)) == 0
+    git("commit", "--allow-empty", "-F", str(path))
+    assert queue.pending_commits(gpt) == []
+    path = _audit(repo, "resolved", original, fix)
+    assert gpt.commit_message(str(path)) == 0
+    git("commit", "--allow-empty", "-F", str(path))
+    assert queue.pending_commits(gate) == [] and queue.pending_commits(gpt) == []
+    queue.validate_push(gpt, [gate.PushRange(
+        "refs/heads/main", "refs/heads/main", git("rev-parse", f"{original}^"), git("rev-parse", "HEAD"))])

@@ -6,9 +6,15 @@
 #   tools/codex_review.sh resume [session-id]
 #
 # mode:
-#   diff      低風險/局部(文案、註解、CSS、tests-only)     medium / 額外檔 3 / findings 3
-#   targeted  一般非 trivial 實作(預設)                     medium / 額外檔 12 / findings 5
-#   deep      auth、金流、DB migration、併發、資安、大重構    high   / 額外檔 30 / findings 8
+#   diff      低風險/局部(文案、註解、CSS、tests-only)     high / 額外檔 3 / findings 3
+#   targeted  一般非 trivial 實作(預設)                     high / 額外檔 12 / findings 5
+#   deep      auth、金流、DB migration、併發、資安、大重構    high / 額外檔 30 / findings 8
+#
+# 模型與 effort(使用者 2026-10-14 定案):**任何 diff review 一律 gpt-6.1-sol / high**,
+# 三種模式只差在範圍(額外檔數、finding 上限),不再差在 effort。
+# gpt-6.1-sol 需要較新的 Codex CLI(npm 全域 0.155.1 會被拒,Codex 桌面版內附的
+# 0.162.0-alpha 可用);CLI 由 `tools/gpt_diff_review.py which` 決定 —— 與強制閘門
+# 同一個選擇邏輯,不在這裡另寫一份。
 #   resume    第二輪(僅限 confirmed P0/P1/material P2 修正後);沿用第一輪 session
 #
 # 設計原則(勿改):
@@ -26,7 +32,7 @@
 #   CODEX_REVIEW_STRICT=0      關閉 --strict-config。
 set -uo pipefail
 
-MODEL="gpt-5.6-sol"
+MODEL="gpt-6.1-sol"
 HARDEN="${CODEX_REVIEW_HARDEN:-1}"
 STRICT="${CODEX_REVIEW_STRICT:-1}"
 
@@ -50,12 +56,18 @@ MODE="${1:-}"
 [ -n "$MODE" ] || die "缺少 mode。用法: $0 <diff|targeted|deep> <base-ref> [task-context-file] | $0 resume [session-id]"
 
 case "$MODE" in
-  diff)     EFFORT="medium"; EXTRA_FILE_LIMIT=3;  FINDING_LIMIT=3 ;;
-  targeted) EFFORT="medium"; EXTRA_FILE_LIMIT=12; FINDING_LIMIT=5 ;;
+  diff)     EFFORT="high";   EXTRA_FILE_LIMIT=3;  FINDING_LIMIT=3 ;;
+  targeted) EFFORT="high";   EXTRA_FILE_LIMIT=12; FINDING_LIMIT=5 ;;
   deep)     EFFORT="high";   EXTRA_FILE_LIMIT=30; FINDING_LIMIT=8 ;;
   resume)   EFFORT="";       EXTRA_FILE_LIMIT="";  FINDING_LIMIT="" ;;
   *) die "未知 mode '$MODE'(可用:diff | targeted | deep | resume)" ;;
 esac
+
+# ---------- 選 CLI(與強制閘門同一個邏輯) ----------
+PY_BIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)"
+[ -n "$PY_BIN" ] || die "找不到 Python,無法決定要用哪一支 Codex CLI。"
+CODEX_BIN="$("$PY_BIN" "$REPO_ROOT/tools/gpt_diff_review.py" which 2>/dev/null | head -1 | tr -d '\r')"
+[ -n "$CODEX_BIN" ] || die "找不到可用的 Codex CLI(見 tools/gpt_diff_review.py which);不降級到其他模型。"
 
 # ---------- codex 旗標(read-only + 隔離) ----------
 build_flags() {   # $1 = effort ; $2 = kind("exec" | "resume",預設 exec)
@@ -175,7 +187,7 @@ resume 只能沿用同一 task 的 session。要重開一輪全新審查請跑�
   fi
 
   # 第二輪的 effort 沿用第一輪(從 usage.tsv 最後一筆讀回),預設 medium。
-  RESUME_EFFORT="$(tail -1 "$USAGE_TSV" | cut -f5)"; [ -n "$RESUME_EFFORT" ] || RESUME_EFFORT="medium"
+  RESUME_EFFORT="high"   # 2026-10-14:一律 high,不沿用舊紀錄裡可能的 medium
   RESUME_BASE="$(tail -1 "$USAGE_TSV" | cut -f6)";   [ -n "$RESUME_BASE" ] || RESUME_BASE="unavailable"
   build_flags "$RESUME_EFFORT" resume
 
@@ -194,7 +206,7 @@ RP
   echo "[codex-review] resume session=$SID effort=$RESUME_EFFORT (pass $THIS_PASS)"
   : > "$LAST_MSG"
   # resume 無 --cd:改在 subshell 內 cd 進 repo,讓 Codex 在正確目錄跑 git。
-  ( cd "$REPO_ROOT" && codex exec resume "$SID" "${FLAGS[@]}" "$RESUME_PROMPT" ) 2>&1 | tee "$RAW_LOG"
+  ( cd "$REPO_ROOT" && "$CODEX_BIN" exec resume "$SID" "${FLAGS[@]}" "$RESUME_PROMPT" ) 2>&1 | tee "$RAW_LOG"
   CODEX_RC=${PIPESTATUS[0]}
   # codex 啟動失敗(參數錯誤等)且完全沒產生 review → 不消耗額度、不計為第二輪。
   if [ "$CODEX_RC" -ne 0 ] && [ ! -s "$LAST_MSG" ]; then
@@ -365,7 +377,7 @@ sed -i -e "/{{VERIFICATION_RESULTS}}/r $TMP/ver.txt" -e "/{{VERIFICATION_RESULTS
 build_flags "$EFFORT"
 echo "[codex-review] mode=$MODE effort=$EFFORT base=$BASE model=$MODEL (pass 1, read-only, user-config ignored)"
 : > "$LAST_MSG"
-codex exec "${FLAGS[@]}" "$(cat "$TMP/prompt.txt")" 2>&1 | tee "$RAW_LOG"
+"$CODEX_BIN" exec "${FLAGS[@]}" "$(cat "$TMP/prompt.txt")" 2>&1 | tee "$RAW_LOG"
 CODEX_RC=${PIPESTATUS[0]}
 # codex 啟動失敗(參數錯誤等)且完全沒產生 review → 不消耗額度、不記為一輪、不寫 pass。
 if [ "$CODEX_RC" -ne 0 ] && [ ! -s "$LAST_MSG" ]; then

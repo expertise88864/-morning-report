@@ -17,7 +17,7 @@
 - HsiaoEye 視覺基準只能由 Ubuntu 產生並人工確認，不自動接受差異；保留 CMS 新修改，衝突停止，不 force-push。CMS 存檔不等於正式發佈完成。
 - 晨報候選 CI 不得寄信、寫回正式 state 或觸發正式排程；變更產報/LLM/外部資料關鍵路徑時另做不寄信 dry-run。既有正式寄信排程不得因候選驗證中斷。
 - CI 失敗持續診斷並修正可確認缺陷，修正後重跑完整遠端驗證；取消、逾時、缺失、讀不到及應跑卻跳過皆不通過。禁止 skip-ci、降門檻或繞 hook 製造全綠。
-- Claude 固定 claude-opus-5-5 / high / read-only；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
+- 強制 diff review 自 2026-10-14 起固定 gpt-6.1-sol / high / read-only(取代 Claude Opus 5.5;切換前的 Claude 佇列仍以 claude-opus-5-5 / high 補審)；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。保留精確 pending/passed/Reviewed-Commit trailers 及重置後補審。
 - main 發佈後還要驗證 exact-SHA 正式 CI／部署及適用 smoke checks，才可宣告交付；純文件與空 audit commit 也走候選流程。
 - 詳細入口、範圍與限制見 REMOTE_CI_DELIVERY.md。不得把本機快速檢查說成完整 CI，也不得把候選 CI 綠燈當作正式部署成功。
 
@@ -44,7 +44,7 @@
 
 ## 1. 開工儀式(每次固定)
 1. 先 `git status --short`,再 `git fetch`。若已有任何本機 diff,必須保留並先走
-   Claude Opus 5.5 review;**不得**用 `git reset --hard`、checkout 或 clean 把尚未審查的 diff 消掉。
+   GPT-6.1-Sol high review;**不得**用 `git reset --hard`、checkout 或 clean 把尚未審查的 diff 消掉。
    只有使用者明確指定要放棄的精確變更才可另行處理。
 2. `python -m pytest -q` 確認基準全綠(2026-07-04 基準:**476 passed**;之後以
    OPTIMIZATION_PLAN.md 頂部進度區記載的最新數為準——**只能增、不能減**)。
@@ -57,30 +57,32 @@ push 後繼續驗證該 SHA 的 GitHub CI 全綠，才可宣告交付完成。**
 不豁免 CI；不得加入 skip-CI 或放寬測試以製造綠燈。
 
 ruff → `python -m py_compile <改過的檔>` → `python -m pytest`(全套)→
-動渲染則 DRY_RUN 預覽 → **Claude Opus 5.5 diff 閘門** → **Codex 推送閘門** → push。
+動渲染則離線預覽 → **GPT-6.1-Sol diff 閘門** → push。
 一主題一 commit;繁中 commit message;結尾 `Co-Authored-By: Claude <當前模型名> <noreply@anthropic.com>`。
 
-### Claude Opus 5.5 mandatory diff review
+### GPT-6.1-Sol mandatory diff review(使用者 2026-10-14 定案,取代 Claude Opus 5.5 閘門)
 
 **所有 diff 都必須審,包括 docs-only、comment-only、tests-only 與 cosmetic。** 在宣告完成、
-commit 或 push 前執行 `python tools/claude_diff_review.py worktree`。額度不足時可先推送已驗證
-變更並標記 `Claude-Opus-5-Review: pending`,未審不得聲稱 `APPROVE`。
-wrapper 固定完整模型 ID `claude-opus-5-5`、effort `high`、唯讀工具白名單;**不得 fallback**
-到 alias、Sonnet、舊 Opus 或其他模型。未登入、無法證明實際模型、或沒有明確裁決時
-一律 fail closed,回報使用者,不得把「review 沒跑成」解讀為通過。
+commit 或 push 前執行 `python tools/gpt_diff_review.py worktree`。reviewer 固定 `gpt-6.1-sol`、
+effort `high`(Codex CLI read-only);**不得 fallback** 到其他模型或較低 effort。無法證明實際
+模型(Codex session rollout 的 `turn_context`)、未登入、或沒有明確裁決時一律 fail closed,
+不得把「review 沒跑成」解讀為通過。
 
-若因額度／限流未取得裁決,wrapper 會把該 diff fingerprint 以 `PENDING` 寫入被 Git 忽略的
-`.claude-review/pending_review.json`;代理必須依 CLI 回報的 reset 時間,在同一 task 建立或更新
-自動補審排程。補審仍固定 `claude-opus-5-5` + effort `high`,不得降級。使用者 2026-09-05
-明確允許額度不足時先 commit/push 並標記未審。以 `pending` 子命令列出尚未補審 SHA,
-逐筆執行 `commit --commit <SHA>`;通過後用空 audit commit 記錄 `passed` 與
-`Claude-Opus-5-Reviewed-Commit: <SHA>`。不得改寫已 push 的歷史,詳見 AGENTS.md。
+**額度不足時標記 pending,照常 commit + push**:wrapper 把 diff fingerprint 以 `PENDING`
+寫入被 Git 忽略的 `.gpt-review/pending_review.json`,commit-msg hook 加上
+`GPT-6-1-Sol-Review: pending`;代理依回報的 reset 時間在同一 task 安排補審。額度恢復後以
+`pending` 子命令列出未審 SHA,逐筆 `commit --commit <SHA>`;通過後用空 audit commit 記錄
+`GPT-6-1-Sol-Review: passed` 與 `GPT-6-1-Sol-Reviewed-Commit: <SHA>`。不得改寫已 push 的歷史。
 
-Git 的 `.githooks/pre-commit` / `pre-push` 會再次執行 gate;不得使用 `--no-verify`、改掉
-`core.hooksPath` 或以任何方式繞過。安裝/修復指令:
+**審查意見不照單全收**:逐條對目前程式碼驗證 CONFIRMED / REJECTED / UNCERTAIN,只修 CONFIRMED;
+修正後 diff 已改變,必須重跑。切換前已排進 Claude 佇列的歷史 commit 仍以 `claude-opus-5-5` /
+`high` 補審(`tools/claude_diff_review.py pending` / `commit --commit`);已被 Claude 審過、
+REQUEST_CHANGES 且已由後續已結案修正處理者,用 `resolved` audit 加
+`Claude-Opus-5-Resolved-By: <修正 SHA>` 結案(使用者 2026-10-14「任何 Claude 審過就算」),詳見 AGENTS.md。
+
+Git 的 `.githooks/pre-commit` / `commit-msg` / `pre-push` 會執行 gate;不得使用 `--no-verify`、
+改掉 `core.hooksPath` 或以任何方式繞過。安裝/修復指令:
 `powershell -NoProfile -ExecutionPolicy Bypass -File tools/install_claude_review_hooks.ps1`。
-修正任何 confirmed finding 後 diff 已改變,必須重跑。本閘門是額外的 Claude 第二意見;
-下方既有 Codex review 對 non-trivial 變更仍必須執行。
 
 ## External Codex review policy
 
@@ -88,9 +90,9 @@ Git 的 `.githooks/pre-commit` / `pre-push` 會再次執行 gate;不得使用 `-
 
 1. 使用本 repo 專用的 Codex review wrapper(`tools/codex_review.sh` / `.ps1`);不得直接呼叫
    `codex exec`,也不得透過 Codex MCP(user-scope `codex` MCP 已於 2026-07-10 移除)。
-2. 一般實作用 `targeted` + GPT-5.6 Sol medium。
+2. 一般實作用 `targeted` + GPT-6.1-Sol high(2026-10-14 起所有模式一律 high)。
 3. 只有 authentication、authorization、payments、破壞性 DB 變更、concurrency、產線事故、
-   資料完整性風險、大型跨模組 refactor 才用 `deep` + GPT-5.6 Sol high。
+   資料完整性風險、大型跨模組 refactor 才用 `deep`(範圍較大;同樣 GPT-6.1-Sol high)。
 4. 不得把完整 diff 貼進 Codex prompt(Codex 自行在 repo 內跑 git)。
 5. Codex 必須 read-only,且關閉 web search 與 apps。
 6. 獨立驗證每一項 Codex finding(CONFIRMED / REJECTED / UNCERTAIN)。
@@ -104,7 +106,7 @@ Git 的 `.githooks/pre-commit` / `pre-push` 會再次執行 gate;不得使用 `-
 
 細節見 `.claude/skills/gpt-review/SKILL.md`。**APPROVE 才 push。** 歷史上 Codex 擋下多個真 bug
 (state 檔漏登錄、stale FX 誤入計分、`float('nan')` 不拋例外、podcast 集數餓死、2026 世足第 3 名
-仍可晉級)——不要跳過。**模型 gpt-5.6-sol 需 alpha CLI ≥0.145.0-alpha.2**;若不可用,**先問使用者**,
+仍可晉級)——不要跳過。**模型 gpt-6.1-sol 需較新的 Codex CLI**(npm 0.155.1 被拒、Codex 桌面版內附 0.162.0-alpha 可用;`python tools/gpt_diff_review.py which` 顯示實際選用的 CLI);若不可用,**先問使用者**,
 勿默默降級。
 
 ## 3. 禁改清單(違反即失敗)

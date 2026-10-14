@@ -562,3 +562,33 @@ def test_stale_tennis_final_still_closes_the_championship_market(monkeypatch):
     assert "美網冠軍盤" not in out
     import inspect
     assert 'tennis.get("final_evidence")' in inspect.getsource(mr.fetch_sports_digest), "證據要帶進 digest"
+
+
+def test_favorite_team_path_skips_preseason_before_picking_the_latest_game(monkeypatch):
+    """推送審查(xhigh):NBA_FAVORITE_TEAMS 那條路原本照列季前賽比分,與「季前賽不列賽果」矛盾。"""
+    def game(gid, season_type, day):
+        return {"id": gid, "date": f"2026-10-{day}T01:00Z", "season": {"type": season_type},
+                "status": {"type": {"completed": True, "state": "post"}},
+                "competitions": [{"competitors": [
+                    {"homeAway": "away", "score": "101", "winner": True,
+                     "team": {"abbreviation": "LAL", "displayName": "Los Angeles Lakers"}},
+                    {"homeAway": "home", "score": "99", "team": {"abbreviation": "GS",
+                                                                "displayName": "Golden State Warriors"}}]}]}
+
+    class Response:
+        def __init__(self, events):
+            self.events = events
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": self.events}
+
+    def get(url, params=None, timeout=None, **kwargs):
+        return Response({"20261014": [game("pre", 1, 14)], "20261012": [game("reg", 2, 12)]}.get(params["dates"], []))
+    monkeypatch.setattr(mr, "_http_get", get)
+    rows = mr.fetch_nba_favorite_games(NOW, ["lakers"])
+    assert len(rows) == 1 and rows[0]["date"] == "10/12", "季前賽不佔名額,找到的是更早的例行賽"
+    out = mr._render_sports_html({"nba_fav": rows}, html)
+    assert "NBA 關注球隊近況" in out and "10/12" in out

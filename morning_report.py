@@ -21070,6 +21070,8 @@ def fetch_nba_favorite_games(now_tpe: dt.datetime, favorites: list[str]) -> list
         for ev in events:
             if not (((ev.get("status") or {}).get("type")) or {}).get("completed"):
                 continue
+            if (ev.get("season") or {}).get("type") == 1:
+                continue   # 季前賽不列賽果(使用者 2026-10-14);在挑「最近一場」之前濾,不佔名額
             comp = (ev.get("competitions") or [{}])[0]
             tlist = comp.get("competitors", [])
             if len(tlist) != 2:

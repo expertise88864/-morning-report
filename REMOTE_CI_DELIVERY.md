@@ -23,7 +23,7 @@ change medical content, visual baselines, credentials, recipients or scoring.
 1. Fetch main. Preserve other work. Use an isolated codex/* branch based on current main.
 2. Make task-owned changes; run relevant local regression tests, syntax/lint and
    required generators. Commit the exact source and generated artifacts together.
-3. Complete the mandatory GPT-6.1-Sol/high read-only diff review (`tools/gpt_diff_review.py`;
+3. Complete the mandatory GPT-6.1-Sol/xhigh read-only diff review (`tools/gpt_diff_review.py`;
    user decision 2026-10-14, replacing the Claude Opus 5.5 gate). Historical commits already
    queued for Claude are still caught up with claude-opus-5-5/high.
    Only confirmed provider quota exhaustion permits pending trailers and scheduled retry.

@@ -9,7 +9,7 @@ tools/codex_review.ps1 — 本 repo 唯一的外部 code-review 入口(Codex CLI
 mode:
   diff      低風險/局部(文案、註解、CSS、tests-only)      medium / 額外檔 3 / findings 3
   targeted  一般非 trivial 實作(預設)                      medium / 額外檔 12 / findings 5
-  deep      auth、金流、DB migration、併發、資安、大重構     high   / 額外檔 30 / findings 8
+  deep      auth、金流、DB migration、併發、資安、大重構     xhigh   / 額外檔 30 / findings 8
   resume    後續輪(僅限 confirmed P0/P1/material P2 修正後;沿用同一 session)
 
 設計原則(勿改):
@@ -34,14 +34,21 @@ param(
 # 刻意用 Continue 而非 Stop:PS 5.1 對 native exe 做 2>&1 會把每行 stderr 包成 NativeCommandError,
 # 在 Stop 模式下被誤判為終止錯誤。本腳本改以 $LASTEXITCODE 與明確 Die() 控制流程。
 $ErrorActionPreference = 'Continue'
-$Model = 'gpt-6.1-sol'   # 使用者 2026-10-14 定案:任何 diff review 一律 gpt-6.1-sol / high
+$Model = 'gpt-6.1-sol'   # 使用者 2026-10-14 定案:任何 diff review 一律 gpt-6.1-sol / xhigh
 $Harden = if ($env:CODEX_REVIEW_HARDEN) { $env:CODEX_REVIEW_HARDEN } else { '1' }
 $Strict = if ($env:CODEX_REVIEW_STRICT) { $env:CODEX_REVIEW_STRICT } else { '1' }
 
 function Die([string]$Msg) { [Console]::Error.WriteLine("[codex-review] ERROR: $Msg"); exit 64 }
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = & git -C $ScriptDir rev-parse --show-toplevel 2>$null
+# Windows PowerShell 5.1 以 [Console]::OutputEncoding(本機 gb2312)解碼外部程式輸出,git 輸出的是
+# UTF-8:路徑裡的「程式」會變成「绋嬪紡」,--cd / Push-Location / safe.directory 全部對不上。
+# 2026-10-14 實測(python subprocess 起的 powershell -File):舊寫法 7ECB 5B2A、Test-Path=False。
+$PrevOutputEncoding = [Console]::OutputEncoding
+try {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $RepoRoot = & git -C $ScriptDir rev-parse --show-toplevel 2>$null
+} finally { [Console]::OutputEncoding = $PrevOutputEncoding }
 if ($LASTEXITCODE -ne 0 -or -not $RepoRoot) { Die '必須在 git repository 內執行。' }
 $RepoRoot = $RepoRoot.Trim()
 $RepoName = Split-Path -Leaf $RepoRoot
@@ -59,9 +66,9 @@ if (-not (Test-Path $UsageTsv)) {
 }
 
 switch ($Mode) {
-    'diff'     { $Effort = 'high';   $ExtraFileLimit = 3;  $FindingLimit = 3 }
-    'targeted' { $Effort = 'high';   $ExtraFileLimit = 12; $FindingLimit = 5 }
-    'deep'     { $Effort = 'high';   $ExtraFileLimit = 30; $FindingLimit = 8 }
+    'diff'     { $Effort = 'xhigh';   $ExtraFileLimit = 3;  $FindingLimit = 3 }
+    'targeted' { $Effort = 'xhigh';   $ExtraFileLimit = 12; $FindingLimit = 5 }
+    'deep'     { $Effort = 'xhigh';   $ExtraFileLimit = 30; $FindingLimit = 8 }
     'resume'   { $Effort = '';       $ExtraFileLimit = ''; $FindingLimit = '' }
     default    { Die "未知 mode '$Mode'(可用:diff | targeted | deep | resume)" }
 }
@@ -69,9 +76,20 @@ switch ($Mode) {
 # CLI 與強制閘門同一個選擇邏輯(gpt-6.1-sol 需要較新的 Codex CLI;不降級)
 $PyBin = (Get-Command python3, python -ErrorAction SilentlyContinue | Select-Object -First 1).Source
 if (-not $PyBin) { Die '找不到 Python,無法決定要用哪一支 Codex CLI。' }
-$CodexBin = (& $PyBin (Join-Path $RepoRoot 'tools\gpt_diff_review.py') which 2>$null | Select-Object -First 1)
+# CLI 路徑可能含非 ASCII(中文使用者名稱):Python 以 UTF-8 輸出,這裡也暫時以 UTF-8 解碼
+$PrevOutputEncoding = [Console]::OutputEncoding
+try {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $CodexBin = (& $PyBin -X utf8 (Join-Path $RepoRoot 'tools\gpt_diff_review.py') which 2>$null | Select-Object -First 1)
+} finally { [Console]::OutputEncoding = $PrevOutputEncoding }
 if (-not $CodexBin) { Die '找不到可用的 Codex CLI(見 tools/gpt_diff_review.py which);不降級到其他模型。' }
 $CodexBin = $CodexBin.Trim()
+
+# Windows 唯讀沙箱以受限權杖執行審查者;repo 由 BUILTIN\Administrators 擁有時 git 回
+# dubious ownership、讀不到 diff。只對本行程與子行程把這個 repo 標成 safe.directory
+# (GIT_CONFIG_PARAMETERS 是命令列層級,git 承認);使用者的全域 gitconfig 不動。
+$SafeEntry = "'safe.directory'='" + ($RepoRoot -replace "'", "'\''") + "'"
+$env:GIT_CONFIG_PARAMETERS = if ($env:GIT_CONFIG_PARAMETERS) { "$($env:GIT_CONFIG_PARAMETERS) $SafeEntry" } else { $SafeEntry }
 
 function Build-Flags([string]$EffortValue, [string]$Kind = 'exec') {
     # 不含內層引號的 -c key=value:codex 對 value 先試 TOML,失敗即當字面字串。
@@ -183,7 +201,7 @@ if ($Mode -eq 'resume') {
     }
 
     $last = (Get-Content $UsageTsv | Select-Object -Last 1) -split "`t"
-    $ResumeEffort = 'high'   # 2026-10-14:一律 high,不沿用舊紀錄裡可能的 medium
+    $ResumeEffort = 'xhigh'   # 2026-10-14:一律 xhigh,不沿用舊紀錄裡可能的 medium / high
     $ResumeBase   = if ($last.Count -ge 6 -and $last[5]) { $last[5] } else { 'unavailable' }
 
     $ResumePrompt = @"

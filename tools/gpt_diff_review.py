@@ -65,7 +65,10 @@ push_fingerprint = _base.push_fingerprint
 # ---- 這道閘門自己的身分 -----------------------------------------------------
 STATE_DIR = ROOT / ".gpt-review"
 MODEL = "gpt-6.1-sol"
-EFFORT = "high"
+# 使用者 2026-10-14 定案兩次:先 high,同日改 xhigh(不降級、不 fallback)
+EFFORT = "xhigh"
+#: 佇列認得的 effort trailer:切換 xhigh 前已排入的 high 仍是待審(見 queue.accepted_efforts)
+ACCEPTED_TRAILER_EFFORTS = ("xhigh", "high")
 PENDING_PATH = STATE_DIR / "pending_review.json"
 # trailer key 裡**不能有 `.`**:`GPT-6.1-Sol-Review: pending` git interpret-trailers 不認(實測
 # 解析出 0 行),佇列會把內容 commit 判成「沒排進去」而擋下。所以版本號用連字號寫。
@@ -172,6 +175,23 @@ def build_command(codex: str, last_message: Path) -> list[str]:
         "-o", str(last_message),
         "-",                       # prompt 走 stdin:diff 內容永遠不進 argv
     ]
+
+
+def review_env() -> dict[str, str]:
+    """審查子行程的環境:**只對這個 repo、只在這個子行程**加 safe.directory。
+
+    Windows 唯讀沙箱以受限權杖執行審查者;checkout 由 BUILTIN\\Administrators 擁有時
+    (主 checkout 就是),沙箱內每個 git 指令都回 dubious ownership,審查者讀不到 diff
+    (另一個 session 在 user-main 實測到第一輪空轉;本 repo 的 worktree 擁有者是 User,
+    所以先前測不出來)。GIT_CONFIG_PARAMETERS 是命令列層級設定,git 承認其中的
+    safe.directory;使用者的全域 gitconfig 不動。路徑裡的單引號依 git 規則跳脫成 '\\''。
+    """
+    env = dict(os.environ)
+    top = ROOT.resolve().as_posix()   # 與 git --show-toplevel 同格式(C:/…);不另開 git 子行程
+    entry = "'safe.directory'='" + top.replace("'", "'\\''") + "'"
+    existing = env.get("GIT_CONFIG_PARAMETERS", "").strip()
+    env["GIT_CONFIG_PARAMETERS"] = f"{existing} {entry}" if existing else entry
+    return env
 
 
 def build_prompt(scope: str, ranges: Sequence[PushRange], snapshot_path: Path) -> str:
@@ -368,7 +388,7 @@ def run_review(scope: str, fingerprint: str, ranges: Sequence[PushRange]) -> int
         snapshot_sha256 = hashlib.sha256(snapshot.encode("utf-8")).hexdigest()
         _atomic_text(snapshot_path, snapshot)
         proc = subprocess.run(
-            build_command(codex, last_path), cwd=ROOT,
+            build_command(codex, last_path), cwd=ROOT, env=review_env(),
             input=build_prompt(scope, ranges, snapshot_path),
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace", check=False,

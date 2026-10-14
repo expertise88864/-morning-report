@@ -357,7 +357,7 @@ def test_claude_finding_can_be_resolved_by_a_gpt_reviewed_repair(repo, monkeypat
     with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
         gpt.commit_message(str(path))                   # 修正本身還沒經 GPT 審過
     queue.save_approvals(gpt, [queue.commit_range(gpt, fix)], "verified-diff-fingerprint")
-    path.write_text("Record review\n\nGPT-6-1-Sol-Review: passed\nGPT-6-1-Sol-Review-Effort: high\n"
+    path.write_text("Record review\n\nGPT-6-1-Sol-Review: passed\nGPT-6-1-Sol-Review-Effort: xhigh\n"
                     f"GPT-6-1-Sol-Reviewed-Commit: {fix}\n", encoding="utf-8")
     assert gpt.commit_message(str(path)) == 0
     git("commit", "--allow-empty", "-F", str(path))
@@ -389,7 +389,8 @@ def test_repair_closure_must_be_reachable_from_the_resolution(repo, monkeypatch,
     git("switch", "-q", "-c", "review-only")       # 結案 audit 只在這條分支
     queue.save_approvals(repair_gate, [queue.commit_range(repair_gate, fix)], "verified-diff-fingerprint")
     status, effort, reviewed = queue.keys(repair_gate)
-    path.write_text(f"Record review\n\n{status}: passed\n{effort}: high\n{reviewed}: {fix}\n",
+    path.write_text(f"Record review\n\n{status}: passed\n{effort}: {queue.effort_value(repair_gate)}\n"
+                    f"{reviewed}: {fix}\n",
                     encoding="utf-8")
     assert queue.commit_message(repair_gate, str(path)) == 0
     git("commit", "--allow-empty", "-F", str(path))

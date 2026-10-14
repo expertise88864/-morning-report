@@ -6,11 +6,11 @@
 #   tools/codex_review.sh resume [session-id]
 #
 # mode:
-#   diff      低風險/局部(文案、註解、CSS、tests-only)     high / 額外檔 3 / findings 3
-#   targeted  一般非 trivial 實作(預設)                     high / 額外檔 12 / findings 5
-#   deep      auth、金流、DB migration、併發、資安、大重構    high / 額外檔 30 / findings 8
+#   diff      低風險/局部(文案、註解、CSS、tests-only)     xhigh / 額外檔 3 / findings 3
+#   targeted  一般非 trivial 實作(預設)                     xhigh / 額外檔 12 / findings 5
+#   deep      auth、金流、DB migration、併發、資安、大重構    xhigh / 額外檔 30 / findings 8
 #
-# 模型與 effort(使用者 2026-10-14 定案):**任何 diff review 一律 gpt-6.1-sol / high**,
+# 模型與 effort(使用者 2026-10-14 定案):**任何 diff review 一律 gpt-6.1-sol / xhigh**,
 # 三種模式只差在範圍(額外檔數、finding 上限),不再差在 effort。
 # gpt-6.1-sol 需要較新的 Codex CLI(npm 全域 0.155.1 會被拒,Codex 桌面版內附的
 # 0.162.0-alpha 可用);CLI 由 `tools/gpt_diff_review.py which` 決定 —— 與強制閘門
@@ -56,9 +56,9 @@ MODE="${1:-}"
 [ -n "$MODE" ] || die "缺少 mode。用法: $0 <diff|targeted|deep> <base-ref> [task-context-file] | $0 resume [session-id]"
 
 case "$MODE" in
-  diff)     EFFORT="high";   EXTRA_FILE_LIMIT=3;  FINDING_LIMIT=3 ;;
-  targeted) EFFORT="high";   EXTRA_FILE_LIMIT=12; FINDING_LIMIT=5 ;;
-  deep)     EFFORT="high";   EXTRA_FILE_LIMIT=30; FINDING_LIMIT=8 ;;
+  diff)     EFFORT="xhigh";   EXTRA_FILE_LIMIT=3;  FINDING_LIMIT=3 ;;
+  targeted) EFFORT="xhigh";   EXTRA_FILE_LIMIT=12; FINDING_LIMIT=5 ;;
+  deep)     EFFORT="xhigh";   EXTRA_FILE_LIMIT=30; FINDING_LIMIT=8 ;;
   resume)   EFFORT="";       EXTRA_FILE_LIMIT="";  FINDING_LIMIT="" ;;
   *) die "未知 mode '$MODE'(可用:diff | targeted | deep | resume)" ;;
 esac
@@ -66,8 +66,14 @@ esac
 # ---------- 選 CLI(與強制閘門同一個邏輯) ----------
 PY_BIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)"
 [ -n "$PY_BIN" ] || die "找不到 Python,無法決定要用哪一支 Codex CLI。"
-CODEX_BIN="$("$PY_BIN" "$REPO_ROOT/tools/gpt_diff_review.py" which 2>/dev/null | head -1 | tr -d '\r')"
+CODEX_BIN="$("$PY_BIN" -X utf8 "$REPO_ROOT/tools/gpt_diff_review.py" which 2>/dev/null | head -1 | tr -d '\r')"
 [ -n "$CODEX_BIN" ] || die "找不到可用的 Codex CLI(見 tools/gpt_diff_review.py which);不降級到其他模型。"
+
+# Windows 唯讀沙箱以受限權杖執行審查者;repo 由 BUILTIN\Administrators 擁有時 git 回
+# dubious ownership、讀不到 diff。只對本 repo、只在本行程與子行程加 safe.directory
+# (GIT_CONFIG_PARAMETERS 是命令列層級,git 承認);使用者的全域 gitconfig 不動。
+_safe_root="$(printf '%s' "$REPO_ROOT" | sed "s/'/'\\\\''/g")"
+export GIT_CONFIG_PARAMETERS="${GIT_CONFIG_PARAMETERS:+$GIT_CONFIG_PARAMETERS }'safe.directory'='$_safe_root'"
 
 # ---------- codex 旗標(read-only + 隔離) ----------
 build_flags() {   # $1 = effort ; $2 = kind("exec" | "resume",預設 exec)
@@ -86,6 +92,11 @@ build_flags() {   # $1 = effort ; $2 = kind("exec" | "resume",預設 exec)
   if [ "$HARDEN" = "1" ]; then
     FLAGS+=(-c "web_search=disabled" -c "features.apps=false")
   fi
+  # --ignore-user-config 也丟掉使用者的 [windows] sandbox;沒有它 Windows 唯讀沙箱會擋掉
+  # 每一個指令(連 git diff 都跑不了),審查者什麼都讀不到(.ps1 與 gpt_diff_review.py 早已有)。
+  case "${OS:-}$(uname -s 2>/dev/null)" in
+    *Windows_NT*|*MINGW*|*MSYS*|*CYGWIN*) FLAGS+=(-c "windows.sandbox=unelevated") ;;
+  esac
   # 明確不使用:--ask-for-approval(此 CLI 的 exec 無此旗標,非互動預設即 never)、
   #             --skip-git-repo-check、--ephemeral(第二輪要 resume)、--dangerously-*。
 }
@@ -187,7 +198,7 @@ resume 只能沿用同一 task 的 session。要重開一輪全新審查請跑�
   fi
 
   # 第二輪的 effort 沿用第一輪(從 usage.tsv 最後一筆讀回),預設 medium。
-  RESUME_EFFORT="high"   # 2026-10-14:一律 high,不沿用舊紀錄裡可能的 medium
+  RESUME_EFFORT="xhigh"   # 2026-10-14:一律 xhigh,不沿用舊紀錄裡可能的 medium / high
   RESUME_BASE="$(tail -1 "$USAGE_TSV" | cut -f6)";   [ -n "$RESUME_BASE" ] || RESUME_BASE="unavailable"
   build_flags "$RESUME_EFFORT" resume
 

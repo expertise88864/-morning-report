@@ -26,6 +26,17 @@ def keys(gate=None) -> tuple[str, str, str]:
             getattr(gate, "TRAILER_REVIEWED", REVIEWED))
 
 
+def effort_value(gate=None) -> str:
+    """新 commit / 新 audit 寫的 effort trailer = 該閘門實際的審查 effort(Claude high、GPT xhigh)。"""
+    return getattr(gate, "EFFORT", "high") if gate is not None else "high"
+
+
+def accepted_efforts(gate=None) -> tuple[str, ...]:
+    """佇列認得的 effort trailer。GPT 閘門 2026-10-14 由 high 改 xhigh:切換前排入的 high
+    不可因此從待審清單裡**消失**(那等於悄悄豁免),所以同時認得兩者。"""
+    return getattr(gate, "ACCEPTED_TRAILER_EFFORTS", (effort_value(gate),))
+
+
 def resolved_key(gate=None) -> str:
     return getattr(gate, "TRAILER_RESOLVED_BY", RESOLVED_BY)
 
@@ -66,7 +77,8 @@ def message_for(gate, sha: str) -> str:
 def is_pending(meta: dict, gate=None) -> bool:
     status, effort, _ = keys(gate)
     return (meta.get(status.lower()) == ["pending"]
-            and meta.get(effort.lower()) == ["high"])
+            and len(meta.get(effort.lower()) or []) == 1
+            and meta[effort.lower()][0] in accepted_efforts(gate))
 
 
 def is_empty_commit(gate, sha: str) -> bool:
@@ -139,7 +151,7 @@ def commit_message(gate, path: str) -> int:
         else:
             evidence = status == ["passed"] and has_approval(gate, targets[0])
         if (gate.staged_fingerprint() is not None or len(targets) != 1
-                or meta.get(effort_key.lower()) != ["high"]
+                or meta.get(effort_key.lower()) != [effort_value(gate)]
                 or not evidence
                 or targets[0] not in pending
                 or gate._try_git_bytes("merge-base", "--is-ancestor", targets[0], "HEAD") is None):
@@ -152,9 +164,10 @@ def commit_message(gate, path: str) -> int:
     # adding Review-Effort with --if-exists=replace can erase Review itself.
     # Preserve unrelated trailers and append only absent, exact policy keys.
     additions = []
-    for key, value in ((status_key, "pending"), (effort_key, "high")):
+    for key, value in ((status_key, "pending"), (effort_key, effort_value(gate))):
         existing = meta.get(key.lower(), [])
-        if existing and existing != [value]:
+        allowed = accepted_efforts(gate) if key == effort_key else (value,)
+        if existing and (len(existing) != 1 or existing[0] not in allowed):
             raise gate.ReviewError(f"content commit requires exactly {key}: {value}")
         if not existing:
             additions.append(f"{key}: {value}")
@@ -247,7 +260,8 @@ def _audit_target(gate, sha: str, meta: dict) -> str | None:
     targets = meta.get(reviewed_key.lower(), [])
     status = meta.get(status_key.lower())
     if (status not in (["passed"], ["resolved"])
-            or meta.get(effort_key.lower()) != ["high"] or len(targets) != 1
+            or len(meta.get(effort_key.lower()) or []) != 1
+            or meta[effort_key.lower()][0] not in accepted_efforts(gate) or len(targets) != 1
             or not SHA.fullmatch(targets[0]) or not is_empty_commit(gate, sha)):
         return None
     target = targets[0]

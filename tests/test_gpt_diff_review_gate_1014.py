@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""**之後任何 diff review 一律 gpt-6.1-sol / high**(使用者 2026-10-14 定案)。
+"""**之後任何 diff review 一律 gpt-6.1-sol / xhigh**(使用者 2026-10-14 定案;同日由 high 改 xhigh)。
 
 `tools/gpt_diff_review.py` 取代 Claude Opus 5.5 成為強制 diff 閘門。它與 Claude 閘門共用
 git 證據、fingerprint、pending 佇列與 hook 契約(同一份程式碼),只替換審查後端、模型證據
@@ -8,7 +8,9 @@ git 證據、fingerprint、pending 佇列與 hook 契約(同一份程式碼),只
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -42,14 +44,14 @@ def test_command_pins_gpt61_high_read_only_and_isolated(tmp_path):
     cmd = gpt.build_command("codex.exe", tmp_path / "last.txt")
     assert cmd[1] == "exec"
     assert cmd[cmd.index("--model") + 1] == "gpt-6.1-sol"
-    assert "model_reasoning_effort=high" in cmd
+    assert "model_reasoning_effort=xhigh" in cmd
     assert cmd[cmd.index("--sandbox") + 1] == "read-only"
     for flag in ("--ignore-user-config", "--strict-config", "--json"):
         assert flag in cmd
     assert "web_search=disabled" in cmd and "features.apps=false" in cmd
     assert cmd[-1] == "-", "prompt 走 stdin;diff 永遠不進 argv"
     assert not any("dangerously" in part or "bypass" in part for part in cmd)
-    assert (gpt.MODEL, gpt.EFFORT) == ("gpt-6.1-sol", "high")
+    assert (gpt.MODEL, gpt.EFFORT) == ("gpt-6.1-sol", "xhigh")
 
 
 def test_windows_sandbox_survives_ignore_user_config(tmp_path, monkeypatch):
@@ -65,7 +67,7 @@ def test_windows_sandbox_survives_ignore_user_config(tmp_path, monkeypatch):
 
 def test_prompt_is_the_shared_contract_with_the_gpt_model_requirement(tmp_path):
     text = gpt.build_prompt("staged", [], tmp_path / "review.patch")
-    assert "GPT-6.1-Sol (`gpt-6.1-sol`) with reasoning effort `high`" in text
+    assert "GPT-6.1-Sol (`gpt-6.1-sol`) with reasoning effort `xhigh`" in text
     assert "Claude Opus" not in text
     # 審查契約與 Claude 閘門是同一份(不另抄一份會分歧的版本)
     assert "The final non-empty line must be exactly APPROVE or REQUEST_CHANGES." in text
@@ -73,21 +75,22 @@ def test_prompt_is_the_shared_contract_with_the_gpt_model_requirement(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 2. 模型證據:每一回合都必須是 gpt-6.1-sol / high / read-only,否則 fail closed
+# 2. 模型證據:每一回合都必須是 gpt-6.1-sol / xhigh / read-only,否則 fail closed
 # ---------------------------------------------------------------------------
 def test_rollout_proves_model_effort_and_sandbox(tmp_path):
-    _rollout(tmp_path, [("gpt-6.1-sol", "high", "read-only")] * 2)
+    _rollout(tmp_path, [("gpt-6.1-sol", "xhigh", "read-only")] * 2)
     ev = gpt.rollout_evidence(THREAD, tmp_path)
     assert ev["turns"] == 2 and ev["cli_version"].startswith("0.162")
 
 
 @pytest.mark.parametrize("turn", [
-    ("gpt-5.6-sol", "high", "read-only"),     # 被悄悄換成別的模型
+    ("gpt-5.6-sol", "xhigh", "read-only"),    # 被悄悄換成別的模型
+    ("gpt-6.1-sol", "high", "read-only"),     # 2026-10-14 改 xhigh 後,high 不再算數
     ("gpt-6.1-sol", "medium", "read-only"),   # effort 被降級
-    ("gpt-6.1-sol", "high", "workspace-write"),  # 不是唯讀
+    ("gpt-6.1-sol", "xhigh", "workspace-write"),  # 不是唯讀
 ])
 def test_any_mismatching_turn_fails_closed(tmp_path, turn):
-    _rollout(tmp_path, [("gpt-6.1-sol", "high", "read-only"), turn])
+    _rollout(tmp_path, [("gpt-6.1-sol", "xhigh", "read-only"), turn])
     with pytest.raises(gpt.ReviewError, match="cannot prove"):
         gpt.rollout_evidence(THREAD, tmp_path)
 
@@ -135,7 +138,7 @@ def test_reviewer_that_read_nothing_is_blocked_not_request_changes(monkeypatch, 
     結論(沒有 finding 可修),要擋下(rc 4),不可當成 rc 2 的審查意見。"""
     _isolate(monkeypatch, tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
-    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "high", "read-only")])
+    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "xhigh", "read-only")])
     denied = {"type": "item.completed", "item": {
         "type": "command_execution", "command": "git diff --cached", "exit_code": 1}}
     out = "\n".join(json.dumps(e) for e in ({"type": "thread.started", "thread_id": THREAD}, denied, _DONE))
@@ -162,7 +165,7 @@ def test_recovered_error_does_not_override_the_completed_verdict(monkeypatch, tm
     REQUEST_CHANGES 變成 pending(pre-commit 會放行 rc 3)。"""
     _isolate(monkeypatch, tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
-    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "high", "read-only")])
+    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "xhigh", "read-only")])
     out = "\n".join(json.dumps(e) for e in (
         {"type": "thread.started", "thread_id": THREAD}, {"type": "error", "message": recovered},
         _READ, _DONE))
@@ -184,7 +187,7 @@ def test_verdict_without_a_completed_turn_is_blocked(monkeypatch, tmp_path):
     不是完成的審查,擋下,不採信那個 APPROVE。"""
     _isolate(monkeypatch, tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
-    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "high", "read-only")])
+    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "xhigh", "read-only")])
     for tail in ((), ({"type": "turn.failed", "error": {"message": "stream ended"}}, _DONE)):
         out = "\n".join(json.dumps(e) for e in (
             {"type": "thread.started", "thread_id": THREAD}, _READ, *tail))
@@ -280,7 +283,7 @@ def test_success_requires_rollout_evidence(monkeypatch, tmp_path):
     monkeypatch.setattr(gpt.subprocess, "run", fake_run)
     monkeypatch.setattr(gpt, "staged_fingerprint", lambda: "f" * 64)
     assert gpt.main(["staged"]) == 4, "沒有 rollout 證據 → 擋下,不可當成通過"
-    _rollout(sessions, [("gpt-6.1-sol", "high", "read-only")])
+    _rollout(sessions, [("gpt-6.1-sol", "xhigh", "read-only")])
     assert gpt.main(["staged"]) == 0
     review = json.loads((gpt.STATE_DIR / "last_review.json").read_text(encoding="utf-8"))
     assert review["model"] == "gpt-6.1-sol" and review["verdict"] == "APPROVE"
@@ -335,7 +338,7 @@ def test_content_commit_is_queued_for_gpt_not_claude(tmp_path):
     msg.write_text("fix: something\n", encoding="utf-8")
     assert gpt.commit_message(str(msg)) == 0
     text = msg.read_text(encoding="utf-8")
-    assert "GPT-6-1-Sol-Review: pending" in text and "GPT-6-1-Sol-Review-Effort: high" in text
+    assert "GPT-6-1-Sol-Review: pending" in text and "GPT-6-1-Sol-Review-Effort: xhigh" in text
     assert "Claude-Opus-5-Review" not in text
 
 
@@ -366,3 +369,78 @@ def test_hooks_policy_installer_and_gitignore_use_the_gpt_gate():
         text = (ROOT / "tools" / wrapper).read_text(encoding="utf-8")
         assert "gpt-6.1-sol" in text and "gpt-5.6-sol" not in text
         assert "gpt_diff_review.py" in text, "手動外審要用與閘門同一個 CLI 選擇邏輯"
+
+
+def test_review_child_marks_only_this_repo_safe(monkeypatch, tmp_path):
+    """BUILTIN\\Administrators 擁有的 checkout:沙箱內 git 回 dubious ownership(其他 session 實測)。
+    只對審查子行程加 safe.directory,保留既有的 GIT_CONFIG_PARAMETERS,單引號依 git 規則跳脫。
+    路徑用真的絕對路徑(tmp_path):寫死 "C:/…" 在 Ubuntu CI 上是相對路徑(xhigh 審查 2026-10-14)。"""
+    root = tmp_path / "O'Neil" / "repo"
+    root.mkdir(parents=True)
+    monkeypatch.setattr(gpt, "ROOT", root)
+    monkeypatch.delenv("GIT_CONFIG_PARAMETERS", raising=False)
+    posix = root.resolve().as_posix()
+    expected = "'safe.directory'='" + posix.replace("'", "'\\''") + "'"
+    assert "O'\\''Neil" in expected and posix.startswith(("/", tmp_path.resolve().as_posix()[:3]))
+    assert gpt.review_env()["GIT_CONFIG_PARAMETERS"] == expected
+    monkeypatch.setenv("GIT_CONFIG_PARAMETERS", "'core.autocrlf'='false'")
+    env = gpt.review_env()["GIT_CONFIG_PARAMETERS"]
+    assert env == "'core.autocrlf'='false' " + expected
+    import os
+    assert os.environ["GIT_CONFIG_PARAMETERS"] == "'core.autocrlf'='false'", "不可改到本行程自己的環境"
+
+
+def test_review_subprocess_receives_the_scoped_env(monkeypatch, tmp_path):
+    _isolate(monkeypatch, tmp_path)
+    monkeypatch.setattr(gpt, "review_env", lambda: {"GIT_CONFIG_PARAMETERS": "SCOPED"})
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen.update(kwargs)
+        return _Proc(1, json.dumps({"type": "turn.failed", "error": {"message": "boom"}}))
+    monkeypatch.setattr(gpt.subprocess, "run", fake_run)
+    monkeypatch.setattr(gpt, "staged_fingerprint", lambda: "f" * 64)
+    gpt.main(["staged"])
+    assert seen["env"] == {"GIT_CONFIG_PARAMETERS": "SCOPED"}
+
+
+def test_shell_wrappers_carry_the_windows_sandbox_and_safe_directory():
+    root = gpt.ROOT
+    sh = (root / "tools" / "codex_review.sh").read_text(encoding="utf-8")
+    ps1 = (root / "tools" / "codex_review.ps1").read_text(encoding="utf-8")
+    assert 'FLAGS+=(-c "windows.sandbox=unelevated")' in sh
+    assert "'safe.directory'=" in sh and "export GIT_CONFIG_PARAMETERS" in sh
+    assert "$env:GIT_CONFIG_PARAMETERS" in ps1 and "'safe.directory'=" in ps1
+
+
+@pytest.mark.skipif(os.name != "nt" or not shutil.which("powershell"), reason="Windows PowerShell 5.1 only")
+def test_ps1_repo_root_survives_a_non_utf8_console(tmp_path):
+    """個人網站 session 實測、本 session 2026-10-14 重現:PowerShell 5.1 以主控台碼頁(gb2312)解碼
+    git 輸出,「程式」變成「绋嬪紡」。執行 .ps1 裡**真正的那段**程式碼,fixture 放在含「程式」的路徑。"""
+    repo = tmp_path / "程式" / "repo"
+    repo.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    ps1 = (gpt.ROOT / "tools" / "codex_review.ps1").read_text(encoding="utf-8")
+    start = ps1.index("$PrevOutputEncoding = [Console]::OutputEncoding")
+    end = ps1.index("$RepoRoot = $RepoRoot.Trim()", start)
+    out = tmp_path / "root.txt"
+    probe = tmp_path / "probe.ps1"
+    probe.write_text("function Die([string]$Msg) { throw $Msg }\n"
+                     f"$ScriptDir = '{repo}'\n" + ps1[start:end]
+                     + f"[IO.File]::WriteAllText('{out}', $RepoRoot.Trim(), (New-Object System.Text.UTF8Encoding $false))\n",
+                     encoding="utf-8-sig")
+    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(probe)],
+                   check=True, capture_output=True)
+    expected = subprocess.run(["git", "-C", str(repo), "rev-parse", "--show-toplevel"], check=True,
+                              capture_output=True, encoding="utf-8").stdout.strip()
+    assert "程式" in expected and out.read_text(encoding="utf-8") == expected
+
+
+def test_legacy_high_pending_commits_stay_in_the_queue_after_the_xhigh_switch():
+    """GPT 閘門 2026-10-14 由 high 改 xhigh:切換前排入、標 high 的 commit 不可從待審清單消失;
+    新 commit 標 xhigh;新的 GPT audit 必須寫 xhigh(實際審查的 effort)。"""
+    assert queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["high"]}, gpt)
+    assert queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["xhigh"]}, gpt)
+    assert not queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["medium"]}, gpt)
+    assert queue.effort_value(gpt) == "xhigh" and queue.effort_value(claude) == "high"
+    assert queue.accepted_efforts(claude) == ("high",), "Claude 佇列不受影響"

@@ -17,6 +17,7 @@ else
   exit 4
 fi
 
-# The delivery wrapper preserves stdin and then runs the policy's review gate
-# (gpt-6.1-sol high since 2026-10-14; see _delivery_policy.json review_gate).
+# Delivery gate only. There is no per-commit/per-push diff review (user decision
+# 2026-10-15): tools/pr_review.py reviews each PR once, and a main promotion
+# requires that review's commit status (see _delivery_policy.json pr_review).
 exec "$PYTHON" _delivery.py pre-push --remote "${1:-origin}"

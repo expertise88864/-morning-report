@@ -23,23 +23,30 @@ change medical content, visual baselines, credentials, recipients or scoring.
 1. Fetch main. Preserve other work. Use an isolated codex/* branch based on current main.
 2. Make task-owned changes; run relevant local regression tests, syntax/lint and
    required generators. Commit the exact source and generated artifacts together.
-3. Complete the mandatory GPT-6.1-Sol/xhigh read-only diff review (`tools/gpt_diff_review.py`;
-   user decision 2026-10-14, replacing the Claude Opus 5.5 gate). Historical commits already
-   queued for Claude are still caught up with claude-opus-5-5/high.
-   Only confirmed provider quota exhaustion permits pending trailers and scheduled retry.
+3. Commit freely; there is no per-commit review, no pre-commit/commit-msg review hook and
+   no review trailer (user decision 2026-10-15). Historical commits already queued for
+   Claude are still caught up with claude-opus-5-5/high; results go to a PR comment or issue.
 4. Install the tracked pre-push hook with the documented existing hook mechanism.
 5. Push the exact SHA to codex/* normally. The hook runs the offline delivery tests.
    Full tests, types, coverage, browsers and generation drift run on GitHub.
 6. Websites: create a same-repository PR to main and wait for exact-SHA Preview.
    Do not use production screenshots as proof of candidate correctness.
 7. Run: python _delivery.py verify FULL_SHA --phase candidate --wait 1800
+8. Review the whole PR once: python tools/pr_review.py (opens the PR if needed).
+   gpt-6.1-sol/xhigh read-only reviews merge-base(main, head)..head; the wrapper proves the
+   actual model from the session record. The verdict goes to a PR comment and to the
+   owner's `codex-review/gpt-6.1-sol` status on the exact head.
+   Validate findings, fix only CONFIRMED ones, push, then python tools/pr_review.py --resume
+   until APPROVE. A new head needs a new verdict. Confirmed quota exhaustion records
+   quota-pending (publishable, not approval); backfill later via --pending.
 
 ## Promotion
 Fetch main again. It must be an ancestor of the exact successful candidate;
 otherwise integrate without overwriting CMS/user changes and revalidate.
 With the clean candidate checked out:
     git push origin FULL_SHA:refs/heads/main
-The pre-push hook independently retrieves GitHub evidence; no cached approval flag,
+The pre-push hook independently retrieves GitHub evidence (candidate CI plus the PR
+review status covering every promoted commit); no cached approval flag,
 environment override, skip token or --no-verify is accepted.
 Then run:
     python _delivery.py verify FULL_SHA --phase main --wait 1800
@@ -73,6 +80,6 @@ The website Vercel gate protects Git-triggered production builds independently o
 local hooks. It does not prevent an administrator from manually disabling the
 ignored-build check or promoting a prebuilt deployment; those bypasses are forbidden.
 No branch protection settings, CMS saving API or production schedules are silently
-changed. Follow-up automation must use this workflow even for empty audit commits.
+changed. Review results live on the PR; no audit commits are created.
 GitHub/Vercel outages are blockers, not code bugs to paper over. Keep results compact;
 ordinary bounded polling does not need model reasoning on every interval.

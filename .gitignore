@@ -36,6 +36,8 @@ pytest-report.xml
 # Local audit trail for the mandatory Claude Opus 5 diff gate.
 .claude-review/
 .gpt-review/
+# Codex review wrapper state (tools/codex_review.sh, tools/pr_review.py needs a clean tree).
+.codex-review/
 
 # Cloudflare local credentials and emulator state must never be committed.
 .wrangler/

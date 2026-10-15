@@ -30,6 +30,11 @@
 #   CODEX_REVIEW_VERIFICATION  本機驗證結果摘要(單/多行字串),會填入 prompt。
 #   CODEX_REVIEW_HARDEN=0      關閉 web_search/apps 的額外 -c 硬化(若該 CLI 版本不認這些鍵)。
 #   CODEX_REVIEW_STRICT=0      關閉 --strict-config。
+#   CODEX_REVIEW_BASE / CODEX_REVIEW_TIP  由 tools/pr_review.py 設定(每個 PR review 一次,
+#                              使用者 2026-10-15 定案):merge-base(main, head) 與 exact PR head。
+#
+# 結束碼:0 APPROVE、2 REQUEST_CHANGES、4 限流、5 無明確裁決、6 無法證明實際模型
+# (session rollout 驗證失敗,不算一輪)、64 用法錯誤。
 set -uo pipefail
 
 MODEL="gpt-6.1-sol"
@@ -132,6 +137,41 @@ extract_findings() {
 }
 is_rate_limited() { grep -qiE 'usage limit|rate limit|try again at' "$RAW_LOG" 2>/dev/null; }
 
+# ---------- PR 範圍(tools/pr_review.py,使用者 2026-10-15 定案:每個 PR review 一次) ----------
+# pr_review.py 以 CODEX_REVIEW_BASE=merge-base(main, head)、CODEX_REVIEW_TIP=exact PR head 呼叫;
+# 兩者都必須是完整 SHA,且審查只能在已 checkout 的 exact head 上跑(Codex 讀的是這個工作樹)。
+TIP="${CODEX_REVIEW_TIP:-HEAD}"
+if [ -n "${CODEX_REVIEW_BASE:-}" ]; then
+  printf '%s' "$CODEX_REVIEW_BASE" | grep -Eq '^[0-9a-f]{40}$' \
+    || die "CODEX_REVIEW_BASE 必須是完整 40 碼 SHA。"
+fi
+if [ "$TIP" != "HEAD" ]; then
+  printf '%s' "$TIP" | grep -Eq '^[0-9a-f]{40}$' || die "CODEX_REVIEW_TIP 必須是完整 40 碼 SHA。"
+  [ "$(git -C "$REPO_ROOT" rev-parse HEAD)" = "$TIP" ] \
+    || die "CODEX_REVIEW_TIP 不是目前 checkout 的 HEAD;請在 exact PR head 上審查。"
+fi
+
+# ---------- 實際身分(證明不了就不算一輪) ----------
+# 逐 commit 閘門(tools/gpt_diff_review.py)不再執行後,PR review 的模型證明在這裡做:
+# 有裁決時,本次 session 的 rollout 每一回合都必須是 gpt-6.1-sol / xhigh / read-only、
+# 屬於本 repo,且不早於本次呼叫。失敗 → exit 6,pass/session 紀錄不前進,不得當成裁決。
+REVIEW_STARTED_AT=""
+verify_identity() {  # $1 = resume 時預期的 session id(小寫);第一輪留空
+  case "$(extract_result)" in APPROVE|REQUEST_CHANGES) ;; *) return 0 ;; esac
+  local sid
+  sid="$(extract_session_id | tr 'A-Z' 'a-z')"
+  if [ -z "$sid" ]; then
+    echo "[codex-review] ERROR: 取不到本次 session id,無法證明實際模型;不算一輪。" >&2; exit 6
+  fi
+  if [ -n "${1:-}" ] && [ "$sid" != "$1" ]; then
+    echo "[codex-review] ERROR: 實際 session($sid)與續審 session($1)不符;不算一輪。" >&2; exit 6
+  fi
+  if ! "$PY_BIN" -X utf8 "$REPO_ROOT/tools/gpt_diff_review.py" verify-session \
+      --session "$sid" --since "$REVIEW_STARTED_AT" >&2; then
+    echo "[codex-review] ERROR: 無法證明本輪是 $MODEL / xhigh / read-only;不算一輪。" >&2; exit 6
+  fi
+}
+
 log_usage() {  # $1 mode $2 effort $3 base $4 pass
   local sid tok res fnd
   sid="$(extract_session_id)"; [ -n "$sid" ] || sid="unavailable"
@@ -213,9 +253,16 @@ files, run tests, builds, linters, package managers, application code, or ad hoc
 probes, and do not use web search, browser, apps, connectors, or external MCP
 tools. End with exactly APPROVE or REQUEST_CHANGES.
 RP
+  # PR flow: the head moved after the fixes; name the exact range under review.
+  if [ -n "${CODEX_REVIEW_BASE:-}" ] && [ "$TIP" != "HEAD" ]; then
+    RESUME_PROMPT="$RESUME_PROMPT
+
+The pull request range is now ${CODEX_REVIEW_BASE}..${TIP}; inspect the corrections with git diff/log inside that range."
+  fi
 
   echo "[codex-review] resume session=$SID effort=$RESUME_EFFORT (pass $THIS_PASS)"
   : > "$LAST_MSG"
+  REVIEW_STARTED_AT="$(date +%s)"
   # resume 無 --cd:改在 subshell 內 cd 進 repo,讓 Codex 在正確目錄跑 git。
   ( cd "$REPO_ROOT" && "$CODEX_BIN" exec resume "$SID" "${FLAGS[@]}" "$RESUME_PROMPT" ) 2>&1 | tee "$RAW_LOG"
   CODEX_RC=${PIPESTATUS[0]}
@@ -223,6 +270,7 @@ RP
   if [ "$CODEX_RC" -ne 0 ] && [ ! -s "$LAST_MSG" ]; then
     die "codex exec resume 啟動失敗(exit=$CODEX_RC),未產生任何 review;不計為一輪(pass 仍為 $PREV_PASS,修正後可再試)。"
   fi
+  verify_identity "$SID"
   echo "$THIS_PASS" > "$PASS_FILE"
   RESULT="$(log_usage "resume" "$RESUME_EFFORT" "$RESUME_BASE" "$THIS_PASS")"
   echo; echo "[codex-review] result=$RESULT (pass $THIS_PASS)"
@@ -378,6 +426,11 @@ PROMPT
 # Codex review P2 兩輪:跳脫在 GNU sed 上實測不可靠、字元白名單又誤拒合法 ref,r/d 才是正解;
 # 亦與 .ps1 的字面 .Replace() 行為對齊)。置換失敗即中止,不帶壞 prompt 呼叫 codex。
 printf '%s\n' "$BASE" > "$TMP/base.txt"
+if [ -n "${CODEX_REVIEW_BASE:-}" ]; then
+  # PR flow (tools/pr_review.py): the whole pull request is one committed range.
+  printf '\nREVIEW RANGE:\nCommitted range %s..%s (one whole pull request: merge-base of main .. exact PR head).\n' \
+    "$CODEX_REVIEW_BASE" "$TIP" >> "$TMP/base.txt"
+fi
 sed -i -e "s|{{MODE}}|$MODE|" \
        -e "s|{{EXTRA_FILE_LIMIT}}|$EXTRA_FILE_LIMIT|" -e "s|{{FINDING_LIMIT}}|$FINDING_LIMIT|" "$TMP/prompt.txt" \
   || die "prompt 構建失敗(sed 置換錯誤)"
@@ -388,12 +441,14 @@ sed -i -e "/{{VERIFICATION_RESULTS}}/r $TMP/ver.txt" -e "/{{VERIFICATION_RESULTS
 build_flags "$EFFORT"
 echo "[codex-review] mode=$MODE effort=$EFFORT base=$BASE model=$MODEL (pass 1, read-only, user-config ignored)"
 : > "$LAST_MSG"
+REVIEW_STARTED_AT="$(date +%s)"
 "$CODEX_BIN" exec "${FLAGS[@]}" "$(cat "$TMP/prompt.txt")" 2>&1 | tee "$RAW_LOG"
 CODEX_RC=${PIPESTATUS[0]}
 # codex 啟動失敗(參數錯誤等)且完全沒產生 review → 不消耗額度、不記為一輪、不寫 pass。
 if [ "$CODEX_RC" -ne 0 ] && [ ! -s "$LAST_MSG" ]; then
   die "codex exec 啟動失敗(exit=$CODEX_RC),未產生任何 review。請檢查 CLI 版本與旗標。"
 fi
+verify_identity ""
 
 echo 1 > "$PASS_FILE"
 RESULT="$(log_usage "$MODE" "$EFFORT" "$BASE" 1)"

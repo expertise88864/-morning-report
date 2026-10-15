@@ -13,44 +13,24 @@ SHA = "a" * 40
 
 
 class DeliveryTests(unittest.TestCase):
-    def test_cli_preserves_claude_gate_failure_and_stdin(self):
-        # 舊 policy(沒有 review_gate)仍然走 Claude 閘門 —— 相容路徑不得變成「沒有審查」
-        cfg = {k: v for k, v in d.policy().items() if k != "review_gate"}
-        cfg["claude_hook"] = True
+    def test_pre_push_runs_no_per_push_review_gate(self):
+        """2026-10-15: one review per PR; pushing never launches a diff-review script."""
+        cfg = d.policy()
+        self.assertIs(cfg.get("pr_review"), True)
+        self.assertNotIn("review_gate", cfg)
+        self.assertNotIn("claude_hook", cfg)
         updates = f"HEAD {SHA} refs/heads/codex/test {'0'*40}\n"
         with patch.object(d, "policy", return_value=cfg), \
              patch.object(d.sys, "argv", ["_delivery.py", "pre-push"]), \
              patch.object(d.sys, "stdin", io.StringIO(updates)), \
              patch.object(d, "pre_push") as gate, \
-             patch.object(d.subprocess, "run", return_value=subprocess.CompletedProcess([], 4)) as review:
-            self.assertEqual(d.main(), 4)
+             patch.object(d.subprocess, "run") as review:
+            self.assertEqual(d.main(), 0)
             gate.assert_called_once_with([updates], "origin", cfg)
-            self.assertEqual(review.call_args.args[0][1:4], ["tools/claude_diff_review.py", "push", "--remote-name"])
-            self.assertEqual(review.call_args.kwargs["input"], updates)
+            review.assert_not_called()
 
-    def test_policy_routes_pre_push_to_the_gpt_gate_with_stdin(self):
-        """2026-10-14 起強制 diff review 是 gpt-6.1-sol high。"""
-        cfg = d.policy()
-        self.assertEqual(cfg.get("review_gate"), "tools/gpt_diff_review.py")
-        updates = f"HEAD {SHA} refs/heads/codex/test {'0'*40}\n"
-        with patch.object(d, "policy", return_value=cfg), \
-             patch.object(d.sys, "argv", ["_delivery.py", "pre-push"]), \
-             patch.object(d.sys, "stdin", io.StringIO(updates)), \
-             patch.object(d, "pre_push"), \
-             patch.object(d.subprocess, "run", return_value=subprocess.CompletedProcess([], 4)) as review:
-            self.assertEqual(d.main(), 4)
-            self.assertEqual(review.call_args.args[0][1:4], ["tools/gpt_diff_review.py", "push", "--remote-name"])
-            self.assertEqual(review.call_args.kwargs["input"], updates)
-
-    def test_unknown_review_gate_blocks_instead_of_skipping_review(self):
-        with self.assertRaises(d.Blocked):
-            d.review_gate({"review_gate": "tools/anything_else.py"})
-        self.assertEqual(d.review_gate({}), "")
-        self.assertEqual(d.review_gate({"claude_hook": True}), "tools/claude_diff_review.py")
-
-    def test_failed_delivery_gate_never_reaches_claude_or_success(self):
-        with patch.object(d, "policy", return_value={**d.policy(), "claude_hook": True}), \
-             patch.object(d.sys, "argv", ["_delivery.py", "pre-push"]), \
+    def test_failed_delivery_gate_blocks(self):
+        with patch.object(d.sys, "argv", ["_delivery.py", "pre-push"]), \
              patch.object(d.sys, "stdin", io.StringIO("")), \
              patch.object(d, "pre_push", side_effect=d.Blocked("missing CI")), \
              patch.object(d.subprocess, "run") as review:
@@ -194,8 +174,76 @@ class DeliveryTests(unittest.TestCase):
         with self.assertRaises(d.Blocked):
             d.preview_url(Fake(), SHA)
 
+    def _review_api(self, *statuses):
+        class Fake:
+            def pages(self, path):
+                assert path == f"/commits/{SHA}/statuses"
+                return list(statuses)
+        return Fake()
+
+    def _status(self, state="success", description=None, login="owner", context=None, ident=1):
+        return {"id": ident, "state": state, "context": context or d.REVIEW_CONTEXT,
+                "description": description or f"APPROVE base={'b'*40}",
+                "creator": {"login": login}, "target_url": "https://github.com/owner/repo/pull/1"}
+
+    def test_pr_review_approve_covering_main_passes(self):
+        cfg = {"repository": "owner/repo"}
+        with patch.object(d.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            result = d.pr_review(self._review_api(self._status()), cfg, SHA, "c"*40)
+        self.assertEqual(result["pr_review"], "APPROVE")
+        self.assertEqual(run.call_args.args[0][-2:], ["b"*40, "c"*40])
+
+    def test_pr_review_blocks_missing_failed_foreign_or_malformed(self):
+        cfg = {"repository": "owner/repo"}
+        cases = ([], [self._status("failure", f"REQUEST_CHANGES base={'b'*40}")],
+                 [self._status(login="someone-else")], [self._status(context="other")],
+                 [self._status("pending", f"APPROVE base={'b'*40}")],
+                 [self._status(description="APPROVE")],
+                 [self._status(ident=1), self._status("failure", f"REQUEST_CHANGES base={'b'*40}", ident=2)])
+        for statuses in cases:
+            with self.subTest(statuses=statuses), \
+                 patch.object(d.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)), \
+                 self.assertRaises(d.Blocked):
+                d.pr_review(self._review_api(*statuses), cfg, SHA, "c"*40)
+
+    def test_pr_review_range_must_cover_promoted_commits(self):
+        with patch.object(d.subprocess, "run", return_value=subprocess.CompletedProcess([], 1)), \
+             self.assertRaises(d.Blocked):
+            d.pr_review(self._review_api(self._status()), {"repository": "owner/repo"}, SHA, "c"*40)
+
+    def test_pr_review_quota_pending_publishes_but_is_reported(self):
+        status = self._status("pending", f"quota-pending base={'b'*40}")
+        with patch.object(d.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)), \
+             patch.object(d.sys, "stderr", io.StringIO()) as err:
+            result = d.pr_review(self._review_api(status), {"repository": "owner/repo"}, SHA, "c"*40)
+        self.assertEqual(result["pr_review"], "quota-pending")
+        self.assertIn("not approved", err.getvalue())
+
+    def test_candidate_cannot_drop_base_pr_review(self):
+        self.assertTrue(d.requires_pr_review({"pr_review": False}, {"pr_review": True}))
+        self.assertTrue(d.requires_pr_review({"pr_review": True}, {}))
+        self.assertFalse(d.requires_pr_review({}, {}))
+        with self.assertRaises(d.Blocked):
+            d.validate_policy({**d.policy(), "pr_review": "yes"})
+
+    def test_main_promotion_checks_pr_review_required_by_production_policy(self):
+        """The previous main's policy decides even when the candidate drops pr_review."""
+        prev = "b" * 40
+        outputs = {("remote", "get-url", "--push", "origin"): "https://github.com/owner/repo.git",
+                   ("rev-parse", "FETCH_HEAD"): prev,
+                   ("show", f"{prev}:_delivery_policy.json"): '{"pr_review": true}'}
+        with patch.object(d, "git", side_effect=lambda *a: outputs[a]), \
+             patch.object(d, "clean"), patch.object(d.subprocess, "run"), \
+             patch.object(d, "API"), patch.object(d, "verify", return_value=[]), \
+             patch.object(d, "pr_review", side_effect=d.Blocked("no review")) as review, \
+             self.assertRaises(d.Blocked):
+            d.pre_push([f"HEAD {SHA} refs/heads/main {prev}"], "origin",
+                       {"repository": "owner/repo", "pr_review": False})
+        review.assert_called_once()
+
     def test_morning_dry_run_routing(self):
-        self.assertFalse(d.needs_morning_preview(["AGENTS.md", "_delivery.py", "tests/test_email_quality_0906.py"]))
+        self.assertFalse(d.needs_morning_preview(["AGENTS.md", "_delivery.py", "tests/test_email_quality_0906.py",
+                                                  "tools/pr_review.py", ".githooks/pre-push"]))
         for path in ("morning_report.py", "news_rules.py", "requirements.lock", ".github/workflows/morning-report-b.yml"):
             self.assertTrue(d.needs_morning_preview([path]))
 

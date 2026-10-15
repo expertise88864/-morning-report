@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """GPT-6.1-Sol (Codex CLI) diff review gate with explicitly marked quota deferral.
 
+2026-10-15 使用者定案:改為**每個 PR review 一次**(`tools/pr_review.py`),不再逐 commit /
+逐 push 審查;pre-commit、commit-msg hook 已移除,`_delivery.py` 也不再呼叫本閘門。仍在使用的
+入口:`which`(`tools/codex_review.sh` 選 CLI)、`verify-session`(證明 PR review 實際模型)、
+`pending`(列出切換前帶 pending trailer 的歷史 commit,以便補審;結果記在 PR,不再寫 audit commit)。
+下方其餘內容是 2026-10-14 逐 commit 閘門的歷史說明。
+
 使用者 2026-10-14 定案:**之後任何 diff review 一律改由 gpt-6.1-sol / high 執行**;
 額度不足時標記 pending、照常 commit+push,額度恢復後補審,審查意見逐條判斷是否採用。
 既有 Claude Opus 5.5 閘門(`tools/claude_diff_review.py`)保留,只用來消化切換前
@@ -323,6 +329,39 @@ def rollout_evidence(thread_id: str, sessions_root: Path | None = None) -> dict:
     return {"rollout": str(hits[0]), "cli_version": cli_version, "turns": turns}
 
 
+def session_proof(thread_id: str, since: float, sessions_root: Path | None = None,
+                  repo: Path | None = None) -> dict:
+    """`tools/codex_review.sh`(PR review 的唯讀審查器)用:證明**這一次呼叫**的 session。
+
+    使用者 2026-10-15 改為每個 PR review 一次(`tools/pr_review.py`),逐 commit 閘門不再
+    執行,但「證明不了實際模型就 fail closed」不變:除了 `rollout_evidence` 的每回合
+    MODEL / EFFORT / read-only,最後一個回合還必須屬於本 repo,且時間不早於本次呼叫開始。
+    """
+    sid = (thread_id or "").lower()
+    if not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", sid):
+        raise ReviewError("cannot prove the reviewer model: invalid session id")
+    evidence = rollout_evidence(sid, sessions_root)
+    latest: dict = {}
+    for line in Path(evidence["rollout"]).read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(item, dict) and item.get("type") == "turn_context":
+            latest = item
+    try:
+        stamp = datetime.fromisoformat(str(latest.get("timestamp", "")).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ReviewError("cannot prove this invocation ran: turn has no valid timestamp") from exc
+    if stamp.tzinfo is None or stamp.timestamp() < since - 1:
+        raise ReviewError("cannot prove this invocation ran: the latest turn predates it")
+    payload = latest.get("payload") if isinstance(latest.get("payload"), dict) else {}
+    cwd = str(payload.get("cwd") or "")
+    if not cwd or Path(cwd).resolve() != (repo or ROOT).resolve():
+        raise ReviewError("cannot prove the review ran in this repository")
+    return {**evidence, "session": sid, "turn_timestamp": latest.get("timestamp")}
+
+
 def _commands_ran(events: list[dict]) -> int:
     """審查者實際成功執行的唯讀指令數;0 代表它什麼都沒讀到。"""
     return sum(1 for item in events
@@ -443,15 +482,29 @@ def commit_message(path: str) -> int:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("scope", choices=("worktree", "staged", "push", "commit", "commit-msg", "pending", "which"))
+    parser.add_argument("scope", choices=("worktree", "staged", "push", "commit", "commit-msg", "pending", "which",
+                                          "verify-session"))
     parser.add_argument("--remote-name", default="origin")
     parser.add_argument("--commit")
     parser.add_argument("--message-file")
+    parser.add_argument("--session", help="verify-session: the wrapper's session id")
+    parser.add_argument("--since", type=float, help="verify-session: epoch seconds the invocation started")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.scope == "verify-session":
+        try:
+            if args.since is None:
+                raise ReviewError("--since is required")
+            proof = session_proof(args.session or "", args.since)
+        except (ReviewError, OSError) as exc:
+            print(f"{LOG_PREFIX} BLOCKED: {exc}", file=sys.stderr)
+            return 4
+        print(f"{LOG_PREFIX} verified {MODEL}/{EFFORT}/read-only session {proof['session']} "
+              f"({proof['turns']} turn(s), cli {proof['cli_version'] or 'unknown'})")
+        return 0
     me = sys.modules[__name__]
     ranges: list[PushRange] = []
     before: str | None = None

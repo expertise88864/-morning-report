@@ -354,21 +354,71 @@ def test_forged_claude_audit_is_rejected(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# 6. 接線:hooks、delivery policy、installer、gitignore 都指向新閘門
+# 6. 接線:2026-10-15 起每個 PR review 一次;不再有逐 commit / 逐 push 閘門
 # ---------------------------------------------------------------------------
-def test_hooks_policy_installer_and_gitignore_use_the_gpt_gate():
-    assert "gpt_diff_review.py staged" in (ROOT / ".githooks" / "pre-commit").read_text(encoding="utf-8")
-    assert "gpt_diff_review.py commit-msg" in (ROOT / ".githooks" / "commit-msg").read_text(encoding="utf-8")
+def test_no_per_commit_hooks_and_policy_requires_pr_review():
+    assert not (ROOT / ".githooks" / "pre-commit").exists()
+    assert not (ROOT / ".githooks" / "commit-msg").exists()
     policy = json.loads((ROOT / "_delivery_policy.json").read_text(encoding="utf-8"))
-    assert policy["review_gate"] == "tools/gpt_diff_review.py"
+    assert policy["pr_review"] is True
+    assert "review_gate" not in policy and "claude_hook" not in policy
     installer = (ROOT / "tools" / "install_claude_review_hooks.ps1").read_text(encoding="utf-8")
-    assert "gpt_diff_review.py" in installer and "gpt-6.1-sol" in installer
-    r = subprocess.run(["git", "check-ignore", "-q", ".gpt-review/x"], cwd=ROOT, capture_output=True)
-    assert r.returncode == 0, ".gpt-review/ 必須被忽略(快照與 pending 紀錄放在那裡)"
+    assert "pr_review.py" in installer and "gpt-6.1-sol" in installer
+    assert "pre-commit" not in installer and "commit-msg" not in installer
+    for ignored in (".gpt-review/x", ".codex-review/x"):
+        r = subprocess.run(["git", "check-ignore", "-q", ignored], cwd=ROOT, capture_output=True)
+        assert r.returncode == 0, f"{ignored} 必須被忽略(pr_review.py 要求乾淨工作樹)"
     for wrapper in ("codex_review.sh", "codex_review.ps1"):
         text = (ROOT / "tools" / wrapper).read_text(encoding="utf-8")
         assert "gpt-6.1-sol" in text and "gpt-5.6-sol" not in text
         assert "gpt_diff_review.py" in text, "手動外審要用與閘門同一個 CLI 選擇邏輯"
+
+
+def _turn_rollout(root: Path, cwd: str, stamp: str = "2026-10-15T08:00:00Z",
+                  turns=(("gpt-6.1-sol", "xhigh", "read-only"),)) -> Path:
+    f = _rollout(root, list(turns))
+    rows = [json.loads(line) for line in f.read_text(encoding="utf-8").splitlines()]
+    for row in rows:
+        if row["type"] == "turn_context":
+            row["timestamp"] = stamp
+            row["payload"]["cwd"] = cwd
+    f.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    return f
+
+
+def test_session_proof_requires_this_repo_and_this_invocation(tmp_path):
+    """PR review(tools/codex_review.sh)沒有逐 commit 閘門可依靠:實際模型、repo 與時間都要證明。"""
+    sessions = tmp_path / "sessions"
+    _turn_rollout(sessions, str(ROOT))
+    since = 1_792_051_200  # 2026-10-15T08:00:00Z
+    proof = gpt.session_proof(THREAD, since, sessions)
+    assert proof["session"] == THREAD and proof["turns"] == 1
+    with pytest.raises(gpt.ReviewError, match="predates"):
+        gpt.session_proof(THREAD, since + 60, sessions)
+    with pytest.raises(gpt.ReviewError, match="repository"):
+        gpt.session_proof(THREAD, since, sessions, repo=tmp_path)
+    with pytest.raises(gpt.ReviewError, match="session id"):
+        gpt.session_proof("not-a-session", since, sessions)
+
+
+def test_session_proof_fails_closed_on_wrong_model(tmp_path):
+    sessions = tmp_path / "sessions"
+    _turn_rollout(sessions, str(ROOT), turns=(("gpt-6.1-sol", "high", "read-only"),))
+    with pytest.raises(gpt.ReviewError):
+        gpt.session_proof(THREAD, 0, sessions)
+    assert gpt.main(["verify-session", "--session", THREAD]) == 4, "--since 缺少 → 擋下"
+
+
+def test_wrapper_verifies_identity_and_binds_the_pr_range():
+    text = (ROOT / "tools" / "codex_review.sh").read_text(encoding="utf-8")
+    assert text.count('verify_identity ""') == 1 and text.count('verify_identity "$SID"') == 1
+    first = text.split("# ================= 第一輪", 1)[1]
+    assert first.index('verify_identity ""') < first.index('echo 1 > "$PASS_FILE"')
+    resume = text.split("# ================= resume", 1)[1].split("# ================= 第一輪", 1)[0]
+    assert resume.index('verify_identity "$SID"') < resume.index('echo "$THIS_PASS" > "$PASS_FILE"')
+    assert "verify-session" in text and "exit 6" in text
+    assert "one whole pull request: merge-base of main .. exact PR head" in text
+    assert "The pull request range is now ${CODEX_REVIEW_BASE}..${TIP}" in text
 
 
 def test_review_child_marks_only_this_repo_safe(monkeypatch, tmp_path):

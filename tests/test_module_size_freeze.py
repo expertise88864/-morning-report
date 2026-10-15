@@ -246,8 +246,8 @@ MODULE_CEILINGS = {
     "weekend_quality.py": 130,
     # 2026-09-06: candidate delivery gate and offline contract tests are new root
     # modules. Freeze their measured initial sizes; no existing cap is raised.
-    "_delivery.py": 341,  # 2026-10-14 policy-selected review gate (gpt-6.1-sol); prior 329
-    "_test_delivery.py": 204,  # 2026-10-14 gpt gate routing + unknown-gate block tests; prior 182
+    "_delivery.py": 371,  # 2026-10-15 per-PR review status gate replaces the per-push gate; prior 341
+    "_test_delivery.py": 252,  # 2026-10-15 PR review status/coverage/policy-precedence tests; prior 204
     "news_coverage.py": 120,
     "finance_editorial.py": 220,  # 新模組首版含去重原始證據保留,不提高既有模組上限。
     "news_impact.py": 100,

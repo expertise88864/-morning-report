@@ -1,8 +1,7 @@
 {
   "repository": "expertise88864/-morning-report",
   "require_pr": false,
-  "claude_hook": true,
-  "review_gate": "tools/gpt_diff_review.py",
+  "pr_review": true,
   "morning_dry_run": false,
   "workflows": [
     {

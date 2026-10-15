@@ -48,11 +48,11 @@ echo [setup] Done. Using branch: %REMOTE_BRANCH%
 echo.
 
 :stage
-echo === Installing mandatory Claude Opus 5 review hooks ===
+echo === Installing the pre-push delivery hook ===
 powershell -NoProfile -ExecutionPolicy Bypass -File "tools\install_claude_review_hooks.ps1"
 if errorlevel 1 (
   echo.
-  echo [ERROR] Claude review hooks could not be installed. Commit is blocked.
+  echo [ERROR] The delivery hook could not be installed. Commit is blocked.
   pause
   exit /b 1
 )

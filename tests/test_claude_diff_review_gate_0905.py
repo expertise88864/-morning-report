@@ -237,35 +237,34 @@ def test_failed_review_does_not_persist_full_response(monkeypatch, tmp_path):
     assert record["retry_after"] == "12:50am (Asia/Taipei)"
 
 
-def test_hooks_cover_commit_and_push_and_installer_is_used_by_batch_entrypoint():
-    pre_commit = (ROOT / ".githooks" / "pre-commit").read_text(encoding="utf-8")
+def test_push_hook_is_delivery_only_and_installer_is_used_by_batch_entrypoint():
     pre_push = (ROOT / ".githooks" / "pre-push").read_text(encoding="utf-8")
     batch = (ROOT / "commit_push.bat").read_text(encoding="utf-8", errors="replace")
     installer = (ROOT / "tools" / "install_claude_review_hooks.ps1").read_text(
         encoding="utf-8"
     )
 
-    # 2026-10-14 起強制閘門是 gpt-6.1-sol(tools/gpt_diff_review.py);Claude 閘門只補審歷史佇列
-    assert "gpt_diff_review.py staged" in pre_commit
+    # 2026-10-15 起每個 PR review 一次(tools/pr_review.py):沒有逐 commit / 逐 push 審查 hook
+    assert not (ROOT / ".githooks" / "pre-commit").exists()
+    assert not (ROOT / ".githooks" / "commit-msg").exists()
     assert '_delivery.py pre-push --remote' in pre_push
     delivery = (ROOT / '_delivery.py').read_text(encoding='utf-8')
-    assert '[sys.executable, gate, "push", "--remote-name", args.remote]' in delivery
-    assert 'REVIEW_GATES = ("tools/gpt_diff_review.py", "tools/claude_diff_review.py")' in delivery
-    assert 'cwd=ROOT, input="".join(lines)' in delivery
+    assert "REVIEW_GATES" not in delivery and "review_gate(" not in delivery
+    assert "requires_pr_review(cfg, base_cfg)" in delivery
     assert "install_claude_review_hooks.ps1" in batch
     assert "config --local core.hooksPath .githooks" in installer
     assert "100755" in installer
-    assert "python3" in pre_commit and "python3" in pre_push
+    assert "python3" in pre_push
     attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
     assert ".githooks/* text eol=lf" in attributes
     modes = subprocess.run(
-        ["git", "ls-files", "--stage", "--", ".githooks/pre-commit", ".githooks/pre-push"],
+        ["git", "ls-files", "--stage", "--", ".githooks/"],
         cwd=ROOT,
         check=True,
         capture_output=True,
         text=True,
     ).stdout.splitlines()
-    assert len(modes) == 2 and all(line.startswith("100755 ") for line in modes)
+    assert len(modes) == 1 and modes[0].startswith("100755 ") and modes[0].endswith(".githooks/pre-push")
 
 
 def test_remote_ref_deletion_is_still_a_reviewed_diff(monkeypatch):
@@ -349,16 +348,19 @@ def test_orphan_branch_falls_back_to_empty_tree_when_merge_base_is_absent(
     assert GATE._fallback_new_branch_base("tip", "origin") == "empty-tree"
 
 
-def test_agent_policies_require_every_diff_and_forbid_bypass_or_model_fallback():
+def test_agent_policies_require_every_pr_review_and_forbid_bypass_or_model_fallback():
+    # 2026-10-15:每個 PR review 一次(取代逐 commit 的「所有 diff」閘門與 PENDING trailer)
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     claude = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     for text in (agents, claude):
         assert "claude-opus-5-5" in text
-        assert "所有 diff" in text
+        assert "每個 PR review 一次" in text
+        assert "python tools/pr_review.py" in text
         assert "不得 fallback" in text
         assert "--no-verify" in text
-        assert "PENDING" in text
-        assert "自動" in text
+        assert "quota-pending" in text
+        assert "純文件變更也走候選流程" in text
+        assert "純文件與空 audit commit 也走候選流程" not in text
     assert "git fetch && git reset --hard origin/main" not in claude
 
 

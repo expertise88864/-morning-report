@@ -274,7 +274,7 @@ class RebuttalTests(unittest.TestCase):
 DIFF_SAMPLES = ("diff --git a/x.py b/x.py", "    diff --git a/x.py b/x.py", "\t@@ -1,2 +1,2 @@",
                 "  index 1234abc..5678def 100644", "    --- a/x.py", "    +++ b/x.py")
 EVIDENCE_SAMPLES = ("Finding 1 is REJECTED: _delivery_review.py:40 already checks the owner.",
-                    "---", "See tests/test_x.py::test_y (line 12) -- it covers this path.")
+                    "---", "See the delivery suite, test_y (line 12) -- it covers this path.")
 
 
 class RebuttalDiffMarkerTests(unittest.TestCase):

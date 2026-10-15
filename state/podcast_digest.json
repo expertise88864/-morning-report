@@ -2223,6 +2223,79 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "2228a20d-2c3e-48d8-9538-8bb8e3a21641",
+        "title": "EP345. AI 基建股大跌中、Meta 衝到最前沿、SPCX 電信商之夢 | M觀點",
+        "published": "Thu, 15 Oct 2026 15:42:54 GMT",
+        "processed_at": "2026-10-15T18:46:43Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為本週AI基建股大跌主因是Coreweave公司債二級市場利率飆升至15%（遠高於垃圾債平均8-9%），反映市場資金對AI算力借貸信心急凍，將壓縮未來AI infra設備採購，因此這波修正「跌得合理」。",
+            "主持人指出Broadcom執行長與馬斯克的看空言論只是嘴砲，真正利空是Coreweave超高槓桿（Debt to Equity約7倍）與高利率，若硬借高利貸擴張反而更不健康。",
+            "主持人認為AI infra股修正可能達20-30%，但長線前景無大問題，自己已將主動部位AI infra比重從25%降至20%，並會在跌15-20%小幅加碼、跌30-40%大幅加碼。",
+            "主持人認為Meta新發布的Muse Wonder/Wonderful雖擠進前沿模型，但CP值不佳（Wonder每任務成本4.5美元，是GPT-6.1 Soul的6倍），市場影響力不大，難吸引開發者改用Muse Code。",
+            "主持人研判SpaceX認真進軍美國電信業，以小型基地台模式可服務兩三千萬用戶，估值約1000億美元，但相較其AI算力業務（主持人保守估1兆美元）仍是小業務。"
+          ],
+          "tickers": [
+            {
+              "name": "MP Materials",
+              "code": "MP",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人表示自己持有MP，股價跌到某個位置就會加碼，目前對MP沒有擔心。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那我覺得這樣MP我基本上個人就是他跌到某個位置以後我都會加碼啦,那其實現在應該已經都跌到這個位置,所以我對MP是沒有什麼擔心的啦。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Nebius",
+              "code": "NBIS",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人已清倉Nebius，因SpaceX與Meta加入算力租賃競爭，資金轉向更大玩家。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "其實Nabius我已經清一陣子了,那最主要的原因是因為有兩個原因喔,一個是那個SpecsX開始非常認真做這個算力租賃的業務。然後前一陣子Meta不是也說他們也考慮要把他們這個算力這個出租嗎?那這兩個加起來之後我就想說,雖然我本來是非常看好這個算力不足這些Neo Cloud的一些機會,可是現在有更多的Player進來的,那我會先把這個壓軸壓在這幾家比較大的Player,那不是說Nabius一定不行喔,因為Nabius其實在Neo Cloud裡面的財務體制應該是最好的,但是反正對我來講我願意放在Neo Cloud的錢就一部分喔,所以既然有SpecsX可投,然後有這個Meta要加入的話,那對我來講就是我壓住Neo Cloud的資金轉換",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Coreweave",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人指出Coreweave債券利率飆至15%且Debt to Equity高達7倍，高槓桿導致市場憂慮，打擊AI infra需求。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "你知道嗎Coreweave這個比例是7Debt to Equity就是每一塊錢股東出錢他們8塊錢的資本裡面有7塊錢是借來的有一塊是股東出錢這個比例遠超過其他公司",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為本週AI基建股大跌的主因是Coreweave公司債二級市場利率飆至15%，反映資金對AI算力借貸收緊，因此這波修正是合理的，可能跌幅達20-30%；但AI長線前景無大問題，會逢低加碼。",
+          "action_view": "主持人已將主動部位AI infra比重從25%降至20%，並會在跌15-20%時小幅加碼，若跌30-40%則大幅加碼。",
+          "notable_quote": "我個人目前認為AI的長線前景應該還是沒什麼太大的問題但是這一波的確我覺得現在大家槓桿真的開很大所以我覺得市場資金害怕然後要說我覺得這是個正常的調節",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我個人目前認為AI的長線前景應該還是沒什麼太大的問題但是這一波的確我覺得現在大家槓桿真的開很大所以我覺得市場資金害怕然後要說我覺得這是個正常的調節"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "a92ebf6e-121c-42dc-997b-515d48dcd303",
         "title": "EP344. OpenAI 營收假警報、Anthropic 宗教化、曼報 Pro 完全解析 | M觀點",
         "published": "Mon, 12 Oct 2026 07:56:14 GMT",
@@ -3021,51 +3094,6 @@
           "notable_quote": "我覺得長線比短線重要啦，你不要去在意一天的漲跌幅，真的不是很重要。"
         },
         "shown_at": "2026-09-07T23:53:51Z"
-      },
-      {
-        "guid": "dfb3cae2-5386-444c-aa89-26e9d00f73e7",
-        "title": "EP333. Fable 5.1 霸氣登場、全美掀反資料中心浪潮、Tim Cook 時代落幕｜M觀點",
-        "published": "Thu, 03 Sep 2026 16:20:37 GMT",
-        "processed_at": "2026-09-03T18:01:35Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Fable 5.1 的 Artificial Analysis 66 分是「顯著最強」，讓原本 59–63 分的前沿模型全部往後退一級，並認為這會讓 Anthropic IPO 估值至少多 10%。",
-            "主持人指出 Fable 5.1 宣稱降價 25% 只限 cache read，實際每任務成本 3.39 美元比 Fable 5 的 3.14 美元更貴，也遠高於 GPT-5.6 Soul 的 0.95 美元，但整體仍給這發表「二壘安打」評價。",
-            "主持人更新對模型商品化的看法：最強模型智力會趨同但各有特色，類似 Toyota、Honda、Hyundai，企業會各有偏好，但沒有人能賺超額利潤。",
-            "他預測 Quark 4.7 約 63–64 分、不會贏 Fable 5.1；OpenAI Extra 有機會 65–66 分；Meta MuSpark 1.3 的 62 分是非 Anthropic 最強且成本便宜，代表 Zuckerberg 找對人。",
-            "主持人認為美國反 AI 資料中心的電價、用水、噪音三個理由多為假議題或可解決：電價影響每戶每月僅約 1 美元，封閉循環水與隔音可解，成本頂多增加 10–20%。",
-            "他主張 AI 資料中心是印鈔機，應直接發錢給附近居民（例如每月 50 美元）來逆轉民意，並認為中國網軍與進步左派在放大反對聲浪。",
-            "主持人給 Tim Cook 15 年 80–85 分：蘋果市值從 3,500 億到 4.7 兆美元，年化 19%；若配息再投入，15 年總報酬 2,788%（年化約 25%，同期 S&P 500 為 15%）；功勞是 iPhone 切分、服務營收與 Apple Silicon，敗筆是沒買特斯拉、放棄 Apple Car、AI 落後。",
-            "他給新 CEO John Ternes 三大考卷：iPhone 成長、AI 裝置市占（低於 30% 算失敗、超過 50% 算成功）、是否投入前沿模型；並重申他兩年前就看好 AI 耳機/智慧眼鏡，蘋果 AirPods 加鏡頭是跟進。"
-          ],
-          "tickers": [
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人給 Tim Cook 80–85 分，15 年配息再投入總報酬 2,788%，認為蘋果基本盤仍強，但 AI 與汽車失誤是美中不足。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 MuSpark 1.3 以 62 分和低成本成為非 Anthropic 最強模型，代表 Zuckerberg 找對人，重振 Meta AI 競爭力。"
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Gemini 3.8 Flash 以 59 分落入次前沿但具成本競爭力，主持人認為 Google 已追到看得到車尾，但同時被 Meta 搶走風頭。"
-            }
-          ],
-          "market_view": "主持人認為 AI 模型將維持通用商品化，各模型智力趨同後只能賺合理利潤；美國反 AI 資料中心聲浪雖升，但用電、水、噪音衝擊被誇大，可透過成本與直接回饋居民解決，不致阻礙長期 AI 建設。",
-          "action_view": "操作上可把 AI 模型公司視為無法賺超額利潤的競爭格局，不宜追捧定價權；AI 資料中心成本上升 10–20% 不需恐慌；長期持有強品牌（如蘋果）配息再投入的複利效果驚人，但蘋果新執行長能否贏下 AI 裝置與前沿模型仍需觀察。",
-          "notable_quote": "如果你在 2011 年 Tim Cook 上任時持有蘋果股票，配息再投入，15 年總報酬率是 2788%，年化報酬率 25%，遠超過同期 S&P 500 的 15%。"
-        },
-        "shown_at": "2026-09-03T23:46:20Z"
       }
     ]
   },

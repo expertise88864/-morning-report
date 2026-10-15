@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 38  # Oct09: delayed US quotes are not exchange holida
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 71  # Negative watch results require attributable evidence IDs.
+LUNA_XHIGH_VERSION = 72  # Oct15: no history ID means an empty historical_context.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -407,7 +407,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 """
 import news_research_context as _research  # noqa: E402
 import podcast_comparison as _podcast  # noqa: E402
-LUNA_DEVELOPER_INSTRUCTIONS += "\n" + _research.RESEARCH_RULES + "\n" + _podcast.RULES
+LUNA_DEVELOPER_INSTRUCTIONS += "\n" + _research.RESEARCH_RULES + _research.LUNA_HISTORY_RULES + "\n" + _podcast.RULES
 from reader_evidence_writing import COMPACT_JSON  # noqa: E402
 LUNA_DEVELOPER_INSTRUCTIONS += COMPACT_JSON
 def luna_user_payload(packet: dict) -> str:

@@ -14074,7 +14074,7 @@ def _backfill_machine_known_gaps(obj, packet: dict) -> None:
 
 
 def _prune_phantom_audit_ids(obj, packet: dict):
-    """**只修剪裝飾層**的幽靈引用(`relates_to`),證據欄位一律不動。
+    """**只修剪裝飾層**的幽靈引用(`relates_to`、`historical_context`),證據欄位一律不動。
 
     2026-08-07 flash E2E:模型每輪都多引一兩個不存在的 ID,而修補是整份
     重寫、修好這列又壞那列,一輪修補在結構上難以收斂。當時的做法是
@@ -14131,6 +14131,10 @@ def _prune_phantom_audit_ids(obj, packet: dict):
         _RUN_MANIFEST.setdefault("llm", {})["relates_to_pruned"] = dropped[:8]
         print(f"[llm] 修剪 {len(dropped)} 個 relates_to 的幽靈關聯"
               "(純裝飾層;證據欄位一律不修剪)", file=sys.stderr)
+    # 10/15 生產:多數駁回是沒附歷史 ID 的前情說明(本來就不印);整塊清空並留痕。
+    from news_research_context import prune_unsupported_history
+    if cleared := prune_unsupported_history(obj, packet):
+        _RUN_MANIFEST.setdefault("llm", {})["history_context_pruned"] = cleared[:8]
     return obj
 
 

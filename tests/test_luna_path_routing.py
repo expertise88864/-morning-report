@@ -754,6 +754,24 @@ def test_only_the_decorative_relates_to_is_pruned(luna_on, monkeypatch):
     assert mr._RUN_MANIFEST["llm"]["relates_to_pruned"], "修剪必須留痕,不得靜默"
 
 
+def test_uncited_historical_context_is_cleared_not_fatal(luna_on, monkeypatch):
+    """2026-10-15 生產:多數駁回是「寫了前情說明卻沒附歷史 ID」。
+    那段渲染層本來就不印;整塊清空後第一輪就該過,而且要留痕。"""
+    decorated = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    decorated["top_news_analysis"][0]["historical_context"] = {
+        "evolution": "未見匹配的歷史報導，無前情可比。", "evidence_ids": []}
+    calls = []
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: (calls.append(p), _response(decorated))[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("沒有引用的前情說明不該讓整條路徑落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    assert len(calls) == 1, "清空裝飾層之後第一輪就該過"
+    assert mr._RUN_MANIFEST["llm"]["history_context_pruned"] == [
+        "top_news_analysis[0]:evolution_without_history_id"], "清空必須留痕,不得靜默"
+
+
 def test_the_second_repair_carries_the_latest_candidate(luna_on, monkeypatch):
     """第二輪帶的要是**第二版**(最新被拒的),不是第一版 ——
     帶錯版本的話「照抄」會把第一輪的修正倒回去。"""

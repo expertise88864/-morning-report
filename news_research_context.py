@@ -34,6 +34,8 @@ confirmation_signal 與 invalidation_signal 必須可觀察，不能把「市場
 回答不了就具體揭露缺少的證據，不增加推測性步驟來湊深度，不自創機率或改 Python 分數。
 研究計畫、取材偏好、來源涵蓋統計只供內部使用，不得在晨報透露。
 """
+LUNA_HISTORY_RULES = """historical_context：該文章在 research.contexts 有匹配歷史 ID 才寫 evolution 並照抄 ID 進 evidence_ids（無新變化也引用該 ID 再說未見新增證據）；沒有匹配 ID 時 evolution 與 evidence_ids 一律留空，不寫「無前情」之類說明，不得借用其他文章的歷史 ID。
+"""
 
 
 def snapshot(news: list) -> dict:
@@ -138,6 +140,31 @@ def accepted_dismissals(obj: dict, packet: dict) -> set:
         if not coverage._coverage_problems({"dismissed_events": [row]}, focused, []):
             accepted.add(cid)
     return accepted
+
+
+def prune_unsupported_history(obj: dict, packet: dict) -> list:
+    """Clear (never ID-trim) historical_context blocks validate() would reject.
+
+    Decorative like relates_to: history never backs current claims, an empty block
+    is legal, history_prose already refuses to render these and falls back to the
+    row's own dated titles. A borrowed ID may mean the prose narrates another story.
+    """
+    if not isinstance(obj, dict) or not isinstance(packet, dict):
+        return []
+    contexts, registry = (packet.get("research") or {}).get("contexts") or {}, history_registry(packet)
+    cleared = []
+    for index, row in enumerate(obj.get("top_news_analysis") or []):
+        block = row.get("historical_context") if isinstance(row, dict) else None
+        ids = (block.get("evidence_ids") or []) if isinstance(block, dict) else None
+        if not isinstance(ids, list):
+            continue  # validate() still reports malformed shapes.
+        allowed = set((contexts.get(row.get("source_item_id")) or {}).get("evidence_ids") or [])
+        reason = ("unmatched_history_id" if any(e not in allowed or e not in registry for e in ids)
+                  else "evolution_without_history_id" if block.get("evolution") and not ids else "")
+        if reason:  # Same predicates as validate().
+            row["historical_context"] = {"evolution": "", "evidence_ids": []}
+            cleared.append(f"top_news_analysis[{index}]:{reason}")
+    return cleared
 
 
 def validate(obj: dict, packet: dict) -> list:

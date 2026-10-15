@@ -16102,6 +16102,7 @@ MEDICAL_JOURNALS = [
     ("NEJM", "N Engl J Med"),
     ("AJO", "Am J Ophthalmol"),
 ]
+DAILY_MEDICAL_JOURNALS = False  # 使用者 10/15:平日晨報先隱藏(Gmail 剪信);週末信照舊
 
 
 def fetch_medical_journal_articles(per_journal: int = 3) -> list[dict]:
@@ -24685,9 +24686,9 @@ def _phase_news_policy_sports(ctx) -> None:
     except Exception as e:
         print(f"[main] 台股行事曆失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["TW_CALENDAR"] = {}
-    try:
-        quotes["MEDICAL_JOURNALS"] = translate_journal_titles(
-            fetch_medical_journal_articles())
+    try:  # 隱藏時不抓也不付費翻譯(見 DAILY_MEDICAL_JOURNALS)
+        quotes["MEDICAL_JOURNALS"] = (translate_journal_titles(
+            fetch_medical_journal_articles()) if DAILY_MEDICAL_JOURNALS else [])
     except Exception as e:
         print(f"[main] 醫學文獻抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["MEDICAL_JOURNALS"] = []

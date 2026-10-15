@@ -19,4 +19,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Delivery Python regression tests
-        run: python -m unittest _test_delivery
+        run: python -m unittest _test_delivery _test_delivery_review

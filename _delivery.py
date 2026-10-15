@@ -13,14 +13,11 @@ import time
 import urllib.parse
 import urllib.request
 from delivery_destination import matches_repository
+from _delivery_review import Blocked, pr_review, requires_pr_review
 
 ROOT = Path(__file__).resolve().parent
 SHA = re.compile(r"^[0-9a-f]{40}$")
 ZERO = "0" * 40
-
-
-class Blocked(RuntimeError):
-    """Missing or unsuccessful evidence; do not publish."""
 
 
 def git(*args: str) -> str:
@@ -207,46 +204,13 @@ def verify(sha: str, phase: str, cfg: dict, api: API) -> list:
     return evidence
 
 
-REVIEW_CONTEXT = "codex-review/gpt-6.1-sol"
-REVIEW_DESCRIPTION = re.compile(r"(APPROVE|quota-pending) base=([0-9a-f]{40})")
-
-
-def requires_pr_review(cfg: dict, base_cfg: dict | None) -> bool:
-    """A candidate cannot switch off the whole-PR review its base policy requires."""
-    return bool(cfg.get("pr_review")) or bool((base_cfg or {}).get("pr_review"))
-
-
-def pr_review(api: API, cfg: dict, sha: str, previous: str) -> dict:
-    """One review per PR (user decision 2026-10-15), recorded by tools/pr_review.py as
-    the owner's commit status on the exact head. Its reviewed range must cover every
-    commit being promoted. Quota pending may publish but is reported, never approval."""
-    check_sha(sha)
-    owner = cfg["repository"].split("/")[0].lower()
-    rows = [s for s in api.pages(f"/commits/{sha}/statuses")
-            if s.get("context") == REVIEW_CONTEXT
-            and str((s.get("creator") or {}).get("login", "")).lower() == owner]
-    if not rows:
-        raise Blocked("No PR review for this exact head: run python tools/pr_review.py")
-    latest = max(rows, key=lambda s: s.get("id", 0))
-    match = REVIEW_DESCRIPTION.fullmatch(str(latest.get("description", "")))
-    state = latest.get("state")
-    if not match or (match.group(1), state) not in (("APPROVE", "success"), ("quota-pending", "pending")):
-        raise Blocked(f"PR review not approved: {state} {latest.get('description')!r}")
-    reviewed_base = match.group(2)
-    if subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_base, previous],
-                      cwd=ROOT).returncode != 0:
-        raise Blocked("The reviewed range does not cover main..head; review the PR again")
-    if match.group(1) == "quota-pending":
-        print("WARNING: PR review is quota-pending (not approved); backfill with "
-              "python tools/pr_review.py --pending", file=sys.stderr)
-    return {"sha": sha, "pr_review": match.group(1), "reviewed_base": reviewed_base,
-            "url": latest.get("target_url", "")}
+DELIVERY_FILES = ("_delivery.py", "_delivery_review.py", "_test_delivery.py", "_test_delivery_review.py")
 
 
 def needs_morning_preview(paths: list[str]) -> bool:
     """Conservative production-change routing; docs/tests/gate-only need no paid LLM run."""
     for path in paths:
-        if path.startswith(("tests/", "docs/", ".githooks/")) or path in ("_delivery.py", "_test_delivery.py"):
+        if path.startswith(("tests/", "docs/", ".githooks/")) or path in DELIVERY_FILES:
             continue
         if path.startswith(("tools/claude_", "tools/gpt_diff_review")) or path == "tools/pr_review.py":
             continue
@@ -320,7 +284,8 @@ def pre_push(lines: list[str], remote: str, cfg: dict) -> None:
                     raise Blocked("Candidate advanced; integrate and revalidate")
                 subprocess.run(["git", "merge-base", "--is-ancestor", previous, sha], cwd=ROOT, check=True)
             # Exact committed candidate only; no full local CI requirement.
-            subprocess.run([sys.executable, "-m", "unittest", "_test_delivery"], cwd=ROOT, check=True)
+            subprocess.run([sys.executable, "-m", "unittest", "_test_delivery", "_test_delivery_review"],
+                           cwd=ROOT, check=True)
             subprocess.run(["git", "diff", "--check", sha + "^", sha], cwd=ROOT, check=True)
             clean(sha)
         else:

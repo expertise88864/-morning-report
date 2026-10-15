@@ -99,6 +99,14 @@ class TerminalQuotaTests(unittest.TestCase):
             with self.subTest(raw=raw):
                 self.assertFalse(pr.provider_quota_error(raw))
 
+    def test_recovered_rate_limit_then_crash_or_silence_is_not_quota(self):
+        """PR #17 review round 2 (P1): quota-pending needs the run to END on a quota error."""
+        recovered = "ERROR: rate limit exceeded; retrying"
+        for tail in ("exec git diff --stat\nsucceeded in 120ms", "panic: failed to write final output",
+                     json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "ok"}})):
+            with self.subTest(tail=tail):
+                self.assertFalse(pr.provider_quota_error(f"{recovered}\n{tail}\n[codex-review] ERROR: x"))
+
     def test_terminal_quota_after_other_error_is_quota(self):
         self.assertTrue(pr.provider_quota_error("ERROR: stream disconnected\nERROR: You've hit your usage limit."))
 

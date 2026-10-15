@@ -141,29 +141,30 @@ def open_pr(api: API, branch: str, base: str, head: str) -> dict:
 
 
 def provider_quota_error(raw: str) -> bool:
-    """Quota only from the CLI's own error events, never from reviewed content.
+    """Quota only from the CLI's own terminal error, never from reviewed content.
 
     Agent messages and command output (for example a diff mentioning "quota")
     arrive as other JSON events and must not turn a failure into quota-pending.
-    Only the terminal (last) provider error counts: a rate limit the CLI recovered
-    from must not turn a later different failure (e.g. 401) into quota-pending."""
-    terminal = ""
-    for line in raw.splitlines():
-        text = line.strip()
-        if not text or text.startswith("[codex-review]"):
-            continue
-        try:
-            event = json.loads(text)
-        except ValueError:
-            event = None
-        if isinstance(event, dict):
-            if event.get("type") not in ("error", "turn.failed"):
-                continue
-            text = json.dumps(event.get("message") or event.get("error") or "", ensure_ascii=False)
-        elif not text.upper().startswith("ERROR"):
-            continue
-        terminal = text
-    return bool(terminal and QUOTA.search(terminal))
+    Quota-pending needs affirmative evidence that quota ended the run: the CLI's
+    last output (wrapper lines aside) must itself be a quota error. A rate limit
+    the CLI recovered from, followed by more activity, another error, a crash
+    line or silence, is an ERROR (fail closed), never publishable quota-pending."""
+    lines = [line.strip() for line in raw.splitlines()]
+    lines = [line for line in lines if line and not line.startswith("[codex-review]")]
+    if not lines:
+        return False
+    text = lines[-1]
+    try:
+        event = json.loads(text)
+    except ValueError:
+        event = None
+    if isinstance(event, dict):
+        if event.get("type") not in ("error", "turn.failed"):
+            return False
+        text = json.dumps(event.get("message") or event.get("error") or "", ensure_ascii=False)
+    elif not text.upper().startswith("ERROR"):
+        return False
+    return bool(QUOTA.search(text))
 
 
 def run_review(mode: str, base: str, head: str, ctx: str | None,

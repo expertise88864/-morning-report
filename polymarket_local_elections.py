@@ -32,6 +32,7 @@ NAMES = {
     "Kuo Hsi": "郭璽", "Yang Chiung-ying": "楊瓊瓔",
     "Huang Hsiu-fang": "黃秀芳",
 }
+DISPLAY_TOP = 2  # 使用者 2026-10-15:縣市長只列前兩位,第三位都很低;快照仍存全部。
 _SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 _PLACEHOLDER = re.compile(r"(?:candidate|party|player|team)\s+[a-z0-9]+\Z", re.I)
 _TPE = dt.timezone(dt.timedelta(hours=8))
@@ -132,11 +133,11 @@ def fetch_rows(events: Callable, search: Callable, now: dt.datetime) -> list[dic
                 prices = _prices(event, now, capture=outcomes)
                 if not prices:
                     raise ValueError("no valid named candidate prices")
-                detail = "・".join(text for _, text in prices[:3])
+                detail = "・".join(text for _, text in prices[:DISPLAY_TOP])
                 rows.append({"label": f"2026 {label}", "kind": "tw_local_election",
                              "as_of": now.astimezone(_TPE).strftime("%m/%d %H:%M 台北"),
                              "detail": detail, "outcomes": sorted(outcomes, key=lambda r: r["prob_raw"], reverse=True),
-                             "display_limit": 3,
+                             "display_limit": DISPLAY_TOP,
                              "source_url": "https://polymarket.com/event/" + event["slug"]})
             elif slug:
                 print(f"::warning::[poly-local] {label}: unavailable known market", file=sys.stderr)

@@ -76,7 +76,7 @@ def test_nba_http_failure_is_not_an_empty_schedule():
         nba.week_events(get, NOW)
 
 
-def test_election_top_three_chinese_names_without_quality_noise():
+def test_election_top_two_chinese_names_without_quality_noise():
     def market(name, p):
         return {"active": True, "closed": False, "groupItemTitle": name,
                 "outcomes": ["Yes", "No"], "outcomePrices": [p, 1-p]}
@@ -85,7 +85,8 @@ def test_election_top_three_chinese_names_without_quality_noise():
             "endDate": "2026-11-29T00:00Z", "markets": [market("Hsu Chih-chieh", .02),
             market("Ko Chih-en", .3), market("Lai Jui-lung", .7), market("Other Person", .001)]}
     rows = elections.fetch_rows(lambda _: [data], lambda _: [], NOW)
-    assert rows[0]["detail"] == "賴瑞隆 70.0%・柯志恩 30.0%・許智傑 2.0%"
+    # User 2026-10-15: mayor races show the top two only.
+    assert rows[0]["detail"] == "賴瑞隆 70.0%・柯志恩 30.0%"
 
 
 def test_us_quotes_and_tw_forecasts_share_one_section(monkeypatch):

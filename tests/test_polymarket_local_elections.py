@@ -42,15 +42,15 @@ def test_six_verified_markets_and_two_missing_cities_omitted():
     assert all(r["kind"] == "tw_local_election" for r in rows)
 
 
-def test_snapshots_keep_candidates_outside_display_top_three():
+def test_snapshots_keep_candidates_outside_display_top_two():
     data = event(markets=[market(name, str(prob), id=name)
                           for name, prob in [("A Name", .6), ("B Name", .3),
                                              ("C Name", .08), ("D Name", .02)]])
     rows = pe.fetch_rows(lambda _: [data], lambda _: [], NOW)
     assert len(rows) == 1
-    assert rows[0]["display_limit"] == 3
+    assert rows[0]["display_limit"] == pe.DISPLAY_TOP == 2
     assert len(rows[0]["outcomes"]) == 4
-    assert "D Name" not in rows[0]["detail"]
+    assert "B Name" in rows[0]["detail"] and "C Name" not in rows[0]["detail"]
 
 
 @pytest.mark.parametrize("change", [

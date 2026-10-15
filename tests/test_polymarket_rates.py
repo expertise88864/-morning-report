@@ -31,7 +31,7 @@ def test_three_future_meetings_include_year_and_small_outcomes():
     rows = rates.decision_rows(NOW, search=lambda *_, **kw: events,
         months=mr._POLY_MONTH_ZH, outcomes=mr._POLY_FED_OUTCOME_ZH, **helpers(calls, warnings))
     assert [r['label'] for r in rows] == ['Fed 2026年10月決議', 'Fed 2026年12月決議', 'Fed 2027年1月決議']
-    assert len(calls) == 3 and all(c[1]['top'] == 5 and c[1]['min_prob'] == 0.0 for c in calls)
+    assert len(calls) == 3 and all(c[1]['top'] == rates.DISPLAY_TOP == 3 and c[1]['min_prob'] == 0.0 for c in calls)
     assert all(row['outcomes'] and row['display_limit'] == 1 for row in rows)
     assert all('升息1碼 1%' in r['detail'] for r in rows)
     assert not warnings
@@ -65,6 +65,7 @@ def test_total_contract_is_units_not_meetings_and_expires():
     opts = helpers(calls, warnings)
     def outright(slug, zh, **kwargs):
         assert slug == rates.HIKE_TOTAL_SLUG
+        assert kwargs['top'] == 3  # User 2026-10-15: show only the three likeliest.
         return [{'name': zh['2 (50 bps)'], 'prob': 70}]
     opts['outright'] = outright
     def events(_):
@@ -79,7 +80,8 @@ def test_total_contract_is_units_not_meetings_and_expires():
     assert rates.total_hikes_row(NOW, events=lambda _: [{'closed': True}], **opts) == []
 
 
-def test_pulse_retains_three_named_parties_even_with_small_quotes(monkeypatch):
+def test_pulse_shows_two_parties_but_snapshots_all_named_ones(monkeypatch):
+    # User 2026-10-15: the third party is always tiny; show the top two only.
     monkeypatch.setattr(mr, '_poly_search_events', lambda *a, **kw: [])
     monkeypatch.setattr(mr, '_poly_annotate_deltas', lambda *a, **kw: None)
     def events(params):
@@ -93,4 +95,6 @@ def test_pulse_retains_three_named_parties_even_with_small_quotes(monkeypatch):
     monkeypatch.setattr(mr, '_poly_events', events)
     rows = mr.fetch_polymarket_pulse(NOW)
     party = next(row for row in rows if '最多當選席次政黨' in row['label'])
-    assert party['detail'] == '國民黨 85%・民進黨 14%・民眾黨 1%'
+    assert party['detail'] == '國民黨 85%・民進黨 14%'
+    assert party['display_limit'] == 2
+    assert [o['name'] for o in party['outcomes']] == ['國民黨', '民進黨', '民眾黨']

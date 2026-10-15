@@ -19701,9 +19701,9 @@ _POLY_PULSE_OUTRIGHT: tuple[tuple, ...] = (
     # 2026-07-17 使用者刪減:S&P 年底/眾院/參院 三列移除
     ("2028 美國總統大選執政黨", "which-party-wins-2028-us-presidential-election",
      _POLY_PARTY_ZH, 2),
-    # 台灣九合一(2026-11-28;實測 KMT 86%/DPP 14%/TPP 1%,Party A/Other 佔位自動剔除)
+    # 台灣九合一(2026-11-28;Party A/Other 佔位自動剔除);使用者 10/15:只列前兩位
     ("2026 台灣縣市長最多當選席次政黨", "2026-taiwanese-local-elections-party-winner",
-     _POLY_TW_PARTY_ZH, 3),
+     _POLY_TW_PARTY_ZH, 2),
 )
 
 

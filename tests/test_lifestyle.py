@@ -3092,7 +3092,8 @@ def test_pulse_taiwan_markets(monkeypatch):
     monkeypatch.setattr(mr, "_poly_search_events", fake_search)
     now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
     rows = {r["label"]: r["detail"] for r in mr.fetch_polymarket_pulse(now)}
-    assert rows["2026 台灣縣市長最多當選席次政黨"] == "國民黨 86%・民進黨 14%・民眾黨 6%"
+    # 使用者 2026-10-15:只列前兩位
+    assert rows["2026 台灣縣市長最多當選席次政黨"] == "國民黨 86%・民進黨 14%"
     assert "賴清德總統 2026 年底前去職" not in rows        # 批#14 使用者刪減
     assert "台灣總統大選" not in rows                      # 2028 盤未開 → 不出行
     search_results["n"] = 1                               # 模擬市場開盤

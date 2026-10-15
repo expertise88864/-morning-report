@@ -5,6 +5,8 @@ import datetime as dt
 HIKE_TOTAL_SLUG = "how-many-fed-rate-hikes-in-2026-20260623190717369"
 HIKE_TOTAL_ZH = {f"{n} ({25 * n} bps)": f"累計{n}碼" for n in range(5)}
 HIKE_TOTAL_ZH["5+ (125+ bps)"] = "累計5碼以上"
+# 使用者 2026-10-15:升降息盤只列機率最高前三個(完整選項仍進快照)。
+DISPLAY_TOP = 3
 
 
 def decision_rows(now, *, search, outright, annotate, format_line, is_future,
@@ -32,7 +34,7 @@ def decision_rows(now, *, search, outright, annotate, format_line, is_future,
             break
         try:
             complete = []
-            options = outright(slug, outcomes, top=5, min_prob=0.0, capture=complete)
+            options = outright(slug, outcomes, top=DISPLAY_TOP, min_prob=0.0, capture=complete)
             if options:
                 label = f"Fed {year}年{months[month]}決議"
                 annotate(f"pulse|fed-decision|{slug}", options, now)
@@ -54,7 +56,7 @@ def total_hikes_row(now, *, events, outright, annotate, format_line, is_future, 
         if not found or found[0].get("closed") or not is_future(found[0], now.astimezone(dt.timezone.utc)):
             return []
         complete = []
-        options = outright(HIKE_TOTAL_SLUG, HIKE_TOTAL_ZH, top=6, min_prob=0.0, capture=complete)
+        options = outright(HIKE_TOTAL_SLUG, HIKE_TOTAL_ZH, top=DISPLAY_TOP, min_prob=0.0, capture=complete)
         if not options:
             return []
         annotate(f"pulse|{HIKE_TOTAL_SLUG}", options, now)

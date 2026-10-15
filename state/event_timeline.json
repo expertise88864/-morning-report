@@ -212,5 +212,47 @@
   "event_type": "export_controls",
   "action": "",
   "identity_schema": 14
+ },
+ "litigation:ARM:2026-10": {
+  "first_seen": "2026-10-15",
+  "days": 1,
+  "last_seen": "2026-10-15",
+  "latest_title": "高通反擊Arm架構授權訴訟成功，雖僅獲得象徵性2美金但有望免付5年專利授權#授權糾紛(253017) - Cool3c",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "253017",
+   "cool3c",
+   "但有",
+   "僅獲",
+   "免付",
+   "利授",
+   "反擊",
+   "專利",
+   "年專",
+   "得象",
+   "徵性",
+   "成功",
+   "授權",
+   "有望",
+   "望免",
+   "架構",
+   "構授",
+   "權糾",
+   "權訴",
+   "獲得",
+   "糾紛",
+   "美金",
+   "訟成",
+   "訴訟"
+  ],
+  "entity": "ARM",
+  "subject_basis": "alias",
+  "subjects": [
+   "ARM"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
  }
 }

@@ -313,7 +313,10 @@ def test_the_minimal_fallback_letter_is_capped_too():
         html = mr._render_minimal_html({"STANCE_PY": {"total": 6, "label": "偏多"}},
                                        {}, {}, huge, "2026-09-05", "每日報")
         rec = mr._RUN_MANIFEST['llm']['analysis_cap']
-        assert rec['chars'] == len(huge) and rec['kept'] <= mr.ANALYSIS_TEXT_FUSE
+        # 2026-10-16:兩個渲染器都先移除讀者隱藏段(七之三)再量保險絲,登記的是要寄的文字
+        sent = mr._strip_reader_hidden(huge)
+        assert "七之三" in huge and "七之三" not in sent and "七之三" not in html
+        assert rec['chars'] == len(sent) > mr.ANALYSIS_TEXT_FUSE and rec['kept'] <= mr.ANALYSIS_TEXT_FUSE
         assert "render:analysis_capped" in mr._DEGRADED_STEPS
         # 信裡的字數要對得上登記的 kept,不是原文
         assert len(html) < len(huge)

@@ -21719,9 +21719,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 「2330 預測:…採簡化版」前言;R18 禁了它照樣出現 —— 指令不是守衛)。
     analysis_for_render = public_sections(_strip_preamble_before_first_heading(analysis))
     analysis_for_render = _strip_llm_watchlist_section(analysis_for_render)
-    # 七之五「多空交鋒」已從 prompt 刪除(2026-09-03),但模型會照舊習慣把它
-    # 吐回來 —— prompt 不再要求 ≠ 模型不再寫。渲染端確定性移除(Codex r1)。
-    analysis_for_render = _strip_llm_sections(analysis_for_render, ("多空交鋒",))
+    # 「多空交鋒」prompt 已刪、模型仍會吐(09-03);七之三使用者 10/16 要求隱藏。兩路徑共用此出口。
+    from scenario_window import READER_HIDDEN
+    analysis_for_render = _strip_llm_sections(analysis_for_render, ("多空交鋒", *READER_HIDDEN))
     # 9/24 實信把市值變化推成 ETF 申贖，9/23 又把單日股價推成市場
     # 忽略殖利率及未來主導因素；在寄信邊界修正已確認句型。
     # 這不是通用事實查核；特化與備援兩條分析路徑共用此出口。

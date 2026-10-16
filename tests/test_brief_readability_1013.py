@@ -74,6 +74,19 @@ def test_explanations_are_preserved_without_schema_labels():
     assert reader_prose.clean_text(url) == url
 
 
+def test_event_scenarios_section_is_hidden_on_both_paths():
+    """使用者 2026-10-16:隱藏七之三。特化渲染與備援 Markdown 共用寄信出口,
+    五種時間範圍的標題都要移除,前後段落原樣保留。"""
+    import scenario_window as sw
+    body = "".join(f"## {title}\n**事件{i}**\n\n情境{i}\n\n"
+                   for i, title in enumerate((sw.NEAR, sw.LATER, sw.MIXED, sw.UNKNOWN, sw.PAST)))
+    analysis = "## 七、昨夜三大重點\n保留新聞\n\n" + body + "## 七之四、敘事變化\n保留敘事"
+    result = mr.render_html(_golden_quotes(), {"error": "fixture"}, {"error": "fixture"},
+                            analysis, "2026-10-16", "每日報")
+    assert "七之三" not in result and "情境0" not in result and "情境4" not in result
+    assert "保留新聞" in result and "保留敘事" in result
+
+
 def test_market_overview_is_integrated_and_hidden_cards_stay_hidden():
     quotes = _golden_quotes()
     quotes.update({"TARGET_SESSION": "2026-10-13", "LAST_TRADING_SESSION": "2026-10-12",

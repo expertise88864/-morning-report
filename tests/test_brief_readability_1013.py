@@ -85,6 +85,16 @@ def test_event_scenarios_section_is_hidden_on_both_paths():
                             analysis, "2026-10-16", "每日報")
     assert "七之三" not in result and "情境0" not in result and "情境4" not in result
     assert "保留新聞" in result and "保留敘事" in result
+    # 外審 PR#19:備援也會用整行粗體編號章節;終點同樣要認得,後面章節不得被吃掉。
+    bold = ("**七、昨夜三大重點**\n保留新聞\n\n**七之三、未來 48 小時關鍵事件情境**\n"
+            "**10/16 11:30|演說**\n\n情境X\n\n**七之四、敘事變化**\n保留敘事\n\n**八、科技板塊脈動**\n保留科技")
+    for renderer in (mr.render_html, mr._render_minimal_html):
+        html = renderer(_golden_quotes(), {"error": "fixture"}, {"error": "fixture"},
+                      bold, "2026-10-16", "每日報")
+        assert "七之三" not in html and "情境X" not in html, renderer.__name__
+        assert all(k in html for k in ("保留新聞", "保留敘事", "保留科技")), renderer.__name__
+    html = mr._render_minimal_html(_golden_quotes(), {}, {}, analysis, "2026-10-16", "每日報")
+    assert "七之三" not in html and "情境0" not in html and "保留敘事" in html
 
 
 def test_scheduled_events_keep_future_tense_on_both_paths():

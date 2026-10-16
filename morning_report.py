@@ -93,6 +93,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _strip_llm_watchlist_section,
     _strip_selection_rationale,
     _strip_llm_sections,
+    strip_reader_hidden as _strip_reader_hidden,
     _strip_stance_calculation,
     _strip_stance_internals,
     _strip_stance_scaffolding,
@@ -21626,7 +21627,7 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
     """批#32:主渲染失敗時的極簡信(最後防線)。只用最基本的字串拼接與 escape,
     不碰任何可能是例外來源的卡片邏輯——目標是「一定寄得出去」而非好看。"""
     import html as _h
-    analysis = public_sections(str(analysis or ""))
+    analysis = _strip_reader_hidden(public_sections(str(analysis or "")))
     # 主渲染任何後續例外都會把原始 analysis 交給此最後防線，
     # 因此不能只在 render_html 修正已知無證據因果敘述。
     from reader_causality_guard import correct_etf_flow_inferences as _guard_etf_flow
@@ -21720,8 +21721,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_for_render = public_sections(_strip_preamble_before_first_heading(analysis))
     analysis_for_render = _strip_llm_watchlist_section(analysis_for_render)
     # 「多空交鋒」prompt 已刪、模型仍會吐(09-03);七之三使用者 10/16 要求隱藏。兩路徑共用此出口。
-    from scenario_window import READER_HIDDEN
-    analysis_for_render = _strip_llm_sections(analysis_for_render, ("多空交鋒", *READER_HIDDEN))
+    analysis_for_render = _strip_reader_hidden(analysis_for_render)
     # 9/24 實信把市值變化推成 ETF 申贖，9/23 又把單日股價推成市場
     # 忽略殖利率及未來主導因素；在寄信邊界修正已確認句型。
     # 這不是通用事實查核；特化與備援兩條分析路徑共用此出口。

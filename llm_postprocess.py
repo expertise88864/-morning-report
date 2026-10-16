@@ -773,6 +773,34 @@ def _strip_llm_sections(text: str, section_names: tuple) -> str:
     return text.strip()
 
 
+_NUMBERED_BOLD_HEADING = re.compile(
+    r"^\s*\*\*\s*([〇零一二三四五六七八九十百]+(?:之[〇零一二三四五六七八九十百]+)?、[^*\n]*?)\s*\*\*\s*$")
+
+
+def strip_reader_hidden(text: str) -> str:
+    """寄信出口一律移除的段落;主渲染與極簡備援渲染共用。
+
+    「多空交鋒」prompt 已刪、模型仍會吐(2026-09-03);「七之三」使用者 2026-10-16
+    要求隱藏。標題認 `#` 與整行粗體編號章節(render_utils 也把後者當章節,
+    2026-08-12 實信整封如此)—— 段落終點同樣兩種都認,否則會一路刪到後面章節。
+    """
+    from scenario_window import READER_HIDDEN
+    if not isinstance(text, str):
+        return text
+    hidden = ("多空交鋒", *READER_HIDDEN)
+    out, skipping = [], False
+    for line in text.split("\n"):
+        hashed = re.match(r"^\s*#{1,6}\s+(.*)$", line)
+        bold = _NUMBERED_BOLD_HEADING.match(line)
+        if hashed or bold:
+            title = (hashed or bold).group(1).strip().strip("*").strip()
+            title = re.sub(r"^[〇零一二三四五六七八九十百\d]+(?:之[〇零一二三四五六七八九十百]+)?、", "", title)
+            skipping = title.startswith(hidden)
+        if not skipping:
+            out.append(line)
+    return "\n".join(out).strip()
+
+
 def _mask_malformed_numbers(text: str) -> str:
     """遮蔽 LLM 產出的畸形千分位數字(如「3,2424」——逗號後接 ≥4 位,絕非合法千分位)。
     這類多為 LLM 排版幻覺;寧可遮蔽也不留錯誤數字。合法「1,234」「12,345,678」不受影響。"""

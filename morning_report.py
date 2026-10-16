@@ -14074,7 +14074,7 @@ def _backfill_machine_known_gaps(obj, packet: dict) -> None:
 
 
 def _prune_phantom_audit_ids(obj, packet: dict):
-    """**只修剪裝飾層**的幽靈引用(`relates_to`、`historical_context`),證據欄位一律不動。
+    """**只修剪裝飾層**(`relates_to`、`historical_context`、無衝突淨效果),證據欄位一律不動。
 
     2026-08-07 flash E2E:模型每輪都多引一兩個不存在的 ID,而修補是整份
     重寫、修好這列又壞那列,一輪修補在結構上難以收斂。當時的做法是
@@ -14131,10 +14131,11 @@ def _prune_phantom_audit_ids(obj, packet: dict):
         _RUN_MANIFEST.setdefault("llm", {})["relates_to_pruned"] = dropped[:8]
         print(f"[llm] 修剪 {len(dropped)} 個 relates_to 的幽靈關聯"
               "(純裝飾層;證據欄位一律不修剪)", file=sys.stderr)
-    # 10/15 生產:多數駁回是沒附歷史 ID 的前情說明(本來就不印);整塊清空並留痕。
-    from news_research_context import prune_unsupported_history
-    if cleared := prune_unsupported_history(obj, packet):
-        _RUN_MANIFEST.setdefault("llm", {})["history_context_pruned"] = cleared[:8]
+    from news_research_context import prune_unsupported_history as _ph
+    from analysis_crosscheck import prune_unneeded_net_effects as _pn
+    for key, fn in (("history_context_pruned", _ph), ("net_effects_pruned", _pn)):
+        if cleared := fn(obj, packet):  # 10/15-16:驗證器本就會駁回的裝飾段,清空並留痕
+            _RUN_MANIFEST.setdefault("llm", {})[key] = cleared[:8]
     return obj
 
 

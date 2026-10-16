@@ -157,6 +157,26 @@ def test_a_net_effect_without_a_conflict_is_padding():
     assert [p for p in sch.validate(obj, _packet()) if "沒有方向衝突" in p]
 
 
+def test_padding_net_effects_are_pruned_but_real_conflicts_kept():
+    """2026-10-15/16 生產:只因多寫了無衝突的淨效果,整份特化作廢。
+    修剪條件與驗證器同一個述詞:別名組(2330=台積電)、unknown 保留。"""
+    import analysis_crosscheck as ac
+    obj = _conflicting(fx.valid_analysis())
+    row = {"net_magnitude_band": "small", "offsetting_cluster_ids": [],
+           "why": "x", "claim_ids": []}
+    obj["asset_net_effects"] = [
+        dict(row, asset_id="2330", net_direction="bullish"),     # 真衝突(台積電)
+        dict(row, asset_id="TAIEX", net_direction="bearish"),    # 湊數
+        dict(row, asset_id="0050", net_direction="unknown"),     # 驗證器不判
+        "not-a-row"]
+    assert ac.prune_unneeded_net_effects(obj) == ["asset_net_effects[TAIEX]:no_conflict"]
+    assert [r if isinstance(r, str) else r["asset_id"] for r in obj["asset_net_effects"]] == [
+        "2330", "0050", "not-a-row"]
+    assert not [p for p in sch.validate(obj, _packet()) if "沒有方向衝突" in p]
+    assert ac.prune_unneeded_net_effects({"asset_net_effects": None}) == []
+    assert ac.prune_unneeded_net_effects(None) == []
+
+
 def test_same_direction_twice_is_not_a_conflict():
     obj = fx.valid_analysis()
     a = obj["top_news_analysis"][0]

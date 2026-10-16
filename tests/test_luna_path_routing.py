@@ -772,6 +772,25 @@ def test_uncited_historical_context_is_cleared_not_fatal(luna_on, monkeypatch):
         "top_news_analysis[0]:evolution_without_history_id"], "清空必須留痕,不得靜默"
 
 
+def test_padding_net_effect_is_pruned_not_fatal(luna_on, monkeypatch):
+    """2026-10-16 生產:沒有衝突的標的多寫淨效果,驗證器本就會駁回;
+    修剪後第一輪就該過,而且要留痕。"""
+    decorated = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    decorated["asset_net_effects"] = [{
+        "asset_id": "TAIEX", "net_direction": "bearish", "net_magnitude_band": "small",
+        "offsetting_cluster_ids": [], "why": "湊數", "claim_ids": []}]
+    calls = []
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: (calls.append(p), _response(decorated))[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("無衝突的淨效果不該讓整條路徑落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    assert len(calls) == 1
+    assert mr._RUN_MANIFEST["llm"]["net_effects_pruned"] == [
+        "asset_net_effects[TAIEX]:no_conflict"]
+
+
 def test_the_second_repair_carries_the_latest_candidate(luna_on, monkeypatch):
     """第二輪帶的要是**第二版**(最新被拒的),不是第一版 ——
     帶錯版本的話「照抄」會把第一輪的修正倒回去。"""

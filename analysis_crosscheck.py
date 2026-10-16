@@ -332,6 +332,27 @@ def top_event_problems(obj, packet) -> list:
     return out
 
 
+def _canon(aid) -> str:
+    import entity_alias as _ea
+    gi = _ea.group_of(str(aid))
+    return _ea.ALIAS_GROUPS[gi][0] if gi >= 0 else str(aid)
+
+
+def prune_unneeded_net_effects(obj, packet=None) -> list:
+    """Drop rows event_graph_problems rejects (no conflict); removal cannot launder a claim."""
+    import event_graph as _eg
+    rows = obj.get("asset_net_effects") if isinstance(obj, dict) else None
+    if not isinstance(rows, list):
+        return []
+    conflicts, kept, dropped = _eg.conflicting_assets(obj), [], []
+    for row in rows:
+        aid = _canon(row.get("asset_id") or "") if isinstance(row, dict) else ""
+        bad = aid and aid not in conflicts and str(row.get("net_direction") or "") not in ("", "unknown")
+        (dropped if bad else kept).append(aid if bad else row)
+    obj["asset_net_effects"] = kept
+    return [f"asset_net_effects[{aid}]:no_conflict" for aid in dropped]
+
+
 def event_graph_problems(obj, packet) -> list:
     """**事件之間的關係**(重構規格 Commit D)。三條:
 
@@ -348,12 +369,7 @@ def event_graph_problems(obj, packet) -> list:
         return out
     # ── 1) 淨效果
     conflicts = _eg.conflicting_assets(obj)
-    import entity_alias as _ea
-
-    def _canon(aid):
-        gi = _ea.group_of(str(aid))
-        return _ea.ALIAS_GROUPS[gi][0] if gi >= 0 else str(aid)
-    nets = {_canon((x or {}).get("asset_id") or ""): x
+    nets ={_canon((x or {}).get("asset_id") or ""): x
             for x in (obj.get("asset_net_effects") or []) if isinstance(x, dict)}
     for aid in sorted(conflicts):
         n = nets.get(aid)

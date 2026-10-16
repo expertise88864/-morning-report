@@ -1,156 +1,4 @@
 {
- "geopolitical:俄羅斯:2026-10#23d49e": {
-  "first_seen": "2026-10-12",
-  "days": 1,
-  "last_seen": "2026-10-12",
-  "latest_title": "俄軍上月在烏克蘭戰場傷亡逾5萬人",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "上月",
-   "亡逾",
-   "俄軍",
-   "傷亡",
-   "克蘭",
-   "在烏",
-   "場傷",
-   "戰場",
-   "月在",
-   "烏克",
-   "萬人",
-   "蘭戰",
-   "軍上"
-  ],
-  "entity": "俄羅斯",
-  "subject_basis": "alias",
-  "subjects": [
-   "俄羅斯"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:俄羅斯:2026-10#221ce7": {
-  "first_seen": "2026-10-12",
-  "days": 1,
-  "last_seen": "2026-10-12",
-  "latest_title": "俄烏宣布即刻能源停火並放寬俄羅斯柴油貿易限制",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "並放",
-   "俄烏",
-   "停火",
-   "刻能",
-   "即刻",
-   "放寬",
-   "易限",
-   "柴油",
-   "油貿",
-   "源停",
-   "火並",
-   "能源",
-   "貿易",
-   "限制"
-  ],
-  "entity": "俄羅斯",
-  "subject_basis": "alias",
-  "subjects": [
-   "俄羅斯"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:烏克蘭:2026-10": {
-  "first_seen": "2026-10-12",
-  "days": 1,
-  "last_seen": "2026-10-12",
-  "latest_title": "俄烏宣布即刻能源停火",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "俄烏",
-   "停火",
-   "刻能",
-   "即刻",
-   "源停",
-   "能源"
-  ],
-  "entity": "烏克蘭",
-  "subject_basis": "alias",
-  "subjects": [
-   "烏克蘭"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "litigation:廣達:2026-10": {
-  "first_seen": "2026-10-12",
-  "days": 1,
-  "last_seen": "2026-10-12",
-  "latest_title": "USITC launches Section 337 investigation involving Quanta and AI server power-supply chain",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "337",
-   "ai",
-   "and",
-   "chain",
-   "investigation",
-   "involving",
-   "launches",
-   "power",
-   "section",
-   "server",
-   "supply",
-   "usitc"
-  ],
-  "entity": "廣達",
-  "subject_basis": "alias",
-  "subjects": [
-   "廣達"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:sanction:俄羅斯:2026-10#66a703": {
-  "first_seen": "2026-10-12",
-  "days": 1,
-  "last_seen": "2026-10-12",
-  "latest_title": "美俄達成增加俄羅斯柴油供應共識，美方放寬相關制裁",
-  "latest_summary": "",
-  "object": "俄羅斯",
-  "incident_tokens": [
-   "供應",
-   "俄達",
-   "共識",
-   "制裁",
-   "增加",
-   "寬相",
-   "應共",
-   "成增",
-   "放寬",
-   "方放",
-   "柴油",
-   "油供",
-   "相關",
-   "美俄",
-   "美方",
-   "達成",
-   "關制"
-  ],
-  "entity": "俄羅斯",
-  "subject_basis": "alias",
-  "subjects": [
-   "俄羅斯"
-  ],
-  "event_type": "geopolitical",
-  "action": "sanction",
-  "identity_schema": 14
- },
  "geopolitical:沙烏地阿美:2026-10": {
   "first_seen": "2026-10-14",
   "days": 1,
@@ -253,6 +101,83 @@
   ],
   "event_type": "litigation",
   "action": "",
+  "identity_schema": 14
+ },
+ "cybersecurity:cyberattack:ARM:2026-10": {
+  "first_seen": "2026-10-16",
+  "days": 1,
+  "last_seen": "2026-10-16",
+  "latest_title": "沒點擊廣告也遇駭！FT：新型間諜軟體侵入Nvidia、Arm員工裝置| 全球財經| 全球 - UDN",
+  "latest_summary": "",
+  "object": "ARM",
+  "incident_tokens": [
+   "ft",
+   "nvidia",
+   "也遇",
+   "侵入",
+   "告也",
+   "員工",
+   "型間",
+   "工裝",
+   "廣告",
+   "擊廣",
+   "新型",
+   "沒點",
+   "裝置",
+   "諜軟",
+   "軟體",
+   "遇駭",
+   "間諜",
+   "體侵",
+   "點擊"
+  ],
+  "entity": "ARM",
+  "subject_basis": "alias",
+  "subjects": [
+   "ARM"
+  ],
+  "event_type": "cybersecurity",
+  "action": "cyberattack",
+  "identity_schema": 14
+ },
+ "cybersecurity:cyberattack:GOOGL:2026-10": {
+  "first_seen": "2026-10-16",
+  "days": 1,
+  "last_seen": "2026-10-16",
+  "latest_title": "Google DeepMind 哈薩比斯示警：AI 代理駭客攻擊是更大威脅的「早期警訊」 - BigGo 財經",
+  "latest_summary": "",
+  "object": "GOOGL",
+  "incident_tokens": [
+   "ai",
+   "deepmind",
+   "google",
+   "代理",
+   "哈薩",
+   "大威",
+   "威脅",
+   "客攻",
+   "擊是",
+   "攻擊",
+   "斯示",
+   "早期",
+   "是更",
+   "更大",
+   "期警",
+   "比斯",
+   "理駭",
+   "示警",
+   "脅的",
+   "薩比",
+   "警訊",
+   "駭客"
+  ],
+  "entity": "GOOGL",
+  "subject_basis": "alias",
+  "subjects": [
+   "GOOGL"
+  ],
+  "event_type": "cybersecurity",
+  "action": "cyberattack",
   "identity_schema": 14
  }
 }

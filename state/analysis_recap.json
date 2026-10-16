@@ -505,46 +505,44 @@
  ],
  "watch_seq": 59,
  "legacy_report": {
-  "date": "2026-10-15",
+  "date": "2026-10-16",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠）：今日舉行第三季法說會，市場預估單季獲利年增約 60% （鉅亨）。美銀報告把 2 奈米月產能由原估 10 萬片上修兩成至 12 萬片，訂單能見度已排至 2028 年，2 奈米營收占比第三季預估升至 11% （鉅亨）。2 奈米放量直接拉動先進製程稼動率與 CoWoS（把多顆晶片疊在一起、當成一顆用的先進封裝）需求，是 2330 明年營收結構的主要變數。不過公司自身提示 2 奈米產能爬坡會壓毛利率 3 至 4 個百分點、海外擴廠再添 2 至 3 個百分點壓力。法說會釋出的資本支出指引比單季 EPS 更能左右評價，這也是今日 2330 走勢可能脫離 ADR 連動的原因。[A 級・信心:中]",
+    "statement": "台積電（2330，全球最大晶圓代工廠）：延續昨日法說會這條線，Q3 EPS 29.43 元創單季新高。營收年增 50.9%，Q4 營收展望 523 至 543 億美元、季增約 14% （MOPS）／（鉅亨）。先進製程合計占晶圓營收 79%，2 奈米開始貢獻 8%，直接拉動 N2 與 CoWoS（把多顆晶片疊在一起、當成一顆用的先進封裝）稼動率。Q4 營收中位數 533 億美元，較 Q3 增加約 66 億美元，最快本季反映在 2330 營收；但 2 奈米初期量產稀釋毛利率，Q3 毛利率 66.4% 已較上季降 1.3 個百分點。[A 級・信心:高]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6630370",
-     "https://news.cnyes.com/news/id/6630248"
+     "https://news.cnyes.com/news/id/6631568"
     ]
    },
    {
-    "statement": "記憶體族群（美光、南亞科、華邦電）：延續本報告自 9 月下旬追蹤的這條線，美光昨日再跌 4.10%、連 5 個交易日收黑，近 5 日累跌約 15% （鉅亨）。同日中國長鑫存儲宣布已量產新一代 LPDDR6，並將在年內推出採用 4F² 架構的伺服器 DDR5 RDIMM，其第二季全球 DRAM 市占已達 10%、是去年同期兩倍以上 （中央社）。長鑫的架構進展若真落地，會從成熟 DRAM 開始壓縮既有供應商的議價空間；不過 HBM 等高階堆疊架構的技術門檻仍在。美光近期跌勢屬評價修正的成分大於訂單流失，記憶體報價能否守住第四季漲幅是這條線最關鍵的驗證點。[A 級・信心:中]",
+    "statement": "CoreWeave（CRWV，新興 AI 雲端算力服務商）：信用違約交換（CDS，債券違約保險的價格）升至 distress 水準，公司債二級市場利率達 15%，Debt to Equity 約 7 倍，股價單日跌 5.94% （CNBC）。算力供應商融資成本若持續走高，擴建速度會放緩，進而遞延 GPU 與 AI 伺服器拉貨。傳導到 2330 的路徑是新雲端商資本支出下修，再影響 CoWoS 與先進製程稼動率，時間差約一到兩季；今日先動的是估值，不是台積電訂單。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE9fVGV2ZGhiQ1lieUJMdExHRHE0ZXY0OWN4RjZoN3E5VzI0Y05tOVJFSlFISEdTSTJTVHpmZ2dIMkZvb3prWjhIa3h0RjFiN0k?oc=5",
-     "https://www.cna.com.tw/news/aopl/202610150005.aspx"
+     "https://www.cnbc.com/2026/10/15/coreweave-credit-default-swaps-hit-distress-levels-as-investors-sour-on-ai-debt.html"
     ]
    },
    {
-    "statement": "CoreWeave（CRWV，新興 AI 雲端算力服務商）：公司債券殖利率逼近 15%，股價單日重挫逾 16%，交易員大舉買進其「泡沫賣權」（CNBC）。這是 AI 資本支出循環裡少見由「舉債成本」而非「訂單」主導的殺盤——算力供應商若融資成本持續走高，擴建速度會放緩，進而遞延對 AI 伺服器與晶片的拉貨。傳導到 2330 的路徑是「新雲端商資本支出下修 → GPU 訂單放緩 → CoWoS 與先進製程稼動率承壓」，時間差約一到兩個季度；今日先動的是估值，不是台積電的訂單。[A 級・信心:中-高]",
+    "statement": "長鑫科技（中國 DRAM 廠，全球第四大）：總裁曹堪宇稱年底將推出 4F² 架構 DDR5 RDIMM，市值已跌破 3 兆人民幣 （鉅亨）。4F² 架構可提高單位面積儲存密度，若量產將從成熟 DRAM 開始壓縮既有供應商議價空間。同業 SK 海力士單日跌逾 10%、三星跌 8.73%，但 HBM（高頻寬記憶體）高階堆疊門檻仍在。這條與台積電無直接關聯，主要影響南亞科、華邦電的報價預期；長鑫第二季全球 DRAM 市占僅 7%，短期實質供給衝擊有限。[A 級・信心:中]",
     "source_urls": [
-     "https://www.cnbc.com/2026/10/14/coreweave-stock-bond-yields-ai-debt.html"
+     "https://news.cnyes.com/news/id/6631192"
     ]
    },
    {
-    "statement": "Applied Materials（AMAT，全球最大半導體沉積與蝕刻設備商）：在矽谷揭幕總投資 50 億美元的 EPIC 研發中心，創始夥伴包含三星、SK 海力士、台積電、英特爾與美光，目標是應對中國長鑫存儲崛起 （中央社）。設備商與晶圓廠的聯合研發通常領先量產兩到三年，聯盟成形意味先進製程與 HBM（高頻寬記憶體）的技術門檻會被刻意拉高。這條線與上一則長鑫的進展形成對沖：一邊是中國加速追趕，另一邊是既有陣營聯手擴大差距。對 2330 而言，短中期是技術護城河深化的訊號，但看不到直接營收貢獻。[A 級・信心:中]",
+    "statement": "全球 AI 與半導體股：本周前 20 大 AI 與半導體市值合計蒸發逾 1 兆美元，費半指數 5 日累跌 8.26%、連續 7 個交易日收黑 （CNBC）／（自由財經）。賣壓來自升息預期與 AI 融資成本，不是訂單流失；台積電 Q3 財報強勁卻 ADR 收跌 1.8%，反映評價修正主導。台股半導體類股昨日中位數跌 4.3%，法人估賣超 1,388 億元，今天須觀察夜盤反彈能否帶動開低走高。這與前一條 CoreWeave 的融資壓力指向同一個矛盾：基本面強、資金面緊。[A 級・信心:中]",
     "source_urls": [
-     "https://www.cna.com.tw/news/aopl/202610150005.aspx"
+     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5kZ0g0TmtETnVyU1JyNUJnY095dWVHa29LUEsxdzAteEl3Q2swZ1ItQmlNTk9GMm1EZGRZdE9mWExBQ3FIUnZzdUxLMzFOR1NzeWhhQTdWSlg?oc=5"
     ]
    },
    {
-    "statement": "微軟（MSFT，全球最大雲端與軟體服務商）：市場點名 Maia 300 自研 AI 晶片明年登場，法人同步點出鴻海、廣達等八家台廠為受惠名單 （工商時報）。自研晶片放量會改變 AI 伺服器的供應鏈分配，但對晶圓代工而言，自研 ASIC 與 GPU 同樣要占用先進製程與 CoWoS 產能，架構改變不影響總需求。這條屬方向性訊號，沒有訂單金額與出貨時程，量級判斷不出來。[B 級・信心:中-低，資訊有限]",
+    "statement": "微軟（MSFT，全球最大雲端與軟體服務商）：新一代 AI 晶片 Maia 300 部分採台積電 2 奈米製程，預計 2027 年部署 （經濟日報）。自研 ASIC 與 GPU 同樣占用先進製程與 CoWoS 產能，架構改變不影響總需求。對 2330 而言，N2 客戶群從手機、GPU 擴大到雲端 ASIC，有助支撐 2027 年先進製程稼動率；但沒有訂單金額與出貨量，量級判斷不出來。[B 級・信心:中-低,資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTFBxS2k2X2tQWlN6cFRoeFdJb1IzbUtoUDR5MVQ0eXRMYlNiUFpTeWZMbndSMmIxRnRPTFU3cUhrbXpPYW8tS3RESHp1MlRxZE5fWVhqQ1ZWQktCTWJldkV3?oc=5"
+     "https://news.google.com/rss/articles/CBMiXEFVX3lxTE9Eelc4eDVzdjcxRS1VX0tZSmxGTEtuLUZ6T0FfWFRzSHhtWjdfVEkxRkYxWDBHZUY2R0RQVTRZYkdCWVJjY0FMSFZWZ2w0RXRvTG1EdGFacGRqcmpZ0gFiQVVfeXFMT2h4dklNSDZSMHI0am1MODU3V3I2LUhrWUI2YjB6N0htVUJobGVGcE14dUVmc29zdVd6NlBhdG1Nek9wNFA2VFBmM2dLY2tPZGhmVnJfSGhBOGZkMnN5Z2g4WWc?oc=5"
     ]
    },
    {
-    "statement": "超微（AMD，全球第二大 x86 CPU 與 AI GPU 廠）：宣布再調漲 GDDR6 記憶體採購價，RX 9000 系列顯示卡可能跟進漲價，輝達暫按兵不動 （鉅亨）。顯示卡漲價反映記憶體供應吃緊、成本端在上行，對下游品牌是毛利壓力、對記憶體供應商是價格支撐。它和第三則美光的跌勢形成有趣對比：現貨與合約價的方向，跟股價的方向目前並不一致。[B 級・信心:中-低，資訊有限]",
+    "statement": "聯發科（2454，台灣 IC 設計龍頭，手機晶片與 ASIC 供應商）：傳字節跳動與聯發科接近達成資料中心晶片供貨協議，有望成為第二大客戶 （TechNews）。若協議成真，ASIC 訂單會增加台積電先進製程與 CoWoS 需求。但協議尚未簽署，沒有金額與時程，量級判斷不出來；昨日聯發科股價跌 6.9%，顯示市場先反映半導體賣壓。[B 級・信心:低,資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiS0FVX3lxTFBLejl0akRtVEpoMzVvVlRwVzlHcVhseVZ5NlZyaC12UmFQSFM5MzloTlY5eG4xNU5HTUJlUGgtVkNZaVoxWkxmZmMySQ?oc=5"
+     "https://news.google.com/rss/articles/CBMimwFBVV95cUxQeXFfeHM5N3pWNVdaLXkzekJwalFYWDJfV3hqV21NY3JSclp2aGIzNHFvZHBwVVpxQUt0dkExYy13eEdkb19EeEtiRFAxbVRDamlhclhVcHZMbmlnOEhPbDJhMkFaSDNhLVluUFphOGRmNmdIUjRfVWJkaFY5OExVSHR6alFJT1VfcnRMNUUzdzdXQmZzd0NhSnh4aw?oc=5"
     ]
    }
   ]

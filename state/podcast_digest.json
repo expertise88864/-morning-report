@@ -798,7 +798,8 @@
             "unverified": 0,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-10-16T00:08:04Z"
       },
       {
         "guid": "tag:soundcloud,2010:tracks/2418594690",
@@ -2293,7 +2294,8 @@
             "unverified": 1,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-10-16T00:08:04Z"
       },
       {
         "guid": "a92ebf6e-121c-42dc-997b-515d48dcd303",

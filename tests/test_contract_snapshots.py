@@ -809,11 +809,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (72, "314f0ed6e5d2af00"),  # Empty historical_context without history IDs.
+    "primary_profile_version":  (73, "181a28d60c9a13e8"),  # Scheduled events keep future tense.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (38, "f80b3301bc07d86e"),  # US quote lag is not a holiday.
+    "fallback_profile_version":  (39, "fa6635a9c68be664"),  # Scheduled events keep future tense.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。

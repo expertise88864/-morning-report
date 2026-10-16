@@ -87,6 +87,18 @@ def test_event_scenarios_section_is_hidden_on_both_paths():
     assert "保留新聞" in result and "保留敘事" in result
 
 
+def test_scheduled_events_keep_future_tense_on_both_paths():
+    """10/16 實信:「明簽約」寫成「昨日完成簽約」、08:55 的 Roadster 直播在 08:08
+    寄出的信裡寫成「終於亮相」,當天可關注的事件也沒提醒。兩條路徑都要帶這條規則。"""
+    from reader_evidence_writing import WRITING
+    import prompt_profiles as pp
+    from test_deepseek_legacy_golden import legacy_prompt_inputs
+    rule = next(line for line in WRITING.splitlines() if line.startswith("- 預告事件"))
+    assert "今日可關注" in rule and "終於亮相" in rule and "預計X月X日" in rule
+    assert rule in pp.LUNA_DEVELOPER_INSTRUCTIONS
+    assert rule in mr._build_prompt(*legacy_prompt_inputs())
+
+
 def test_market_overview_is_integrated_and_hidden_cards_stay_hidden():
     quotes = _golden_quotes()
     quotes.update({"TARGET_SESSION": "2026-10-13", "LAST_TRADING_SESSION": "2026-10-12",

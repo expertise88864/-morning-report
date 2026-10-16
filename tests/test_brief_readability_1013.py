@@ -16,11 +16,24 @@ def test_post_send_contract_has_budget_without_extending_report_budget():
     contract = next(step for step in job['steps'] if step.get('id') == 'contract')
     report = next(step for step in job['steps'] if step.get('id') == 'report')
     assert 'RUN_BUDGET_SECONDS' not in report['env']
-    assert mr.RUN_BUDGET_SECONDS == 2700
-    assert job['timeout-minutes'] >= 45 + contract['timeout-minutes'] + 5
+    assert mr.RUN_BUDGET_SECONDS == 3060  # 2026-10-16: user approved LLM 960 → 1320s.
+    assert job['timeout-minutes'] >= mr.RUN_BUDGET_SECONDS / 60 + contract['timeout-minutes'] + 5
     assert contract['timeout-minutes'] == 20
     assert 'test_state_schema_contract.py' in contract['run']
     assert not contract.get('continue-on-error', False)
+
+
+def test_deepseek_high_budget_fits_two_repair_rounds_and_moves_run_budget_with_it():
+    """2026-10-16 使用者拍板:960 → 1320s。10/15-16 首輪 ~320s + 修補 ~300s,
+    扣 legacy 保留後第二輪修補跑不了。run 預算要同步 +360,否則前段資料收集
+    會為了 `_core_tail_seconds()` 被跳過(信的深度拿去換推理)。"""
+    import llm_config as lc
+    total = lc.timeout_for("high", lc.timeout_base("deepseek")[0])
+    assert total == 1320
+    first, repair = 320, 300
+    assert total - first - repair >= repair + mr._LEGACY_FALLBACK_RESERVE  # a second repair fits
+    assert mr.RUN_BUDGET_SECONDS - 2700 == total - 960
+    assert lc.timeout_for("max", lc.timeout_base("deepseek")[0]) == lc.MAX_TOTAL_TIMEOUT
 
 
 def test_group_citations_link_each_publisher_to_its_own_collected_article():

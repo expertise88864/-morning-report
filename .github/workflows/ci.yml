@@ -89,7 +89,7 @@ jobs:
     # not a required gate or a successful live verification. Use next day's report.
     if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 50   # 第三十一輪外審 P2-5:要 > 應用自己的預算+安裝/上傳邊際(2026-08-27 隨 2700s 放寬)
+    timeout-minutes: 56   # 第三十一輪外審 P2-5:要 > 應用自己的預算+安裝/上傳邊際(2026-10-16 隨 3060s 放寬)
     # **這個 job 不容忍任何失敗**(第三輪外審 F1)。
     #
     # 我前兩版都在替 `continue-on-error` 辯護,理由是「連外部服務,

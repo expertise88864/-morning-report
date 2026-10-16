@@ -108,8 +108,9 @@ jobs:
     # 最壞情況信 ~06:55 寄達,正常日子不受影響)。
     # Reserve post-send validation time separately from the report budget.
     # Oct 13: SMTP succeeded at minute 41, but the 50-minute job killed schema validation.
-    # Oct 16: report budget 2700 → 3060s (LLM 960 → 1320s); 51 + 20 contract + 5 margin.
-    timeout-minutes: 80
+    # Oct 16: report budget 2700 → 3060s (LLM 960 → 1320s); 51 + 20 contract + 5 margin,
+    # and the last backup run (22:42Z + 15 delay + 78) must still end before the 00:17Z watchdog.
+    timeout-minutes: 78
     # 批#93(第九輪 P1-10):**「信沒寄出」與「信寄出了但事後檢查失敗」是兩件事。**
     # 2026-07-31 就發生過:信正常寄達,而寄信**之後**的 state schema 契約失敗
     # 讓 job 變紅 → 告警信說「晨報未寄出,收件人可能沒有收到信」。

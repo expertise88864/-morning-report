@@ -5149,6 +5149,11 @@
     "void": true,
     "reason": "corpact_coverage_gap",
     "session": "2026-09-22"
+   },
+   "20": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-16"
    }
   },
   "entry": {
@@ -7208,7 +7213,13 @@
   ],
   "excluded": [],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-10-16"
+   }
+  },
   "entry": {
    "3189": 1080.0,
    "3661": 4165.0,
@@ -7514,8 +7525,16 @@
    "3533"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "2347": 102.5,
+   "1303": 335.0,
+   "2609": 65.0,
+   "4938": 97.5,
+   "3533": 1850.0
+  },
+  "taiex_entry": 48382.75
  },
  {
   "question": "2330_open_up",
@@ -7654,7 +7673,12 @@
    "ledger_schema": 2,
    "git_sha": "a19fead5ba56"
   },
-  "git_sha": "a19fead5ba56"
+  "git_sha": "a19fead5ba56",
+  "resolved": "2026-10-17",
+  "outcome": false,
+  "actual": 2430.0,
+  "brier_model": 0.0069,
+  "brier_base": 0.2333
  },
  {
   "question": "taiex_open_up",
@@ -7679,7 +7703,12 @@
    "ledger_schema": 2,
    "git_sha": "a19fead5ba56"
   },
-  "git_sha": "a19fead5ba56"
+  "git_sha": "a19fead5ba56",
+  "resolved": "2026-10-17",
+  "outcome": true,
+  "actual": 46995.03,
+  "brier_model": 0.2333,
+  "brier_base": 0.1544
  },
  {
   "type": "mz_shadow",
@@ -7704,6 +7733,110 @@
    "ledger_schema": 2,
    "git_sha": "a19fead5ba56"
   },
-  "git_sha": "a19fead5ba56"
+  "git_sha": "a19fead5ba56",
+  "resolved": "2026-10-17",
+  "actual": 2430.0,
+  "err_raw": 23.45,
+  "err_shadow": 11.77
+ },
+ {
+  "type": "top5",
+  "created": "2026-10-17",
+  "ledger_schema_version": 2,
+  "created_at": "2026-10-17T06:06:16.720459+08:00",
+  "target_session": "2026-10-19",
+  "base_session": "2026-10-16",
+  "codes": [
+   "3034",
+   "2603",
+   "4938",
+   "2609",
+   "2885"
+  ],
+  "raw_codes": [
+   "3034",
+   "2603",
+   "4938",
+   "2609",
+   "2885"
+  ],
+  "excluded": [],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-10-17",
+  "created_at": "2026-10-17T06:06:16.720459+08:00",
+  "target": "2026-10-19",
+  "threshold": 2420.0,
+  "pred_pct": -1.238,
+  "prob": 0.083,
+  "sigma": 1.235,
+  "sigma_n": 60,
+  "base_rate": 0.475,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "c148af7f0f2a"
+  },
+  "git_sha": "c148af7f0f2a"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-10-17",
+  "created_at": "2026-10-17T06:06:16.720459+08:00",
+  "target": "2026-10-19",
+  "threshold": 47111.26,
+  "pred_pct": -1.242,
+  "prob": 0.05,
+  "sigma": 0.53,
+  "sigma_n": 60,
+  "base_rate": 0.613,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "c148af7f0f2a"
+  },
+  "git_sha": "c148af7f0f2a"
+ },
+ {
+  "type": "mz_shadow",
+  "created": "2026-10-17",
+  "created_at": "2026-10-17T06:06:16.720459+08:00",
+  "target": "2026-10-19",
+  "raw": 2390.03,
+  "shadow": 2399.79,
+  "base": 2420.0,
+  "a": 0.546,
+  "b": 0.6927,
+  "n_train": 102,
+  "forecast_version": "prob-v2",
+  "mz_rule": "delta-mz-hac-v1",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "c148af7f0f2a"
+  },
+  "git_sha": "c148af7f0f2a"
  }
 ]

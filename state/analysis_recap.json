@@ -505,44 +505,44 @@
  ],
  "watch_seq": 59,
  "legacy_report": {
-  "date": "2026-10-16",
+  "date": "2026-10-19",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "台積電（2330，全球最大晶圓代工廠）：延續昨日法說會這條線，Q3 EPS 29.43 元創單季新高。營收年增 50.9%，Q4 營收展望 523 至 543 億美元、季增約 14% （MOPS）／（鉅亨）。先進製程合計占晶圓營收 79%，2 奈米開始貢獻 8%，直接拉動 N2 與 CoWoS（把多顆晶片疊在一起、當成一顆用的先進封裝）稼動率。Q4 營收中位數 533 億美元，較 Q3 增加約 66 億美元，最快本季反映在 2330 營收；但 2 奈米初期量產稀釋毛利率，Q3 毛利率 66.4% 已較上季降 1.3 個百分點。[A 級・信心:高]",
+    "statement": "台積電（2330，全球最大晶圓代工廠）：FactSet 最新調查 33 位分析師，目標價中位數由 3,200 元上修至 3,300 元、調升 3.13%，最高 5,000 元、最低 2,700 元，無保守評級 （鉅亨）。目標價上修反映的是 CoWoS（把多顆晶片疊在一起、當成一顆用的先進封裝）與 2 奈米的需求能見度，但目前股價距中位數仍有約三成六空間——這是十二個月期的評價參考，不是本週動能。[A 級・信心:中-高]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6631568"
+     "https://news.cnyes.com/news/id/6632423"
     ]
    },
    {
-    "statement": "CoreWeave（CRWV，新興 AI 雲端算力服務商）：信用違約交換（CDS，債券違約保險的價格）升至 distress 水準，公司債二級市場利率達 15%，Debt to Equity 約 7 倍，股價單日跌 5.94% （CNBC）。算力供應商融資成本若持續走高，擴建速度會放緩，進而遞延 GPU 與 AI 伺服器拉貨。傳導到 2330 的路徑是新雲端商資本支出下修，再影響 CoWoS 與先進製程稼動率，時間差約一到兩季；今日先動的是估值，不是台積電訂單。[A 級・信心:中]",
+    "statement": "CoreWeave（CRWV，新興 AI 雲端算力服務商）：債務及相關財務義務升至逾 510 億美元，部分債券價格跌至困境水準，股價單日重挫近 12%、全週約 25% （鉅亨）／（CNBC）。它代表「非超大規模雲端」這群算力買家的融資能力；成本若續升，擴建速度放緩，GPU 與 AI 伺服器拉貨遞延，再傳導到 CoWoS 與先進製程稼動率，時間差約一到兩季。今天先動的是估值不是訂單，量的衝擊要等這批客戶的資本支出指引下修才算數。[A 級・信心:中]",
     "source_urls": [
-     "https://www.cnbc.com/2026/10/15/coreweave-credit-default-swaps-hit-distress-levels-as-investors-sour-on-ai-debt.html"
+     "https://news.cnyes.com/news/id/6632486"
     ]
    },
    {
-    "statement": "長鑫科技（中國 DRAM 廠，全球第四大）：總裁曹堪宇稱年底將推出 4F² 架構 DDR5 RDIMM，市值已跌破 3 兆人民幣 （鉅亨）。4F² 架構可提高單位面積儲存密度，若量產將從成熟 DRAM 開始壓縮既有供應商議價空間。同業 SK 海力士單日跌逾 10%、三星跌 8.73%，但 HBM（高頻寬記憶體）高階堆疊門檻仍在。這條與台積電無直接關聯，主要影響南亞科、華邦電的報價預期；長鑫第二季全球 DRAM 市占僅 7%，短期實質供給衝擊有限。[A 級・信心:中]",
+    "statement": "輝達（NVDA，GPU 與 AI 加速器龍頭）：搭載新一代 AI 超級晶片 RTX Spark 的個人電腦開賣，台灣是少數舉辦實體活動的市場；輝達主管指出零組件與記憶體價格飆漲，但早期需求「直攻頂規」、集中在 64GB 與 128GB 版本 （中央社）。這與上一條記憶體走勢是同一枚硬幣的兩面——高階配置墊高單機記憶體含量，撐住報價，卻同時拉高品牌廠成本。RTX Spark 採台積電 CoWoS 封裝，出貨放大才直接挹注先進封裝稼動率，但首波量級未揭露，這則新聞說不出量級。[B 級・信心:中-低,資訊有限]",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6631192"
+     "https://www.cna.com.tw/news/afe/202610160345.aspx"
     ]
    },
    {
-    "statement": "全球 AI 與半導體股：本周前 20 大 AI 與半導體市值合計蒸發逾 1 兆美元，費半指數 5 日累跌 8.26%、連續 7 個交易日收黑 （CNBC）／（自由財經）。賣壓來自升息預期與 AI 融資成本，不是訂單流失；台積電 Q3 財報強勁卻 ADR 收跌 1.8%，反映評價修正主導。台股半導體類股昨日中位數跌 4.3%，法人估賣超 1,388 億元，今天須觀察夜盤反彈能否帶動開低走高。這與前一條 CoreWeave 的融資壓力指向同一個矛盾：基本面強、資金面緊。[A 級・信心:中]",
+    "statement": "AI 模型競賽（微軟與開源模型）：微軟 AI 執行長稱自家新模型 MAI-Base-2 擊敗 OpenAI，且算力僅需四分之一 （TechNews）；OpenRouter 官方目錄本週新上架 nvidia/nemotron-3.5-super-vl，輸入每百萬 token 定價 0.15 美元、輸出 0.5 美元，屬低成本層級。若「同等能力、算力減半」成立，單位推論的 GPU 需求會被壓縮，這是長線變數；但至今只有廠商自述、沒有第三方評測佐證，且這條談的是需求效率，與 CoreWeave 那條的融資成本是兩件事，不可混為一談。[B 級・信心:低,資訊有限]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5kZ0g0TmtETnVyU1JyNUJnY095dWVHa29LUEsxdzAteEl3Q2swZ1ItQmlNTk9GMm1EZGRZdE9mWExBQ3FIUnZzdUxLMzFOR1NzeWhhQTdWSlg?oc=5"
+     "https://news.google.com/rss/articles/CBMie0FVX3lxTE42dnV2Uk5MRTcydmdEWlh5Q251SU5IZ3YzdUFPd29aWkJLTXVuakphQjdtUVVYRDlCMEVDZlFBLUxGa3p3Z1BkMTIyR1d0bjJSb3pDY1RFNXpUeXMzWFI3R3YyNEZDUm9xUVg4NEpZQXZmbmNuWXhLMm9XMA?oc=5"
     ]
    },
    {
-    "statement": "微軟（MSFT，全球最大雲端與軟體服務商）：新一代 AI 晶片 Maia 300 部分採台積電 2 奈米製程，預計 2027 年部署 （經濟日報）。自研 ASIC 與 GPU 同樣占用先進製程與 CoWoS 產能，架構改變不影響總需求。對 2330 而言，N2 客戶群從手機、GPU 擴大到雲端 ASIC，有助支撐 2027 年先進製程稼動率；但沒有訂單金額與出貨量，量級判斷不出來。[B 級・信心:中-低,資訊有限]",
+    "statement": "鴻海（2317，全球最大 EMS 代工廠）：透過子公司利億以 1,150 億日圓（約新台幣 236 億元）取得三菱電機移動 50% 股權，共同經營電動車動力系統與軟體，預計 2027 年 10 月 1 日交割 （MOPS）／（鉅亨）。機制上是用股權換取日系 Tier 1 的技術與客戶關係，但交割在兩年後、對今年營收零貢獻；今天要觀察的是市場願不願意給「轉型溢價」，而非訂單數字。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiXEFVX3lxTE9Eelc4eDVzdjcxRS1VX0tZSmxGTEtuLUZ6T0FfWFRzSHhtWjdfVEkxRkYxWDBHZUY2R0RQVTRZYkdCWVJjY0FMSFZWZ2w0RXRvTG1EdGFacGRqcmpZ0gFiQVVfeXFMT2h4dklNSDZSMHI0am1MODU3V3I2LUhrWUI2YjB6N0htVUJobGVGcE14dUVmc29zdVd6NlBhdG1Nek9wNFA2VFBmM2dLY2tPZGhmVnJfSGhBOGZkMnN5Z2g4WWc?oc=5"
+     "https://news.cnyes.com/news/id/6632272"
     ]
    },
    {
-    "statement": "聯發科（2454，台灣 IC 設計龍頭，手機晶片與 ASIC 供應商）：傳字節跳動與聯發科接近達成資料中心晶片供貨協議，有望成為第二大客戶 （TechNews）。若協議成真，ASIC 訂單會增加台積電先進製程與 CoWoS 需求。但協議尚未簽署，沒有金額與時程，量級判斷不出來；昨日聯發科股價跌 6.9%，顯示市場先反映半導體賣壓。[B 級・信心:低,資訊有限]",
+    "statement": "聯發科（2454，台灣 IC 設計龍頭）：公告將於 10 月 30 日召開第三季財報暨營運線上說明會 （MOPS）；美銀證券同步給出目標價 6,200 元，理由是 ASIC 合作擴大與高階手機市占提升 （TechNews）。ASIC 若放量會增加台積電先進製程與 CoWoS 需求，但與它既有的手機晶片產品線對 2330 的產能排程影響不同；目標價是預期不是訂單，實質數字要等月底財報。這與第一條台積電目標價上修屬同一類「賣方先行、買方未跟上」的組合。[A 級・信心:中]",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMimwFBVV95cUxQeXFfeHM5N3pWNVdaLXkzekJwalFYWDJfV3hqV21NY3JSclp2aGIzNHFvZHBwVVpxQUt0dkExYy13eEdkb19EeEtiRFAxbVRDamlhclhVcHZMbmlnOEhPbDJhMkFaSDNhLVluUFphOGRmNmdIUjRfVWJkaFY5OExVSHR6alFJT1VfcnRMNUUzdzdXQmZzd0NhSnh4aw?oc=5"
+     "https://news.google.com/rss/articles/CBMixgFBVV95cUxORjJOc2tQdk1sbTdRZlp4a2Z4RzZKMWN2aDRSTG44a1lpLUdzdThLdzY4VTZvdkxpdF9GME13WGt4YVU1WmpRZDFiZFpjR2RaUm5aTDZqUmpKM0pzVWhZdE9aenpiX09MUS10Qm51WjhjSzFrYkxpQ012VG1oQVVmamlXVkRRbGJ1UVVEeWRmN2Q2Nlp3VFBJaVg0ZEVHaWxUc0lVcXZXcmthR3Voc0FZY1JWd3lvVlA3UlZ4LXg1TFVmaGlyTkE?oc=5"
     ]
    }
   ]

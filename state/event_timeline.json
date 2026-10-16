@@ -179,5 +179,123 @@
   "event_type": "cybersecurity",
   "action": "cyberattack",
   "identity_schema": 14
+ },
+ "export_controls:export_control:中國:2026-10": {
+  "first_seen": "2026-10-17",
+  "days": 1,
+  "last_seen": "2026-10-17",
+  "latest_title": "China proposes tighter export controls on AI foundation-model technology",
+  "latest_summary": "",
+  "object": "中國",
+  "incident_tokens": [
+   "ai",
+   "controls",
+   "export",
+   "foundation",
+   "model",
+   "on",
+   "proposes",
+   "technology",
+   "tighter"
+  ],
+  "entity": "中國",
+  "subject_basis": "alias",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
+  "identity_schema": 14
+ },
+ "export_controls:台灣:2026-10": {
+  "first_seen": "2026-10-17",
+  "days": 1,
+  "last_seen": "2026-10-17",
+  "latest_title": "Taiwan plans controls on exports of advanced AI chips and servers to China",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "advanced",
+   "ai",
+   "and",
+   "china",
+   "chips",
+   "controls",
+   "exports",
+   "of",
+   "on",
+   "plans",
+   "servers",
+   "to"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:台灣:2026-10": {
+  "first_seen": "2026-10-17",
+  "days": 1,
+  "last_seen": "2026-10-17",
+  "latest_title": "台灣計畫緊縮AI晶片出口管制並嚴禁運往中國",
+  "latest_summary": "",
+  "object": "台灣",
+  "incident_tokens": [
+   "ai",
+   "並嚴",
+   "中國",
+   "出口",
+   "制並",
+   "口管",
+   "嚴禁",
+   "往中",
+   "晶片",
+   "片出",
+   "畫緊",
+   "禁運",
+   "管制",
+   "緊縮",
+   "計畫",
+   "運往"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
+  "identity_schema": 14
+ },
+ "geopolitical:tariff_action:台灣:2026-10": {
+  "first_seen": "2026-10-17",
+  "days": 1,
+  "last_seen": "2026-10-17",
+  "latest_title": "Taiwan says U.S. reciprocal tariff rate is held at 15% without stacking",
+  "latest_summary": "",
+  "object": "台灣",
+  "incident_tokens": [
+   "15",
+   "at",
+   "held",
+   "is",
+   "rate",
+   "reciprocal",
+   "stacking",
+   "tariff",
+   "without"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "geopolitical",
+  "action": "tariff_action",
+  "identity_schema": 14
  }
 }

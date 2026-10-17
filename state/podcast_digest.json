@@ -3,6 +3,121 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "b815e52b-b0b9-47d2-980b-baf1857cd604",
+        "title": "EP706 | 👑",
+        "published": "Sat, 17 Oct 2026 06:49:12 GMT",
+        "processed_at": "2026-10-17T12:53:28Z",
+        "digest": {
+          "summary_points": [
+            "主持人判斷盤面已進入多頭中後段，強勢股越來越少、資減異常只有50億，後市可能「殺一下」，自己已轉為相對保守，並降低動能題材部位、保留現金。",
+            "主持人指出韓國股市（記憶體重鎮）破底，硬體供應鏈估值可能下修；台積電法說樂觀但股價彈不起來，是重要警訊，後續若無新利多（如戰爭停火）大盤恐難推升。",
+            "主持人認為資金可能沿「infrastructure → platform → application」三部曲輪動，軟體股有機會接棒；下一波反彈若硬體起不來，過去給硬體的高估值可能回不去，自己將加碼軟體。",
+            "主持人對Neo Cloud（CoreWeave、Nabius 等）看法修正：因產能不大，最糟可能是被巨頭收購、公司不會爆炸，但股價仍有機會「狂崩」；本輪修正可能由這類風險或爆倉故事觸發，他傾向保守、不開槓桿抄底。",
+            "主持人操作上控制回撤，避免重演七月大虧；抄底時選擇指數優於主題ETF（NASDAQ > SOX、標普 > NASDAQ），並強調不要用槓桿型工具，需設計戰略縱深，等反彈確認後再加碼。"
+          ],
+          "tickers": [
+            {
+              "name": "Avago",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人買蠻多，認為 MTK 搶市佔會掉 Share 但不代表公司不行，後續仍有開案、品質好且有漲價空間，用明後年 EPS 回算不貴，類似當時的 Nvidia。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "用它的可能明後年的EPS來回算的話,它並不是一個貴的股票,因為類似那時候的Invidia",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "CoreWeave",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為 Neo Cloud 風險大、不喜歡，雖然公司因產能不大可能被收購、不至於爆炸，但股價仍有機會狂崩，是市場修正的可能劇本之一。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "他們確實是扛了不對稱的風險",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Nabius",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人同樣視為 Neo Cloud，風險大、不喜歡，雖不至於爆炸但股價可能狂崩，提醒滿手高貝塔標的要注意前波低點警訊。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人對 Roadster 發布會技術展示感到震撼，個人已訂購 Frost 版本，但未對 Tesla 股票給出投資方向，屬產品愛好與消費分享。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Micron",
+              "code": "MU",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人表示記憶體是 2025-2026 可能的大贏家，但自己只剩美光，其他早已被洗掉，未對美光及記憶體給出明確買賣建議。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人認為台積電法說樂觀但股價未能反彈，是大盤的警訊，並未直接看空台積電本身。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為盤面已進入相對警覺狀態，強勢股減少、資減異常少，後續可能有回調；目前暫以技術回調看待，關鍵在下一波反彈若硬體起不來則要更加保守。",
+          "action_view": "操作上主持人會壓低部位、保留現金，避開槓桿抄底；抄底時偏好指數優於主題ETF，並等待軟體或硬體誰先站回再決定加碼。",
+          "notable_quote": "我已經覺得有點不對勁,已經有蠻多東西已經進入了跌破季線,或者說轉空的一個狀態",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我已經覺得有點不對勁,已經有蠻多東西已經進入了跌破季線,或者說轉空的一個狀態"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 1,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "8d310d75-919d-4cc9-9530-75ac4dd6a7b9",
         "title": "EP705 | 🎀",
         "published": "Wed, 14 Oct 2026 07:28:22 GMT",
@@ -712,64 +827,71 @@
           "notable_quote": "AI伺服器回收期不到兩年...自研晶片回收期在減半，它只需要一年的時間就可以把它收回來，這其實是一個超級變態恐怖的事情。"
         },
         "shown_at": "2026-09-09T23:43:43Z"
-      },
-      {
-        "guid": "bfdf7f30-6031-4eef-a689-16129f261d10",
-        "title": "EP694 | 🥖",
-        "published": "Sat, 05 Sep 2026 07:30:33 GMT",
-        "processed_at": "2026-09-05T12:09:33Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 AI 造成內容通膨但不會讓內容不值錢，反而讓有靈魂、有信任的好內容更值錢，並類比「SaaS 會殺死軟體」是錯判。",
-            "主持人以自己基金為例，主張台灣資本市場規模全球第四/五名、資本豐沛，應投資本地新創/遊戲團隊，把內容 IP 當長期資產而非短期夢想。",
-            "主持人解讀 Broadcom 首次在電話會議點名聯發科是利多，代表聯發科被 ASIC 王者視為真正對手；「最強的才需要被殺」。",
-            "Broadcom 中長期指引多項年增超過 100%，主持人認為這是 AI 需求千真萬確的證明，股價不漲是節奏問題，不該因此看壞基本面。",
-            "主持人判斷 AI 資本市場進入中段休息，如同網路長趨勢但終有一天修正；他縮槓桿等加權指數突破新高，說近期動能交易多做多賠。",
-            "主持人觀察 Snowflake 的 AI Router 預設模式能賺價差（例如收 10 元成本 5 元），指定模型毛利較薄；未來平台信任與 Router 分配是軟體利潤爭奪點。",
-            "主持人認為 FDE（Forward Deployed Engineer）是 AI 時代新型態需求，能整合流程、銷售、工程，是後續軟體業競爭核心。",
-            "主持人提到 Tesla 不用稀土的馬達很有工程強度，若 AI 持續橫盤資金可能往外圍供應鏈找機會，但目前只當次題材。"
-          ],
-          "tickers": [
-            {
-              "name": "Broadcom",
-              "code": "AVGO",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報與中長期指引強勁，主持人認為股價不漲只是耐心問題，不擔心基本面。"
-            },
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "被 Broadcom 首次當對手點名，主持人解讀為進入強者圈利多；即使晶片速度可能較慢。"
-            },
-            {
-              "name": "Snowflake",
-              "code": "SNOW",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "業績上修、AI Router 預設模式毛利佳，主持人視為具關注的軟體機會。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "不用稀土馬達受主持人肯定，但現階段僅當次題材，需等 AI 外圍輪動。"
-            }
-          ],
-          "market_view": "大盤在相對高檔且指數越墊越高，主持人認為盤不差但缺乏激情；AI 資本循環進入中段休息，需等加權指數明確突破新高表態。",
-          "action_view": "槓桿縮小等待明確方向；對 AI 大型股要有耐心，動能交易先縮小部位，往外圍次題材（如 Tesla 供應鏈、軟體）找機會。",
-          "notable_quote": "最強的才需要被殺，所以當我需要把你拿出來提的時候，其實對你來說是利多。"
-        },
-        "shown_at": "2026-09-05T22:52:13Z"
       }
     ]
   },
   "haojiao": {
     "name": "游庭皓的財經皓角",
     "episodes": [
+      {
+        "guid": "tag:soundcloud,2010:tracks/2420852640",
+        "title": "【完整版專訪】賴清德總統談台灣經濟",
+        "published": "Sat, 17 Oct 2026 10:26:13 +0000",
+        "processed_at": "2026-10-17T12:15:17Z",
+        "digest": {
+          "summary_points": [
+            "總統將 AI 定位為負責任的推動者，提出 AI 基本法七原則，並設定 2040 年培養 50 萬 AI 應用人才、百萬家中小微企業導入 AI、一兆元軟體平台產值等目標；他個人以歷史角度認為 AI 如同蒸汽機工業革命「才剛開始」，屬科技樂觀論，但強調政府非全然樂觀、有預做因應金融風險。",
+            "總統認為台灣對美貿易順差過大是關稅壓力來源，但關稅談判已爭取到 15% 不疊加、條件與日韓拉平，他視此為台灣與美國產業結構進一步結合的機會，並表示聯邦法院撤銷法律基礎後仍會竭力爭取原談判條件。",
+            "產業政策上，總統提出五大信賴產業、矽光子/量子運算/機器人三大關鍵核心及五產業合計 13 項國家戰略產業，並強調大企業帶小企業、避免大者恆大；他指出台積電與日月光在高雄白埔成立封裝測試產業鏈，讓中小企業融入，中小微企業有 171 萬家、900 萬勞工。",
+            "能源與算力方面，總統表示 AI 算力與經濟成長需求已盤點，2035 年穩定供電沒問題；再生能源目標 2035 年達 30%，核電在安全無虞、核廢有解、社會有共識三條件下可重啟，台電已啟動程序；國家目標 2040 年自建 1GW 算力（每 GW 價值約 400 億美元）。",
+            "金融與股市：總統尊重央行不升息及油電凍漲補貼的決策，認為能穩定物價、利大於弊；他強調不預測指數，但會建議幕僚買進股票，並認為經濟做好股市自然水漲船高。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "總統肯定台積電投資成功並感謝其願意帶動中小企業，政府曾投資台積電且受惠。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "日月光投控",
+              "code": "3711",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "總統提及台積電與日月光在高雄白埔成立封裝測試產業鏈，協助中小企業融入科技鏈。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "總統對 AI 帶動的經濟與股市長期正面，認為經濟做好股市自然水漲船高，但同時強調政府有預做因應、非全然樂觀。",
+          "action_view": "總統表示會建議幕僚買進股票、不要因指數高點而等待，但強調點位由市場決定，政府的責任是把經濟做好。",
+          "notable_quote": "所以我的責任就是把經濟做好。股市自然會水漲船高。",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "所以我的責任就是把經濟做好。股市自然會水漲船高。"
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 2,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
       {
         "guid": "tag:soundcloud,2010:tracks/2420062203",
         "title": "2026/10/16(五)賴清德總統談台灣經濟【早晨財經速解讀】",
@@ -1445,80 +1567,6 @@
           }
         },
         "shown_at": "2026-10-02T01:06:05Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2410230219",
-        "title": "2026/9/30(三)利率越漲 美股越不跌？數兆美元豪賭 AI驗收期到了嗎?【早晨財經速解讀】",
-        "published": "Wed, 30 Sep 2026 01:09:32 +0000",
-        "processed_at": "2026-09-30T07:41:35Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為本輪美債殖利率飆升主要來自實質殖利率（錢變貴），而非通膨預期失控；10年期與30年期美債殖利率創高，但標普指數避險情緒仍低，風險在於實質利率若長期居高，恐慌終將傳導至股市。",
-            "主持人強調美股表面強、內部極度分化：標普500成分股實際相關係數僅5.2%（2011年以來最低）、市場廣度轉負，羅素2000與非AI股明顯承壓，指數主要靠少數大型科技股支撐。",
-            "主持人以路透揭露的AI新創招股書與甲骨文木星計畫延後為例指出，AI營收成長雖快，但資本支出與虧損增速更快，債券市場已開始逐一評價AI專案；借越多、蓋越快，不一定股價漲越多。",
-            "主持人認為AI已從科技公司豪賭變成與全球信用、退休基金、銀行資產綁定的經濟實驗，失敗時不只是AI股價，而是系統性金融壓力；但三大雲端巨頭累積合約負債1.69兆美元，訂單不缺，缺的是資料中心完工與獲利認列。",
-            "主持人提醒費半、納斯達克100看似強勁，但成分股距高點平均跌25%、少數權值股創高，與2000年有相似處；不過AI集中度、生產力差異使泡沫類比不完全成立，重點是後續AI實體化能否證明回報。"
-          ],
-          "tickers": [
-            {
-              "name": "甲骨文",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人指出甲骨文AI資料中心木星計畫延後一年，2056年債券殖利率8.16%創高、CDS價格創高，距離垃圾債僅一級，帳面損失已超過20億美元，債務風險上升。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人提到Meta新AI代理Muse上線兩週用戶數百萬，但股價未因此推升，市場認為其他巨頭很快會推出類似產品；大量發債也加深AI債跌勢。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "麥當勞",
-              "code": "MCD",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人指出第二季美國同店銷售僅增0.8%，7、8月下滑，低收入族群縮減外食，牛肉與人力成本升高，降價搶客使獲利遭夾擊，股價已跌回2022年水準。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為美債殖利率上漲主要反映實質利率與AI資金需求，不是通膨全面失控；美股指數表面強勁但市場廣度惡化、個股分化極端，高利率若長期維持將最終傳導至股市。",
-          "action_view": "主持人提醒不宜因指數創高而忽視個股回檔與利率風險，應區分長期與短期尺度；現階段AI大型股短期獲利拉伸有限，需觀察AI實體化、債券市場評價與市場廣度是否修復。",
-          "notable_quote": "AI如果成功,它可能帶來生產力革命,但如果最後證明,投入遠遠超過回報,衝擊的,它就不會是單純幾支AI的股價,它會傳導到整個市場的企業獲利,信用市場,還有銀行的資產,政府基金和一般人的退休帳戶",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "AI如果成功,它可能帶來生產力革命,但如果最後證明,投入遠遠超過回報,衝擊的,它就不會是單純幾支AI的股價,它會傳導到整個市場的企業獲利,信用市場,還有銀行的資產,政府基金和一般人的退休帳戶"
-          },
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 0,
-            "unverified": 3,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-01T00:56:18Z"
       }
     ]
   },

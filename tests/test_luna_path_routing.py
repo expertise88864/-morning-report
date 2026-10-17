@@ -791,6 +791,24 @@ def test_padding_net_effect_is_pruned_not_fatal(luna_on, monkeypatch):
         "asset_net_effects[TAIEX]:no_conflict"]
 
 
+def test_stray_root_brace_is_recovered_and_traced(luna_on, monkeypatch):
+    """2026-10-16/17 生產:連三輪同形狀的 JSON(根物件被多一個 `}` 提早關掉,
+    語法修補輪也照犯)。修掉那一個括號後整份照常驗證,第一輪就該過並留痕。"""
+    text = json.dumps(_GOOD, ensure_ascii=False)
+    second_key = next(iter(list(_GOOD)[1:]))
+    cut = text.index(f', "{second_key}"')
+    resp = _response(_GOOD)
+    resp["output"][0]["content"][0]["text"] = text[:cut] + "}" + text[cut:]
+    calls = []
+    monkeypatch.setattr(mr, "_call_deepseek_responses", lambda p: (calls.append(p), resp)[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("修得回來的單一多餘括號不該讓整條路徑落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    assert len(calls) == 1
+    assert mr._RUN_MANIFEST["llm"]["primary_parse_errors"][-1]["recovered_by"] == "stray_close_brace"
+
+
 def test_the_second_repair_carries_the_latest_candidate(luna_on, monkeypatch):
     """第二輪帶的要是**第二版**(最新被拒的),不是第一版 ——
     帶錯版本的話「照抄」會把第一輪的修正倒回去。"""

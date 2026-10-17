@@ -290,6 +290,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:契約判準抽成 `contract_problems`(線上金絲雀與離線測試共用一份)
     "deepseek_responses.py": 500,  # 2026-08-25 生產:散文+圍欄裡的 JSON 要救得回來(否則白燒一輪修補);現況 469
     "json_segments.py": 75,  # Recover disjoint chunks; reject array-root extraction.
+    "json_stray_brace.py": 35,  # Only the brace that ended the root early; 10/16-17 production.
     "json_parse_diagnostic.py": 80,  # Public-safe structure only; never response text.
     "stance_score_alignment.py": 45,  # Canonicalize only a bare Python-owned score echo.
     "stance_score_claims.py": 60,  # Keep ambiguous numeric prose on the repair path.

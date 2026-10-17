@@ -194,6 +194,7 @@ def json_object_from_text(text):
         cands.append(("braces", raw[i:j + 1]))
     from json_segments import (has_trailing_object_start, inside_array_before,
                                merge_disjoint_objects)
+    from json_stray_brace import repair as stray_close_brace
     fence_marker = r"(?m)^[ \t]*```(?:json)?[ \t]*$"
     array_probe = _re.sub(fence_marker, "", raw)
     array_root = inside_array_before(array_probe, array_probe.find("{"))
@@ -223,7 +224,7 @@ def json_object_from_text(text):
         if merged is not None:
             return merged, "segments"
     if has_trailing_object_start(raw):
-        return None, ""
+        return stray_close_brace(raw) or (None, "")
     for how, body in cands[2:]:
         try:
             obj = _json.loads(body)

@@ -1,108 +1,4 @@
 {
- "geopolitical:沙烏地阿美:2026-10": {
-  "first_seen": "2026-10-14",
-  "days": 1,
-  "last_seen": "2026-10-14",
-  "latest_title": "沙烏地阿美總部遇襲起火 胡塞威脅再打石油設施",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "再打",
-   "塞威",
-   "威脅",
-   "打石",
-   "油設",
-   "石油",
-   "總部",
-   "胡塞",
-   "脅再",
-   "襲起",
-   "設施",
-   "起火",
-   "遇襲",
-   "部遇"
-  ],
-  "entity": "沙烏地阿美",
-  "subject_basis": "literal",
-  "subjects": [
-   "沙烏地阿美"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "export_controls:輝達:2026-10": {
-  "first_seen": "2026-10-14",
-  "days": 1,
-  "last_seen": "2026-10-14",
-  "latest_title": "輝達中國AI資料中心晶片市占降至34%",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "34",
-   "ai",
-   "中國",
-   "中心",
-   "占降",
-   "市占",
-   "心晶",
-   "料中",
-   "晶片",
-   "片市",
-   "資料",
-   "降至"
-  ],
-  "entity": "輝達",
-  "subject_basis": "alias",
-  "subjects": [
-   "輝達"
-  ],
-  "event_type": "export_controls",
-  "action": "",
-  "identity_schema": 14
- },
- "litigation:ARM:2026-10": {
-  "first_seen": "2026-10-15",
-  "days": 1,
-  "last_seen": "2026-10-15",
-  "latest_title": "高通反擊Arm架構授權訴訟成功，雖僅獲得象徵性2美金但有望免付5年專利授權#授權糾紛(253017) - Cool3c",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "253017",
-   "cool3c",
-   "但有",
-   "僅獲",
-   "免付",
-   "利授",
-   "反擊",
-   "專利",
-   "年專",
-   "得象",
-   "徵性",
-   "成功",
-   "授權",
-   "有望",
-   "望免",
-   "架構",
-   "構授",
-   "權糾",
-   "權訴",
-   "獲得",
-   "糾紛",
-   "美金",
-   "訟成",
-   "訴訟"
-  ],
-  "entity": "ARM",
-  "subject_basis": "alias",
-  "subjects": [
-   "ARM"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
  "cybersecurity:cyberattack:ARM:2026-10": {
   "first_seen": "2026-10-16",
   "days": 1,
@@ -296,6 +192,69 @@
   ],
   "event_type": "geopolitical",
   "action": "tariff_action",
+  "identity_schema": 14
+ },
+ "geopolitical:SpaceX:2026-10": {
+  "first_seen": "2026-10-19",
+  "days": 1,
+  "last_seen": "2026-10-19",
+  "latest_title": "美國稱烏克蘭目前無Starshield使用權限",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "starshield",
+   "使用",
+   "克蘭",
+   "前無",
+   "國稱",
+   "權限",
+   "烏克",
+   "用權",
+   "目前",
+   "稱烏",
+   "美國",
+   "蘭目"
+  ],
+  "entity": "SpaceX",
+  "subject_basis": "literal",
+  "subjects": [
+   "SpaceX"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:美光:2026-10": {
+  "first_seen": "2026-10-19",
+  "days": 1,
+  "last_seen": "2026-10-19",
+  "latest_title": "Netlist獲美光六億美元專利授權費，終止HBM、DDR5侵權訴訟 - 鏈新聞 ABMedia",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "ddr5",
+   "hbm",
+   "netlist",
+   "侵權",
+   "億美",
+   "元專",
+   "六億",
+   "利授",
+   "專利",
+   "授權",
+   "權訴",
+   "權費",
+   "終止",
+   "美元",
+   "訴訟"
+  ],
+  "entity": "美光",
+  "subject_basis": "alias",
+  "subjects": [
+   "美光"
+  ],
+  "event_type": "litigation",
+  "action": "",
   "identity_schema": 14
  }
 }

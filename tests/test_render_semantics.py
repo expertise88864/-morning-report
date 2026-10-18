@@ -238,6 +238,23 @@ def test_each_speculative_effect_sentence_remains_conditional():
     assert '可能折現率上升。 可能估值受壓。' in ard._assets_prose(entry, packet)
 
 
+def test_placeholder_effects_do_not_print_stray_punctuation():
+    """10/19 實信:二階欄位以「。」「可能。」佔位,印成「…。 。」「…。 可能。」。"""
+    import analysis_render_depth as ard
+    plain = ard._assets_prose({"affected_assets": [
+        {"asset_id": "TAIEX", "first_order_effect": "指數波動度大於方向性。",
+         "second_order_effect": "。"}]})
+    assert plain.strip() == "TAIEX:指數波動度大於方向性。", plain
+    packet = {'news': [{'source_item_id': 'n', 'title': '美債殖利率走高', 'entities': []}],
+              'tw_universe': [{'code': '2408', 'name': '南亞科'}]}
+    for placeholder in ("可能。", "可能", " ，"):
+        entry = {'source_item_id': 'n', 'affected_assets': [
+            {'asset_id': '2408', 'first_order_effect': '估值受壓',
+             'second_order_effect': placeholder}]}
+        prose = ard._assets_prose(entry, packet).strip()
+        assert prose.endswith('可能估值受壓。') and '。 可能' not in prose, (placeholder, prose)
+
+
 def test_the_counterevidence_flag_survives_without_a_cluster():
     """反面證據是 claim 自己的欄位 —— 沒有 cluster_id、或查不到那一群時
     仍要出現(先前兩個早退會把整個括號跳過)。"""

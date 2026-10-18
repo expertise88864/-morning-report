@@ -397,10 +397,11 @@ def _assets_prose(n: dict, packet=None) -> str:
             except Exception:           # noqa: BLE001
                 spec = ""
         from prose_join import sentences
-        raw_effects = (_s(a.get("first_order_effect")),
-                       _s(a.get("second_order_effect")))
+        # 10/19 實信:模型以「。」「可能。」當空欄位佔位,印成「…。 。」「…。 可能。」。
+        raw_effects = [t for t in (_s(a.get("first_order_effect")), _s(a.get("second_order_effect")))
+                       if t.removeprefix("可能").strip(_TERMINAL_MARKS + "，,、；;：: ")]
         effects = sentences(("可能" if spec and not text.startswith("可能") else "") + text
-                            for text in raw_effects if text)
+                            for text in raw_effects)
         row = _universe_index(packet).get(aid) or {}
         import company_profiles
         name = _s(row.get('name')) or company_profiles.display_name(aid)

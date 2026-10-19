@@ -2333,6 +2333,65 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "c7c515a4-9537-4e14-a43e-f83def808471",
+        "title": "EP346. 特斯拉的飛天跑車、微軟 AI 加速跟上、八十億分之一的人生 | M觀點",
+        "published": "Mon, 19 Oct 2026 06:15:31 GMT",
+        "processed_at": "2026-10-19T15:38:44Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為特斯拉 Roadster 飛行展示是「技術火力展示」與價值數億美元的形象廣告，Rocket 版估價 500-1000 萬美元且限量約 10-30 台，買不到的富豪會轉買 Performance/Surge 版，並可能帶動一般人買 Model Y，因此不應低估其商業外溢效果。",
+            "主持人判斷微軟 Maya300 自研 ASIC 以高記憶體頻寬、原生 FP4、每瓦效能宣稱超越 Vera Rubin 40%，已逼近 Google TPU 與 Amazon Trainium；用 100 萬顆取代內部 Copilot 的 GB200 後可釋出算力出租，是重要利多。",
+            "主持人認為微軟 NAI Base2 模型（2.8 兆參數、僅用 1.6 萬張 GB200 訓練 38 天）雖非最前沿，但可達後前沿等級，足以防守大型企業 AI 需求，微軟在 AI 競爭地位穩固。",
+            "主持人從 Anthropic 次順位貸款利率拉高到 10% 判斷 AI 資金緊張尚未解除，AI Infra 股可能還沒跌完，但三大公有雲因 AI 成本下降反而獲利改善，整體指數不一定大跌。",
+            "主持人以一人用 AI 快速開發的遊戲為例，認為 AI 壓低製作門檻會使創意大爆發但競爭加劇，開發者不一定賺更多，生產力果實可能轉為消費者剩餘，因此對 AI 投資回收仍應保守。"
+          ],
+          "tickers": [
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Roadster 飛行展示雖直接銷量有限，但具強力形象廣告效益，且 Performance/Surge 版會因買不到 Rocket 版而熱賣。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Maya300 晶片與 NAI Base2 模型讓微軟在 AI 競爭中站穩防守地位，軟硬體均為利多。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "他這樣其實就夠了,所以我想,我想這個大概就是微軟他的一個,對他來講,他已經可以穩穩站在這個地位,那這個確保他們在AI時代競爭,應該至少可以,有很,就算進攻的部分未必能夠搶下多少,但防守的部分應該是可以,綽綽有餘啦",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為 AI Infra 股賣壓可能未止，但平台型公有雲受惠、整體指數不至於大跌，資金面是主要變數。",
+          "action_view": "操作上對 AI Infra 維持觀望、不追高，對 AI 長線仍看好但需留意資金與估值風險。",
+          "notable_quote": "AI提升了生產力,可是它提升了生產力,這個經濟果實,到底會流向哪邊呢?",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "AI提升了生產力,可是它提升了生產力,這個經濟果實,到底會流向哪邊呢?"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "2228a20d-2c3e-48d8-9538-8bb8e3a21641",
         "title": "EP345. AI 基建股大跌中、Meta 衝到最前沿、SPCX 電信商之夢 | M觀點",
         "published": "Thu, 15 Oct 2026 15:42:54 GMT",
@@ -3160,51 +3219,6 @@
           "notable_quote": "我如果是果粉我一定會買。"
         },
         "shown_at": "2026-09-10T23:30:44Z"
-      },
-      {
-        "guid": "f31c3775-74fc-40c9-a75a-fc040da400b2",
-        "title": "EP334. GPT-6 Astra 挑戰 AGI、輝達的投資護城河、Cybercab 正式登場 | M觀點",
-        "published": "Mon, 07 Sep 2026 07:00:05 GMT",
-        "processed_at": "2026-09-07T14:29:58Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 GPT-6 Extra 明顯比 GPT-5.6 更聰明，多項新 benchmark（如 Terminal Bench 4.0、Automation Bench）全面超越 Fable 5.1，但現行 AAII 指數因指標飽和低估其實力，待 AAII 更新後排名可望追上甚至超越 Fable 5.1。",
-            "主持人提出「半通用商品」概念：各家前沿模型在七八成工作可互相替代，但剩餘兩成特定任務有差異，挾此 niche 優勢可避免被取代但難有超額利潤。",
-            "主持人判斷 OpenAI 應會在數週內以 post-training 強化 GPT-6 在人類感受性工作上的表現，推出 GPT-6.1，改善目前 GPT-6 在部分人類評分上反輸 GPT-5.6 的現象。",
-            "主持人指出輝達投資聯發科 35 億美元零息可轉債的核心是綁定聯發科 ASIC 使用 NV-Link Fusion，讓輝達在 ASIC 崛起時代仍能銷售 switch、網路、DPU 等晶片，擴大護城河。",
-            "主持人評估輝達的投資與借款擔保雖屬循環融資形式，但因其 data center 毛利率達 80%，最壞情況僅是少賺而非虧損，公司財務風險極低；真正風險在於可能提前透支未來成長，市場對其 PE 評價不高已部分反映此顧慮。",
-            "主持人認為輝達併購 Hugging Face 是為了壯大歐美開源模型生態，制衡閉源前沿 AI Lab，反壟斷風險不高，且輝達將加速追趕開源模型 Nemotron，目前落後中國開源模型約三個月。",
-            "主持人對特斯拉 CyberCab 在 Austin 投放約 40 台給予正面解讀，認為非象徵性展示，而是對安全性有信心的訊號；他預估年底前全美無人駕駛車隊可達 300（保守）至 1000（樂觀）台，2027 年上看 5000 台 CyberCab + 3000 台 Model Y。",
-            "主持人稱特斯拉開放外部車隊購買 CyberCab 的策略「很聰明」，既能降低資本支出，又能將計程車司機等潛在反對者轉化為支持者，減少政治阻力。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為輝達用資本建立新護城河策略正確，循環融資實質風險極低，長期看好。"
-            },
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "輝達投資 35 億美元零息可轉債，綁定 NV-Link Fusion 合作，有助聯發科 ASIC 業務發展。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好 CyberCab 車隊擴張速度，認為開放車隊購買策略聰明，預估 2027 年全美達 5000 台 CyberCab。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "主持人表示自身投資以長期部位為主，僅保留 1-2% 彈性部位做短線進出（如先前買賣 NRGV），主要部位不受影響。",
-          "notable_quote": "我覺得長線比短線重要啦，你不要去在意一天的漲跌幅，真的不是很重要。"
-        },
-        "shown_at": "2026-09-07T23:53:51Z"
       }
     ]
   },

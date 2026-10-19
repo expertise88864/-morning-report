@@ -23587,6 +23587,8 @@ def deliver_report(html: str, subject: str, state_entry: Optional[dict],
 
     push_state=False:呼叫端自己會 push(且只推子集)——週末綜合報用,見該處說明。
     """
+    from traditional_guard import simplified_free   # 寄送與存檔同一份:不得有簡體字(10/19)
+    html, subject = simplified_free(html), simplified_free(subject)
     try:
         send_email(html, subject)
     except Exception as e:
@@ -23600,15 +23602,10 @@ def deliver_report(html: str, subject: str, state_entry: Optional[dict],
     import fallback_recap_runtime as _fallback_recap
     _fallback_recap.delivered(html, fallback_context, ANALYSIS_RECAP_FILE,
                               _RUN_MANIFEST, _atomic_write_text)
-    archive_report_html(
-        html,
-        (state_entry or {}).get("date") or dt.datetime.now(TPE).strftime("%Y-%m-%d"))
-    persist_delivered_report_state(
-        state_entry,
-        podcast_episodes,
-        mark_podcasts=True,
-        push=push_state,
-    )
+    archive_report_html(html, (state_entry or {}).get("date")
+                        or dt.datetime.now(TPE).strftime("%Y-%m-%d"))
+    persist_delivered_report_state(state_entry, podcast_episodes,
+                                   mark_podcasts=True, push=push_state)
 
 
 def determine_mode(now_tpe: dt.datetime) -> str:

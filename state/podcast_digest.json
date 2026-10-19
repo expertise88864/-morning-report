@@ -835,6 +835,108 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2421633024",
+        "title": "2026/10/19(一)費半又入熊市!買點到了嗎?AI行情結束了?還是Q4最大買點?【早晨財經速解讀】",
+        "published": "Mon, 19 Oct 2026 01:03:45 +0000",
+        "processed_at": "2026-10-19T07:01:24Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為本波不是系統性危機而是估值修正：標普/納指相對抗跌、費半自高點回檔約兩成進入技術熊市但年初仍是牛市；股市急跌使Polymarket對聯準會10月升息機率從原本升息預期降至僅14%，他認為用股價回調換利率平穩『划算』。",
+            "主持人指出賣壓集中在費半與小型股，羅素2000跌破年線，高收益債信用利差創六個月新高，小型股因依賴外部融資跌幅更危險；費半雖自高點回檔約兩成，但本業仍有獲利支撐，不全然相同。",
+            "主持人以記憶體/儲存股為例：美光單週跌14.6%、SK海力士ADR跌16%，三星P/B 1.2倍、SK海力士P/B 0.9倍估值並不高；他認為從2月看只是漲多休息，提醒不要因短期波動被洗出場。",
+            "主持人比較台韓股市：韓股單週暴跌約兩成，外資連8日賣超韓科技股116億美元，且三星/SK海力士回購力道減半是接盤轉弱關鍵；台股內資買盤較強、外資賣超但台股跌幅僅3%，他認為台股相對健康。",
+            "主持人警示通膨與債市信用壓力：9月PPI月增1.3%為2022年3月來最大，能源外溢使企業利潤遭壓縮；CoreWeave垃圾債殖利率飆至約15%、CDS隱含5年違約機率63%，Oracle 10-12年債殖利率8.5%，他認為股市下跌只能短期緩解，長期需靠AI生產力提升與債市擔憂解除。",
+            "主持人操作定調為『危機是機會』：他認為台股週一可能開低走高，財富在下跌時佈局；多數人看對趨勢卻死在波動，勿追高、勿用槓桿飆車，長期AI趨勢未變。"
+          ],
+          "tickers": [
+            {
+              "name": "Micron",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為美光單週跌14.6%是漲多回檔，從2月看只是休息，非基本面轉差。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Western Digital",
+              "code": "WDC",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "同屬記憶體/儲存類股，主持人認為高檔回落但從2月看只是休息。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Seagate",
+              "code": "STX",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "同屬記憶體/儲存類股，主持人認為高檔回落但從2月看只是休息。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "SanDisk",
+              "code": "SNDK",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "同屬記憶體/儲存類股，主持人認為高檔回落但從2月看只是休息。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "iShares MSCI South Korea ETF",
+              "code": "EWY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人指出韓國股市回購力道減半、外資賣超，接盤力道弱於台股，ETF測試年線。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "韓國股市先前有三星和SK海力士的高強度的企業的積極回購,可是上禮拜它的回購幅度只有一半喔",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "主持人認為本波是估值修正而非全面系統性危機，賣壓集中在費半、小型股與韓國記憶體股；股市急跌使10月升息機率下滑，他視為以股價回調換取利率空間，中長期仍看AI趨勢。",
+          "action_view": "操作上定調『危機是機會』：不要因短期波動被洗出場，下跌時佈局；台股週一可能開低走高，勿追高，槓桿僅用於超車而非飆車。",
+          "notable_quote": "下跌的時候沒有小麥,上漲的時候你也不會有小麥,市場不會因為我們害怕就停止下跌,也不會因為我們猶豫就等著我們上車",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "下跌的時候沒有小麥,上漲的時候你也不會有小麥,市場不會因為我們害怕就停止下跌,也不會因為我們猶豫就等著我們上車"
+          },
+          "direction_quality": {
+            "attributed": 5,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2420852640",
         "title": "【完整版專訪】賴清德總統談台灣經濟",
         "published": "Sat, 17 Oct 2026 10:26:13 +0000",
@@ -1509,66 +1611,6 @@
           }
         },
         "shown_at": "2026-10-03T00:49:31Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2410836099",
-        "title": "2026/10/1(四)美股詭異行情!債市拉警報 基本面卻上修?八成個股下跌 AI能撐多久?【早晨財經速解讀】",
-        "published": "Thu, 01 Oct 2026 01:08:47 +0000",
-        "processed_at": "2026-10-01T08:08:11Z",
-        "digest": {
-          "summary_points": [
-            "主持人拆解8月PCE數據認為，核心通膨降溫只是暫時減輕10月升息壓力，服務通膨、能源尚未完全反映、儲蓄率降至4.1%創2022年來最低，購買力衝擊仍大。",
-            "主持人認為10年期美債殖利率衝上5.29%不能只怪通膨，關鍵是美國政府35%債務一年內到期、平均利率3.1%對比市場融資成本4.8%，市場對借新還舊有遲疑。",
-            "主持人指出9月標普僅跌0.5%但78%成分股收黑、中位數跌4.5%，指數靠少數科技巨頭硬撐，內部裂痕擴大；高利率先傷道瓊、小型股與公用事業。",
-            "主持人以2032年前AI基礎建設總投資10.3兆美元、占GDP 3.6%及折舊與Token價格下跌估算，認為最大風險是全市場都在等警報、等煙霧飄進來才離場，並非不知道風險。",
-            "主持人用美光財報與半導體獲利上修佐證：美光營收542.3億美元高於預期、年增四倍，下季指引615億美元，股價漲273%仍不算過熱，顯示記憶體需求未降溫。"
-          ],
-          "tickers": [
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為美光AI記憶體需求未降溫，營收年增四倍且下季指引高於預期，股價雖漲273%但相對於獲利不算過熱。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "第四季的營收是高達542.3億美元,比市場預估的510億還要來得高,相對於去年同期啊,營收翻四倍啦",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "公用事業類股ETF",
-              "code": "XLU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為高殖利率對公用事業高股息、資本密集產業的估值與融資壓力大，XLU已跌破年線且相對強弱指標降至近年新低。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "美國的公用事業類股ETF叫做XLU,這次拋售情況也非常劇烈,已經跌破年線了,相對強弱指標大概也降到了近年的新低",
-                "direction": "bearish"
-              }
-            }
-          ],
-          "market_view": "主持人認為，高利率壓力正集中在道瓊、小型股與公用事業，科技股因獲利上修而撐住指數，但市場內部已明顯分化；台股靠硬體/晶片獲利動能抵擋外資賣壓。",
-          "action_view": "主持人認為在資金緊繃下應優先選擇獲利能上修的科技巨頭/半導體硬體，而非防禦性道瓊或公用事業；同時警惕市場集體等待最後一刻才離場的風險。",
-          "notable_quote": "很多系統它真正的安全機制,並非掌握在控制者手上,是建立在其他人在關鍵時刻作出反應上",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "很多系統它真正的安全機制,並非掌握在控制者手上,是建立在其他人在關鍵時刻作出反應上"
-          },
-          "direction_quality": {
-            "attributed": 2,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-02T01:06:05Z"
       }
     ]
   },

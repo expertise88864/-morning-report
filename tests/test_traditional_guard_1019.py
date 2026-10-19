@@ -16,6 +16,13 @@ import traditional_guard as tg
     ("头发与价格", "頭髮與價格"),
     ("台湾发展", "台灣發展"),                              # 台 never becomes 臺
     ("鄭欽文首度来港参赛", "鄭欽文首度來港參賽"),
+    # PR #22 外審:Big5 次常用區裡的簡體字(厂、与、网)也要換。
+    ("科技大厂", "科技大廠"),
+    ("工厂与网络", "工廠與網絡"),
+    ("听说台湾发展", "聽說台灣發展"),
+    # 標籤屬性與網址不轉,只轉可見文字。
+    ('<a href="https://udn.com/新闻/1">地方新闻</a>', '<a href="https://udn.com/新闻/1">地方新聞</a>'),
+    ("见 https://x.com/新闻 报导", "見 https://x.com/新闻 報導"),
 ])
 def test_simplified_text_becomes_taiwan_traditional(src, want):
     assert tg.simplified_free(src) == want
@@ -24,6 +31,7 @@ def test_simplified_text_becomes_taiwan_traditional(src, want):
 @pytest.mark.parametrize("text", [
     "台積電在台灣發布財報，皇后、公里、准許、一隻、乾淨、週報",
     "純繁體不變：臺北與台中",
+    "涂醒哲手頭拮据，瀟洒依舊",
     "<a href=\"https://news.google.com/rss/articles/CBMi?oc=5\">標題</a>",
     "",
 ])

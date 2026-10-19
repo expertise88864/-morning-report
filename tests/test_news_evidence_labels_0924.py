@@ -13,9 +13,10 @@ def test_source_limit_stays_beside_interpretation_in_small_print(monkeypatch):
     packet = {'news': [{'source_item_id': 'n', 'title': '公司公布人事調整'}]}
     row = {'source_item_id': 'n', 'why_it_matters': '對後續成本可能有影響。',
            'source_caveat': '只有單一媒體引述文件，尚待公司確認。',
-           'invalidation_signal': '公司公布不同數據'}
+           'invalidation_signal': '公司公布不同數據', 'materiality': 'high'}
     text = render._news_line(row, packet)
-    assert text.index('本報解讀：') < text.index('保留:') < text.index('若公司公布不同數據')
+    # 2026-10-19:內文是一段話(失效條件在段內),小字但書接在段落之後。
+    assert text.index('本報解讀：') < text.index('若公司公布不同數據') < text.index('保留:')
     html = _md_to_html(text)
     caveat = html.split('<p style="font-size:12px!important', 1)[1].split('</p>', 1)[0]
     assert '只有單一媒體' in caveat

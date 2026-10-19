@@ -102,7 +102,12 @@ def test_the_falsification_trigger_is_folded_from_the_top_three():
     """
     out = _rendered()
     assert "什麼情況代表這個判斷錯了" not in out
-    assert "此判斷不成立" in out, "第八段的失效條件也一起消失了"
+    # 2026-10-19 使用者:失效條件只在高重要性事件寫(fixture 的事件卡不是 high)。
+    assert "此判斷不成立" not in out
+    obj = fx.valid_analysis()
+    for card in obj["top_news_analysis"]:
+        card["materiality"] = "high"
+    assert "這個判斷就要修正" in ar.render(obj), "高重要性事件的失效條件也一起消失了"
 
 
 def test_counterevidence_is_flagged():
@@ -152,7 +157,9 @@ def test_the_mechanism_chain_reaches_the_reader():
     把渲染那兩行拿掉,全套照樣綠。schema 再深,渲染丟掉就等於沒有。"""
     out = ar.render(fx.valid_analysis())
     assert "傳導:" not in out
-    assert "費半收漲 → 台股電子開盤定價" in out
+    # 2026-10-19 使用者:「呈現的方式跟備援一樣」—— 箭頭鏈不再印(仍經驗證),
+    # 記在 test_review22_deferred 的刻意不排帳本。
+    assert "費半收漲 → 台股電子開盤定價" not in out
     # 2026-08-17:通道與 fact/推論 標記收起來(使用者:讀起來像表單)。
     # **鏈本身還在**,而且節點串成一行 —— 那正是這條測試在保護的東西。
 
@@ -165,8 +172,11 @@ def test_the_invalidation_signal_reaches_the_reader():
     說不出什麼情況自己會錯的判斷,事後無法評分。"""
     # 2026-08-19:字樣從「什麼會推翻它:X」改成散文「若X,此判斷不成立」
     # (使用者:整合成一小段落語句敘述)。**判準不變**:失效條件要在。
-    out = ar.render(fx.valid_analysis())
-    assert "此判斷不成立" in out
+    obj = fx.valid_analysis()
+    for card in obj["top_news_analysis"]:
+        card["materiality"] = "high"   # 2026-10-19:只在高重要性事件寫
+    out = ar.render(obj)
+    assert "這個判斷就要修正" in out
     assert "量級中等" not in out and "成立要看到" not in out
 
 
@@ -225,7 +235,8 @@ def test_two_effect_sentences_do_not_collide():
         {"asset_id": "2330", "first_order_effect": "折現率上升。",
          "second_order_effect": "折價可能擴大"}]})
     assert prose and "。、" not in prose, prose
-    assert prose.strip() == "2330:折現率上升。 折價可能擴大。", prose
+    # 2026-10-19:併成「對 X 而言,…」一句(備援文風)。
+    assert prose.strip() == "對2330而言，折現率上升，折價可能擴大", prose
 
 
 def test_each_speculative_effect_sentence_remains_conditional():
@@ -235,7 +246,7 @@ def test_each_speculative_effect_sentence_remains_conditional():
     entry = {'source_item_id': 'n', 'affected_assets': [
         {'asset_id': '2408', 'first_order_effect': '折現率上升',
          'second_order_effect': '估值受壓'}]}
-    assert '可能折現率上升。 可能估值受壓。' in ard._assets_prose(entry, packet)
+    assert '對南亞科(2408)而言，可能折現率上升，可能估值受壓' in ard._assets_prose(entry, packet)
 
 
 def test_placeholder_effects_do_not_print_stray_punctuation():
@@ -244,7 +255,7 @@ def test_placeholder_effects_do_not_print_stray_punctuation():
     plain = ard._assets_prose({"affected_assets": [
         {"asset_id": "TAIEX", "first_order_effect": "指數波動度大於方向性。",
          "second_order_effect": "。"}]})
-    assert plain.strip() == "TAIEX:指數波動度大於方向性。", plain
+    assert plain.strip() == "對TAIEX而言，指數波動度大於方向性", plain
     packet = {'news': [{'source_item_id': 'n', 'title': '美債殖利率走高', 'entities': []}],
               'tw_universe': [{'code': '2408', 'name': '南亞科'}]}
     for placeholder in ("可能。", "可能", " ，"):
@@ -252,7 +263,7 @@ def test_placeholder_effects_do_not_print_stray_punctuation():
             {'asset_id': '2408', 'first_order_effect': '估值受壓',
              'second_order_effect': placeholder}]}
         prose = ard._assets_prose(entry, packet).strip()
-        assert prose.endswith('可能估值受壓。') and '。 可能' not in prose, (placeholder, prose)
+        assert prose == '對南亞科(2408)而言，可能估值受壓' and '可能。' not in prose, (placeholder, prose)
 
 
 def test_the_counterevidence_flag_survives_without_a_cluster():

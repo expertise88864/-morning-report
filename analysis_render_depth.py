@@ -11,7 +11,6 @@
 """
 from __future__ import annotations
 
-import news_impact as _impact
 import re
 
 
@@ -287,18 +286,18 @@ def _attribution(n: dict, packet=None) -> str:
 
 
 def _news_line(n: dict, packet=None) -> str:
-    """一則新聞 = **一小段散文**(2026-08-19 使用者定案)。
+    """一則新聞 = 小標題 + **備援文風的一段話**(2026-10-19 使用者定案)。
 
     形狀:
 
-        **小標題**:昨天發生什麼事(發布者)。為什麼重要。
-        傳導:A → B → C;若 X,此判斷不成立。2330:一階、二階。[A 級・佐證]
+        **主體**｜昨天的新聞標題(發布者連結)。
+        為什麼重要。量級依據。對 2330 而言,…。[A 級・佐證]
 
-    * **小標題優先是公司**(標題有指名時),否則就是**新聞標題本身** ——
-      使用者原話:「小標題是要昨日新聞的標題,不是都台積電」。
-    * 傳導 / 什麼會推翻它 / 逐標的影響**併進同一段**,不再排成清單 ——
-      使用者原話:「全部整合成一小段落語句敘述即可」。
-      內容一樣都在,少的是排版的行數。
+    * **小標題照舊**:優先是公司,標題完整並附原文連結(使用者 08-19、09-21)。
+    * 內文改成備援那樣的一段話(使用者 10-19:「呈現的方式跟備援一樣」)——
+      「本報解讀/保留/後續驗證/此判斷不成立」標籤與箭頭鏈不再印;後續觀察與
+      失效條件**只在高重要性**事件寫一句。欄位全部照常驗證,拿掉的是排版。
+    * 單一來源的但書照樣進信(LM-4),改成一般句子;推測性傳導仍標「可能」。
     """
     body = _s(n.get("why_it_matters"))
     if not body:
@@ -323,8 +322,29 @@ def _news_line(n: dict, packet=None) -> str:
         lead = _join_sentence(display_head + attribution)
     else:
         lead = ""
-    interpretation = "本報解讀：" + body
-    parts = [lead + '\n\n' + interpretation if lead else interpretation]
+    sentences = [body]
+    magnitude = _s(n.get("why_this_magnitude"))
+    if magnitude and magnitude != "無":
+        sentences.append(magnitude)
+    sentences.append(_assets_prose(n, packet))
+    high = _s(n.get("materiality")) == "high"
+    if high:
+        sentences.append(_watch_sentence(n))
+    # 「本報解讀：」只留在 Markdown 給因果防線辨認本報分析(price/hedge guards),
+    # render_utils._md_to_html 在轉成 HTML 時拿掉 —— 讀者看不到這個標籤(10-19)。
+    paragraph = "本報解讀：" + "".join(_join_sentence(x) for x in sentences if _s(x)) + _credibility(n, packet)
+    parts = [lead + "\n\n" + paragraph if lead else paragraph]
+    # 單一來源的但書(LM-4)仍是讀者要求的小字段落(render_utils 認「保留:」開頭),
+    # 但與失效條件同一個規則:只在高重要性事件出現;其餘由結尾的「僅單一來源」標籤揭露。
+    cav = _s(n.get("source_caveat"))
+    if high and cav and cav != "無":
+        try:
+            import analysis_validate as _av10
+            weak = _av10.weakly_corroborated(n, packet)
+        except Exception:               # noqa: BLE001 - 判準失敗不毀渲染
+            weak = False
+        if weak:
+            parts.append(_join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}"))
     import news_research_context as _research
     history = _research.history_prose(n, packet)
     if history:
@@ -333,45 +353,21 @@ def _news_line(n: dict, packet=None) -> str:
     comparison = podcast_comparison.prose(n, packet)
     if comparison:
         parts.append(comparison)
-    chain = _chain_line([st for st in (n.get("mechanism_steps") or [])
-                         if isinstance(st, dict)])
-    if chain:
-        parts.append("\n\n" + _join_sentence(chain))
-    impact = _impact.readout(n, _s)
-    if impact:
-        import re
-        # September 8 attachment item 9 explicitly hides the observation window;
-        # validated horizon/state remain intact. Keep the magnitude reasoning.
-        impact = re.sub(r'影響觀察窗：[^。]*。\s*', '', impact)
-        parts.append(impact.replace('量級依據：', ''))
-    inval = _s(n.get("invalidation_signal")).rstrip(_TERMINAL_MARKS + " ,，;；")
-    if inval:
+    return "\n\n".join(parts)
+
+
+def _watch_sentence(n: dict) -> str:
+    """高重要性事件才寫的一句:接下來要看什麼、什麼情況代表看錯。"""
+    marks = _TERMINAL_MARKS + " ,，;；"
+    confirm = _s(n.get("confirmation_signal")).rstrip(marks)
+    inval = _s(n.get("invalidation_signal")).rstrip(marks)
+    bits = []
+    if confirm and confirm != "無":
+        bits.append(f"接下來要看{confirm}")
+    if inval and inval != "無":
         prefix = "" if inval.startswith(("若", "如果", "倘若", "一旦")) else "若"
-        parts.append(_join_sentence(f"{prefix}{inval}，此判斷不成立"))
-    assets = _assets_prose(n, packet)
-    if assets:
-        parts.append(assets)
-    tail = _credibility(n, packet)
-    if tail:
-        parts.append(tail)
-    # **`source_caveat` 要進信**(全案審查 2026-09-03 LM-4):驗證器為單一來源
-    # 強制它非空(寫「無」即駁回、燒一輪 semantic 額度),schema 說「由 renderer
-    # 固定呈現」—— 而這裡從未讀取,讀者只看到「僅單一來源」的標籤,「該保留
-    # 什麼」一句都沒進信。判準回 validator 問(與 `_assets_prose` 同一個理由:
-    # 不在渲染層自己判一份);多方證實/官方那些寫「無」的不排。
-    cav = _s(n.get("source_caveat"))
-    if cav and cav != "無":
-        try:
-            import analysis_validate as _av10
-            weak = _av10.weakly_corroborated(n, packet)
-        except Exception:               # noqa: BLE001 - 判準失敗不毀渲染
-            weak = False
-        if weak:
-            # Keep the small-print caveat as its own paragraph, adjacent to the
-            # interpretation rather than after the impact and other sections.
-            parts[0] += "\n\n" + _join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}") + "\n\n"
-    # 一般句子以空格接起來；保留段落已有雙換行，維持獨立小字樣式。
-    return " ".join(parts)
+        bits.append(f"{prefix}{inval}，這個判斷就要修正")
+    return "；".join(bits)
 
 
 def _assets_prose(n: dict, packet=None) -> str:
@@ -396,18 +392,19 @@ def _assets_prose(n: dict, packet=None) -> str:
                     spec = "〔推測性傳導〕"
             except Exception:           # noqa: BLE001
                 spec = ""
-        from prose_join import sentences
         # 10/19 實信:模型以「。」「可能。」當空欄位佔位,印成「…。 。」「…。 可能。」。
         raw_effects = [t for t in (_s(a.get("first_order_effect")), _s(a.get("second_order_effect")))
                        if t.removeprefix("可能").strip(_TERMINAL_MARKS + "，,、；;：: ")]
-        effects = sentences(("可能" if spec and not text.startswith("可能") else "") + text
-                            for text in raw_effects)
+        effects = "，".join(("可能" if spec and not text.startswith("可能") else "")
+                           + text.rstrip(_TERMINAL_MARKS + "，,；;") for text in raw_effects)
         row = _universe_index(packet).get(aid) or {}
         import company_profiles
         name = _s(row.get('name')) or company_profiles.display_name(aid)
         label = f'{name}({aid})' if name and name != aid else aid
-        rows.append(f"{label}:{effects}" if effects else label)
-    return '\n\n' + '\n\n'.join(_join_sentence(r) for r in rows) if rows else ""
+        if effects:
+            rows.append(f"對{label}而言，{effects.rstrip(_TERMINAL_MARKS)}")
+    # 備援文風:併成一句,不再逐標的換行(2026-10-19)。
+    return "；".join(rows[:3])
 
 
 #: 句末標點(**全形半形都要**,外審 2026-08-18:只收半形的話

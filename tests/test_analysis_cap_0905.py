@@ -26,6 +26,7 @@ import degradation_registry as dr
 import finding_domains as fd
 import fixtures_analysis as fx
 import morning_report as mr
+import reader_selection as rp
 import run_quality as rq
 
 _ROOT = Path(mr.__file__).resolve().parent
@@ -131,8 +132,10 @@ def _render(n_tech: int, n_other: int):
 def test_the_builder_really_produces_both_sections():
     """先確認 fixture 自己成立:九段真的有卡(否則下面全在守一個空集合)。"""
     text, diag = _render(_TYPICAL_TECH, _TYPICAL_OTHER)
-    assert diag["rendered_tech"] == 4 and diag["rendered_other"] == 6
-    assert len(diag["editorial_omitted"]) == _TYPICAL_TECH + _TYPICAL_OTHER - 10
+    # 2026-10-19 使用者:前台每類最多 FRONT_LIMIT(10)則,與備援相當(原 4 / 6)。
+    shown_tech, shown_other = min(_TYPICAL_TECH, rp.FRONT_LIMIT), min(_TYPICAL_OTHER, rp.FRONT_LIMIT)
+    assert diag["rendered_tech"] == shown_tech and diag["rendered_other"] == shown_other
+    assert len(diag["editorial_omitted"]) == _TYPICAL_TECH + _TYPICAL_OTHER - shown_tech - shown_other
     assert diag["dropped"] == []
     for sec in (ar.SECTION_TECH, ar.SECTION_OTHER, ar.SECTION_MACRO, ar.SECTION_WORLD):
         assert f"## {sec}" in text, sec
@@ -147,7 +150,7 @@ def test_the_old_fuse_cut_the_letter_inside_section_eight():
     assert f"## {ar.SECTION_TECH}" in old
     assert len(old) < len(text), "舊上限仍會截斷四則科技新聞後的完整內容"
     assert f"## {ar.SECTION_MACRO}" not in old
-    assert old.count("→") < text.count("→"), "舊上限仍遺失部分因果分析"
+    assert old.count("本報解讀：") < text.count("本報解讀："), "舊上限仍遺失部分逐則分析"
 
 
 def test_the_default_fuse_keeps_the_whole_letter():
@@ -192,9 +195,12 @@ def test_source_linked_history_does_not_cut_other_sectors_or_macro():
                                      "evidence_ids": ids}
     assert len(json.dumps(pk["historical_sources"], ensure_ascii=False)) <= news_research_context.MAX_HISTORY_CHARS
     text = ar.render(obj, pk)
-    # 2026-09-07: only six cards per sector are displayed; assert all selected
-    # source links survive instead of requiring the old 22-card output size.
-    assert text.count("https://example.com/") == 16
+    # Assert every selected card's source links survive (count is derived from the
+    # selection, not hard-coded: 2026-10-19 raised the per-sector cap to FRONT_LIMIT).
+    import analysis_render_depth as ard
+    selected, _ = rp.select_cards(obj["top_news_analysis"], pk)
+    assert text.count("https://example.com/") == sum(
+        ard._news_line(c, pk).count("https://example.com/") for c in selected)
     assert len(text) > 6000, "仍須超過舊保險絲，證明長引用不截掉後段"
     assert mr._cap_analysis_text(text) == text
     assert mr.ANALYSIS_TEXT_FUSE >= 1.5 * len(text)
@@ -207,7 +213,9 @@ def test_a_cut_is_never_silent():
     diag: dict = {}
     out = mr._cap_analysis_text(text, max_chars=6000, diag=diag)
     assert diag["chars"] == len(text) and diag["limit"] == 6000 and diag["kept"] == len(out)
-    assert ar.SECTION_OTHER not in diag["lost_sections"]  # Four tech cards allow other-sector heading through.
+    # 登記的消失段落要與輸出一致(哪段被切由內容長度決定,不由則數假設)。
+    for sec in (ar.SECTION_OTHER, ar.SECTION_MACRO):
+        assert (sec in diag["lost_sections"]) == (f"## {sec}" not in out), sec
     assert ar.SECTION_MACRO in diag["lost_sections"]
     assert ar.SECTION_TECH not in diag["lost_sections"], "八段還在,不該報成消失"
     # 沒截就什麼都不寫 —— 「有 diag 就是有截」要成立,消費端才不必再猜

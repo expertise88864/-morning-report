@@ -180,6 +180,7 @@ def test_the_deepen_verdict_sees_the_same_advisories_that_triggered_it():
 DELIBERATELY_UNRENDERED = {
     "persistence": "2026-08-17 定案:同上",
     "relates_to": "橫向綜合那一段已經在講關係",
+    "mechanism_steps": "2026-10-19 使用者「呈現的方式跟備援一樣」:箭頭鏈不排,仍經驗證",
     # `source_caveat` 自 2026-09-03(全案審查 LM-4)起**會排**:單一來源/未證實的
     # 新聞行接一句「保留:…」—— 從這份「刻意不排」帳本移除。
     # 2026-08-18 外審第三輪的延伸:句尾那個「(單一來源)」是模型抄的,

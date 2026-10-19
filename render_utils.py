@@ -265,6 +265,8 @@ def _md_to_html(text: str, *, trusted_urls=()) -> str:
                 'style="color:#94a3b8;font-size:12px;font-weight:400;'
                 f'font-variant-numeric:normal;">{m.group(1)}</a>')
     html = re.sub(r"\[([^\[\]<>\n]{1,600})\]\((https?://[^\s()<>]{1,4096})\)", link, html)
+    # 「本報解讀：」是給因果防線辨認本報分析的內部標記,讀者不看(使用者 2026-10-19)。
+    html = re.sub(r"<p>本報解讀[:：]\s*", "<p>", html)
     # Reader-requested small caveats; escaping above still applies.
     return re.sub(r"<p>(保留[:：].*?)</p>",
                   r'<p style="font-size:12px!important;color:#64748b;line-height:1.6!important;">\1</p>', html)

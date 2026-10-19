@@ -556,9 +556,11 @@ def test_codex_r1_p3_the_deadline_exit_reports_the_latest_attempt(monkeypatch):
 def test_lm4_a_single_source_item_renders_its_caveat():
     import analysis_render_depth as ard
     from test_news_subject_headings import _news, _packet
-    n = _news("n1", "2330", corroboration_assessment="single_source",
+    n = _news("n1", "2330", corroboration_assessment="single_source", materiality="high",
               source_caveat="金額尚未經第二來源證實")
     assert "保留:金額尚未經第二來源證實" in ard._news_line(n, _packet())
+    # 2026-10-19 使用者:但書與失效條件只在高重要性事件寫;其餘由結尾佐證標籤揭露。
+    assert "金額尚未經第二來源證實" not in ard._news_line(dict(n, materiality="medium"), _packet())
     n2 = _news("n1", "2330", corroboration_assessment="multi_source", source_caveat="無")
     assert "保留:" not in ard._news_line(n2, _packet())
 

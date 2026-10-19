@@ -107,11 +107,14 @@ def test_reader_sees_validated_horizon_magnitude_confirmation_in_one_paragraph(h
     card = {"why_it_matters": "新訂單仍待公告確認。", "horizon": horizon,
             "why_this_magnitude": "缺乏訂單金額，無法估算獲利幅度。",
             "confirmation_signal": "後續營收公告是否顯示出貨增加",
-            "invalidation_signal": "訂單取消", "affected_assets": []}
+            "invalidation_signal": "訂單取消", "affected_assets": [], "materiality": "high"}
     text = ard._news_line(card)
     assert label not in text and "後續營收公告" in text and "無法估算獲利幅度" in text
     assert "訂單取消" in text and "\n" not in text
-    assert "後續驗證" in text
+    assert "接下來要看後續營收公告" in text and "後續驗證" not in text
+    # 2026-10-19 使用者:後續觀察與失效條件只在高重要性事件寫;量級依據照留。
+    low = ard._news_line(dict(card, materiality="medium"))
+    assert "後續營收公告" not in low and "訂單取消" not in low and "無法估算獲利幅度" in low
 
 
 def test_empty_or_missing_fields_do_not_create_analysis():

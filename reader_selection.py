@@ -1,6 +1,9 @@
 """Read-only editorial selection; no model calls, authority changes or state writes."""
 import re
 
+#: 前台每類最多幾則(使用者 2026-10-19:與備援相當;原 4 科技 / 6 其他)。
+FRONT_LIMIT = 10
+
 
 def article_is_tech(card: dict, packet: dict) -> bool:
     from analysis_render_depth import news_subject, is_tech
@@ -26,7 +29,7 @@ def article_is_tech(card: dict, packet: dict) -> bool:
 
 
 def select_cards(cards: list, packet: dict) -> tuple[list, list]:
-    """Four tech / six other cards, ranked by Python event importance."""
+    """Ten tech / ten other cards (user 2026-10-19: match the fallback), ranked by Python importance."""
     import finance_editorial as finance
     items = {n.get("source_item_id"): n for n in packet.get("news", []) if isinstance(n, dict)}
     import editorial_priority
@@ -40,7 +43,7 @@ def select_cards(cards: list, packet: dict) -> tuple[list, list]:
         if not tech:
             preferred = finance.balanced([items.get(c.get("source_item_id"), {}) for c in group], 1)
             reserve += [c for c in group if c not in reserve and any(items.get(c.get("source_item_id")) is n for n in preferred)]
-        selected.extend((reserve + [c for c in group if c not in reserve])[:4 if tech else 6])
+        selected.extend((reserve + [c for c in group if c not in reserve])[:FRONT_LIMIT])
     selected.extend(c for c in distinct if is_macro(c, packet))
     return selected, [c for c in ordered if c not in selected]
 

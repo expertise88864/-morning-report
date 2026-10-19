@@ -76,7 +76,7 @@ def test_the_heading_names_the_company_and_what_happened():
 def test_company_label_keeps_full_source_title():
     """Sept21: 前綴加識別資訊，不削來源標題以免截錯較長公司名。"""
     md = ard._news_line(_news("n1", "2330"), _packet())
-    assert md.count("台積電") == 3 and '台積電(2330):' in md, md
+    assert md.count("台積電") == 3 and '對台積電(2330)而言' in md, md
 
 
 def test_a_short_remainder_keeps_the_whole_headline():
@@ -151,12 +151,15 @@ def test_the_item_is_one_prose_paragraph():
     """一則新聞 = **一小段散文**(2026-08-19 使用者:「傳導 什麼會推翻他
     股票如2330/00662這些全部整合成一小段落語句敘述即可」)。
 
-    內容一樣都在(傳導、失效條件、逐標的影響),少的是排版的行數。
+    2026-10-19 使用者改為「呈現的方式跟備援一樣」、失效條件「只在重要事件才寫」:
+    箭頭鏈不印(仍經驗證),逐標的影響併成「對 X 而言…」一句。
     """
-    md = ard._news_line(_news("n1", "2330"), _packet())
-    assert "\n\n起點 → 終點" in md and "傳導:" not in md, md
-    assert "若什麼情況代表判斷錯了，此判斷不成立" in md, md
-    assert "台積電(2330):一階影響。 二階影響。" in md, md
+    md = ard._news_line(_news("n1", "2330", materiality="high"), _packet())
+    assert "→" not in md and "傳導:" not in md and "此判斷不成立" not in md, md
+    assert "若什麼情況代表判斷錯了，這個判斷就要修正" in md, md
+    assert "對台積電(2330)而言，一階影響，二階影響" in md, md
+    low = ard._news_line(_news("n1", "2330"), _packet())
+    assert "什麼情況代表判斷錯了" not in low and "對台積電(2330)而言" in low, low
 
 
 def test_no_direction_words_per_asset():
@@ -332,9 +335,10 @@ def test_the_tag_does_not_claim_confidence_in_the_analysis():
     「分析信心」,所以就不寫一個;分析可不可信由「傳導」與
     「什麼會推翻它」自己說。
     """
-    line = ard._news_line(_news("c1", "2330"), _pk_conf(independent_sources=3))
+    line = ard._news_line(_news("c1", "2330", materiality="high"), _pk_conf(independent_sources=3))
     assert "信心" not in line, line
-    assert "起點 → 終點" in line and "此判斷不成立" in line, line
+    # 2026-10-19:分析可不可信改由高重要性事件的「若…,這個判斷就要修正」自己說。
+    assert "這個判斷就要修正" in line and "[A 級・3 家獨立報導]" in line, line
 
 
 def test_the_tag_comes_only_from_the_packet():

@@ -65,7 +65,8 @@ def test_local_multiline_and_legacy_projection_do_not_drop_text():
 def test_item_nine_hides_observation_window_but_keeps_reasoning_and_state():
     """User attachment item 9: '刪除 影響觀察窗 量級依據'; keep the reasoning, not labels."""
     card = {'source_item_id': 'n', 'why_it_matters': '需求待確認。', 'horizon': '1-4w',
-            'why_this_magnitude': '尚無合約金額。', 'confirmation_signal': '等待營收公告。'}
+            'why_this_magnitude': '尚無合約金額。', 'confirmation_signal': '等待營收公告。',
+            'materiality': 'high'}
     original = copy.deepcopy(card)
     rendered = depth._news_line(card)
     assert '影響觀察窗' not in rendered and '1–4 週' not in rendered

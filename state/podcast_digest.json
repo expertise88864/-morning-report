@@ -8187,6 +8187,121 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "c0b67ca1-ed1c-4ccb-85ff-f8e1676babd7",
+        "title": "WFE to the Moon (Still), Semicon West and OCP Insights",
+        "published": "Mon, 19 Oct 2026 10:10:29 -0700",
+        "processed_at": "2026-10-19T19:32:55Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為半導體設備（semi-cap）進入結構性新循環：設備總市場規模（TAM）將在 2029-31 年前後跨過 3,000 億美元，ASML 客戶排隊到十年末；Ben 以台積電在保守文化下仍赴資料中心查核、把 N5 轉 N3 並持續投資，推論這是需求強勁訊號而非過度擴建，Jay 則認為過去五年投資不足、現在至少是在追趕。",
+            "台積電把 N5 廠轉 N3，留下一部分 5 奈米級需求外溢機會，GlobalFoundries 等業者提高資本支出、推進新節點而受益；但成熟製程／trailing edge 因中國大量新增產能，主持人認為經濟效益較不吸引人。",
+            "Applied Materials 對 HBM 以混合鍵合堆得更高（12-high 等）相當樂觀，Jay 則存疑，認為是否採用更高堆疊取決於工作負載與軟體能否有效利用，值得持續觀察。",
+            "OCP 顯示資料中心正面對液冷、800VDC 與光學／CPO 三項大轉換，Jay 認為未來兩三年不可能同時完成，必須選擇先做哪一項；液冷最可能先加速，Delta 攤位全場最擠，800VDC 時程大概落在 2027-28 年。",
+            "銅與光學之爭在 OCP 後反而更模糊：銅仍持續延伸，Jay 提出反向觀點，若用光學把多個機櫃串成更大的 scale-up 域，機櫃內南北向銅線可能比市場預期活得更久；Nvidia Rubin Ultra 雖可能提前展示 scale-up CPO，但主持人認為零組件不足、難成量產主流。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為台積電在保守文化下仍赴資料中心查核、持續投資並把 N5 轉 N3，是最強烈的需求訊號，不是過度擴建。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "the fact that they're doing this, like to me has to be the most bullish cycle for demand because they would not risk it.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "ASML",
+              "code": "ASML",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "客戶排隊到十年末，設備需求結構性強勁；新增混合鍵合工具仍需觀察。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "because their customers are basically lining out the door for ASML machines through the end of the decade.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Applied Materials",
+              "code": "AMAT",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "對 HBM 混合鍵合更高堆疊比主持人樂觀，主持人認為仍取決於工作負載與軟體。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "they seem to be very bullish on this idea that we're going to hybrid bond HBM wafers to each other to get increasingly high stacks of HBM",
+                "direction": ""
+              }
+            },
+            {
+              "name": "GlobalFoundries",
+              "code": "GFS",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "台積電將 N5 轉 N3 後，5 奈米級需求外溢，GlobalFoundries 提高資本支出並推進新節點而受益。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "Rubin Ultra 可能提前展示 scale-up 共封裝光學，但主持人認為零組件供應不足、短期難成主流。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Delta Electronics",
+              "code": "2308",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "OCP 最擁擠攤位，展示大型液冷系統；主持人認為液冷是資料中心最可能先加速的轉換，對其業務是順風，但未對股價表態。",
+              "stance_basis": "non_investment",
+              "direction_evidence": {
+                "version": 1,
+                "status": "non_investment",
+                "quote": "the most crowded booth at the show for all two three days was the Delta electronics booth.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為本週市場雜音不少，但半導體產業的結構性投資與創新更值得關注；不過他們對資料中心液冷、800VDC 與光學三項大轉換能否同時發生抱持懷疑。",
+          "action_view": "沒有明確加減碼建議；操作思路偏向持續追蹤半導體設備、液冷、800VDC 與光學互連的採用時程，並對 HBM 更高堆疊保持觀察。",
+          "notable_quote": "I don't see how anybody in the next couple of years can do all of those transitions at one time.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I don't see how anybody in the next couple of years can do all of those transitions at one time."
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 1,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "dca3db23-859a-41ac-814d-17d45ca87d42",
         "title": "Unpacking Marvell's Analyst Day, OpenAI Revenue Rumors, and the Heterogeneous Rack",
         "published": "Mon, 12 Oct 2026 07:25:10 -0700",

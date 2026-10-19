@@ -19,19 +19,19 @@ def test_supporting_risks_moved_intact_not_added_to_conclusion():
         'actions_to_consider': ['晚間公布後觀察夜盤。'], 'risks': ['所有詳細風險保留。']}
     original = copy.deepcopy(obj)
     rendered = analysis_render.render(obj)
-    stance = rendered.split('## 我的明確立場\n')[1].split('## 一句話總結')[0]
+    # 2026-10-19 使用者:七之五收成一小段 —— 曝險/做法/風險不進信(仍驗證、保存)。
     for sentence in ('樣板組合曝險說明。', '晚間公布後觀察夜盤。', '所有詳細風險保留。'):
-        assert sentence not in stance
-        assert rendered.count(sentence) == 1
+        assert sentence not in rendered
     assert obj == original
     assert reader_prose.public_sections(rendered) == rendered
     obj['portfolio_implications']['actions_to_consider'] = [f'行動項目{i}' for i in range(5)]
     obj['portfolio_implications']['risks'] = [f'風險項目{i}' for i in range(5)]
     obj['scenario_tree']['invalidation_triggers'] = [f'失效項目{i}' for i in range(5)]
     rendered = analysis_render.render(obj)
+    # 2026-10-19 使用者:七之五收成一小段,做法/風險/失效條件不進信(取代 09-10 的「全數保留」)。
     for kind in ('行動項目', '風險項目', '失效項目'):
         for i in range(5):
-            assert f'{kind}{i}' in rendered
+            assert f'{kind}{i}' not in rendered
 
 
 def test_partial_compound_watch_stays_open_and_is_labeled(capsys):
@@ -46,7 +46,9 @@ def test_partial_compound_watch_stays_open_and_is_labeled(capsys):
     assert prior == before
     obj = fx.valid_analysis()
     obj['watch_review'] = [row]
-    assert '部分成立，續追蹤' in analysis_render.render(obj)
+    # 2026-10-19:回顧結果只進帳本,不進信;部分成立的分類本身照樣要對。
+    assert '部分成立，續追蹤' not in analysis_render.render(obj)
+    assert reader_revision.watch_status(row) == 'partially_triggered'
     assert row['status'] == 'triggered'
     assert reader_revision.watch_status(dict(row, what_happened='條件全部成立。')) == 'triggered'
     assert reader_revision.watch_status(dict(row, status='no_longer_relevant')) == 'no_longer_relevant'

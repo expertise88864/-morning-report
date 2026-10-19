@@ -220,8 +220,9 @@ def test_the_email_shows_the_review_with_the_original_trigger():
         {"watch_id": "w1", "trigger": "美光財報上修 HBM 出貨",
          "why": "", "horizon": "1w", "date": "2026-08-09"}]}
     text = ar.render(obj, pk)
-    assert "昨日觀察點回顧" not in text  # Integrated prose, no standalone heading.
-    assert "2026-08-09 提出的觀察「美光財報上修 HBM 出貨」：已觸發（美光財報如期上修）" in text
+    assert "昨日觀察點回顧" not in text
+    # 2026-10-19 使用者:回顧只進帳本(watch_review 仍逐條驗證),不進信。
+    assert "美光財報上修 HBM 出貨" not in text
     # 沒有回顧就沒有這一節(不要空標題)
     obj["watch_review"] = []
     assert "昨日觀察點回顧" not in ar.render(obj, pk)

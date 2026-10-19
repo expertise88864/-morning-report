@@ -394,7 +394,8 @@ def _assets_prose(n: dict, packet=None) -> str:
                 spec = ""
         # 10/19 實信:模型以「。」「可能。」當空欄位佔位,印成「…。 。」「…。 可能。」。
         raw_effects = [t for t in (_s(a.get("first_order_effect")), _s(a.get("second_order_effect")))
-                       if t.removeprefix("可能").strip(_TERMINAL_MARKS + "，,、；;：: ")]
+                       if t.removeprefix("可能").strip(_TERMINAL_MARKS + "，,、；;：: ")
+                       and "看不出次級影響" not in t]  # clean_text 會清掉這句,只剩逗號
         effects = "，".join(("可能" if spec and not text.startswith("可能") else "")
                            + text.rstrip(_TERMINAL_MARKS + "，,；;") for text in raw_effects)
         row = _universe_index(packet).get(aid) or {}

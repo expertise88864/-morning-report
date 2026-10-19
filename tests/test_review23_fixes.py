@@ -147,5 +147,6 @@ def test_aggregator_only_says_unresolved_not_single_source():
             {"cluster_id": "cluster:g", "official": False,
              "independent_sources": 0, "unverified_sources": 0,
              "aggregator_only_sources": 2, "continuing_days": 0}]}})
-    assert "原始發布者未解析" in line
-    assert "僅單一來源" not in line
+    # 2026-10-19 使用者:三大重點比照備援只附發布者;聚合器沒有可標的發布者就不標。
+    assert "原始發布者未解析" not in line and "僅單一來源" not in line
+    assert line == fx.valid_analysis()["key_drivers"][0]["statement"].rstrip("。") + "。"

@@ -65,7 +65,7 @@ SECTION_DELTA = "七之四、敘事變化(昨日觀點 vs 今日新證據)"
 SECTION_MACRO = "十、總體經濟與政策環境"
 #: 政策深度解析從 v20 的「九、台灣政策與在地動態」改編號(內容同一個欄位)。
 SECTION_POLICY = "十之二、重大政策深度解析"
-SECTION_LOCAL = "十一、台灣本地動態"
+SECTION_LOCAL = "十、台灣本地動態"  # 2026-10-19:比照備援,取代總經段的編號
 SECTION_STANCE = "我的明確立場"
 SECTION_SUMMARY = "一句話總結"
 
@@ -170,100 +170,18 @@ def _cluster_of(packet, cluster_id: str) -> dict:
     return {}
 
 
-def _derived_target(packet, cluster_id: str) -> str:
-    """這個事件群最相關的持倉標的(**確定性**,由編輯標註實體推導)。
-
-    判準宣告在 `company_profiles`(NDX 名單)—— 兩份會漂,所以不抄。
-    """
-    if not cluster_id or not isinstance(packet, dict):
-        return ""
-    blk = _cluster_of(packet, cluster_id)
-    members = set(blk.get("member_source_ids") or ())
-    if not members:
-        return ""
-    try:
-        import company_profiles as _cp
-        ndx = set(_cp.NASDAQ_TOP15_LABELS)
-    except Exception:                   # noqa: BLE001 - 名單載不到就不掛
-        return ""
-    ents: set = set()
-    for n in (packet.get("news") or []):
-        if isinstance(n, dict) and _s(n.get("source_item_id")) in members:
-            ents |= {_s(e) for e in (n.get("entities") or []) if _s(e)}
-    # 編輯標註同一家公司會用不同寫法(台積電/TSMC/2330/台積、NVDA/輝達),
-    # 逐字比對會漏 —— 先過 `entity_alias.canonical` 正規化再比
-    # (外審 2026-08-19 第四輪)。canonical 對不認得的名字原樣返還,
-    # 所以 NDX 名單兩邊都正規化後聯集,ticker 與中文名都接得住。
-    try:
-        from entity_alias import canonical as _canon
-    except Exception:                   # noqa: BLE001 - 載不到就退回逐字比對
-        _canon = lambda x: x            # noqa: E731
-    canon = {_canon(e) for e in ents} | ents
-    if _canon("2330") in canon or "2330" in canon:
-        return "2330"
-    if canon & ({_canon(t) for t in ndx} | ndx):
-        return "00662"
-    return ""
-
-
 def _event_card(c: dict, packet=None) -> str:
-    """一條「昨夜三大重點」。**判斷 + 這件事的來歷。**
+    """一條「昨夜三大重點」:**判斷(來源)。**
 
-    先前只有判斷。而「三家獨立媒體證實」與「僅一家、未經證實」在信裡
-    長得一模一樣 —— 可信度是分析的一部分,不是附註。
+    2026-10-19 使用者:版面比照備援信 —— 句末附發布者,不再加「2330 最相關」
+    前綴與「僅單一來源、有反面證據」來歷括號。佐證仍由 packet 計算並照常驗證,
+    逐則新聞結尾的佐證標籤([A 級・僅單一來源])仍會揭露。
     """
     line = _claim_line(c)
     if not line:
         return ""
-    cid = _s(c.get("cluster_id"))
-    # 「最相關」標記:**Python 推導,模型不參與**(外審 2026-08-19 三輪
-    # 定案 —— 模型自選的版本被駁回)。判準:這條重點指名的事件群,其成員
-    # 新聞的**編輯標註實體**含 2330/台積電 → 2330;含 NDX 名單裡的美股 →
-    # 00662。推不出來就不掛 —— 硬掛「市場最相關」是廢話。
-    _target = _derived_target(packet, cid)
-    if _target:
-        line = f"**{_target} 最相關**:{line}"
-    # **反面證據不依賴 cluster 查得到**:先前兩個早退(沒有 cluster_id、
-    # 查不到那一群)會把整個括號跳過,而反面證據是 claim 自己帶的欄位。
-    blk = _cluster_of(packet, cid) if cid else {}
-    bits = []
-    if blk.get("official"):
-        bits.append("官方公告")
-    else:
-        n = blk.get("independent_sources")
-        if isinstance(n, int) and n >= 2:
-            bits.append(f"{n} 個獨立來源")
-        elif isinstance(n, int):
-            # **說得出自己驗不了什麼。** 三種情況三種話(第二十三輪
-            # P2-4):「僅單一來源」是查證過只有一家;「未驗證」是
-            # 發布者不在註冊表;「原始發布者未解析」是**我們自己**只
-            # 解析到聚合器 —— 第三種是抓取缺口,不是事件可信度。
-            un = blk.get("unverified_sources")
-            agg = blk.get("aggregator_only_sources")
-            if un:
-                bits.append(f"來源 {un} 家未驗證")
-            elif agg:
-                bits.append("原始發布者未解析")
-            else:
-                bits.append("僅單一來源")
-    days = blk.get("continuing_days")
-    if isinstance(days, int) and days >= 1:
-        bits.append(f"連續追蹤第 {days + 1} 天")
-    # 第十五輪 P1-2 的理由不變:**有反面證據要看得見** —— 一條「有人持
-    # 相反看法」的判斷,不能與一面倒的判斷長得一樣。2026-08-17 把它從
-    # 機械括號(推論、信心 60%…)搬到這個**來歷**括號:留下來的都是
-    # 誠實性訊號(幾個來源、有沒有反面證據、追了幾天),機械欄位收起來。
-    if [x for x in (c.get("counterevidence_ids") or []) if _s(x)]:
-        bits.append("有反面證據")
-    # **來歷收成句末的一個小括號**(2026-08-17 使用者定案):獨立一行的
-    # 「這件事的來歷:…」讀起來像表單。可信度不刪 —— 「僅單一來源」與
-    # 「三家證實」在信裡仍然長得不一樣,只是不再各佔一行。
-    # 括號要接在**判斷那一句**後面,不是接在失效條件那一行後面
-    # (`_claim_line` 回的是「判斷 \n 失效條件」兩行)。
-    if not bits:
-        return line
-    head, _, rest = line.partition("\n")
-    return head + f"（{'、'.join(bits)}）" + (f"\n{rest}" if rest else "")
+    import legacy_layout
+    return legacy_layout.with_source(line, legacy_layout.cluster_source(packet, _s(c.get("cluster_id"))))
 
 
 def render(obj: Optional[dict], packet=None, admitted_watch=None,
@@ -323,7 +241,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 「後續可能影響」又另起縮排行,在郵件客戶端裡斷成碎片。
         # 改成 legacy 信的排法:**標題句。解讀句。後續可能影響:…**
         # 一氣呵成一個段落(郵件渲染最穩的形狀)。
-        head = _sent(w.get("what"))
+        import legacy_layout   # 2026-10-19:比照備援在事件句末標發布者
+        head = legacy_layout.with_source(w.get("what"), legacy_layout.source_of(packet, w.get("source_item_id")))
         why = _sent(w.get("why_it_matters"))
         nxt = _s(w.get("what_next"))
         return ("- " + head + why
@@ -408,7 +327,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 的渲染結果記進 `diag`(進 manifest `llm.news_render`),讓判準說得出
         # 「分析了幾則、渲染了幾則、丟了哪幾則」;驗證器另擋空正文。
         _text = _news_line(_n, packet)
-        (macro_news if _is_macro else tech_news if _is_t else other_news).append(_text) if _text else None
+        (tech_news if _is_t else other_news).append(_text) if _text else None  # 總經卡併回八/九(10-19)
         _diag_rows.append({"sid": _s(_n.get("source_item_id")),
                            "section": "macro" if _is_macro else "tech" if _is_t else "other",
                            "rendered": bool(_text),
@@ -472,24 +391,22 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
             body.extend(notes)
         parts.append((chr(10) * 2).join(body))
 
-    # 十、總體經濟與政策環境:(A)(B)(C) 三個切面(legacy 的排法)。
-    macro = obj.get("macro_environment") if isinstance(
-        obj.get("macro_environment"), dict) else {}
+    # 2026-10-19 使用者:版面比照備援 —— 「十、總體經濟與政策環境」不再成段;
+    # (A)(B)(C) 各取第一句合成一段,放進今日結論(見下方 stance_lines)。
+    macro = obj.get("macro_environment") if isinstance(obj.get("macro_environment"), dict) else {}
+    import legacy_layout
+    macro_brief = "".join(legacy_layout.first_sentence(blk.get("analysis")) for blk in
+                          (macro.get(k) for k in ("us_rates_fx_vix", "fed_policy", "geopolitics"))
+                          if isinstance(blk, dict) and _s(blk.get("analysis")))
 
-    def _macro_text(key):
-        sec = macro.get(key)
-        # v22:切面是 {analysis, evidence_ids} 物件(裸字串時代已終結 ——
-        # 有內容必有證據,證據檢查在 validator,信裡只排 analysis)。
-        return _s(sec.get("analysis")) if isinstance(sec, dict) else ""
-    macro_rows = [f"**({tag})** {_macro_text(key)}"
-                  for tag, key in (("A", "us_rates_fx_vix"), ("B", "fed_policy"),
-                                   ("C", "geopolitics")) if _macro_text(key)]
-    from reader_editorial import integrate_macro
-    # De-duplicate the three macro summaries, but keep each news card intact.
-    # Paragraph-level deduplication could leave a headline without its analysis.
-    macro_rows = integrate_macro(macro_rows) + macro_news
-    if macro_rows:
-        parts.append(f"## {SECTION_MACRO}" + chr(10) + (chr(10) * 2).join(macro_rows))
+    # 十、台灣本地動態(備援的段落):事件(來源)。影響 —— 一項一段,排在政策之前。
+    local = [legacy_layout.with_source(_s(x.get("what")).rstrip(":："),
+                                       legacy_layout.source_of(packet, x.get("source_item_id")))
+             + _s(x.get("impact"))
+             for x in (obj.get("taiwan_local") or [])
+             if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
+    if local:
+        parts.append(f"## {SECTION_LOCAL}" + chr(10) + (chr(10) * 2).join(local))
 
     # 十之二、重大政策深度解析(v20 的 `taiwan_policy`,改編號不改欄位):
     # **政策名當小標、分析當內文** —— legacy 的排法。一項一段。
@@ -498,13 +415,6 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                   if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
     if pol_blocks:
         parts.append(f"## {SECTION_POLICY}" + chr(10) + (chr(10) * 2).join(pol_blocks))
-
-    # 十一、台灣本地動態:一項一行(GDP/例行公告/天氣…)。
-    local = [f"- {_s(x.get('what'))}:{_s(x.get('impact'))}"
-             for x in (obj.get("taiwan_local") or [])
-             if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
-    if local:
-        parts.append(f"## {SECTION_LOCAL}" + chr(10) + chr(10).join(local))
 
     # **「九、今日市場關注與預測」整段拿掉**(2026-08-19 使用者:
     # 「直接刪除整段今日市場關注與預測」)。它是 08-18 那批把五個段落
@@ -613,6 +523,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         stance_lines.append(f"淨分 {score:+d}")
     if _s(stance.get("rationale")):
         stance_lines.append(_s(stance.get("rationale")))
+    if macro_brief:
+        stance_lines.append(macro_brief)
     pf = (obj.get("portfolio_implications")
           if isinstance(obj.get("portfolio_implications"), dict) else {})
     if _s(pf.get("summary")):

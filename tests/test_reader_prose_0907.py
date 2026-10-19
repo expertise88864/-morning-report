@@ -46,7 +46,8 @@ def test_supporting_conditions_move_out_of_conclusion_without_loss():
     stance = md.split('## 我的明確立場')[1].split('## 一句話總結')[0]
     assert '通膨降溫' not in stance and 'CPI低於預期' not in stance
     outlook = md.split('## 七之五、情境推演與後續觀察')[1].split('## 我的明確立場')[0]
-    assert '通膨降溫' in outlook and 'CPI低於預期' in outlook
+    # 2026-10-19:情境各留一句,觸發條件不另列。
+    assert '通膨降溫' in outlook and 'CPI低於預期' not in outlook
 
 
 def test_categories_limit_and_technology_without_registry_subject():
@@ -123,7 +124,8 @@ def test_conflict_with_news_evidence_is_integrated_in_that_sector():
     packet = {'news': [{'source_item_id': 't', 'title': '台積擴產'}]}
     md = rp.public_sections('## 八、科技板塊脈動\n需求\n\n## 我的明確立場\n中性\n\n'
                             '## 證據衝突與調和\n- 訂單增加但成本也上升\n', obj, packet)
-    assert '訂單增加但成本也上升' in md.split('## 我的明確立場')[0]
+    # 2026-10-19 使用者:張力調和不進信(仍驗證),八段只留新聞卡。
+    assert '訂單增加但成本也上升' not in md
 
 
 def test_unsafe_article_link_does_not_become_clickable():
@@ -144,13 +146,14 @@ def test_cleanup_preserves_source_url_and_naturalizes_other_stance_members():
     ('world_events', ar.SECTION_WORLD), ('taiwan_policy', ar.SECTION_POLICY),
     ('taiwan_local', ar.SECTION_LOCAL)])
 @pytest.mark.parametrize('ref', ['n1', 'fact:n1.0', 'cluster:n1'])
-def test_derived_evidence_routes_to_related_existing_section(field, heading, ref):
+def test_conflicts_stay_out_of_every_section(field, heading, ref):
+    """2026-10-19 使用者:特化獨有的張力不再分派進各段(取代 09-07 的就近整合)。"""
     obj = {field: [{'what': '事件', 'impact': '影響', 'source_item_id': 'n1'}],
            'contradictions': [{'supporting_ids': [ref]}]}
     packet = {'news_clusters': {'clusters': [{'cluster_id': 'cluster:n1', 'member_source_ids': ['n1']}]}}
     md = rp.public_sections(f'## {heading}\n事件\n\n## 我的明確立場\n中性\n\n'
                             '## 證據衝突與調和\n- 需綜合判讀的變化\n', obj, packet)
-    assert '需綜合判讀的變化' in md.split('## 我的明確立場')[0]
+    assert '需綜合判讀的變化' not in md and f'## {heading}' in md
 
 
 def test_selection_uses_full_python_ranking_beyond_top_three(monkeypatch):

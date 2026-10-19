@@ -137,8 +137,9 @@ def test_the_builder_really_produces_both_sections():
     assert diag["rendered_tech"] == shown_tech and diag["rendered_other"] == shown_other
     assert len(diag["editorial_omitted"]) == _TYPICAL_TECH + _TYPICAL_OTHER - shown_tech - shown_other
     assert diag["dropped"] == []
-    for sec in (ar.SECTION_TECH, ar.SECTION_OTHER, ar.SECTION_MACRO, ar.SECTION_WORLD):
+    for sec in (ar.SECTION_TECH, ar.SECTION_OTHER, ar.SECTION_WORLD):
         assert f"## {sec}" in text, sec
+    assert f"## {ar.SECTION_MACRO}" not in text  # 2026-10-19:總經卡併回八/九
 
 
 def test_the_old_fuse_cut_the_letter_inside_section_eight():
@@ -159,9 +160,10 @@ def test_the_default_fuse_keeps_the_whole_letter():
         text, diag = _render(n_t, n_o)
         kept = mr._cap_analysis_text(text)
         assert kept == text, f"{n_t}+{n_o} 張卡被截了:{len(text)} → {len(kept)}"
-        for sec in (ar.SECTION_OTHER, ar.SECTION_MACRO, "觸發條件一", "調和:"):
+        # 2026-10-19:總經段不成段、張力與觸發條件收進後台;九段、七之五與立場段都在。
+        for sec in (ar.SECTION_OTHER, ar.SECTION_STANCE):
             assert sec in kept, sec
-        assert kept.count("→") == text.count("→") and "傳導:" not in kept
+        assert kept.count("本報解讀：") == text.count("本報解讀：") and "傳導:" not in kept
 
 
 def test_the_fuse_sits_above_the_legitimate_maximum():
@@ -204,7 +206,7 @@ def test_source_linked_history_does_not_cut_other_sectors_or_macro():
     assert len(text) > 6000, "仍須超過舊保險絲，證明長引用不截掉後段"
     assert mr._cap_analysis_text(text) == text
     assert mr.ANALYSIS_TEXT_FUSE >= 1.5 * len(text)
-    assert ar.SECTION_OTHER in text and ar.SECTION_MACRO in text
+    assert ar.SECTION_OTHER in text and ar.SECTION_STANCE in text
 
 
 def test_a_cut_is_never_silent():
@@ -214,9 +216,9 @@ def test_a_cut_is_never_silent():
     out = mr._cap_analysis_text(text, max_chars=6000, diag=diag)
     assert diag["chars"] == len(text) and diag["limit"] == 6000 and diag["kept"] == len(out)
     # 登記的消失段落要與輸出一致(哪段被切由內容長度決定,不由則數假設)。
-    for sec in (ar.SECTION_OTHER, ar.SECTION_MACRO):
+    for sec in (ar.SECTION_OTHER, ar.SECTION_STANCE):
         assert (sec in diag["lost_sections"]) == (f"## {sec}" not in out), sec
-    assert ar.SECTION_MACRO in diag["lost_sections"]
+    assert ar.SECTION_STANCE in diag["lost_sections"]
     assert ar.SECTION_TECH not in diag["lost_sections"], "八段還在,不該報成消失"
     # 沒截就什麼都不寫 —— 「有 diag 就是有截」要成立,消費端才不必再猜
     quiet: dict = {}
@@ -235,7 +237,7 @@ def test_the_cut_reaches_the_manifest_and_the_quality_verdict():
         mr._note_analysis_capped(diag)
         assert "render:analysis_capped" in mr._DEGRADED_STEPS
         rec = mr._RUN_MANIFEST["llm"]["analysis_cap"]
-        assert rec["kept"] < rec["chars"] and ar.SECTION_MACRO in rec["lost_sections"]
+        assert rec["kept"] < rec["chars"] and ar.SECTION_STANCE in rec["lost_sections"]
         # 同一班截兩次不該登記成兩條(watchdog 信裡會重複)
         mr._note_analysis_capped(diag)
         assert mr._DEGRADED_STEPS.count("render:analysis_capped") == 1
@@ -260,7 +262,7 @@ def test_the_cut_reaches_the_manifest_and_the_quality_verdict():
     sev = hit.get("severity") if isinstance(hit, dict) else getattr(hit, "severity", None)
     assert sev == "defect", sev
     detail = str(hit.get("detail") if isinstance(hit, dict) else getattr(hit, "detail", ""))
-    assert ar.SECTION_MACRO in detail, detail
+    assert ar.SECTION_STANCE in detail, detail
     # 標籤與 finding 都要登記(否則會被報成「沒見過的降級步驟」)
     assert "render:analysis_capped" in dr.KNOWN_DEGRADED
     assert fd.finding_domain("analysis_capped") == fd.DOMAIN_CONTENT

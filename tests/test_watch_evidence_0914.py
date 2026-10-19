@@ -26,7 +26,8 @@ def test_real_mail_negative_status_preserves_uncertainty(text, ids, expected):
     obj['watch_review'] = [row]
     label = {'insufficient_evidence': '資料不足，續追蹤',
              'partially_triggered': '部分成立，續追蹤', 'not_triggered': '未觸發'}[expected]
-    assert f'：{label}（{text}）' in analysis_render.render(obj)
+    # 2026-10-19 使用者:回顧只進帳本、不進信;分類(上一行)照樣要保留不確定性。
+    assert label and f'：{label}（{text}）' not in analysis_render.render(obj)
     assert row == original
 
 

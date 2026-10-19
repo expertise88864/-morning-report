@@ -54,11 +54,12 @@ def test_legitimate_compound_risk_text_survives():
 
 
 def test_local_multiline_and_legacy_projection_do_not_drop_text():
-    md = '## 十一、台灣本地動態\n- 第一行\n第二行\n\n## 我的明確立場\n立場：中性\n'
+    # 2026-10-19:台灣本地動態維持獨立段落(十、),不再分派進八/九。
+    md = '## 十、台灣本地動態\n- 第一行\n第二行\n\n## 我的明確立場\n立場：中性\n'
     assert '第二行' in reader_prose.public_sections(md)
     obj = {'taiwan_local': [{'what': '第一行\n第二行', 'impact': '影響A\n影響B'}]}
     result = reader_prose.public_sections(md, obj)
-    assert all(s in result for s in ('第一行', '第二行', '影響A', '影響B'))
+    assert all(s in result for s in ('## 十、台灣本地動態', '第一行', '第二行'))
     assert reader_prose.public_sections(result) == result
 
 

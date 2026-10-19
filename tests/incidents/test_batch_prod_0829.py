@@ -48,9 +48,9 @@ def test_the_stance_line_is_the_stance_not_the_last_watch_trigger():
     m = re.search(r"立場：(.+)", md)
     assert m, md[:300]
     assert m.group(1).strip().startswith("偏空"), m.group(1)
-    # 昨日觀察點自己那一段照樣要在(修法不是把它拿掉)
-    assert "NVDA財報前AI板塊資金動向：資料不足，續追蹤" in md, md[:600]
-    assert "十年期殖利率突破 4.745%：已觸發" in md
+    # 2026-10-19 使用者:昨日觀察點回顧收進後台(仍逐條驗證、寫進帳本),不進信;
+    # 這條測試保護的是「立場不被迴圈變數蓋掉」,與回顧是否顯示無關。
+    assert "NVDA財報前AI板塊資金動向" not in md
 
 
 def test_the_stance_label_is_bound_once_before_it_is_used():

@@ -11,7 +11,6 @@ def watch_status(row: dict) -> str:
 
 def conclusion(sections: list[str], obj: dict) -> str:
     """Move supporting paragraphs intact, never truncate risks or alter JSON."""
-    from reader_editorial import OUTLOOK_HEADING
     sections = list(sections)
     support = []
     pf_summary = str((obj.get('portfolio_implications') or {}).get('summary') or '').strip()
@@ -31,15 +30,8 @@ def conclusion(sections: list[str], obj: dict) -> str:
             else:
                 prose.append(line)
         sections[i] = head + '\n' + '\n'.join(contract) + '\n\n' + '\n\n'.join(prose) + '\n\n'
-    if support:
-        heading = '## ' + OUTLOOK_HEADING + '\n'
-        index = next((i for i, section in enumerate(sections) if section.startswith(heading)), None)
-        extra = '\n\n'.join(support) + '\n\n'
-        if index is None:
-            sections.insert(next((i for i, s in enumerate(sections)
-                                  if s.startswith('## 我的明確立場\n')), len(sections)), heading + extra)
-        else:
-            sections[index] = sections[index].rstrip() + '\n\n' + extra
+    # 2026-10-19 使用者:七之五收成一小段 —— 做法/風險/失效條件/組合摘要不再進信
+    # (仍在 portfolio_implications 與 scenario_tree 裡驗證、保存)。
     return ''.join(sections)
 
 

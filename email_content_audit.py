@@ -6,7 +6,7 @@ import sys
 import email_mobile
 
 from reader_editorial import OUTLOOK_HEADING
-SECTIONS = ("八、科技板塊脈動", "九、其他類股資訊", "十、總體經濟與政策環境", OUTLOOK_HEADING)
+SECTIONS = ("八、科技板塊脈動", "九、其他類股資訊", "十、台灣本地動態", OUTLOOK_HEADING)
 
 
 def _estimated_email_kb(html: str) -> float:
@@ -43,18 +43,22 @@ def audit(analysis: str, html: str) -> dict:
     counts = {}
     for section in expected[:]:
         counts[section] = {
-            "expected": _chain_count(before[section]),
-            "html": _chain_count(after.get(section, ""))}
+            "expected": _card_count(before[section], html=False),
+            "html": _card_count(after.get(section, ""), html=True)}
     return {"expected_sections": expected,
             "missing_sections": [s for s in expected if s not in after],
             "chain_counts": counts,
             "lost_cards": sum(max(0, c["expected"] - c["html"]) for c in counts.values())}
 
 
-def _chain_count(text: str) -> int:
-    """Count causal sentences even when the reader-facing form has no field label."""
-    return sum(1 for sentence in re.split(r'[。\n]', text)
-               if '→' in sentence or re.search(r'傳導[:：]', sentence))
+def _card_count(text: str, *, html: bool) -> int:
+    """Specialized cards: the Markdown label vs the invisible HTML mark (2026-10-19).
+
+    Readers no longer see causal arrows or the label, so the audit counts the
+    deterministic card marker instead; legacy prose has neither and counts zero.
+    """
+    from legacy_layout import CARD_LABEL, CARD_MARK
+    return text.count(CARD_MARK) if html else text.count(CARD_LABEL)
 
 
 def finalize(analysis: str, html: str, manifest: dict) -> str:

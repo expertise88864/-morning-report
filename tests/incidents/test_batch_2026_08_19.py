@@ -193,18 +193,21 @@ def test_the_legacy_skeleton_renders_in_order():
                              "impact": "需求透過模組與工程訂單傳導。"}]
     out = ar.render(obj)
     # No calendar packet: the model's "08/20" cannot establish a 48h window.
+    # 2026-10-19 使用者:比照備援 —— 「十、總體經濟」不成段,台灣本地動態回到
+    # 「十、」並排在十之二之前(取代 08-19 的 十 → 十之二 → 十一 順序)。
     order = [ar.SECTION_WORLD, sw.UNKNOWN, ar.SECTION_DELTA,
-             ar.SECTION_MACRO, ar.SECTION_POLICY]
-    assert ar.SECTION_48H not in out
+             ar.SECTION_LOCAL, ar.SECTION_POLICY]
+    assert ar.SECTION_48H not in out and ar.SECTION_MACRO not in out
     assert "08/20 02:00（時間未核實）" in out
-    assert ar.SECTION_LOCAL not in out and '中經院估 GDP 破 10%' in out
+    assert ar.SECTION_LOCAL in out and '中經院估 GDP 破 10%' in out
     idx = [out.index(t) for t in order]
     assert idx == sorted(idx), [out.index(t) for t in order]
     # 2026-08-29 使用者:七之二改一氣呵成段落(標題句。解讀句。)
     assert "美沙簽署核能合作協議。中東勢力格局重組。" in out
     assert "按兵不動基調" in out and "基準預期:" not in out
     assert "「美伊戰局逼近十字路口」→ **升溫**" in out
-    assert "**(A)** 10Y 4.657% 高檔" in out
+    # 2026-10-19:總經 (A)(B)(C) 各取第一句併進今日結論,不再帶切面標籤。
+    assert "10Y 4.657% 高檔" in out.split("## " + ar.SECTION_STANCE)[1] and "**(A)**" not in out
     assert "中經院估 GDP 破 10%。支撐高本益比" in out
 
 
@@ -298,25 +301,15 @@ def test_bull_bear_and_target_are_python_authority():
     assert not hasattr(ar, "SECTION_BULLBEAR")
 
 
-def test_the_target_label_is_derived_from_editorial_entities():
-    """最相關標記由**編輯標註實體**推導(Python),模型不參與。"""
-    def _pk(entities):
-        return {"news": [{"source_item_id": "n1", "title": "某事件",
-                          "entities": entities}],
-                "news_clusters": {"clusters": [
-                    {"cluster_id": "c1", "member_source_ids": ["n1"]}]}}
-    assert ar._derived_target(_pk(["2330"]), "c1") == "2330"
-    assert ar._derived_target(_pk(["NVDA"]), "c1") == "00662"
-    # 編輯標註同一家公司會用不同寫法 —— 先過 entity_alias 正規化再比
-    # (外審 2026-08-19 第四輪:逐字比對 TSMC/台積 會漏)
-    assert ar._derived_target(_pk(["TSMC"]), "c1") == "2330"
-    assert ar._derived_target(_pk(["台積"]), "c1") == "2330"
-    assert ar._derived_target(_pk(["輝達"]), "c1") == "00662"
-    # 2330 優先於 NDX(台積電新聞常同時帶美系客戶)
-    assert ar._derived_target(_pk(["2330", "NVDA"]), "c1") == "2330"
-    # 推不出來就不掛 —— 硬掛「市場最相關」是廢話
-    assert ar._derived_target(_pk(["2882"]), "c1") == ""
-    assert ar._derived_target({}, "c1") == ""
+def test_top_three_follow_the_fallback_layout_without_a_target_prefix():
+    """2026-10-19 使用者:版面比照備援 —— 三大重點句末附發布者,不再加
+    「2330 最相關」前綴(取代 08-19 由編輯標註實體推導的標記)。"""
+    pk = {"news": [{"source_item_id": "n1", "title": "某事件", "entities": ["2330"],
+                    "source_name": "鉅亨"}],
+          "news_clusters": {"clusters": [{"cluster_id": "c1", "member_source_ids": ["n1"]}]}}
+    line = ar._event_card({"statement": "判斷一句話。", "cluster_id": "c1"}, pk)
+    assert line == "判斷一句話（鉅亨）。" and "最相關" not in line
+    assert not hasattr(ar, "_derived_target")
 
 
 def test_the_extremes_need_both_signs():

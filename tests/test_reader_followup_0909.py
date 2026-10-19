@@ -32,9 +32,10 @@ def test_macro_does_not_take_any_of_six_sector_slots():
     obj = fx.valid_analysis()
     obj['top_news_analysis'] = cards
     md = render.render(obj, {'news': news})
-    sector = md.split('## 九、其他類股資訊')[1].split('## ')[0]
-    assert '利率與通膨' not in sector and '國際貿易' not in sector
-    assert '利率與通膨動態（原文報導）' in md
+    # 2026-10-19:備援信沒有總經段,總經卡併回九段,但不佔類股名額、排在類股卡之後。
+    sector = md.split('## 九、其他類股資訊')[1].split('\n## ')[0]
+    assert '利率與通膨動態（原文報導）' in sector and '國際貿易' in sector
+    assert sector.index('航運新合約第5案') < sector.index('利率與通膨動態（原文報導）')
 
 
 def test_company_specific_rate_effect_is_not_misrouted():
@@ -110,8 +111,9 @@ def test_recap_ranking_uses_only_valid_history_and_reserves_deep_topics():
 
 def test_macro_cards_remain_in_final_html_loss_audit():
     import email_content_audit
-    md = '## 十、總體經濟與政策環境\n成本 → 通膨。'
-    html = '<h2>十、總體經濟與政策環境</h2><p>總經摘要</p>'
+    # 2026-10-19:總經卡併回八/九;遺失偵測改數卡片標記。
+    md = '## 九、其他類股資訊\n本報解讀：成本推升通膨。'
+    html = '<h2>九、其他類股資訊</h2><p>總經摘要</p>'
     assert email_content_audit.audit(md, html)['lost_cards'] == 1
 
 
@@ -131,10 +133,12 @@ def test_legacy_unmapped_observations_keep_neutral_section_not_macro():
     import render_utils
     md = '## 昨日觀察點回顧\n台積電新廠驗收尚未完成。\n\n## 我的明確立場\n立場：中性\n'
     out = reader_prose.public_sections(md)
-    assert '## ' + editorial.OUTLOOK_HEADING in out
-    assert '台積電新廠驗收尚未完成。' in out
+    # 2026-10-19:觀察點回顧不進信(仍在帳本);也不會變成總經段。
+    assert '台積電新廠驗收尚未完成。' not in out
     assert '## ' + editorial.MACRO_HEADING not in out
     assert '48 小時' not in out
     assert reader_prose.public_sections(out) == out
     assert email_content_audit.audit(out, render_utils._md_to_html(out))['missing_sections'] == []
-    assert editorial.OUTLOOK_HEADING in email_content_audit.audit(out, '')['missing_sections']
+    # 沒有七之五可寫時不留空標題,稽核也不把它列成「遺失」。
+    assert editorial.OUTLOOK_HEADING not in out
+    assert editorial.OUTLOOK_HEADING not in email_content_audit.audit(out, '')['missing_sections']

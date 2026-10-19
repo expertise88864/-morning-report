@@ -115,10 +115,9 @@ def test_counterevidence_is_flagged():
 
     2026-08-17:標記從機械括號(推論、信心…)搬到**來歷**括號 ——
     留在讀者眼前的都是誠實性訊號,機械欄位收起來。判準不變。"""
+    # 2026-10-19 使用者:三大重點比照備援只附來源(反面證據仍在 claim_audit 驗證)。
     obj = fx.valid_analysis()
     obj["key_drivers"][0]["counterevidence_ids"] = ["n2"]
-    assert "有反面證據" in ar.render(obj)
-    obj["key_drivers"][0]["counterevidence_ids"] = []
     assert "有反面證據" not in ar.render(obj)
 
 
@@ -127,7 +126,8 @@ def test_actions_to_consider_are_rendered():
     obj = fx.valid_analysis()
     obj["portfolio_implications"]["actions_to_consider"] = ["分批降低槓桿"]
     out = ar.render(obj)
-    assert "分批降低槓桿" in out
+    # 2026-10-19 使用者:七之五收成一小段,可考慮的做法留在 JSON(仍驗證)。
+    assert "分批降低槓桿" not in out
 
 
 # ---------------------------------------------------------------- 不得反向壞掉
@@ -271,7 +271,8 @@ def test_the_counterevidence_flag_survives_without_a_cluster():
     仍要出現(先前兩個早退會把整個括號跳過)。"""
     import analysis_render as ar
     c = {"statement": "判斷一句話。", "counterevidence_ids": ["n2"]}
-    assert "有反面證據" in ar._event_card(c, {})
+    # 2026-10-19:三大重點比照備援,不加來歷括號;沒有群也照樣回判斷句。
+    assert ar._event_card(c, {}) == "判斷一句話。"
 
 
 def test_the_provenance_paren_sits_on_the_claim_sentence():
@@ -290,4 +291,5 @@ def test_the_provenance_paren_sits_on_the_claim_sentence():
     # 來歷括號接在句尾。**判準的核心不變**:括號要跟著判斷那一句。
     line = ar._event_card(c, pk)
     assert chr(10) not in line, line
-    assert line.endswith("（官方公告）"), line
+    # 2026-10-19:來歷括號換成發布者;查不到發布者就只留判斷句。
+    assert line == "判斷一句話。" and "夜盤翻黑" not in line, line

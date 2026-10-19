@@ -120,8 +120,11 @@ def test_final_email_findings_are_content_domain_and_malformed_record_is_safe():
 
 
 def test_heading_in_css_is_not_a_visible_section_and_card_loss_is_detected():
-    expected = '## ' + ar.SECTION_OTHER + '\n傳導:A → B。\n傳導:C → D。'
-    html = page('<style>/* ' + ar.SECTION_OTHER + ' */</style><h2>' + ar.SECTION_OTHER + '</h2>傳導:A → B。')
+    # 2026-10-19:卡片以「本報解讀：」(Markdown)對上隱形標記(HTML)計數,不再數「→」。
+    from legacy_layout import CARD_MARK
+    expected = '## ' + ar.SECTION_OTHER + '\n本報解讀：A。\n\n本報解讀：C。'
+    html = page('<style>/* ' + ar.SECTION_OTHER + ' */</style><h2>' + ar.SECTION_OTHER
+                + '</h2><p>' + CARD_MARK + 'A。</p>')
     diag = audit.audit(expected, html)
     assert diag["missing_sections"] == [] and diag["lost_cards"] == 1
     empty = page('<style>/* ' + ar.SECTION_OTHER + ' */</style>')
@@ -176,8 +179,14 @@ def test_production_sized_report_reaches_final_html_without_missing_sectors(monk
     diag = mr._RUN_MANIFEST["llm"]["email_html"]
     assert 'PREAMBLE_MUST_NOT_REACH_EMAIL' not in html
     assert diag["missing_sections"] == [] and diag["lost_cards"] == 0
-    assert diag["chain_counts"][ar.SECTION_OTHER] == {"expected": min(6, other), "html": min(6, other)}
-    assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": min(4, tech), "html": min(4, tech)}
+    import reader_selection
+    shown_o, shown_t = min(reader_selection.FRONT_LIMIT, other), min(reader_selection.FRONT_LIMIT, tech)
+    assert diag["chain_counts"][ar.SECTION_OTHER] == {"expected": shown_o, "html": shown_o}
+    assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": shown_t, "html": shown_t}
     assert 'id="morning-mobile"' in html
-    assert html.index(ar.SECTION_TECH) < html.index(ar.SECTION_OTHER) < html.index(ar.SECTION_MACRO)
-    assert '傳導:' not in html and html.count('→') >= min(4, tech) + min(6, other)
+    # 2026-10-19 使用者:比照備援 —— 沒有總經段、讀者看不到箭頭與「本報解讀」標籤。
+    assert html.index(ar.SECTION_TECH) < html.index(ar.SECTION_OTHER)
+    assert ar.SECTION_MACRO not in html
+    other_at = html.index(ar.SECTION_OTHER)
+    cards = html[html.index(ar.SECTION_TECH):html.find('<h2', other_at) % (len(html) + 1)]
+    assert '傳導:' not in html and '→' not in cards and '本報解讀' not in html

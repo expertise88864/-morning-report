@@ -144,8 +144,9 @@ def test_data_gaps_and_contradictions_reach_the_email():
     md = ar.render(_obj())
     # 2026-09-07 user: diagnostic sections stay in JSON, prose is integrated.
     assert "## 資料缺口" not in md and "當日融資餘額" not in md
-    assert "## 證據衝突與調和" not in md and "以現貨為準" in md
-    assert "失效條件" in md and "台積電法說釋出降價訊號" in md
+    # 2026-10-19 使用者:張力調和與失效條件收進後台(仍驗證),不進信。
+    assert "## 證據衝突與調和" not in md and "以現貨為準" not in md
+    assert "台積電法說釋出降價訊號" not in md
 
 
 def test_scenario_narratives_reach_the_email_but_model_probabilities_do_not():
@@ -209,7 +210,7 @@ def test_a_universe_only_asset_is_labelled_speculative():
     # 同一批改動也拿掉了逐標的的方向詞,所以核心標的那一條改用同樣的錨。
     # 2026-08-19:逐標的影響併進散文(`3661〔推測性傳導〕:…`)。
     # 判準不變:揭露要貼在被揭露的那個標的身上。
-    assert "世芯-KY(3661):可能" in text, text
+    assert "對世芯-KY(3661)而言，可能" in text, text
     assert "2330〔" not in text, text
 
 

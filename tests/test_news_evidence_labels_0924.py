@@ -41,6 +41,8 @@ def test_macro_news_keeps_each_headline_with_its_interpretation(monkeypatch):
     monkeypatch.setattr(reader_editorial, 'is_macro', lambda *_: True)
     obj = fixtures_analysis.valid_analysis()
     text = analysis_render.render(obj, packet)
-    macro = text.split(analysis_render.SECTION_MACRO, 1)[1]
+    # 2026-10-19:總經卡併回九段(備援信沒有總經段),每則仍保留標題與解讀。
+    assert analysis_render.SECTION_MACRO not in text
+    macro = text.split(analysis_render.SECTION_OTHER, 1)[1]
     assert macro.count('本報解讀：通膨壓力回升。') == 2
     assert macro.index('第一則總經新聞') < macro.index('第二則總經新聞')

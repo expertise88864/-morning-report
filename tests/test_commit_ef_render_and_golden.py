@@ -38,9 +38,10 @@ def test_the_top_three_carry_where_the_event_came_from():
     # 段落幾經改版,下界用「下一個 h2」—— 不釘死某個段名。
     _i = text.index("## 七、")
     top = text[_i:text.index(chr(10) + "## ", _i)]
-    # 2026-08-17 使用者定案:來歷從獨立一行收成句尾括號。判準不變 ——
-    # 「官方公告」與「僅單一來源」在信裡仍然長得不一樣。
-    assert "（官方公告" in top, top
+    # 2026-10-19 使用者:版面比照備援 —— 句末附發布者,不再加來歷括號
+    # (取代 08-17 的「官方公告/僅單一來源」標記;佐證仍在逐則卡片的標籤裡)。
+    src = next(n["source_name"] for n in pk["news"] if n["source_item_id"] == "n1")
+    assert f"（{src}）" in top and "官方公告" not in top, top
 
 
 def test_a_single_source_event_says_so_in_the_first_screen():

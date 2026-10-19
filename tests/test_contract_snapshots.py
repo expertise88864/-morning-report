@@ -858,7 +858,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (41, "31beeea3ddf5531b"),  # Fallback-style card paragraph (user 2026-10-19).
+    "renderer_version":       (41, "d3bc8ac915b77bed"),  # Fallback-letter layout for the specialized path (user 2026-10-19).
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

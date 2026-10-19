@@ -238,7 +238,8 @@ def test_scenario_triggers_reach_the_letter_but_probabilities_do_not():
     obj["scenario_tree"]["bear"]["triggers"] = ["十年期殖利率突破 4.6%"]
     obj["scenario_tree"]["bear"]["probability"] = 0.2
     text = ar.render(obj)
-    assert "觀察條件：十年期殖利率突破 4.6%" in text
+    # 2026-10-19 使用者:七之五情境各留一句,觸發條件不另列(仍驗證)。
+    assert "十年期殖利率突破 4.6%" not in text
     assert "20%" not in text and "0.2" not in text, "情境機率進了信件"
 
 

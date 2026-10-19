@@ -293,3 +293,30 @@ def test_the_provenance_paren_sits_on_the_claim_sentence():
     assert chr(10) not in line, line
     # 2026-10-19:來歷括號換成發布者;查不到發布者就只留判斷句。
     assert line == "判斷一句話。" and "夜盤翻黑" not in line, line
+
+
+def test_every_validated_asset_is_rendered_on_its_own_markdown_line():
+    """PR #23 外審:不得截到前三個(第四個可能正是唯一的負面影響);
+    Markdown 一個標的一行,HTML 才併成同一段而且句讀之間不補空白。"""
+    import analysis_render_depth as ard
+    import render_utils
+    entry = {"affected_assets": [
+        {"asset_id": f"A{i}", "first_order_effect": f"影響{i}"} for i in range(4)]
+        + [{"asset_id": "A4", "first_order_effect": "唯一負面影響"}]}
+    prose = ard._assets_prose(entry)
+    assert prose.count("\n") == 4 and "唯一負面影響" in prose, prose
+    html = render_utils._md_to_html("本報解讀：主文。\n" + prose)
+    assert html.count("<p>") == 1 and "；對A1" in html and "。對A0" in html, html
+
+
+def test_tsmc_price_fix_does_not_reach_other_companies_in_the_same_card():
+    """PR #23 外審:卡片合段後,台積電價格修正器(逐行判斷)不得把別家的 500 元改成 mid。"""
+    import analysis_render_depth as ard
+    import morning_report as mr
+    n = {"source_item_id": "n", "why_it_matters": "台積電與台達電同步受惠。",
+         "affected_assets": [
+             {"asset_id": "2330", "first_order_effect": "台積電訂單增加"},
+             {"asset_id": "2308", "first_order_effect": "台達電目標價 500 元"}]}
+    md = ard._news_line(n, {"news": [{"source_item_id": "n", "title": "AI 伺服器訂單"}]})
+    fixed = mr._sanitize_llm_2330_prices(md, {"mid": 2000})
+    assert "500 元" in fixed and "2000 元" not in fixed, fixed

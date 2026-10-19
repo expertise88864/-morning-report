@@ -332,7 +332,10 @@ def _news_line(n: dict, packet=None) -> str:
         sentences.append(_watch_sentence(n))
     # 「本報解讀：」只留在 Markdown 給因果防線辨認本報分析(price/hedge guards),
     # render_utils._md_to_html 在轉成 HTML 時拿掉 —— 讀者看不到這個標籤(10-19)。
-    paragraph = "本報解讀：" + "".join(_join_sentence(x) for x in sentences if _s(x)) + _credibility(n, packet)
+    # **每句、每個標的各占一行**(PR #23 外審):HTML 仍併成同一段,但逐行運作的
+    # 防線(如 _sanitize_llm_2330_prices 以「同一行有台積電」判斷)範圍不因合段而擴大,
+    # 否則別家公司的「500 元」會被改寫成台積電的價格。
+    paragraph = "本報解讀：" + "\n".join(_join_sentence(x) for x in sentences if _s(x)) + _credibility(n, packet)
     parts = [lead + "\n\n" + paragraph if lead else paragraph]
     # 單一來源的但書(LM-4)仍是讀者要求的小字段落(render_utils 認「保留:」開頭),
     # 但與失效條件同一個規則:只在高重要性事件出現;其餘由結尾的「僅單一來源」標籤揭露。
@@ -404,8 +407,9 @@ def _assets_prose(n: dict, packet=None) -> str:
         label = f'{name}({aid})' if name and name != aid else aid
         if effects:
             rows.append(f"對{label}而言，{effects.rstrip(_TERMINAL_MARKS)}")
-    # 備援文風:併成一句,不再逐標的換行(2026-10-19)。
-    return "；".join(rows[:3])
+    # 備援文風:讀起來是一句(HTML 併段),Markdown 仍一個標的一行,理由見 _news_line。
+    # 不截斷:驗證器檢查的是完整陣列,截掉第四個可能正好丟掉唯一的負面影響(PR #23)。
+    return "；\n".join(rows)
 
 
 #: 句末標點(**全形半形都要**,外審 2026-08-18:只收半形的話

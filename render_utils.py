@@ -126,6 +126,19 @@ def _format_macro_line(name: str, m: dict) -> str:
 _SECTION_NUMBER = re.compile(
     r"^[〇零一二三四五六七八九十百]+(?:之[〇零一二三四五六七八九十百]+)?、")
 
+#: 段內換行接在這些全形句讀之後時不補空白:中文句與句之間本來就沒有空格(10-19 卡片逐句一行)。
+_CJK_LINE_END = "。！？；，、：）」』"
+
+
+def _join_para_lines(lines: list[str]) -> str:
+    joined = ""
+    for line in lines:
+        piece = line.strip()
+        if joined and piece:
+            joined += "" if joined[-1] in _CJK_LINE_END and not piece[0].isascii() else " "
+        joined += piece
+    return joined
+
 
 def _md_to_html(text: str, *, trusted_urls=()) -> str:
     """
@@ -147,7 +160,7 @@ def _md_to_html(text: str, *, trusted_urls=()) -> str:
     def flush_para():
         nonlocal para_buffer
         if para_buffer:
-            joined = " ".join(para_buffer).strip()
+            joined = _join_para_lines(para_buffer).strip()
             if joined:
                 out.append(f"<p>{joined}</p>")
             para_buffer = []

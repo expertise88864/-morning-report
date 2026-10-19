@@ -110,7 +110,10 @@ def test_reader_sees_validated_horizon_magnitude_confirmation_in_one_paragraph(h
             "invalidation_signal": "訂單取消", "affected_assets": [], "materiality": "high"}
     text = ard._news_line(card)
     assert label not in text and "後續營收公告" in text and "無法估算獲利幅度" in text
-    assert "訂單取消" in text and "\n" not in text
+    # PR #23:Markdown 逐句一行(逐行防線的範圍),HTML 仍是同一段。
+    assert "訂單取消" in text and "\n\n" not in text
+    import render_utils
+    assert render_utils._md_to_html(text).count("<p>") == 1
     assert "接下來要看後續營收公告" in text and "後續驗證" not in text
     # 2026-10-19 使用者:後續觀察與失效條件只在高重要性事件寫;量級依據照留。
     low = ard._news_line(dict(card, materiality="medium"))

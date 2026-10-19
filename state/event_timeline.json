@@ -1,81 +1,4 @@
 {
- "cybersecurity:cyberattack:ARM:2026-10": {
-  "first_seen": "2026-10-16",
-  "days": 1,
-  "last_seen": "2026-10-16",
-  "latest_title": "沒點擊廣告也遇駭！FT：新型間諜軟體侵入Nvidia、Arm員工裝置| 全球財經| 全球 - UDN",
-  "latest_summary": "",
-  "object": "ARM",
-  "incident_tokens": [
-   "ft",
-   "nvidia",
-   "也遇",
-   "侵入",
-   "告也",
-   "員工",
-   "型間",
-   "工裝",
-   "廣告",
-   "擊廣",
-   "新型",
-   "沒點",
-   "裝置",
-   "諜軟",
-   "軟體",
-   "遇駭",
-   "間諜",
-   "體侵",
-   "點擊"
-  ],
-  "entity": "ARM",
-  "subject_basis": "alias",
-  "subjects": [
-   "ARM"
-  ],
-  "event_type": "cybersecurity",
-  "action": "cyberattack",
-  "identity_schema": 14
- },
- "cybersecurity:cyberattack:GOOGL:2026-10": {
-  "first_seen": "2026-10-16",
-  "days": 1,
-  "last_seen": "2026-10-16",
-  "latest_title": "Google DeepMind 哈薩比斯示警：AI 代理駭客攻擊是更大威脅的「早期警訊」 - BigGo 財經",
-  "latest_summary": "",
-  "object": "GOOGL",
-  "incident_tokens": [
-   "ai",
-   "deepmind",
-   "google",
-   "代理",
-   "哈薩",
-   "大威",
-   "威脅",
-   "客攻",
-   "擊是",
-   "攻擊",
-   "斯示",
-   "早期",
-   "是更",
-   "更大",
-   "期警",
-   "比斯",
-   "理駭",
-   "示警",
-   "脅的",
-   "薩比",
-   "警訊",
-   "駭客"
-  ],
-  "entity": "GOOGL",
-  "subject_basis": "alias",
-  "subjects": [
-   "GOOGL"
-  ],
-  "event_type": "cybersecurity",
-  "action": "cyberattack",
-  "identity_schema": 14
- },
  "export_controls:export_control:中國:2026-10": {
   "first_seen": "2026-10-17",
   "days": 1,
@@ -255,6 +178,105 @@
   ],
   "event_type": "litigation",
   "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:hormuz_passage:2026-10": {
+  "first_seen": "2026-10-20",
+  "days": 1,
+  "last_seen": "2026-10-20",
+  "latest_title": "伊朗提出重啟荷姆茲海峽的「7日提議」",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "出重",
+   "啟荷",
+   "姆茲",
+   "峽的",
+   "提出",
+   "提議",
+   "日提",
+   "海峽",
+   "茲海",
+   "荷姆",
+   "重啟"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "hormuz_passage",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-10": {
+  "first_seen": "2026-10-20",
+  "days": 1,
+  "last_seen": "2026-10-20",
+  "latest_title": "伊朗警告將以新作戰計畫回應美以行動，周邊海域傳商船遇襲",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "以新",
+   "以行",
+   "作戰",
+   "告將",
+   "周邊",
+   "商船",
+   "將以",
+   "戰計",
+   "新作",
+   "海域",
+   "美以",
+   "船遇",
+   "行動",
+   "計畫",
+   "警告",
+   "遇襲",
+   "邊海"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:鴻海:2026-10": {
+  "first_seen": "2026-10-20",
+  "days": 1,
+  "last_seen": "2026-10-20",
+  "latest_title": "中美AI出口管制同步升溫，鴻海面臨合規與訂單風險",
+  "latest_summary": "",
+  "object": "鴻海",
+  "incident_tokens": [
+   "ai",
+   "中美",
+   "出口",
+   "制同",
+   "升溫",
+   "口管",
+   "合規",
+   "同步",
+   "單風",
+   "步升",
+   "管制",
+   "臨合",
+   "與訂",
+   "規與",
+   "訂單",
+   "面臨",
+   "風險"
+  ],
+  "entity": "鴻海",
+  "subject_basis": "alias",
+  "subjects": [
+   "鴻海"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
   "identity_schema": 14
  }
 }

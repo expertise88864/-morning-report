@@ -922,7 +922,7 @@ RSS_FEEDS = {
     "CNBC Tech":         "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19854910",
     "CNBC Economy":      "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258",
     "Bloomberg Markets": "https://feeds.bloomberg.com/markets/news.rss",   # 偶 403,失敗自動略過
-    "Yahoo Finance":     "https://finance.yahoo.com/news/rssindex",
+    "Yahoo Finance":     "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC&region=US&lang=en-US",  # 10/19:rssindex 404 十天
 
     # 固定的 Google News 主題查詢見 `gnews_registry`(V2-N4:查詢與用途
     # 同一份宣告,命中則數逐日進健康歷史,零命中在月報列候刪)。

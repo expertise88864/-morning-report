@@ -324,7 +324,9 @@ def _news_line(n: dict, packet=None) -> str:
         tag = f"（[原文]({quote(href, safe=':/?=&%#@+;,$!-_~')})）"
     said = _sentences(body)[:CARD_SENTENCES]
     said[0] = said[0].rstrip(_TERMINAL_MARKS) + tag + "。"
-    sentences = said + [_assets_prose(n, packet, second=False)]
+    # why_it_matters 的幾句**留在同一行**(PR #24 外審):「本報解讀：」與句中提到的
+    # 公司都只在本行有效 —— 拆行會讓第二句起逃過因果防線與 2330 價格修正。
+    sentences = ["".join(said), _assets_prose(n, packet, second=False)]
     if _s(n.get("materiality")) == "high":
         sentences.append(_watch_sentence(n))
     # 「本報解讀：」只留在 Markdown 給因果防線辨認本報分析(price/hedge guards),

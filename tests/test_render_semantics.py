@@ -320,3 +320,19 @@ def test_tsmc_price_fix_does_not_reach_other_companies_in_the_same_card():
     md = ard._news_line(n, {"news": [{"source_item_id": "n", "title": "AI 伺服器訂單"}]})
     fixed = mr._sanitize_llm_2330_prices(md, {"mid": 2000})
     assert "500 元" in fixed and "2000 元" not in fixed, fixed
+
+
+def test_card_sentences_stay_inside_the_guards_line_scope():
+    """PR #24 外審:精簡後的 why_it_matters 仍在「本報解讀：」那一行,
+    第二句起的因果推論與台積電價格仍會被下游防線看到。"""
+    import analysis_render_depth as ard
+    import morning_report as mr
+    import reader_price_causality_guard as guard
+    pk = {'news': [{'source_item_id': 'n', 'title': 'x', 'source_name': 'UDN'}]}
+    md = ard._news_line({'source_item_id': 'n',
+                         'why_it_matters': '台積電公布財報。目標價上看 500 元。'}, pk)
+    assert '2000 元' in mr._sanitize_llm_2330_prices(md, {'mid': 2000}), md
+    md = ard._news_line({'source_item_id': 'n', 'why_it_matters':
+                         '股價走高。兩邊都成立，差別在時間尺度：即日由風險偏好主導，1 到 4 週由折現率主導。'}, pk)
+    _, rules = guard._correct_prose(md)
+    assert 'single_day_price_does_not_prove_future_driver' in rules, md

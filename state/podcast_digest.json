@@ -9135,6 +9135,51 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "0af4bada-c7f6-11f1-ac8f-c7640b318cdc",
+        "title": "Where Is The Crypto Alpha Hiding This Cycle?",
+        "published": "Tue, 20 Oct 2026 10:00:00 -0000",
+        "processed_at": "2026-10-20T12:56:40Z",
+        "digest": {
+          "summary_points": [
+            "對加密 AI 交集的判斷：主持人認為現階段不該在「效率」上跟中心化 AI 硬拚，真正的切入點是協調（coordination）、無許可與預設加密隱私；他舉一家走隱私路由推論、堪稱「加密版 OpenRouter」的項目為例，說其推論代幣用量雖還比不上 OpenRouter，但成長曲線仍是陡峭的曲棍球棒，是少數開始說得通的案例。",
+            "市場結構轉變：主持人認為這輪最健康的现象是，像 Hyperliquid 這種在 smart money 間高度共識、市值又大的標的仍能持續上漲並跑贏，打破過去「一旦成為共識就見頂」的規律，代表基本面驅動已壓過掛單部位驅動，對主動管理者來說是幾年來最好的環境。",
+            "他引述自身圈子觀察：今年多數加密流動性基金報酬約 +20% 到 +100%，而比特幣年初至今仍下跌，這個落差正是主動管理能向 LP 證明「該找專家操盤」的理由。",
+            "操作思路：建立部位時願意支付 5%～10% 的進場價差（變異）換取持股，規模在 5 億～10 億美元以下都不難建倉；今年股市與幣市可同时做多、做空兩邊賺，基本面轉壞的項目每半年還可再跌 50%，甚至能做「多股票空加密」這類跨資產長短配對。",
+            "一級市場：後期輪案源重疊嚴重、額度難搶；種子輪因資金退潮、案量變少反而出現機會，且加密種子輪一到兩年就有機會達 50 倍回報，AI 工具讓新創團隊少雇人、把人事預算轉向算力與 API。"
+          ],
+          "tickers": [
+            {
+              "name": "Hyperliquid",
+              "code": "HYPE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為它雖已是 smart money 高度共識的大型幣，基本面與成長仍支撐其持續上漲並跑贏，證明共識不再等於見頂。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "hype has been like a huge market cap coin for like quite a while and it's very consensus. And yet it's still continuing to go up and outperform. So I think that's actually very healthy.",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為加密市場已明顯成熟、分散度提高，基本面驅動勝過共識與部位驅動；比特幣仍是 LP 最在意也最實用的績效基準，ETF（如 IBIT）則成為資金配置的機會成本底線。",
+          "action_view": "採槓鈴配置：一邊做創投（專注 pre-seed／seed），一邊做流動性長短倉；流動性部位願意承受 5%～10% 的建倉價差、長抱換取凸性，今年可同时做多基本面轉好的標的、放空基本面惡化的項目。",
+          "notable_quote": "I think one last point I wanna add is like, for both crypto and probably equity, this is probably the golden age of a long shot strategy.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I think one last point I wanna add is like, for both crypto and probably equity, this is probably the golden age of a long shot strategy."
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "4deb3398-c8e9-11f1-a693-0bd61fa2ddce",
         "title": "The Bond Market Is Pricing In Something Worse Than Inflation | Weekly Roundup",
         "published": "Fri, 16 Oct 2026 10:00:00 -0000",
@@ -9695,56 +9740,6 @@
           "market_view": "主持人認為目前市場處於風險偏好再通膨機制，短期至中期相對看好股票、黃金、比特幣與大宗商品，但看空美元與公債；整體經濟偏熱，債市存在供給失衡風險。",
           "action_view": "主持人建議投資人提升Alpha策略比重，因Beta策略在目前環境下較為艱困；應採用系統化風險管理（如KISS與Dr.Mo），讓資產保持接近高水位，避免大幅回撤。KISS策略為60%股票、30%黃金、10%比特幣，目前未滿倉。",
           "notable_quote": "You have to have investors to have a confidence in the soundness of the dollar as money in order to have a bond market."
-        }
-      },
-      {
-        "guid": "702b3a2e-91f4-11f1-8e04-e765401f1c74",
-        "title": "Washington Is Suppressing Volatility To Keep The AI Boom Alive | Weekly Roundup",
-        "published": "Fri, 07 Aug 2026 07:00:00 -0000",
-        "processed_at": "2026-08-07T14:49:37Z",
-        "digest": {
-          "summary_points": [
-            "Tyler 認為 Fed 與財政部已從「看 Fed」轉向聯手干預的治國術，類似 Plaza Accord 式壓抑波動；只要經濟成長高於通膨，就能用通膨稅去槓桿。",
-            "Quinn 指出 QRA 聲明把「increase」改成「changes」，打開未來縮減長債發行的尾部空間，加上 FIMA facility 與賣歐元而非美元干預日圓，整體偏鴿且流動性友善，但也可能墊高長期通膨風險。",
-            "Tyler 看好工業、機械、鐵路等實體資本支出產業，認為 AI 會商品化軟體，不可複製的實體資產才是長期投資主軸，核能則是下一個大主題。",
-            "Nick 認為 AI 交易的基本面問題未解（Meg 7 現金流為負、信用利差擴大），干預只是暫時性包紮，中期風險持續堆積，未來幾個月仍會高波動，對科技領導股保持懷疑。",
-            "Tyler 提出若 Oracle 投資級債券殖利率到 8-9%，會是很好的買點，因為這類公司不會倒閉、能提供真實收益，尤其適合追求收益的資金。",
-            "比特幣方面，Tyler 認為自己「幾乎到底」，礦工轉向 AI、供應清洗接近尾聲，但短期仍是「腦損傷」行情，適合慢慢買而非高槓桿。",
-            "Tyler 強調市場廣度健康，IWM 與 RSP 表現良好，整體很難做空牛市，但須注意單股波動並設停損。"
-          ],
-          "tickers": [
-            {
-              "name": "Oracle",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為若其債券殖利率升至8-9%是絕佳買點，公司不會倒閉且提供真實收益。"
-            },
-            {
-              "name": "iShares Russell 2000 ETF",
-              "code": "IWM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為IWM看起來很好，市場廣度正在改善。"
-            },
-            {
-              "name": "Invesco S&P 500 Equal Weight ETF",
-              "code": "RSP",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為RSP表現極佳，等權指數顯示市場健康。"
-            },
-            {
-              "name": "Invesco QQQ Trust",
-              "code": "QQQ",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為QQQ看起來很好，科技股回穩。"
-            }
-          ],
-          "market_view": "主持人普遍認為 Fed 與財政部積極干預壓抑波動，短期支撐風險資產，但 Quinn 與 Nick 擔心中期通膨與基本面惡化；Tyler 則認為整體牛市很難做空，市場廣度健康。",
-          "action_view": "Tyler 建議在波動中逢低買入，但需嚴設停損；比特幣可逐步建倉，不宜高槓桿。Quinn 與 Nick 則傾向觀望，觀察干預效果與中期風險。",
-          "notable_quote": "I think it's really hard to fade the bull market right now in general."
         }
       }
     ]

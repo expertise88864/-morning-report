@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 39  # Oct16: scheduled events stay future tense; flag 
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 74  # Oct19: ten cards per sector; why_it_matters states the event, not the article.
+LUNA_XHIGH_VERSION = 75  # Oct20: cards at most three sentences (fallback-letter length).
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。

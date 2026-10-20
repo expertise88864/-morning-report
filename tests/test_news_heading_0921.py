@@ -34,8 +34,9 @@ def test_multi_company_source_title_is_not_truncated_by_primary_subject():
     card = {'source_item_id': 'ccl', 'why_it_matters': '兩家公司均有擴充計畫。',
             'affected_assets': [{'asset_id': '2383'}]}
     rendered = _news_line(card, packet)
-    assert '[台光電、台燿海內外擴產](https://example.com/ccl)' in rendered
-    assert '**台光電（2383）、台燿（6274）**｜' in rendered
+    # 2026-10-20:標題不印,原文連結接在第一句之後。
+    assert '（[原文](https://example.com/ccl)）' in rendered
+    assert rendered.startswith('**台光電（2383）、台燿（6274）**｜')
 
 
 def test_foreign_company_and_word_boundary():
@@ -69,5 +70,5 @@ def test_card_keeps_full_title_and_source_link():
                         'url': 'https://example.com/news', 'source_name': '原始來源'}]}
     result = _news_line({'source_item_id': 'x', 'why_it_matters': '價差尚待核對。'}, packet)
     assert '**台塑化（6505）**｜' in result
-    assert '[台塑化宣布油價不調整](https://example.com/news)' in result
-    assert '價差尚待核對。' in result
+    assert '台塑化宣布油價不調整' not in result
+    assert '價差尚待核對（[原始來源](https://example.com/news)）。' in result

@@ -191,7 +191,7 @@ MODULE_CEILINGS = {
     "reader_prose.py": 132,  # Conclusion projection extracted; do not reabsorb it.
     "reader_selection.py": 60,  # Editorial priority moved into its own module.
     "editorial_priority.py": 100,
-    "reader_editorial.py": 110,
+    "reader_editorial.py": 111,
     "reader_revision.py": 85,
     "reader_evidence_writing.py": 45,
     "news_heading.py": 40,

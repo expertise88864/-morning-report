@@ -67,16 +67,15 @@ def test_the_heading_names_the_company_and_what_happened():
     獨立一行,而他要的是舊信那種一段到底的寫法。
     """
     line = ard._news_line(_news("n1", "2330"), _packet())
-    # Sept21: company/code and intact source title share one heading line.
-    assert line.startswith("**台積電（2330）**｜台積電 CoWoS"), line
-    assert "CoWoS 產能明年再擴一倍。" in line, line
-    assert "這件事之所以重要的一段敘述。" in line, line
+    # 2026-10-20 使用者:「不用顯示後方｜新聞標題（UDN）」—— 卡片不再印標題。
+    assert line.startswith("**台積電（2330）**｜\n本報解讀：這件事之所以重要的一段敘述"), line
+    assert "CoWoS 產能明年再擴一倍" not in line, line
 
 
 def test_company_label_keeps_full_source_title():
     """Sept21: 前綴加識別資訊，不削來源標題以免截錯較長公司名。"""
     md = ard._news_line(_news("n1", "2330"), _packet())
-    assert md.count("台積電") == 3 and '對台積電(2330)而言' in md, md
+    assert md.count("台積電") == 2 and '對台積電(2330)而言' in md, md
 
 
 def test_a_short_remainder_keeps_the_whole_headline():
@@ -84,14 +83,14 @@ def test_a_short_remainder_keeps_the_whole_headline():
     pk = _packet(news=[{"source_item_id": "n1", "title": "台積電法說",
                         "entities": ["2330"]}])
     line = ard._news_line(_news("n1", "2330"), pk)
-    assert "台積電法說" in line, line
+    assert "台積電法說" not in line and line.startswith("**台積電（2330）**｜"), line
 
 
 def test_the_fallback_blurb_does_not_repeat_the_name():
     """`desc` 查不到時是「<名稱> — <產業別>」的退化字串 ——
     放進括號會排成「鴻海(2317,鴻海 — 其他電子業)」。"""
     head = ard._news_line(_news("n4", "2317"), _packet()).splitlines()[0]
-    assert head == "**鴻海（2317）**｜鴻海 AI 伺服器機櫃出貨上修。", head
+    assert head == "**鴻海（2317）**｜", head
 
 
 def test_a_macro_news_headline_is_its_own_heading():
@@ -103,7 +102,8 @@ def test_a_macro_news_headline_is_its_own_heading():
     pk = _packet(news=[{"source_item_id": "x1", "title": "費半收漲 2.1%",
                         "entities": ["費半"]}])
     md = ard._news_line(_news("x1", "費半"), pk)
-    assert md.startswith("**費半收漲 2.1%**"), md
+    # 2026-10-20:沒有公司主體就不掛小標題,直接從重點開始。
+    assert md.startswith("本報解讀：") and "費半收漲" not in md, md
     assert ard.news_subject(_news("x1", "費半"), pk)["name"] == "", md
 
 
@@ -123,7 +123,7 @@ def test_a_tagged_company_the_title_never_names_is_not_the_subject():
         assert ard.news_subject(n, pk)["name"] == "", title
         md = ard._news_line(n, pk)
         assert "台積電（2330" not in md, md
-        assert md.startswith(f"**{title}**"), md
+        assert md.startswith("本報解讀："), md
     # 反向:標題真的指名就照舊掛公司
     pk = _packet()
     assert ard.news_subject(_news("n1", "2330"), pk)["name"] == "台積電"
@@ -157,7 +157,8 @@ def test_the_item_is_one_prose_paragraph():
     md = ard._news_line(_news("n1", "2330", materiality="high"), _packet())
     assert "→" not in md and "傳導:" not in md and "此判斷不成立" not in md, md
     assert "若什麼情況代表判斷錯了，這個判斷就要修正" in md, md
-    assert "對台積電(2330)而言，一階影響，二階影響" in md, md
+    # 2026-10-20 使用者精簡:新聞卡只寫一階影響(二階仍驗證)。
+    assert "對台積電(2330)而言，一階影響" in md and "二階影響" not in md, md
     low = ard._news_line(_news("n1", "2330"), _packet())
     assert "什麼情況代表判斷錯了" not in low and "對台積電(2330)而言" in low, low
 
@@ -170,7 +171,7 @@ def test_no_direction_words_per_asset():
     """
     line = ard._news_line(_news("n1", "2330"), _packet())
     assert "偏多" not in line and "中等" not in line and "1-3 個月" not in line, line
-    assert "一階影響" in line and "二階影響" in line, line
+    assert "一階影響" in line and "二階影響" not in line, line
 
 
 # ------------------------------------------------------------ 兩段的分法
@@ -228,7 +229,7 @@ def test_the_editorial_entity_wins_even_when_it_is_a_foreign_equity():
     sub = ard.news_subject(_news("n5", "2330"), pk)
     assert sub["name"] == "ASML", sub
     head = ard._news_line(_news("n5", "2330"), pk).splitlines()[0]
-    assert "台積電" not in head and "ASML" in head, head
+    assert "台積電" not in head and "ASML" in head and "EUV" not in head, head
 
 
 # ------------------------------------------- 九、今日市場關注與預測(合併段)
@@ -271,7 +272,7 @@ def test_display_name_label_keeps_full_english_source_title():
     pk = {"news": [{"source_item_id": "f1", "title": "Microsoft Q4 財報優於預期",
                     "entities": ["MSFT"]}]}
     line = ard._news_line(_news("f1", "MSFT"), pk).splitlines()[0]
-    assert line.startswith("**Microsoft（MSFT）**｜Microsoft Q4"), line
+    assert line == "**Microsoft（MSFT）**｜", line
 
 
 def test_the_publisher_is_named():
@@ -292,8 +293,8 @@ def test_an_aggregator_alias_is_not_printed_as_a_publisher():
                                "industry": "半導體業", "desc": "晶圓代工龍頭"}]}
         line = ard._news_line(_news("p2", "2330"), pk)
         assert alias not in line, line
-        # 出處括號不得出現(那個 source 是內部標籤)—— 標題後面直接接句號
-        assert "發布財報。" in line, line
+        # 出處括號不得出現(那個 source 是內部標籤)—— 第一句後面直接接句號
+        assert "一段敘述。" in line and "（" + alias not in line, line
 
 
 def _pk_conf(**cluster):
@@ -401,9 +402,10 @@ def test_the_publisher_sits_inside_the_sentence():
     tw = [{"code": "2330", "name": "台積電", "industry": "半導體業",
            "desc": "晶圓代工龍頭"}]
     for mark in ("。", "！", "？", "!", "?"):
-        pk = {"news": [{"source_item_id": "d1", "title": "台積電公布財報" + mark,
+        pk = {"news": [{"source_item_id": "d1", "title": "台積電公布財報",
                         "source_name": "鉅亨網", "entities": ["2330"]}],
               "tw_universe": tw}
-        line = ard._news_line(_news("d1", "2330"), pk)
+        # 2026-10-20:出處接在 why_it_matters 第一句的句末標點之前。
+        line = ard._news_line(_news("d1", "2330", why_it_matters="公司公布財報" + mark + "第二句。"), pk)
         assert "公布財報（鉅亨網）。" in line, (mark, line)
         assert mark + "（" not in line, (mark, line)

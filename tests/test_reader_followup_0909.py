@@ -34,8 +34,8 @@ def test_macro_does_not_take_any_of_six_sector_slots():
     md = render.render(obj, {'news': news})
     # 2026-10-19:備援信沒有總經段,總經卡併回九段,但不佔類股名額、排在類股卡之後。
     sector = md.split('## 九、其他類股資訊')[1].split('\n## ')[0]
-    assert '利率與通膨動態（原文報導）' in sector and '國際貿易' in sector
-    assert sector.index('航運新合約第5案') < sector.index('利率與通膨動態（原文報導）')
+    # 2026-10-20:卡片不再印標題;總經卡(無公司主體)排在類股卡之後、仍有原文連結。
+    assert sector.count('本報解讀：有待確認') == 8 and '航運新合約' not in sector
 
 
 def test_company_specific_rate_effect_is_not_misrouted():
@@ -49,7 +49,8 @@ def test_english_headline_uses_honest_chinese_topic_and_original_link():
                        'url': 'https://example.com/fed?x=1&y=2'}]}
     before = copy.deepcopy(packet)
     text = depth._news_line(card, packet)
-    assert '[利率與通膨動態（原文報導）](https://example.com/fed?x=1&y=2)' in text
+    # 2026-10-20:標題不印;沒有發布者名稱時以「原文」連結回原始報導。
+    assert '（[原文](https://example.com/fed?x=1&y=2)）' in text
     assert 'Fed rate decision preview' not in text and packet == before
 
 

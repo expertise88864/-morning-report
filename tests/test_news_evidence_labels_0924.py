@@ -15,12 +15,10 @@ def test_source_limit_stays_beside_interpretation_in_small_print(monkeypatch):
            'source_caveat': '只有單一媒體引述文件，尚待公司確認。',
            'invalidation_signal': '公司公布不同數據', 'materiality': 'high'}
     text = render._news_line(row, packet)
-    # 2026-10-19:內文是一段話(失效條件在段內),小字但書接在段落之後。
-    assert text.index('本報解讀：') < text.index('若公司公布不同數據') < text.index('保留:')
-    html = _md_to_html(text)
-    caveat = html.split('<p style="font-size:12px!important', 1)[1].split('</p>', 1)[0]
-    assert '只有單一媒體' in caveat
-    assert '若公司公布不同數據' not in caveat
+    # 2026-10-20 使用者精簡:失效條件仍在段內(高重要性),但書不再另起小字段。
+    assert text.index('本報解讀：') < text.index('若公司公布不同數據')
+    assert '保留:' not in text and '只有單一媒體' not in text
+    assert _md_to_html(text).count('<p>') == 1
 
 
 def test_news_and_podcast_prompts_separate_layoffs_from_financing():
@@ -45,4 +43,4 @@ def test_macro_news_keeps_each_headline_with_its_interpretation(monkeypatch):
     assert analysis_render.SECTION_MACRO not in text
     macro = text.split(analysis_render.SECTION_OTHER, 1)[1]
     assert macro.count('本報解讀：通膨壓力回升。') == 2
-    assert macro.index('第一則總經新聞') < macro.index('第二則總經新聞')
+    assert '第一則總經新聞' not in macro   # 2026-10-20:標題不印

@@ -62,8 +62,9 @@ def test_industry_level_tech_news_lands_in_the_tech_section():
     md = ar.render(obj, packet) or ""
     i_tech = md.index("八、科技板塊脈動")
     i_other = md.index("九、其他類股資訊")
-    assert i_tech < md.index("記憶體缺到2030") < i_other, "科技新聞仍在九段"
-    assert md.index("SCFI") > i_other, "航運跑進科技段"
+    # 2026-10-20:卡片不再印新聞標題,以內文定位。
+    assert i_tech < md.index("記憶體缺貨延續") < i_other, "科技新聞仍在九段"
+    assert md.index("運價利多已定價") > i_other, "航運跑進科技段"
 
 
 def test_ascii_tech_keywords_need_word_boundaries():

@@ -66,7 +66,7 @@ def test_categories_limit_and_technology_without_registry_subject():
 
 
 def test_headline_link_and_caveat_survive_safe_html_as_small_text():
-    n = {'source_item_id': 'x', 'why_it_matters': '需求成長',
+    n = {'source_item_id': 'x', 'why_it_matters': '需求成長',  # 原文連結接在第一句後(10-20)
          'mechanism_steps': [{'from_what': '需求', 'to_what': '出貨'}]}
     pk = {'news': [{'source_item_id': 'x', 'title': '模型發布', 'url': 'https://example.com/news?a=1&b=2'}]}
     md = ard._news_line(n, pk)

@@ -286,49 +286,46 @@ def _attribution(n: dict, packet=None) -> str:
 
 
 def _news_line(n: dict, packet=None) -> str:
-    """一則新聞 = 小標題 + **備援文風的一段話**(2026-10-19 使用者定案)。
+    """一則新聞 = **備援信那樣的一段話**(使用者 2026-10-20 定案)。
 
-    形狀:
+    形狀(Markdown;HTML 併成同一段):
 
-        **主體**｜昨天的新聞標題(發布者連結)。
-        為什麼重要。量級依據。對 2330 而言,…。[A 級・佐證]
+        **主體**｜
+        本報解讀：事實第一句（[發布者](原文)）。影響一兩句。
+        對 2330 而言,一階影響。[A 級・佐證]
 
-    * **小標題照舊**:優先是公司,標題完整並附原文連結(使用者 08-19、09-21)。
-    * 內文改成備援那樣的一段話(使用者 10-19:「呈現的方式跟備援一樣」)——
-      「本報解讀/保留/後續驗證/此判斷不成立」標籤與箭頭鏈不再印;後續觀察與
-      失效條件**只在高重要性**事件寫一句。欄位全部照常驗證,拿掉的是排版。
-    * 單一來源的但書照樣進信(LM-4),改成一般句子;推測性傳導仍標「可能」。
+    * 使用者 10-20:「不用顯示後方｜新聞標題（UDN）」—— iPhone Gmail 上長標題連結
+      換好幾行;改成「**公司**｜重點…（來源）」,來源名稱就是原文連結。
+    * 篇幅比照備援信(使用者貼的範例:每則一段、三四句):why_it_matters 最多三句、
+      標的只寫一階影響;量級、但書、先前報導脈絡與 Podcast 對照不再進信 ——
+      那些欄位照常驗證,拿掉的是排版。高重要性事件仍多一句後續觀察。
+    * 推測性傳導照舊標「可能」(第三十二輪 P1-3)。
+    * Markdown 主體與內文分兩行:逐行運作的防線(_sanitize_llm_2330_prices、
+      hedge guard 的公司 lead 保護)範圍不因合段而擴大(PR #23)。
     """
     body = _s(n.get("why_it_matters"))
     if not body:
         return ""
-    headline = _headline_of(n, packet)
-    attribution = _attribution(n, packet)
     from render_utils import safe_href
     from urllib.parse import quote
     item = next((x for x in ((packet or {}).get("news") or [])
                  if isinstance(x, dict) and x.get("source_item_id") == n.get("source_item_id")), {})
     from news_heading import companies
-    company_label = companies(item, packet or {})
+    # 主體判定照舊(標題指名才算);registry 沒有的外國公司退而用 news_subject 的名字。
+    company_label = companies(item, packet or {}) or _s(news_subject(n, packet).get("name"))
     href = safe_href(str(item.get("url") or item.get("link") or ""), max_chars=2048)
-    headline = headline.rstrip(_TERMINAL_MARKS)
-    if headline and href:
-        headline = f"[{headline.replace('[', '（').replace(']', '）')}]({quote(href, safe=':/?=&%#@+;,$!-_~')})"
-    if company_label:
-        lead = _join_sentence(f"**{company_label}**｜" + headline + attribution)
-    elif headline:
-        # 沒有公司主體(總經/利率/油價…):**新聞標題就是小標題**。
-        display_head = headline if href else f"**{headline.rstrip(_TERMINAL_MARKS)}**"
-        lead = _join_sentence(display_head + attribution)
-    else:
-        lead = ""
-    sentences = [body]
-    magnitude = _s(n.get("why_this_magnitude"))
-    if magnitude and magnitude != "無":
-        sentences.append(magnitude)
-    sentences.append(_assets_prose(n, packet))
-    high = _s(n.get("materiality")) == "high"
-    if high:
+    who = _attribution(n, packet)[1:-1]
+    tag = ""
+    if who:
+        safe_who = who.replace("[", "（").replace("]", "）")
+        tag = (f"（[{safe_who}]({quote(href, safe=':/?=&%#@+;,$!-_~')})）" if href
+               else f"（{who}）")
+    elif href:   # 沒有發布者名稱仍要能點回原文(標題連結拿掉之後的唯一入口)
+        tag = f"（[原文]({quote(href, safe=':/?=&%#@+;,$!-_~')})）"
+    said = _sentences(body)[:CARD_SENTENCES]
+    said[0] = said[0].rstrip(_TERMINAL_MARKS) + tag + "。"
+    sentences = said + [_assets_prose(n, packet, second=False)]
+    if _s(n.get("materiality")) == "high":
         sentences.append(_watch_sentence(n))
     # 「本報解讀：」只留在 Markdown 給因果防線辨認本報分析(price/hedge guards),
     # render_utils._md_to_html 在轉成 HTML 時拿掉 —— 讀者看不到這個標籤(10-19)。
@@ -336,27 +333,18 @@ def _news_line(n: dict, packet=None) -> str:
     # 防線(如 _sanitize_llm_2330_prices 以「同一行有台積電」判斷)範圍不因合段而擴大,
     # 否則別家公司的「500 元」會被改寫成台積電的價格。
     paragraph = "本報解讀：" + "\n".join(_join_sentence(x) for x in sentences if _s(x)) + _credibility(n, packet)
-    parts = [lead + "\n\n" + paragraph if lead else paragraph]
-    # 單一來源的但書(LM-4)仍是讀者要求的小字段落(render_utils 認「保留:」開頭),
-    # 但與失效條件同一個規則:只在高重要性事件出現;其餘由結尾的「僅單一來源」標籤揭露。
-    cav = _s(n.get("source_caveat"))
-    if high and cav and cav != "無":
-        try:
-            import analysis_validate as _av10
-            weak = _av10.weakly_corroborated(n, packet)
-        except Exception:               # noqa: BLE001 - 判準失敗不毀渲染
-            weak = False
-        if weak:
-            parts.append(_join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}"))
-    import news_research_context as _research
-    history = _research.history_prose(n, packet)
-    if history:
-        parts.append(history)
-    import podcast_comparison
-    comparison = podcast_comparison.prose(n, packet)
-    if comparison:
-        parts.append(comparison)
-    return "\n\n".join(parts)
+    return f"**{company_label}**｜\n{paragraph}" if company_label else paragraph
+
+
+#: 每則新聞最多寫幾句 why_it_matters(使用者 10-20:比照備援信,不要一則讀很久)。
+CARD_SENTENCES = 3
+_SENTENCE_RE = re.compile(r"[^。！？!?]+(?:[。！？!?]+[」』）)]*|$)")
+
+
+def _sentences(text: str) -> list[str]:
+    """切句:句末標點後的收引號跟著前一句走(「…不足。」)。"""
+    found = [m.group(0).strip() for m in _SENTENCE_RE.finditer(" ".join(str(text or "").split()))]
+    return [x for x in found if x] or [str(text or "").strip()]
 
 
 def _watch_sentence(n: dict) -> str:
@@ -373,8 +361,10 @@ def _watch_sentence(n: dict) -> str:
     return "；".join(bits)
 
 
-def _assets_prose(n: dict, packet=None) -> str:
+def _assets_prose(n: dict, packet=None, *, second: bool = True) -> str:
     """逐標的影響壓成**句子**:`2330:一階、二階;00662:…。`
+
+    `second=False`:新聞卡只寫一階影響(使用者 10-20 精簡;二階仍驗證)。
 
     〔推測性傳導〕的揭露不因改排版而消失(第三十二輪 P1-3)——
     判準仍回 validator 問,不在渲染層自己判一份。
@@ -396,14 +386,16 @@ def _assets_prose(n: dict, packet=None) -> str:
             except Exception:           # noqa: BLE001
                 spec = ""
         # 10/19 實信:模型以「。」「可能。」當空欄位佔位,印成「…。 。」「…。 可能。」。
-        raw_effects = [t for t in (_s(a.get("first_order_effect")), _s(a.get("second_order_effect")))
+        raw_effects = [t for t in (_s(a.get("first_order_effect")),
+                                   _s(a.get("second_order_effect")) if second else "")
                        if t.removeprefix("可能").strip(_TERMINAL_MARKS + "，,、；;：: ")
                        and "看不出次級影響" not in t]  # clean_text 會清掉這句,只剩逗號
         effects = "，".join(("可能" if spec and not text.startswith("可能") else "")
                            + text.rstrip(_TERMINAL_MARKS + "，,；;") for text in raw_effects)
         row = _universe_index(packet).get(aid) or {}
         import company_profiles
-        name = _s(row.get('name')) or company_profiles.display_name(aid)
+        name = (_s(row.get('name')) or _INDEX_NAMES.get(aid)
+                or company_profiles.display_name(aid))
         label = f'{name}({aid})' if name and name != aid else aid
         if effects:
             rows.append(f"對{label}而言，{effects.rstrip(_TERMINAL_MARKS)}")
@@ -411,6 +403,9 @@ def _assets_prose(n: dict, packet=None) -> str:
     # 不截斷:驗證器檢查的是完整陣列,截掉第四個可能正好丟掉唯一的負面影響(PR #23)。
     return "；\n".join(rows)
 
+
+#: 指數代碼給讀者看的名字(10-20 實信印成「對TAIEX而言」)。
+_INDEX_NAMES = {"TAIEX": "加權指數"}
 
 #: 句末標點(**全形半形都要**,外審 2026-08-18:只收半形的話
 #: 「財測上修!」會排成「財測上修!(Reuters)。」)。

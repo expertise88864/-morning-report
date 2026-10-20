@@ -243,8 +243,10 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 一氣呵成一個段落(郵件渲染最穩的形狀)。
         import legacy_layout   # 2026-10-19:比照備援在事件句末標發布者
         head = legacy_layout.with_source(w.get("what"), legacy_layout.source_of(packet, w.get("source_item_id")))
-        why = _sent(w.get("why_it_matters"))
-        nxt = _s(w.get("what_next"))
+        # 10-20 使用者:「寫太多廢話」—— 解讀最多兩句、後續影響一句(比照備援信)。
+        from analysis_render_depth import _sentences
+        why = "".join(_sentences(_sent(w.get("why_it_matters")))[:2]) if _s(w.get("why_it_matters")) else ""
+        nxt = _sentences(_s(w.get("what_next")))[0] if _s(w.get("what_next")) else ""
         return ("- " + head + why
                 + (f"後續可能影響:{_sent(nxt)}" if nxt else "")).rstrip()
 

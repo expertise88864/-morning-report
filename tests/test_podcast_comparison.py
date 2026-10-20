@@ -80,7 +80,8 @@ def render_probe():
 
 def test_real_analysis_renderer_preserves_attribution_and_blocks_bad_reference():
     valid, invalid = render_probe()
-    assert 'Podcast 觀點對照' in valid and '節目「需求追蹤」' in valid
+    # 2026-10-20 使用者:「寫太多廢話」—— 對照仍驗證(下方 validation_probe),不再進卡片。
+    assert 'Podcast 觀點對照' not in valid and '節目「需求追蹤」' not in valid
     assert 'Podcast 觀點對照' not in invalid
 
 

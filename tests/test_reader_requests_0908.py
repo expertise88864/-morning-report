@@ -26,8 +26,9 @@ def test_missing_entities_still_get_named_company_and_separate_link():
     card = {'source_item_id': 'n', 'why_it_matters': '訂單延續。'}
     original = copy.deepcopy(card)
     text = depth._news_line(card, packet)
-    assert '**輝達（NVDA）**｜[輝達展望成長]' in text
-    assert '](' in text and '\n\n本報解讀：訂單延續' in text
+    # 2026-10-20:主體與內文同一段(Markdown 分兩行),標題不印,原文連結接在第一句後。
+    assert text.startswith('**輝達（NVDA）**｜\n本報解讀：訂單延續（[原文](')
+    assert '輝達展望成長' not in text
     assert card == original
 
 
@@ -71,5 +72,6 @@ def test_item_nine_hides_observation_window_but_keeps_reasoning_and_state():
     original = copy.deepcopy(card)
     rendered = depth._news_line(card)
     assert '影響觀察窗' not in rendered and '1–4 週' not in rendered
-    assert '量級依據' not in rendered and '尚無合約金額' in rendered
+    # 2026-10-20 使用者精簡:量級說明不再進卡片(仍驗證)。
+    assert '量級依據' not in rendered and '尚無合約金額' not in rendered
     assert '等待營收公告' in rendered and card == original

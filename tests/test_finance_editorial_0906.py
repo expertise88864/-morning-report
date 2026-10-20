@@ -206,12 +206,12 @@ def test_real_renderer_places_both_groups_in_other_sector_without_meta_text():
     raw[0]["entities"] = ["2881"]
     template = obj["top_news_analysis"][0]
     obj["top_news_analysis"] = [dict(copy.deepcopy(template), source_item_id=str(i),
-                                    affected_assets=[], why_it_matters="資本配置影響後續營運。")
-                                for i in range(3)]
+                                    affected_assets=[], why_it_matters=f"{t}，資本配置影響後續營運。")
+                                for i, t in enumerate(titles)]
     md = ar.render(obj, {"news": raw, "tw_universe": [
         {"code": "2881", "name": "富邦金", "industry": "金融保險業"}]})
     other = md.split(ar.SECTION_OTHER)[1]
-    assert other.index(titles[1]) < other.index(titles[2]) < other.index("富邦金")
+    assert other.index(titles[1]) < other.index(titles[2]) < other.index(titles[0])
     html = mr._md_to_html(md)
     for title in ["富邦金", *titles[1:]]:
         assert title in html

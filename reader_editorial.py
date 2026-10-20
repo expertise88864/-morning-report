@@ -22,6 +22,7 @@ READER_PROSE = """
 - 有 tech:ai-models 當期新證據時，top_news_analysis 涵蓋最重要的一則模型發布、
   能力評測或成本變化；沒有新事實不湊數。它屬科技，非其他類股。
 - 前台科技、其他類股各最多十則；總經新聞不占類股名額。why_it_matters 直接寫事件與影響，不寫「這則／這篇彙整」等評論文章的口吻。
+- 每則 why_it_matters 最多三句、約 150 字：第一句寫事實與關鍵數字，接著寫對台股或個股的影響；量級、缺資料與來源可信度寫在各自欄位，不在這裡交代。world_events 的 why_it_matters 最多兩句、what_next 一句。
   後台仍依既有要求分析，排序由 Python 決定。
 """ + WRITING
 

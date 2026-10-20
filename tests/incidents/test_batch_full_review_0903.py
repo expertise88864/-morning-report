@@ -558,8 +558,8 @@ def test_lm4_a_single_source_item_renders_its_caveat():
     from test_news_subject_headings import _news, _packet
     n = _news("n1", "2330", corroboration_assessment="single_source", materiality="high",
               source_caveat="金額尚未經第二來源證實")
-    assert "保留:金額尚未經第二來源證實" in ard._news_line(n, _packet())
-    # 2026-10-19 使用者:但書與失效條件只在高重要性事件寫;其餘由結尾佐證標籤揭露。
+    # 2026-10-20 使用者精簡:但書不再進卡片,單一來源由結尾佐證標籤揭露(LM-4 改由標籤承擔)。
+    assert "金額尚未經第二來源證實" not in ard._news_line(n, _packet())
     assert "金額尚未經第二來源證實" not in ard._news_line(dict(n, materiality="medium"), _packet())
     n2 = _news("n1", "2330", corroboration_assessment="multi_source", source_caveat="無")
     assert "保留:" not in ard._news_line(n2, _packet())

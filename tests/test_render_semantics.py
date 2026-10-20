@@ -255,7 +255,7 @@ def test_placeholder_effects_do_not_print_stray_punctuation():
     plain = ard._assets_prose({"affected_assets": [
         {"asset_id": "TAIEX", "first_order_effect": "指數波動度大於方向性。",
          "second_order_effect": "。"}]})
-    assert plain.strip() == "對TAIEX而言，指數波動度大於方向性", plain
+    assert plain.strip() == "對加權指數(TAIEX)而言，指數波動度大於方向性", plain
     packet = {'news': [{'source_item_id': 'n', 'title': '美債殖利率走高', 'entities': []}],
               'tw_universe': [{'code': '2408', 'name': '南亞科'}]}
     for placeholder in ("可能。", "可能", " ，"):

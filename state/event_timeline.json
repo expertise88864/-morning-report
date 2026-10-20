@@ -1,122 +1,4 @@
 {
- "export_controls:export_control:中國:2026-10": {
-  "first_seen": "2026-10-17",
-  "days": 1,
-  "last_seen": "2026-10-17",
-  "latest_title": "China proposes tighter export controls on AI foundation-model technology",
-  "latest_summary": "",
-  "object": "中國",
-  "incident_tokens": [
-   "ai",
-   "controls",
-   "export",
-   "foundation",
-   "model",
-   "on",
-   "proposes",
-   "technology",
-   "tighter"
-  ],
-  "entity": "中國",
-  "subject_basis": "alias",
-  "subjects": [
-   "中國"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 14
- },
- "export_controls:台灣:2026-10": {
-  "first_seen": "2026-10-17",
-  "days": 1,
-  "last_seen": "2026-10-17",
-  "latest_title": "Taiwan plans controls on exports of advanced AI chips and servers to China",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "advanced",
-   "ai",
-   "and",
-   "china",
-   "chips",
-   "controls",
-   "exports",
-   "of",
-   "on",
-   "plans",
-   "servers",
-   "to"
-  ],
-  "entity": "台灣",
-  "subject_basis": "alias",
-  "subjects": [
-   "台灣"
-  ],
-  "event_type": "export_controls",
-  "action": "",
-  "identity_schema": 14
- },
- "export_controls:export_control:台灣:2026-10": {
-  "first_seen": "2026-10-17",
-  "days": 1,
-  "last_seen": "2026-10-17",
-  "latest_title": "台灣計畫緊縮AI晶片出口管制並嚴禁運往中國",
-  "latest_summary": "",
-  "object": "台灣",
-  "incident_tokens": [
-   "ai",
-   "並嚴",
-   "中國",
-   "出口",
-   "制並",
-   "口管",
-   "嚴禁",
-   "往中",
-   "晶片",
-   "片出",
-   "畫緊",
-   "禁運",
-   "管制",
-   "緊縮",
-   "計畫",
-   "運往"
-  ],
-  "entity": "台灣",
-  "subject_basis": "alias",
-  "subjects": [
-   "台灣"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 14
- },
- "geopolitical:tariff_action:台灣:2026-10": {
-  "first_seen": "2026-10-17",
-  "days": 1,
-  "last_seen": "2026-10-17",
-  "latest_title": "Taiwan says U.S. reciprocal tariff rate is held at 15% without stacking",
-  "latest_summary": "",
-  "object": "台灣",
-  "incident_tokens": [
-   "15",
-   "at",
-   "held",
-   "is",
-   "rate",
-   "reciprocal",
-   "stacking",
-   "tariff",
-   "without"
-  ],
-  "entity": "台灣",
-  "subject_basis": "alias",
-  "subjects": [
-   "台灣"
-  ],
-  "event_type": "geopolitical",
-  "action": "tariff_action",
-  "identity_schema": 14
- },
  "geopolitical:SpaceX:2026-10": {
   "first_seen": "2026-10-19",
   "days": 1,
@@ -277,6 +159,213 @@
   ],
   "event_type": "export_controls",
   "action": "export_control",
+  "identity_schema": 14
+ },
+ "litigation:台積電:2026-10": {
+  "first_seen": "2026-10-21",
+  "days": 1,
+  "last_seen": "2026-10-21",
+  "latest_title": "台積電高雄廠工安事故4人墜落送醫 相關工程已自主停工",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "主停",
+   "事故",
+   "人墜",
+   "停工",
+   "墜落",
+   "安事",
+   "工安",
+   "工程",
+   "已自",
+   "廠工",
+   "相關",
+   "程已",
+   "自主",
+   "落送",
+   "送醫",
+   "關工",
+   "雄廠",
+   "高雄"
+  ],
+  "entity": "台積電",
+  "subject_basis": "alias",
+  "subjects": [
+   "台積電"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:AVGO:2026-10": {
+  "first_seen": "2026-10-21",
+  "days": 1,
+  "last_seen": "2026-10-21",
+  "latest_title": "博通 Wi-Fi 漏洞潛藏 16 年，攻擊者免密碼即可劫持路由器 - TechNews 科技新報",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "16",
+   "fi",
+   "wi",
+   "免密",
+   "劫持",
+   "博通",
+   "即可",
+   "可劫",
+   "密碼",
+   "持路",
+   "擊者",
+   "攻擊",
+   "洞潛",
+   "漏洞",
+   "潛藏",
+   "由器",
+   "碼即",
+   "者免",
+   "路由"
+  ],
+  "entity": "AVGO",
+  "subject_basis": "alias",
+  "subjects": [
+   "AVGO"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:烏克蘭:2026-10": {
+  "first_seen": "2026-10-21",
+  "days": 1,
+  "last_seen": "2026-10-21",
+  "latest_title": "川普呼籲烏克蘭與俄羅斯簽和平協議以結束戰爭",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "以結",
+   "俄羅",
+   "協議",
+   "呼籲",
+   "和平",
+   "川普",
+   "平協",
+   "戰爭",
+   "斯簽",
+   "普呼",
+   "束戰",
+   "簽和",
+   "結束",
+   "羅斯",
+   "與俄",
+   "議以"
+  ],
+  "entity": "烏克蘭",
+  "subject_basis": "alias",
+  "subjects": [
+   "烏克蘭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:中國:2026-10": {
+  "first_seen": "2026-10-21",
+  "days": 1,
+  "last_seen": "2026-10-21",
+  "latest_title": "美參議員警告中國在「新型戰爭」支出逼近美國",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "出逼",
+   "參議",
+   "員警",
+   "型戰",
+   "戰爭",
+   "支出",
+   "新型",
+   "美參",
+   "美國",
+   "警告",
+   "議員",
+   "近美",
+   "逼近"
+  ],
+  "entity": "中國",
+  "subject_basis": "alias",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:strait_tension:2026-10": {
+  "first_seen": "2026-10-21",
+  "days": 1,
+  "last_seen": "2026-10-21",
+  "latest_title": "學者建議台灣建立台海安全國際敘事，爭取各國維護和平",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "全國",
+   "取各",
+   "台海",
+   "各國",
+   "和平",
+   "國維",
+   "國際",
+   "學者",
+   "安全",
+   "建立",
+   "建議",
+   "敘事",
+   "海安",
+   "爭取",
+   "立台",
+   "維護",
+   "者建",
+   "護和",
+   "際敘"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "geopolitical",
+  "action": "strait_tension",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗戰爭:2026-10": {
+  "first_seen": "2026-10-21",
+  "days": 1,
+  "last_seen": "2026-10-21",
+  "latest_title": "伊朗戰爭重塑全球油權動態，美洲能源產出攀升",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "全球",
+   "出攀",
+   "動態",
+   "塑全",
+   "攀升",
+   "權動",
+   "油權",
+   "洲能",
+   "源產",
+   "球油",
+   "產出",
+   "美洲",
+   "能源",
+   "重塑"
+  ],
+  "entity": "伊朗戰爭",
+  "subject_basis": "literal",
+  "subjects": [
+   "伊朗戰爭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
   "identity_schema": 14
  }
 }

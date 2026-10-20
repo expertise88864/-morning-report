@@ -491,5 +491,49 @@
    "deadline": "2026-11-17"
   }
  ],
- "watch_seq": 69
+ "watch_seq": 69,
+ "legacy_report": {
+  "date": "2026-10-21",
+  "analysis_origin": "legacy_fallback_after_luna_failure",
+  "status": "unvalidated_model_opinion",
+  "items": [
+   {
+    "statement": "台積電（2330，全球最大晶圓代工廠，先進製程與先進封裝市占過半）：高雄 F22 P4 新建工程昨日傍晚鋼構吊掛時螺栓斷裂，4 名外包人員墜落、2 人到院前無呼吸心跳，南科管理局已勒令停工並將依職安法裁罰 （鉅亨）／（科技新報）。事故發生在施工段、不在投產線，對現有產能沒有直接衝擊；但 F22 屬先進製程後續廠區，停工天數若拉長會遞延裝機與驗收時程。這則新聞說不出量級——沒有停工天數、沒有對應產能與投產日期，只能當事件風險、不能換算成營收缺口。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6634455",
+     "https://finance.technews.tw/2026/10/20/industrial-accident-at-tsmc-f22-plant-in-kaohsiung/"
+    ]
+   },
+   {
+    "statement": "NVIDIA（NVDA，AI 加速器龍頭）：路透報導阿里、騰訊、字節跳動合計訂購逾 300 萬張 RTX PRO 5500、潛在值逾 350 億美元，但輝達已告知部分夥伴只能取得原訂量 5% 至 10%，2027 年全球產量估不超過 300 萬張 （鉅亨）。訂單遠超產能，瓶頸落在先進封裝與記憶體配置，這對 2330 是先進封裝產能利用率的支撐、而非新增營收。350 億美元是訂單面值不是交貨金額，可實現比重受產能分配限制，發酵期落在明年。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6634612"
+    ]
+   },
+   {
+    "statement": "台積電（2330，全球最大晶圓代工廠）：蘋果砸 1 億美元採購美國鈦金屬並導入首款折疊 iPhone，台積電亞利桑那廠今年供應逾億顆晶片 （鉅亨）。海外廠出貨可降低美國客戶對進口的依賴，也讓 2330 在 232 條款半導體關稅談判中取得較有利位置。1 億美元是材料採購、不是晶圓訂單，對 2330 營收的直接貢獻說不出量級；可確認的是亞利桑那廠已進入量產出貨階段。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE4xbVFlRFhtSnU2enN0dzg0YkE2SjVodmxHNkV2UlNQVGZvbFpjbVhCUnRvVVMxX0J5OUQ3XzlBc0tBNWxPblFYWUYzOFhxaTA?oc=5"
+    ]
+   },
+   {
+    "statement": "台積電與亞洲半導體鏈：MSCI 新興市場指數未來 12 個月獲利預估今年上修 70%、亞洲企業 EPS 上修 87%，但指數預估本益比僅 8.96 倍，相對標普折價創 2006 年以來最大 （鉅亨）。獲利上修集中在 AI 供應鏈，台積電法說後分析師已再上調，股價卻因資金撤離擁擠交易而下跌。這是估值與基本面的背離、不是基本面轉壞；折價要收斂需要資金回流新興市場，時間點無法從這則新聞判定。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6634208"
+    ]
+   },
+   {
+    "statement": "廣達、緯創、緯穎（AI 伺服器代工三雄）：高盛上修全球伺服器出貨量預估，點名鴻海、緯穎、緯創為主要受惠者 （經濟日報）。出貨上修會先反映在代工廠組裝稼動率，再往上傳導到電源、散熱與 2330 的 HPC 晶圓需求。券商上修是預估、不是訂單，未見具體上修幅度，量級無法量化；昨日電腦及週邊設備業法人買超 153 億元、緯創單日漲 5%，顯示資金已提前反應。[B 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5qS1pZbXp6VjM0b0loUXh4Tmh0dDVEVU9yUzVnMTlIQ2M3cHdpcENFYnN0TmJMMFBpM2FfMFJySzQ3Z3VyME5uUVpwbGpaRkZDamxfUzdFM3ptUdIBX0FVX3lxTE5yYmJRLVBEdk9zTkx6Y2NtSjFzdmRFTUpmTC1ncFpXNzJoUS1wV3NJSVJhNmlpWWxVSzFMQlZfelBFV0lad0R4d3ZESGw3SThZUVNobFdDZTBiMlRZR0Zr?oc=5"
+    ]
+   },
+   {
+    "statement": "聯電（2303，成熟製程晶圓代工）：英特爾宣布兩年內落地矽光子，並與聯電合作布局 CPO（共同封裝光學，把光收發元件與晶片封在一起）導入 AI 資料中心 （鏈新聞）。若矽光子導入，AI 伺服器內部傳輸會從銅線轉光纖，對成熟製程的矽光子元件是新增量。時程寫的是兩年、且處於合作階段，對 2303 的營收貢獻最快也要到 2028 年，短期看不出量級——它與 NVDA 那條的關係是：一個卡在先進封裝、一個想繞開傳輸瓶頸，兩者解的是不同段。[B 級・信心:低-中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTFBHWWRqTmhmcWwtcnhtbi0zaDBSYk9yb2NTN3lDOEZpMHg1X1ZhZE9PbUxFc2s3aEV4VzVFd3l2aGdxRUcwdWlLbk9tdU1xSGZ3cXF0VVJ2YzlRUzN0WHJZ?oc=5"
+    ]
+   }
+  ]
+ }
 }

@@ -1,11 +1,11 @@
 {
- "date": "2026-10-20 06:06",
+ "date": "2026-10-21 06:06",
  "manifest_schema": 2,
  "report_kind": "morning_report",
- "git_sha": "77ac10a93e57d34285128282933211c3ce36193c",
- "github_run_id": "39332482773",
- "run_nonce": "8a5dbd5828ab4efba2b5280e1bc1bfb2",
- "total_seconds": 1350.8,
+ "git_sha": "70337a37612471d6f0f5b75db923d2f1f4e8851f",
+ "github_run_id": "39505535773",
+ "run_nonce": "df0b11f09639482d974dd5b57a94602b",
+ "total_seconds": 2048.4,
  "budget_seconds": 3060.0,
  "news_workers": 8,
  "degraded_steps": [],
@@ -16,27 +16,27 @@
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 134.2
+   "seconds": 159.0
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 9.6
+   "seconds": 11.6
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 146.3
+   "seconds": 204.3
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 597.2
+   "seconds": 930.5
   },
   {
    "label": "LLM 主分析",
-   "seconds": 449.7
+   "seconds": 727.4
   },
   {
    "label": "渲染",
-   "seconds": 4.4
+   "seconds": 6.3
   }
  ],
  "feeds": {
@@ -101,12 +101,12 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 134,
+   "ok": 129,
    "fail": 0
   }
  },
- "model_history_days": 274,
- "d1_samples": 56,
+ "model_history_days": 275,
+ "d1_samples": 57,
  "d1_ready": true,
  "stance_dual": {
   "llm": 1,
@@ -127,10 +127,10 @@
   "detected": false,
   "stale": false,
   "reason": "fresh",
-  "actual_date": "2026-10-19",
-  "actual_weekday": "週一",
-  "expected_date": "2026-10-19",
-  "expected_session_date": "2026-10-19",
+  "actual_date": "2026-10-20",
+  "actual_weekday": "週二",
+  "expected_date": "2026-10-20",
+  "expected_session_date": "2026-10-20",
   "gap_days": 0
  },
  "data_checks": {
@@ -206,32 +206,32 @@
   "failed": 0
  },
  "mz_shadow": {
-  "n": 103,
+  "n": 104,
   "applied": true,
-  "a": 0.673,
-  "b": 0.6897,
-  "raw": 2438.45,
-  "shadow": 2433.4,
-  "delta": -5.05,
+  "a": 0.623,
+  "b": 0.6907,
+  "raw": 2407.22,
+  "shadow": 2407.16,
+  "delta": -0.06,
   "oos": {
-   "n": 54,
+   "n": 55,
    "enough": true,
    "mz_rule": "delta-mz-hac-v1",
-   "mae_raw": 17.697,
-   "mae_shadow": 18.721,
-   "better": 26,
+   "mae_raw": 18.074,
+   "mae_shadow": 18.988,
+   "better": 27,
    "worse": 28,
-   "mean_gain": -1.024,
+   "mean_gain": -0.914,
    "lag": 3,
-   "t": -1.43,
-   "t_ols": -1.14
+   "t": -1.27,
+   "t_ols": -1.03
   }
  },
  "llm_extractor": {
   "called": true,
   "items": 35,
-  "parsed": 17,
-  "valid": 17,
+  "parsed": 29,
+  "valid": 29,
   "dropped": 0,
   "retried": false,
   "outcome": "ok",
@@ -240,57 +240,50 @@
    {
     "batch": 0,
     "items": 12,
-    "parsed": 8,
-    "valid": 8,
+    "parsed": 12,
+    "valid": 12,
     "dropped": 0,
     "retried": false,
     "outcome": "ok",
     "parse": {
-     "chars": 1885,
-     "head": "{\"events\":[{\"entity\":\"泰合生技藥品股份有限公司\",\"event_type\":\"general\",\"direction\":1,\"confidence\":0.98,\"lifecycle\":\"implemented\",\"ti",
-     "kind": "ok_object"
+     "chars": 2516,
+     "head": "[\n  {\n    \"entity\": \"超秦企業\",\n    \"event_type\": \"general\",\n    \"direction\": 0,\n    \"confidence\": 0.9,\n    \"lifecycle\": \"co",
+     "kind": "ok_array"
     }
    },
    {
     "batch": 1,
     "items": 12,
-    "parsed": 4,
-    "valid": 4,
+    "parsed": 10,
+    "valid": 10,
     "dropped": 0,
     "retried": false,
     "outcome": "ok",
     "parse": {
-     "chars": 1054,
-     "head": "{\"events\":[{\"entity\":null,\"event_type\":\"export_controls\",\"direction\":-1,\"confidence\":0.95,\"lifecycle\":\"confirmed\",\"title",
-     "kind": "ok_object"
+     "chars": 2152,
+     "head": "[\n  {\n    \"entity\": \"台海\",\n    \"event_type\": \"geopolitical\",\n    \"direction\": -1,\n    \"confidence\": 0.75,\n    \"lifecycle\"",
+     "kind": "ok_array"
     }
    },
    {
     "batch": 2,
     "items": 11,
-    "parsed": 5,
-    "valid": 5,
+    "parsed": 7,
+    "valid": 7,
     "dropped": 0,
     "retried": false,
     "outcome": "ok",
     "parse": {
-     "chars": 1346,
-     "head": "{\"events\":[{\"entity\":\"馬來西亞\",\"event_type\":\"revenue_growth\",\"direction\":1,\"confidence\":0.9,\"lifecycle\":\"confirmed\",\"title\"",
-     "kind": "ok_object"
+     "chars": 1486,
+     "head": "[\n  {\n    \"entity\": \"2330\",\n    \"event_type\": \"general\",\n    \"direction\": -1,\n    \"confidence\": 0.95,\n    \"lifecycle\": \"",
+     "kind": "ok_array"
     }
    }
   ],
-  "circuit": {
-   "open_after_batch": 0,
-   "reason": "ConnectionError",
-   "primary_attempts_skipped": 2
-  },
-  "fallback_from": "deepseek",
-  "fallback_to": "openai",
-  "survived": 17,
+  "survived": 29,
   "merged_away": 0,
   "provenance": {
-   "source_item_id": 17
+   "source_item_id": 29
   }
  },
  "capability_health": {
@@ -303,8 +296,8 @@
   "rows": 52,
   "min_ex_date": "2026-10-19",
   "max_ex_date": "2026-11-19",
-  "days_back": 1,
-  "days_forward": 30,
+  "days_back": 2,
+  "days_forward": 29,
   "lead_observed": 310,
   "lead_censored": 0,
   "lead_unmeasurable": 115,
@@ -315,99 +308,30 @@
   "rows": 1,
   "min_halt_date": "2026-08-13",
   "max_halt_date": "2026-08-13",
-  "days_back": 68,
-  "days_forward": -68
+  "days_back": 69,
+  "days_forward": -69
  },
  "chips": {
-  "session": "2026-10-19",
-  "large_source_date": "20261019",
-  "pcr_source_date": "20261019",
+  "session": "2026-10-20",
+  "large_source_date": "20261020",
+  "pcr_source_date": "20261020",
   "large_matched": true,
   "pcr_matched": true
  },
  "llm": {
-  "attempts": [
-   {
-    "role": "extractor",
-    "provider": "deepseek",
-    "model": "deepseek-v4-flash",
-    "requested_effort": null,
-    "applied_effort": null,
-    "elapsed_seconds": 45.5,
-    "error": "ConnectionError: HTTPSConnectionPool(host='api.deepseek.com', port=443): Read timed out.",
-    "billable_unmeasured": true,
-    "fallback_to": "openai"
-   },
-   {
-    "role": "primary",
-    "provider": "deepseek",
-    "model": "deepseek-v4-flash",
-    "requested_effort": "high",
-    "applied_effort": "high",
-    "prompt_tokens": 303648,
-    "completion_tokens": 73674,
-    "total_tokens": 377322,
-    "reasoning_tokens": 43861,
-    "cached_tokens": 9216,
-    "estimated_cost_usd": 0.088397,
-    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;DeepSeek 峰谷計價:offpeak(尖峰為北京 09-12、14-18);快取命中 9216 tok 以 $0.003/M 計",
-    "pricing_tier": "deepseek_offpeak",
-    "pricing_schema": 6,
-    "effective_input_rate": 0.15,
-    "effective_cached_rate": 0.003,
-    "effective_output_rate": 0.6,
-    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
-    "elapsed_seconds": 338.7,
-    "finish_reason": "completed",
-    "requested_max_output_tokens": 98304,
-    "request_chars": 793518,
-    "reject_reason": "今天有第二個總經發布(cluster:nfe102b90140),它既不在三大重點、也沒有被 dismissed —— 忽略一個總經發布與沒看到它,在信裡長得一樣; asset_net_effects[2330] 的 `offsetting_cluster_ids` ['cluster:n1558fb853fa', 'cluster:n7ad39f54d4a'] 與本日實際衝突的事件群 ['cluster:n09eba5fc303', 'cluster:n181003b2e44', 'cluster:n7ad39f54d4a'] 不一致 —— 哪些事互相抵銷由資料決定,不由輸出自選;留空等於沒有比較過",
-    "problems_total": 3,
-    "problems_kinds": {
-     "macro_release": 1,
-     "net_effects": 2
-    },
-    "validation_problems": [
-     "今天有第二個總經發布(cluster:nfe102b90140),它既不在三大重點、也沒有被 dismissed —— 忽略一個總經發布與沒看到它,在信裡長得一樣",
-     "asset_net_effects[2330] 的 `offsetting_cluster_ids` ['cluster:n1558fb853fa', 'cluster:n7ad39f54d4a'] 與本日實際衝突的事件群 ['cluster:n09eba5fc303', 'cluster:n181003b2e44', 'cluster:n7ad39f54d4a'] 不一致 —— 哪些事互相抵銷由資料決定,不由輸出自選;留空等於沒有比較過",
-     "asset_net_effects[TAIEX] 的 `offsetting_cluster_ids` ['cluster:n1558fb853fa', 'cluster:n181003b2e44'] 與本日實際衝突的事件群 ['cluster:n1558fb853fa', 'cluster:n181003b2e44', 'cluster:n191c3e4e71a'] 不一致 —— 哪些事互相抵銷由資料決定,不由輸出自選;留空等於沒有比較過"
-    ]
-   }
-  ],
-  "extractor": {
-   "provider": "openai",
-   "model": "gpt-5.6-terra",
-   "requested_effort": "low",
-   "applied_effort": "low",
-   "prompt_tokens": 12410,
-   "completion_tokens": 2740,
-   "total_tokens": 15150,
-   "reasoning_tokens": 755,
-   "cached_tokens": 0,
-   "cache_write_tokens": 12401,
-   "estimated_cost_usd": 0.0639,
-   "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;寫入快取 3660 tok 以 1.25× 輸入費率計",
-   "pricing_tier": "standard",
-   "pricing_schema": 6,
-   "effective_input_rate": 2.0,
-   "effective_cached_rate": 0.2,
-   "effective_output_rate": 12.0,
-   "pricing_source": "developers.openai.com/api/docs/pricing",
-   "elapsed_seconds": 26.4,
-   "finish_reason": "stop",
-   "calls": 3,
-   "cost_by_tier": {
-    "standard": 0.0639
-   }
-  },
   "watch_due_at_start": {
-   "count": 1,
+   "count": 2,
    "unselected_count": 0,
    "cases": [
     {
-     "watch_id": "w60",
-     "created": "2026-10-19",
-     "deadline": "2026-10-20"
+     "watch_id": "w53",
+     "created": "2026-09-23",
+     "deadline": "2026-10-21"
+    },
+    {
+     "watch_id": "w65",
+     "created": "2026-10-20",
+     "deadline": "2026-10-21"
     }
    ],
    "unselected_cases": []
@@ -497,47 +421,47 @@
   },
   "history_context": {
    "status": "applied",
-   "chars_before": 1589728,
-   "chars_after": 18361,
-   "chars_saved": 1571367,
-   "source_rows": 110,
+   "chars_before": 1606382,
+   "chars_after": 18199,
+   "chars_saved": 1588183,
+   "source_rows": 111,
    "evidence_role": "historical_context_not_current_fact",
-   "exclusive_cutoff": "2026-10-20",
+   "exclusive_cutoff": "2026-10-21",
    "included_sessions": 10,
-   "first_date": "2026-10-05",
-   "last_date": "2026-10-19",
+   "first_date": "2026-10-06",
+   "last_date": "2026-10-20",
    "excluded_invalid_or_future": 0,
    "excluded_future_generated": 0,
    "excluded_duplicate_dates": 0
   },
   "payload_budget": {
-   "chars_before": 3337296,
+   "chars_before": 3342641,
    "limit": 1000000,
    "trimmed": [
     {
      "block": "market.STRUCTURED_NEWS_EVENTS",
-     "chars": 554585
+     "chars": 571716
     }
    ],
-   "chars_after": 721049,
+   "chars_after": 688883,
    "over_budget": false,
-   "final_request_chars": 165605
+   "final_request_chars": 158454
   },
   "numeric_evidence_audit": {
    "version": 1,
    "mode": "diagnostic_only_not_claim_verification",
-   "numeric_entries": 12678,
+   "numeric_entries": 12649,
    "nonfinite": 0,
    "missing_source": 0,
-   "missing_unit": 9429,
+   "missing_unit": 9428,
    "missing_observation_time": 12030,
-   "invalid_source_time": 24,
+   "invalid_source_time": 21,
    "future_source_time": 0,
    "incomparable_source_time": 0,
    "unusable": 0
   },
   "payload_compact": {
-   "chars_before": 3337296,
+   "chars_before": 3342641,
    "limit": 1000000,
    "applied": [
     {
@@ -547,61 +471,61 @@
     },
     {
      "tier": "universe.non_analyzed_to_skeleton",
-     "chars_saved": 215478,
-     "detail": "59 檔降為骨架、41 檔保留完整(代號全數保留)"
+     "chars_saved": 217731,
+     "detail": "62 檔降為骨架、38 檔保留完整(代號全數保留)"
     }
    ],
-   "chars_after": 721049,
+   "chars_after": 688883,
    "over_budget": false
   },
   "block_sizes": {
-   "news": 177747,
-   "tw_universe": 173698,
-   "news_clusters": 113880,
-   "market.GAZETTE_RECORDS": 33811,
-   "market.HISTORY": 19912,
-   "market.SECTOR_HEAT": 11171,
-   "market.ANALYSIS_RECAP": 9554,
-   "market.MODEL_MONITORING": 5563,
-   "market.MODEL_WALK_FORWARD": 5428,
-   "market.MACRO": 2910,
-   "market.MIDTERM": 2320,
-   "signal_tensions": 2201
+   "news": 171580,
+   "tw_universe": 161034,
+   "news_clusters": 116643,
+   "market.GAZETTE_RECORDS": 20019,
+   "market.HISTORY": 19750,
+   "market.SECTOR_HEAT": 11147,
+   "market.ANALYSIS_RECAP": 8379,
+   "market.MODEL_MONITORING": 5667,
+   "market.MODEL_WALK_FORWARD": 5419,
+   "market.MACRO": 2914,
+   "market.MIDTERM": 2316,
+   "market.DATA_QUALITY": 2007
   },
   "primary_bundle": {
-   "core_evidence_sha": "cb0698eac1c7cbb4",
-   "estimated_input_tokens": 386037,
+   "core_evidence_sha": "1834807a43da5078",
+   "estimated_input_tokens": 368837,
    "evidence_coverage": {
-    "available": 604,
+    "available": 610,
     "included": 220,
     "near_duplicates_dropped": 0,
-    "rate": 0.364,
-    "raw_available": 604,
-    "with_fulltext": 13
+    "rate": 0.361,
+    "raw_available": 610,
+    "with_fulltext": 16
    },
    "evidence_schema_version": 45,
-   "evidence_sha": "605c8e022d981b9a",
+   "evidence_sha": "acc9b56d56dc73a9",
    "output_schema_version": 32,
    "profile_id": "luna56_xhigh_v1",
-   "profile_version": 74,
-   "prompt_sha": "5d9ea534f4783b1b",
+   "profile_version": 75,
+   "prompt_sha": "30615b87ab93754a",
    "structured_output": true,
    "truncation_summary": {
     "coverage": {
      "available_articles": {
-      "finance:cathay": 12,
-      "finance:ctbc": 16,
-      "sector:中彰投建設": 8,
-      "sector:傳產": 4,
-      "sector:汽車": 5,
+      "finance:cathay": 16,
+      "finance:ctbc": 13,
+      "sector:中彰投建設": 6,
+      "sector:傳產": 3,
+      "sector:汽車": 9,
       "sector:營建": 10,
-      "sector:生技": 12,
+      "sector:生技": 11,
       "sector:能源": 10,
       "sector:航運": 12,
-      "sector:重電": 4,
-      "sector:金融": 35,
+      "sector:重電": 5,
+      "sector:金融": 39,
       "tech:ai-models": 8,
-      "world:AI大事": 9,
+      "world:AI大事": 10,
       "world:中央社國際": 10,
       "world:國際大事": 10,
       "world:災難極端": 10,
@@ -609,17 +533,17 @@
      },
      "reserve_per_bucket": 3,
      "selected_articles": {
-      "finance:cathay": 3,
-      "finance:ctbc": 7,
+      "finance:cathay": 7,
+      "finance:ctbc": 4,
       "sector:中彰投建設": 3,
       "sector:傳產": 3,
       "sector:汽車": 3,
       "sector:營建": 3,
-      "sector:生技": 5,
+      "sector:生技": 3,
       "sector:能源": 3,
       "sector:航運": 3,
       "sector:重電": 3,
-      "sector:金融": 12,
+      "sector:金融": 15,
       "tech:ai-models": 3,
       "world:AI大事": 3,
       "world:中央社國際": 10,
@@ -630,345 +554,327 @@
      "uncovered_buckets": []
     },
     "near_duplicates_dropped": 0,
-    "news_dropped": 384,
+    "news_dropped": 390,
     "news_dropped_by_grade": {
-     "B": 43,
+     "B": 49,
      "C": 341
     },
     "news_kept": 220,
-    "news_total": 604,
-    "required_forced_in": 11,
-    "summaries_truncated": 6
+    "news_total": 610,
+    "required_forced_in": 7,
+    "summaries_truncated": 2
    }
   },
   "unrealizable_namespaces": [
    "derived:"
   ],
-  "evidence_ids_canonicalized": 15,
+  "evidence_ids_canonicalized": 30,
   "evidence_id_rewrites": [
+   "market:SOX.change_pct→market:MACRO.SOX.change_pct",
    "market:VIX.change_pct→market:MACRO.VIX.change_pct",
-   "market:VIX.close→market:MACRO.VIX.close",
    "market:SOX.change_pct→market:MACRO.SOX.change_pct",
+   "market:WTI.change_pct→market:MACRO.WTI.change_pct",
    "market:SOX.change_pct→market:MACRO.SOX.change_pct",
-   "market:SOX.change_pct→market:MACRO.SOX.change_pct",
-   "market:SOX.change_pct→market:MACRO.SOX.change_pct"
+   "market:WTI.change_pct→market:MACRO.WTI.change_pct"
   ],
   "request_measurements": [
    {
     "role": "primary",
-    "chars": 793518,
-    "tokens": 303648,
+    "chars": 760327,
+    "tokens": 282381,
     "accepted": false
    },
    {
     "role": "primary",
-    "chars": 165605,
-    "tokens": 75481,
-    "accepted": true
+    "chars": 161461,
+    "tokens": 73100,
+    "accepted": false
+   },
+   {
+    "role": "primary",
+    "chars": 158454,
+    "tokens": 71585,
+    "accepted": false
+   },
+   {
+    "role": "primary",
+    "chars": 158454,
+    "tokens": 71585,
+    "accepted": false
+   }
+  ],
+  "attempts": [
+   {
+    "role": "primary",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "requested_effort": "high",
+    "applied_effort": "high",
+    "prompt_tokens": 282381,
+    "completion_tokens": 67751,
+    "total_tokens": 350132,
+    "reasoning_tokens": 41210,
+    "cached_tokens": 9216,
+    "estimated_cost_usd": 0.081653,
+    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;DeepSeek 峰谷計價:offpeak(尖峰為北京 09-12、14-18);快取命中 9216 tok 以 $0.003/M 計",
+    "pricing_tier": "deepseek_offpeak",
+    "pricing_schema": 6,
+    "effective_input_rate": 0.15,
+    "effective_cached_rate": 0.003,
+    "effective_output_rate": 0.6,
+    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
+    "elapsed_seconds": 297.0,
+    "finish_reason": "completed",
+    "requested_max_output_tokens": 98304,
+    "request_chars": 760327,
+    "reject_reason": "計分前三的事件 cluster:n962c600293a66fe 既沒寫進 `key_drivers`(指名 `cluster_id`)也沒寫進 `dismissed_events` 說明理由; 2344 同時被寫成利多與利空(['n1304df5d12e', 'na85be9abd9a']),卻沒有 `asset_net_effects` —— 兩段各自寫完就結束,讀者不知道合起來是什麼",
+    "problems_total": 6,
+    "problems_kinds": {
+     "key_drivers": 3,
+     "net_effects": 2,
+     "other": 1
+    },
+    "validation_problems": [
+     "計分前三的事件 cluster:n962c600293a66fe 既沒寫進 `key_drivers`(指名 `cluster_id`)也沒寫進 `dismissed_events` 說明理由",
+     "2344 同時被寫成利多與利空(['n1304df5d12e', 'na85be9abd9a']),卻沒有 `asset_net_effects` —— 兩段各自寫完就結束,讀者不知道合起來是什麼",
+     "asset_net_effects[2330] 的 `offsetting_cluster_ids` ['cluster:n1537c278ff9', 'cluster:n3a62db2f64c'] 與本日實際衝突的事件群 ['cluster:n1537c278ff9', 'cluster:n3a62db2f64c', 'cluster:nc5f69dbb47e'] 不一致 —— 哪些事互相抵銷由資料決定,不由輸出自選;留空等於沒有比較過",
+     "watch_triggers[3] 的時間尺度是 1-4w,而它引用的主張沒有一條撐得起這個尺度(引用的是 ['1-5d'],相容的是 ['1-4w'])",
+     "key_drivers[0] 引用的主張沒有一條**同時**同向且共享證據 —— 方向靠一條、證據靠另一條,等於沒有任何一條真的支持它",
+     "key_drivers[1] 引用的主張沒有一條**同時**同向且共享證據 —— 方向靠一條、證據靠另一條,等於沒有任何一條真的支持它"
+    ]
+   },
+   {
+    "role": "primary",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "requested_effort": "high",
+    "applied_effort": "high",
+    "prompt_tokens": 73100,
+    "completion_tokens": 39983,
+    "total_tokens": 113083,
+    "reasoning_tokens": 14370,
+    "cached_tokens": 22528,
+    "estimated_cost_usd": 0.031643,
+    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;DeepSeek 峰谷計價:offpeak(尖峰為北京 09-12、14-18);快取命中 22528 tok 以 $0.003/M 計",
+    "pricing_tier": "deepseek_offpeak",
+    "pricing_schema": 6,
+    "effective_input_rate": 0.15,
+    "effective_cached_rate": 0.003,
+    "effective_output_rate": 0.6,
+    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
+    "elapsed_seconds": 140.4,
+    "finish_reason": "completed",
+    "repair": true,
+    "requested_max_output_tokens": 98304,
+    "request_chars": 161461,
+    "reject_reason": "claim_audit 的高重要性主張 'c4' 沒有被任何段落引用",
+    "problems_total": 1,
+    "problems_kinds": {
+     "other": 1
+    },
+    "validation_problems": [
+     "claim_audit 的高重要性主張 'c4' 沒有被任何段落引用"
+    ]
+   },
+   {
+    "role": "primary",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "requested_effort": "high",
+    "applied_effort": "high",
+    "prompt_tokens": 71585,
+    "completion_tokens": 28494,
+    "total_tokens": 100079,
+    "reasoning_tokens": 2822,
+    "cached_tokens": 32768,
+    "estimated_cost_usd": 0.023017,
+    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;DeepSeek 峰谷計價:offpeak(尖峰為北京 09-12、14-18);快取命中 32768 tok 以 $0.003/M 計",
+    "pricing_tier": "deepseek_offpeak",
+    "pricing_schema": 6,
+    "effective_input_rate": 0.15,
+    "effective_cached_rate": 0.003,
+    "effective_output_rate": 0.6,
+    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
+    "elapsed_seconds": 88.4,
+    "finish_reason": "completed",
+    "repair": true,
+    "requested_max_output_tokens": 98304,
+    "request_chars": 158454,
+    "reject_reason": "深入主題 cluster:n13341653531d94f 漏寫 top_news_analysis；請分析當期來源 n13341653531d94f，證據不足須明示限制，不得編造; dismissed_events[cluster:n6a8d60ed8d5] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+    "problems_total": 4,
+    "problems_kinds": {
+     "other": 4
+    },
+    "validation_problems": [
+     "深入主題 cluster:n13341653531d94f 漏寫 top_news_analysis；請分析當期來源 n13341653531d94f，證據不足須明示限制，不得編造",
+     "dismissed_events[cluster:n6a8d60ed8d5] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+     "dismissed_events[cluster:n13341653531d94f] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+     "dismissed_events[cluster:n267a9932e16e8c3] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回"
+    ]
+   },
+   {
+    "role": "primary",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "requested_effort": "high",
+    "applied_effort": "high",
+    "prompt_tokens": 71585,
+    "completion_tokens": 28952,
+    "total_tokens": 100537,
+    "reasoning_tokens": 3262,
+    "cached_tokens": 71424,
+    "estimated_cost_usd": 0.01761,
+    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;DeepSeek 峰谷計價:offpeak(尖峰為北京 09-12、14-18);快取命中 71424 tok 以 $0.003/M 計",
+    "pricing_tier": "deepseek_offpeak",
+    "pricing_schema": 6,
+    "effective_input_rate": 0.15,
+    "effective_cached_rate": 0.003,
+    "effective_output_rate": 0.6,
+    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
+    "elapsed_seconds": 90.6,
+    "finish_reason": "completed",
+    "repair": true,
+    "requested_max_output_tokens": 98304,
+    "request_chars": 158454,
+    "reject_reason": "深入主題 cluster:n13341653531d94f 漏寫 top_news_analysis；請分析當期來源 n13341653531d94f，證據不足須明示限制，不得編造; dismissed_events[cluster:n6a8d60ed8d5] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+    "problems_total": 4,
+    "problems_kinds": {
+     "other": 4
+    },
+    "validation_problems": [
+     "深入主題 cluster:n13341653531d94f 漏寫 top_news_analysis；請分析當期來源 n13341653531d94f，證據不足須明示限制，不得編造",
+     "dismissed_events[cluster:n6a8d60ed8d5] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+     "dismissed_events[cluster:n13341653531d94f] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+     "dismissed_events[cluster:n267a9932e16e8c3] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回"
+    ]
    }
   ],
   "luna_problems": [
-   "今天有第二個總經發布(cluster:nfe102b90140),它既不在三大重點、也沒有被 dismissed —— 忽略一個總經發布與沒看到它,在信裡長得一樣",
-   "asset_net_effects[2330] 的 `offsetting_cluster_ids` ['cluster:n1558fb853fa', 'cluster:n7ad39f54d4a'] 與本日實際衝突的事件群 ['cluster:n09eba5fc303', 'cluster:n181003b2e44', 'cluster:n7ad39f54d4a'] 不一致 —— 哪些事互相抵銷由資料決定,不由輸出自選;留空等於沒有比較過",
-   "asset_net_effects[TAIEX] 的 `offsetting_cluster_ids` ['cluster:n1558fb853fa', 'cluster:n181003b2e44'] 與本日實際衝突的事件群 ['cluster:n1558fb853fa', 'cluster:n181003b2e44', 'cluster:n191c3e4e71a'] 不一致 —— 哪些事互相抵銷由資料決定,不由輸出自選;留空等於沒有比較過"
+   "計分前三的事件 cluster:n962c600293a66fe 既沒寫進 `key_drivers`(指名 `cluster_id`)也沒寫進 `dismissed_events` 說明理由",
+   "2344 同時被寫成利多與利空(['n1304df5d12e', 'na85be9abd9a']),卻沒有 `asset_net_effects` —— 兩段各自寫完就結束,讀者不知道合起來是什麼",
+   "asset_net_effects[2330] 的 `offsetting_cluster_ids` ['cluster:n1537c278ff9', 'cluster:n3a62db2f64c'] 與本日實際衝突的事件群 ['cluster:n1537c278ff9', 'cluster:n3a62db2f64c', 'cluster:nc5f69dbb47e'] 不一致 —— 哪些事互相抵銷由資料決定,不由輸出自選;留空等於沒有比較過",
+   "watch_triggers[3] 的時間尺度是 1-4w,而它引用的主張沒有一條撐得起這個尺度(引用的是 ['1-5d'],相容的是 ['1-4w'])",
+   "key_drivers[0] 引用的主張沒有一條**同時**同向且共享證據 —— 方向靠一條、證據靠另一條,等於沒有任何一條真的支持它",
+   "claim_audit 的高重要性主張 'c4' 沒有被任何段落引用",
+   "深入主題 cluster:n13341653531d94f 漏寫 top_news_analysis；請分析當期來源 n13341653531d94f，證據不足須明示限制，不得編造",
+   "dismissed_events[cluster:n6a8d60ed8d5] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+   "dismissed_events[cluster:n13341653531d94f] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+   "dismissed_events[cluster:n267a9932e16e8c3] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+   "深入主題 cluster:n13341653531d94f 漏寫 top_news_analysis；請分析當期來源 n13341653531d94f，證據不足須明示限制，不得編造",
+   "dismissed_events[cluster:n6a8d60ed8d5] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+   "dismissed_events[cluster:n13341653531d94f] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回",
+   "dismissed_events[cluster:n267a9932e16e8c3] 的證據沒有引用該事件群自己的新聞 —— 要證明你看過才能駁回"
   ],
   "repair_round_budget_seconds": 300,
   "repair_modes": [
+   "semantic",
+   "semantic",
    "semantic"
   ],
   "repair_budget": {
    "used": {
     "syntax": 0,
     "regenerate": 0,
-    "semantic": 1
+    "semantic": 3
    },
    "limits": {
     "syntax": 1,
     "regenerate": 2,
     "semantic": 3
-   }
+   },
+   "exhausted": "semantic"
   },
   "repair_payload_slim": {
-   "full_chars": 865144,
-   "slim_chars": 165605,
+   "full_chars": 824911,
+   "slim_chars": 158454,
    "mode": "evidence_slice",
    "evidence_items": 80,
-   "unseen_cited_ids": 45
+   "unseen_cited_ids": 6
   },
-  "news_render": {
-   "analyzed": 18,
-   "editorial_limit": 6,
-   "editorial_limit_tech": 4,
-   "editorial_omitted": [],
-   "rendered_tech": 9,
-   "rendered_other": 9,
-   "rendered_macro": 0,
-   "dropped": []
-  },
+  "repair_bases": [
+   "best@1(本輪 4)"
+  ],
+  "analysis_origin": "legacy_fallback_after_luna_failure",
   "primary": {
    "provider": "deepseek",
    "model": "deepseek-v4-flash",
    "requested_effort": "high",
    "applied_effort": "high",
-   "prompt_tokens": 75481,
-   "completion_tokens": 32513,
-   "total_tokens": 107994,
-   "reasoning_tokens": 2136,
-   "cached_tokens": 22528,
-   "estimated_cost_usd": 0.027518,
-   "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;DeepSeek 峰谷計價:offpeak(尖峰為北京 09-12、14-18);快取命中 22528 tok 以 $0.003/M 計",
+   "prompt_tokens": 129562,
+   "completion_tokens": 14000,
+   "total_tokens": 143562,
+   "reasoning_tokens": 8020,
+   "cached_tokens": 0,
+   "estimated_cost_usd": 0.027834,
+   "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-09-24);推理以 output 計價;DeepSeek 峰谷計價:offpeak(尖峰為北京 09-12、14-18)",
    "pricing_tier": "deepseek_offpeak",
    "pricing_schema": 6,
    "effective_input_rate": 0.15,
    "effective_cached_rate": 0.003,
    "effective_output_rate": 0.6,
    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
-   "elapsed_seconds": 99.6,
-   "finish_reason": "completed",
-   "repair": true,
-   "requested_max_output_tokens": 98304,
-   "request_chars": 165605,
+   "elapsed_seconds": 76.2,
+   "finish_reason": "stop",
+   "thinking_mode": "enabled",
+   "canonical_effort": "high",
    "calls": 1
   },
-  "depth_advisories_after": 3,
-  "recap_eligible": 21,
-  "recap_extracted": 9,
-  "watch_open": 13,
-  "watch_backlog": 5,
-  "watch_expired_unreviewed": 0,
-  "watch_expired_unreviewed_cases": [],
-  "watch_expired_no_review_session": 0,
-  "watch_closed_today": 1,
-  "recap_saved": "saved",
-  "primary_metrics": {
-   "schema_version": 9,
-   "parsed": true,
-   "depth": {
-    "news_analyzed": 18,
-    "high_materiality": 2,
-    "chain_steps_median": 2,
-    "reaches_financial": 2,
-    "reaches_operations": 1,
-    "operations_then_financial": 1,
-    "reaches_financial_rate": 1.0,
-    "operations_then_financial_rate": 0.5,
-    "chains_out_of_order": 0,
-    "magnitude_explained": 18,
-    "magnitude_unknown": 5,
-    "with_confirmation": 18,
-    "with_invalidation": 18,
-    "relations": 13,
-    "tensions_required": 4,
-    "tensions_resolved": 4,
-    "duplicate_resolutions": 0,
-    "tension_coverage_rate": 1.0,
-    "resolutions_grounded_both_sides": 4,
-    "resolutions_with_rule": 4,
-    "priced_in_items": 6,
-    "data_gaps": 9
-   },
-   "quality": {
-    "schema_version": 1,
-    "required_event_coverage": {
-     "required": 6,
-     "analysed": 2,
-     "dismissed": 4,
-     "true_coverage_rate": 0.333,
-     "official_required": 6
-    },
-    "event_fingerprint_coverage": {
-     "clusters": 212,
-     "covered": 21,
-     "rate": 0.099
-    },
-    "alignment_grounding": {
-     "required": 0,
-     "read": 0,
-     "grounded": 0,
-     "side_grounded_rate": null
-    },
-    "asset_breakdown": {
-     "assets": 26,
-     "generic": 0,
-     "generic_rate": 0.0,
-     "duplicate": 0,
-     "second_order_rate": 1.0
-    },
-    "ordered_chain": {
-     "high_materiality": 2,
-     "ordered_complete": 1,
-     "out_of_order": 0,
-     "ordered_completion_rate": 0.5
-    },
-    "claim_graph": {
-     "claims": 20,
-     "sections_mapped": 18,
-     "distinct_claims_used": 12,
-     "saturation_rate": 0.722
-    },
-    "corroboration": {
-     "high_analysed": 2,
-     "from_single_source": 2,
-     "single_source_rate": 1.0
-    },
-    "fact_anchors": {
-     "high_analysed": 2,
-     "anchored_market": 2,
-     "anchored_fact": 2,
-     "unanchored": 0,
-     "anchored_rate": 1.0
-    },
-    "longitudinal_research": {
-     "analyzed_articles": 18,
-     "with_matched_history": 10,
-     "publication_relation_articles": {
-      "earlier_reporting": 39,
-      "same_day_reporting": 3,
-      "later_reporting": 0,
-      "unknown": 0
-     },
-     "with_valid_history_citations": 10,
-     "deep_topics_expected": 3,
-     "deep_topics_analyzed": 0,
-     "deep_topics_dismissed": 3,
-     "semantic_truth_evaluated": false,
-     "selected_source_coverage": {
-      "articles": 220,
-      "fulltext": 13,
-      "summary_only": 203,
-      "title_only": 4,
-      "undated": 0,
-      "known_source_groups": 15,
-      "aggregator_only": 12,
-      "unverified_publishers": 15,
-      "buckets": {
-       "finance:ctbc": 7,
-       "finance:cathay": 3,
-       "tech:ai-models": 3,
-       "sector:金融": 12,
-       "sector:航運": 3,
-       "sector:生技": 5,
-       "sector:汽車": 3,
-       "sector:傳產": 3,
-       "sector:營建": 3,
-       "sector:中彰投建設": 3,
-       "sector:重電": 3,
-       "sector:能源": 3,
-       "world:國際大事": 4,
-       "world:災難極端": 3,
-       "world:科學太空": 3,
-       "world:AI大事": 3,
-       "world:中央社國際": 10
-      }
-     },
-     "analyzed_source_coverage": {
-      "articles": 18,
-      "fulltext": 4,
-      "summary_only": 13,
-      "title_only": 1,
-      "undated": 0,
-      "known_source_groups": 10,
-      "aggregator_only": 0,
-      "unverified_publishers": 1,
-      "buckets": {
-       "finance:ctbc": 2,
-       "finance:cathay": 1,
-       "sector:金融": 3,
-       "sector:航運": 1,
-       "sector:能源": 1,
-       "world:國際大事": 1
-      }
-     },
-     "history_budget_omissions": 86
-    }
-   },
-   "validation_problems": 0,
-   "validation_detail": [],
-   "sections_required": 13,
-   "sections_present": 13,
-   "sections_missing": [],
-   "completeness_rate": 1.0,
-   "claims": 20,
-   "claims_high_materiality": 6,
-   "evidence_supported_rate": 1.0,
-   "unsupported_critical_claims": 0,
-   "falsifiable_rate": 1.0,
-   "claim_type_mix": {
-    "fact": 14,
-    "inference": 5,
-    "unknown": 1
-   },
-   "contradictions": 4,
-   "data_gaps": 9,
-   "data_gap_honesty_flag": false,
-   "duplicate_claim_rate": 0.0
-  },
-  "stance_structured": {
-   "label": "中性",
-   "score": 1,
-   "rationale": "系統計分為 +1、標籤中性：那指、QQQ、費半、台積電 ADR 與油價回落是五個正項，10 年期殖利率、市場廣度、外資買超前十與外資期貨部位是四個負項，正負相抵。相較本報昨日對外資一週提款 5,862.28 億元的偏空判斷，今天新增的是美股 AI 股低接與台積電 ADR 上漲 1.84%，但外資在現貨與期貨兩邊都還是賣方、台幣貶到 32.474 的年內新低，因此只把立場由偏空收回中性，不急著轉多；"
-  },
-  "analysis_origin": "luna_specialized",
   "writer": {
    "source": "primary",
    "provider": "deepseek",
    "model": "deepseek-v4-flash"
   },
   "email_html": {
-   "markup_bytes_saved": 838,
+   "markup_bytes_saved": 795,
    "mobile": "enhanced",
-   "style_bytes_saved": 1875,
-   "syntax_bytes_saved": 3996,
+   "style_bytes_saved": 1677,
+   "syntax_bytes_saved": 3662,
    "expected_sections": [
     "八、科技板塊脈動",
     "九、其他類股資訊",
-    "十、台灣本地動態",
-    "七之五、情境推演與後續觀察"
+    "十、台灣本地動態"
    ],
    "missing_sections": [],
    "chain_counts": {
     "八、科技板塊脈動": {
-     "expected": 9,
-     "html": 9
-    },
-    "九、其他類股資訊": {
-     "expected": 9,
-     "html": 9
-    },
-    "十、台灣本地動態": {
      "expected": 0,
      "html": 0
     },
-    "七之五、情境推演與後續觀察": {
+    "九、其他類股資訊": {
+     "expected": 0,
+     "html": 0
+    },
+    "十、台灣本地動態": {
      "expected": 0,
      "html": 0
     }
    },
    "lost_cards": 0,
-   "html_bytes": 118798,
-   "gmail_safety_margin_bytes": -21518,
-   "gmail_clipping_headroom_bytes": -14350,
-   "gmail_clipping_possible": true
+   "html_bytes": 95923,
+   "gmail_safety_margin_bytes": 1357,
+   "gmail_clipping_headroom_bytes": 8525,
+   "gmail_clipping_possible": false
   },
   "cost_summary": {
-   "total_usd": 0.179815,
+   "total_usd": 0.181757,
    "measured_calls": 5,
-   "failed_attempt_cost_usd": 0.088397,
-   "unmeasured_billable_calls": 1,
+   "failed_attempt_cost_usd": 0.153923,
+   "unmeasured_billable_calls": 0,
    "pricing_as_of": "2026-09-24",
-   "pricing_schema": 6,
-   "incomplete": "另有 1 次呼叫已送出但沒有 usage(逾時/連線中斷)—— 那些仍會計費,**不在總額內**"
-  }
+   "pricing_schema": 6
+  },
+  "fallback_recap_saved": "saved",
+  "fallback_recap_items": 6
  },
  "state_writes": {
-  "attempted": 18,
+  "attempted": 20,
   "failed": [],
   "detail": {}
  },
  "event_identity": {
   "schema": 14,
   "keyed_by_action": 2,
-  "keyed_by_action_object": 1,
+  "keyed_by_action_object": 0,
   "adopted_legacy": 0,
   "superseded_legacy": 0,
   "split_incidents": 0,
@@ -977,146 +883,149 @@
  },
  "state_migrations": {
   "misattributed_points": {
-   "dropped": 1,
+   "dropped": 4,
    "examples": [
-    "e:美光|l:general|5e8371b813|賴清德：台灣是全球AI最強後盾"
+    "e:3037|l:general|829ae19b7a|鉅亨速報 - Factset 最新調查：視陽(6782-TW)目標價調升至300",
+    "e:avgo|l:general|2a63769cb6|Palantir Technologies股價今日為何大幅上漲？ 作者 Inve",
+    "e:2891|l:general|2523894839|公告本公司115年第一次股東臨時會重要決議事項",
+    "e:2891|l:general|2523894839|本公司代子公司Eltek Norway AS公告115年股東臨時會 重要決議事項"
    ]
   }
  },
  "news": {
   "research_funnel": {
    "fetched": {
-    "articles": 657,
+    "articles": 656,
     "fulltext": 0,
     "summary_only": 643,
-    "title_only": 14,
+    "title_only": 13,
     "undated": 10,
-    "known_source_groups": 18,
-    "aggregator_only": 40,
-    "unverified_publishers": 88,
+    "known_source_groups": 21,
+    "aggregator_only": 34,
+    "unverified_publishers": 86,
     "buckets": {
-     "finance:ctbc": 31,
-     "finance:cathay": 28,
+     "finance:ctbc": 23,
+     "finance:cathay": 33,
      "sector:金融": 66,
-     "sector:航運": 16,
-     "sector:生技": 15,
-     "sector:汽車": 5,
-     "sector:傳產": 4,
+     "sector:航運": 15,
+     "sector:生技": 12,
+     "sector:汽車": 9,
+     "sector:傳產": 3,
      "sector:營建": 10,
-     "sector:中彰投建設": 9,
-     "sector:重電": 4,
+     "sector:中彰投建設": 6,
+     "sector:重電": 5,
      "sector:能源": 10,
      "world:國際大事": 10,
      "world:災難極端": 10,
      "world:科學太空": 10,
-     "world:AI大事": 9,
+     "world:AI大事": 10,
      "world:中央社國際": 10
     }
    },
    "deduplicated": {
-    "articles": 544,
+    "articles": 547,
     "fulltext": 0,
-    "summary_only": 530,
-    "title_only": 14,
+    "summary_only": 534,
+    "title_only": 13,
     "undated": 10,
-    "known_source_groups": 18,
-    "aggregator_only": 35,
-    "unverified_publishers": 88,
+    "known_source_groups": 20,
+    "aggregator_only": 27,
+    "unverified_publishers": 86,
     "buckets": {
-     "finance:ctbc": 14,
-     "finance:cathay": 11,
-     "sector:金融": 32,
+     "finance:ctbc": 13,
+     "finance:cathay": 15,
+     "sector:金融": 38,
      "sector:航運": 12,
-     "sector:生技": 12,
-     "sector:汽車": 5,
-     "sector:傳產": 4,
+     "sector:生技": 11,
+     "sector:汽車": 9,
+     "sector:傳產": 3,
      "sector:營建": 10,
-     "sector:中彰投建設": 8,
-     "sector:重電": 4,
+     "sector:中彰投建設": 6,
+     "sector:重電": 5,
      "sector:能源": 10,
      "world:國際大事": 10,
      "world:災難極端": 10,
      "world:科學太空": 10,
-     "world:AI大事": 9,
+     "world:AI大事": 10,
      "world:中央社國際": 10
     }
    },
    "analysis_input": {
-    "articles": 582,
-    "fulltext": 35,
-    "summary_only": 533,
-    "title_only": 14,
+    "articles": 589,
+    "fulltext": 36,
+    "summary_only": 540,
+    "title_only": 13,
     "undated": 10,
-    "known_source_groups": 19,
-    "aggregator_only": 35,
-    "unverified_publishers": 88,
+    "known_source_groups": 21,
+    "aggregator_only": 28,
+    "unverified_publishers": 86,
     "buckets": {
-     "finance:ctbc": 14,
-     "finance:cathay": 12,
-     "sector:金融": 33,
+     "finance:ctbc": 13,
+     "finance:cathay": 15,
+     "sector:金融": 38,
      "sector:航運": 12,
-     "sector:生技": 12,
-     "sector:汽車": 5,
-     "sector:傳產": 4,
+     "sector:生技": 11,
+     "sector:汽車": 9,
+     "sector:傳產": 3,
      "sector:營建": 10,
-     "sector:中彰投建設": 8,
-     "sector:重電": 4,
+     "sector:中彰投建設": 6,
+     "sector:重電": 5,
      "sector:能源": 10,
      "world:國際大事": 10,
      "world:災難極端": 10,
      "world:科學太空": 10,
-     "world:AI大事": 9,
+     "world:AI大事": 10,
      "world:中央社國際": 10
     }
    }
   },
   "fulltext_plan": {
    "targets": 26,
-   "clusters": 531,
+   "clusters": 524,
    "uncovered_clusters": [
-    "cluster:n0246a5499ac",
-    "cluster:n0d91e8f8172",
-    "cluster:n181003b2e44",
-    "cluster:n19ddde4fd22",
-    "cluster:n1a9774a3100",
-    "cluster:n1f6c4a5f103",
-    "cluster:n28d05a739f9",
-    "cluster:n296e03b8f16",
-    "cluster:n2de4f80f030",
-    "cluster:n2e7f663f2a2"
+    "cluster:n39dd22f8ce7",
+    "cluster:n3a62db2f64c",
+    "cluster:n4a64e38c8a2",
+    "cluster:n4c6886a2305",
+    "cluster:n4d8a6a46916",
+    "cluster:n545ea321dbe",
+    "cluster:n56ba93b9580",
+    "cluster:n577e9835870",
+    "cluster:n5ac2efad352",
+    "cluster:n5c32eba1718"
    ],
    "basis": "逐事件群分配:官方 → 獨立群組數 → 延燒中 → 群內最高重要性;先每群一篇再補第二篇(涵蓋的事件數優先於單一事件深度)",
-   "available_news": 544,
-   "fetchable_candidates": 544,
+   "available_news": 547,
+   "fetchable_candidates": 547,
    "already_fulltext": 0,
    "no_fetch_link": 0
   },
   "research": {
    "unreadable_partitions": [],
    "memory_status": "available",
-   "historical_observations": 21006,
-   "queries_attempted": 5,
+   "historical_observations": 21593,
+   "queries_attempted": 4,
    "queries_failed": 0,
-   "queries_planned": 5,
-   "search_seconds": 1.71,
-   "archived_new": 587,
+   "queries_planned": 4,
+   "search_seconds": 1.44,
+   "archived_new": 578,
    "rejected_observations": {
     "undated": 10,
     "future": 0,
     "no_source": 0
    },
-   "supplementary_articles": 13,
-   "current_supplementary": 2
+   "supplementary_articles": 16,
+   "current_supplementary": 5
   }
  },
  "sports": {
   "cpbl_venue": {
    "attempted": true,
-   "fixtures": 5,
-   "matched": 5,
+   "fixtures": 4,
+   "matched": 4,
    "source": "wikipedia",
    "by_source": {
-    "wikipedia": 5
+    "wikipedia": 4
    },
    "reason": ""
   }
@@ -1124,8 +1033,8 @@
  "delivery": {
   "attempted": true,
   "success": true,
-  "delivered_at": "2026-10-20T06:28:44+08:00",
-  "first_delivered_at": "2026-10-20T06:28:44+08:00",
+  "delivered_at": "2026-10-21T06:40:29+08:00",
+  "first_delivered_at": "2026-10-21T06:40:29+08:00",
   "run_kind": "workflow_dispatch",
   "receipt_publish": "deferred"
  }

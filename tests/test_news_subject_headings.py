@@ -68,7 +68,8 @@ def test_the_heading_names_the_company_and_what_happened():
     """
     line = ard._news_line(_news("n1", "2330"), _packet())
     # 2026-10-20 使用者:「不用顯示後方｜新聞標題（UDN）」—— 卡片不再印標題。
-    assert line.startswith("**台積電（2330）**｜\n本報解讀：這件事之所以重要的一段敘述"), line
+    # 2026-10-21 使用者:比照備援「公司（代號，簡介）：」。
+    assert line.startswith("**台積電（2330，晶圓代工龍頭）**：\n本報解讀：這件事之所以重要的一段敘述"), line
     assert "CoWoS 產能明年再擴一倍" not in line, line
 
 
@@ -83,14 +84,14 @@ def test_a_short_remainder_keeps_the_whole_headline():
     pk = _packet(news=[{"source_item_id": "n1", "title": "台積電法說",
                         "entities": ["2330"]}])
     line = ard._news_line(_news("n1", "2330"), pk)
-    assert "台積電法說" not in line and line.startswith("**台積電（2330）**｜"), line
+    assert "台積電法說" not in line and line.startswith("**台積電（2330"), line
 
 
 def test_the_fallback_blurb_does_not_repeat_the_name():
     """`desc` 查不到時是「<名稱> — <產業別>」的退化字串 ——
     放進括號會排成「鴻海(2317,鴻海 — 其他電子業)」。"""
     head = ard._news_line(_news("n4", "2317"), _packet()).splitlines()[0]
-    assert head == "**鴻海（2317）**｜", head
+    assert head == "**鴻海（2317）**：", head   # 簡介只是產業別就不加
 
 
 def test_a_macro_news_headline_is_its_own_heading():
@@ -229,7 +230,7 @@ def test_the_editorial_entity_wins_even_when_it_is_a_foreign_equity():
     sub = ard.news_subject(_news("n5", "2330"), pk)
     assert sub["name"] == "ASML", sub
     head = ard._news_line(_news("n5", "2330"), pk).splitlines()[0]
-    assert "台積電" not in head and "ASML" in head and "EUV" not in head, head
+    assert "台積電" not in head and "ASML" in head, head
 
 
 # ------------------------------------------- 九、今日市場關注與預測(合併段)
@@ -272,7 +273,7 @@ def test_display_name_label_keeps_full_english_source_title():
     pk = {"news": [{"source_item_id": "f1", "title": "Microsoft Q4 財報優於預期",
                     "entities": ["MSFT"]}]}
     line = ard._news_line(_news("f1", "MSFT"), pk).splitlines()[0]
-    assert line == "**Microsoft（MSFT）**｜", line
+    assert line.startswith("**Microsoft（MSFT，") and line.endswith("**："), line
 
 
 def test_the_publisher_is_named():

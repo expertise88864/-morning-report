@@ -35,7 +35,7 @@ def test_two_named_expanders_remain_named_and_source_title_intact():
     card = {"source_item_id": "archived", "why_it_matters": "投產時點待核。"}
     label = companies(packet["news"][0], packet)
     assert "台光電（2383）" in label and "台燿（6274）" in label
-    assert _news_line(card, packet).startswith(f"**{label}**｜")
+    assert _news_line(card, packet).startswith(f"**{label}**：")
 
 
 def test_subject_before_challenge_marker_is_not_dropped():

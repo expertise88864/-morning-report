@@ -205,7 +205,8 @@ def test_the_legacy_skeleton_renders_in_order():
     # 2026-08-29 使用者:七之二改一氣呵成段落(標題句。解讀句。)
     assert "美沙簽署核能合作協議。中東勢力格局重組。" in out
     assert "按兵不動基調" in out and "基準預期:" not in out
-    assert "「美伊戰局逼近十字路口」→ **升溫**" in out
+    # 2026-10-21 使用者:敘事變化比照備援寫成自然段落,不用引號+箭頭。
+    assert "昨日提到美伊戰局逼近十字路口。今天這個判斷升溫：" in out and "→ **" not in out
     # 2026-10-19:總經 (A)(B)(C) 各取第一句併進今日結論,不再帶切面標籤。
     assert "10Y 4.657% 高檔" in out.split("## " + ar.SECTION_STANCE)[1] and "**(A)**" not in out
     assert "中經院估 GDP 破 10%。支撐高本益比" in out

@@ -247,8 +247,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         from analysis_render_depth import _sentences
         why = "".join(_sentences(_sent(w.get("why_it_matters")))[:2]) if _s(w.get("why_it_matters")) else ""
         nxt = _sentences(_s(w.get("what_next")))[0] if _s(w.get("what_next")) else ""
-        return ("- " + head + why
-                + (f"後續可能影響:{_sent(nxt)}" if nxt else "")).rstrip()
+        # 10-21 使用者:比照備援,後續影響直接接成一句,不掛「後續可能影響:」標籤。
+        return ("- " + head + why + (_sent(nxt) if nxt else "")).rstrip()
 
     world = [_world_line(w) for w in _reader.importance_order(obj.get("world_events") or [], packet or {})
              if isinstance(w, dict) and _s(w.get("what"))]
@@ -292,13 +292,18 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     def _pv_text(d):
         return (_pv_map.get(str(d.get("prior_view_id") or ""))
                 or _s(d.get("prior_view")))
-    deltas = [f"- 「{_pv_text(d)}」→ **{_s(d.get('change'))}**:"
+    # 10-21 使用者:比照備援的自然段落(「這條線被強化——昨日紀錄提到…,今日…」),
+    # 不再用引號+箭頭;昨日看法取 Python 保存原文的第一句。
+    import legacy_layout
+    _verb = {"強化": "被強化", "持續": "延續"}
+    deltas = [f"昨日提到{legacy_layout.first_sentence(_pv_text(d)).rstrip('。')}。"
+              f"今天這個判斷{_verb.get(_s(d.get('change')), _s(d.get('change')))}："
               f"{_s(d.get('evidence_today'))}"
               for d in (obj.get("narrative_delta") or [])
               if isinstance(d, dict) and _pv_text(d)
               and _s(d.get("change")) and _s(d.get("evidence_today"))]
     if deltas:
-        parts.append(f"## {SECTION_DELTA}" + chr(10) + chr(10).join(deltas))
+        parts.append(f"## {SECTION_DELTA}" + chr(10) + (chr(10) * 2).join(deltas))
 
     # 七之五「多空交鋒」段已刪(2026-09-03 使用者)。`stance_extremes` 仍留在
     # packet 裡當證據給模型看,只是不再渲染成一段。
@@ -329,6 +334,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 的渲染結果記進 `diag`(進 manifest `llm.news_render`),讓判準說得出
         # 「分析了幾則、渲染了幾則、丟了哪幾則」;驗證器另擋空正文。
         _text = _news_line(_n, packet)
+        if _text and not _is_t and _text.startswith("**"):   # 10-21:九段比照備援標【類別】
+            from analysis_render_depth import sector_tag
+            _text = sector_tag(_n, packet) + _text
         (tech_news if _is_t else other_news).append(_text) if _text else None  # 總經卡併回八/九(10-19)
         _diag_rows.append({"sid": _s(_n.get("source_item_id")),
                            "section": "macro" if _is_macro else "tech" if _is_t else "other",

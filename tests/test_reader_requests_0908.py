@@ -27,7 +27,8 @@ def test_missing_entities_still_get_named_company_and_separate_link():
     original = copy.deepcopy(card)
     text = depth._news_line(card, packet)
     # 2026-10-20:主體與內文同一段(Markdown 分兩行),標題不印,原文連結接在第一句後。
-    assert text.startswith('**輝達（NVDA）**｜\n本報解讀：訂單延續（[原文](')
+    # 2026-10-21:比照備援「公司（代號，簡介）：」。
+    assert text.startswith('**輝達（NVDA') and '**：\n本報解讀：訂單延續（[原文](' in text
     assert '輝達展望成長' not in text
     assert card == original
 

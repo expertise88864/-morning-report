@@ -336,3 +336,25 @@ def test_card_sentences_stay_inside_the_guards_line_scope():
                          '股價走高。兩邊都成立，差別在時間尺度：即日由風險偏好主導，1 到 4 週由折現率主導。'}, pk)
     _, rules = guard._correct_prose(md)
     assert 'single_day_price_does_not_prove_future_driver' in rules, md
+
+
+
+def test_cards_follow_the_fallback_letter_look():
+    """2026-10-21 使用者:「今天這樣子的呈現方式我覺得可以」—— 公司(代號,簡介):、
+    同一事件群的發布者並列、九段標【類別】;簡介只認同一個主體。"""
+    import analysis_render_depth as ard
+    pk = {"news": [{"source_item_id": "a", "title": "台積電高雄廠停工", "source_name": "鉅亨",
+                    "url": "https://x.com/a", "entities": ["2330"]},
+                   {"source_item_id": "b", "title": "台積電 F22 工安", "source_name": "科技新報"},
+                   {"source_item_id": "c", "title": "台塑化宣布油價不調整", "source_name": "UDN"}],
+          "news_clusters": {"clusters": [{"cluster_id": "cluster:a", "member_source_ids": ["a", "b"]}]},
+          "tw_universe": [{"code": "2330", "name": "台積電", "industry": "半導體業",
+                           "desc": "台積電 — 全球最大晶圓代工廠"},
+                          {"code": "1301", "name": "台塑", "industry": "塑膠工業", "desc": "台塑 — 塑化上游"},
+                          {"code": "6505", "name": "台塑化", "industry": "油電燃氣業"}]}
+    md = ard._news_line({"source_item_id": "a", "why_it_matters": "已勒令停工。施工段。"}, pk)
+    assert md.startswith("**台積電（2330，全球最大晶圓代工廠）**：\n本報解讀：已勒令停工"), md
+    assert "（[鉅亨](https://x.com/a)）／（科技新報）。" in md, md
+    other = ard._news_line({"source_item_id": "c", "why_it_matters": "價差待核。"}, pk)
+    assert other.startswith("**台塑化（6505）**：") and "塑化上游" not in other, other
+    assert ard.sector_tag({"source_item_id": "c"}, pk) == "【油電燃氣】"

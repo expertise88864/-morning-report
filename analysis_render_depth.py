@@ -312,7 +312,16 @@ def _news_line(n: dict, packet=None) -> str:
                  if isinstance(x, dict) and x.get("source_item_id") == n.get("source_item_id")), {})
     from news_heading import companies
     # 主體判定照舊(標題指名才算);registry 沒有的外國公司退而用 news_subject 的名字。
-    company_label = companies(item, packet or {}) or _s(news_subject(n, packet).get("name"))
+    sub = news_subject(n, packet)
+    company_label = companies(item, packet or {}) or _s(sub.get("name"))
+    # 10-21 使用者:比照備援「台積電（2330，全球最大晶圓代工廠…）：」——單一主體帶簡介。
+    # 同一個主體才換(「台塑化（6505）」不能換成「台塑」的簡介);簡介只是產業別就不加。
+    full = _s(sub.get("label"))
+    same = (company_label == _s(sub.get("name"))
+            or (company_label.endswith("）") and full.startswith(company_label[:-1] + ",")))
+    plain_industry = _s(sub.get("industry")) and full.endswith(f",{_s(sub.get('industry'))}）")
+    if company_label and "、" not in company_label and "（" in full and same and not plain_industry:
+        company_label = re.sub(r"(?<!\d),|,(?!\d)", "，", full)
     href = safe_href(str(item.get("url") or item.get("link") or ""), max_chars=2048)
     who = _attribution(n, packet)[1:-1]
     tag = ""
@@ -322,6 +331,9 @@ def _news_line(n: dict, packet=None) -> str:
                else f"（{who}）")
     elif href:   # 沒有發布者名稱仍要能點回原文(標題連結拿掉之後的唯一入口)
         tag = f"（[原文]({quote(href, safe=':/?=&%#@+;,$!-_~')})）"
+    # 同一事件群的其他發布者並列「（鉅亨）／（科技新報）」(比照備援;只第一個帶連結,省篇幅)。
+    others = [w for w in _cluster_publishers(n, packet) if w != who][:MAX_PUBLISHERS - 1]
+    tag += "".join(f"／（{w}）" for w in others) if tag else ""
     said = _sentences(body)[:CARD_SENTENCES]
     said[0] = said[0].rstrip(_TERMINAL_MARKS) + tag + "。"
     # why_it_matters 的幾句**留在同一行**(PR #24 外審):「本報解讀：」與句中提到的
@@ -335,11 +347,45 @@ def _news_line(n: dict, packet=None) -> str:
     # 防線(如 _sanitize_llm_2330_prices 以「同一行有台積電」判斷)範圍不因合段而擴大,
     # 否則別家公司的「500 元」會被改寫成台積電的價格。
     paragraph = "本報解讀：" + "\n".join(_join_sentence(x) for x in sentences if _s(x)) + _credibility(n, packet)
-    return f"**{company_label}**｜\n{paragraph}" if company_label else paragraph
+    return f"**{company_label}**：\n{paragraph}" if company_label else paragraph
 
 
 #: 每則新聞最多寫幾句 why_it_matters(使用者 10-20:比照備援信,不要一則讀很久)。
 CARD_SENTENCES = 3
+#: 一則新聞最多列幾個發布者(10-21 比照備援「（鉅亨）／（科技新報）」)。
+MAX_PUBLISHERS = 3
+
+
+def _cluster_publishers(n: dict, packet=None) -> list[str]:
+    """同一事件群的發布者(去重、依群內順序);查不到群就只有自己。"""
+    sid = _s(n.get("source_item_id"))
+    members = [sid]
+    for c in ((((packet or {}).get("news_clusters") or {}).get("clusters")) or []):
+        if isinstance(c, dict) and sid in (c.get("member_source_ids") or []):
+            members += [_s(m) for m in c.get("member_source_ids") or []]
+            break
+    out = []
+    for m in dict.fromkeys(members):
+        who = _attribution({"source_item_id": m}, packet)[1:-1]
+        if who and who not in out:
+            out.append(who)
+    return out
+
+
+def sector_tag(n: dict, packet=None) -> str:
+    """九段的「【航運】」類別標(比照備援;用主體的產業別,沒有主體就不標)。"""
+    # 與小標題同一個主體:先看 companies(標題指名、長名優先),單一台股主體才查產業別。
+    from news_heading import companies
+    item = next((x for x in ((packet or {}).get("news") or [])
+                 if isinstance(x, dict) and x.get("source_item_id") == n.get("source_item_id")), {})
+    label = companies(item, packet or {})
+    m = re.fullmatch(r"[^（、]+（([^）、，,]+)）", label)
+    if label:
+        industry = _s((_universe_index(packet).get(m.group(1)) or {}).get("industry")) if m else ""
+    else:
+        industry = _s(news_subject(n, packet).get("industry"))
+    industry = industry.removesuffix("工業") if industry.endswith("工業") else industry.removesuffix("業")
+    return f"【{industry}】" if industry else ""
 _SENTENCE_RE = re.compile(r"[^。！？!?]+(?:[。！？!?]+[」』）)]*|$)")
 
 

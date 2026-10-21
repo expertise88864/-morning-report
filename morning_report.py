@@ -14168,9 +14168,9 @@ def _repair_evidence_hints(problems: list, packet: dict) -> list[str]:
     return hints[:6]
 
 
-#: 修補切片的**筆數上限**(2026-08-24 生產:字元預算在 tail 小的日子允許
-#: 6,875 筆,等於把整份 registry 當切片)。優先序已排好,取前 N 筆。
-_REPAIR_SLICE_MAX = 80
+#: 修補切片的筆數上限(08-24:6,875 筆等於整份 registry)。第 1、2 層另有上限
+#: (10-21:前一版引用的 6 個 ID 被 80 筆砍掉,「看不到就移除」把 1 個問題修成 4 個)。
+_REPAIR_SLICE_MAX, _REPAIR_NAMED_MAX = 80, 160
 
 
 
@@ -14290,8 +14290,8 @@ def _repair_request_payload(payload: dict, user_payload: str, tail: str,
     # room 接近 1M —— 那天切了 **6,875 筆**,等於把整份 registry 當切片。
     # 模型用不到那麼多、注意力還被稀釋;優先序前面已排好(問題點名/前一版
     # 引用過的 → 其餘候選),取前 N 筆才叫「切片」。
-    slice_ = _ep.evidence_snippets(packet, (named + rest)[:_REPAIR_SLICE_MAX],
-                                   budget_chars=max(0, room))
+    _ids = named[:_REPAIR_NAMED_MAX] + rest[:max(0, _REPAIR_SLICE_MAX - len(named))]
+    slice_ = _ep.evidence_snippets(packet, _ids, budget_chars=max(0, room))
     def _format_only() -> dict:
         return dict(payload, input=(
             "(修補輪:請求長度不足以附上任何證據內容。**只做不需要新證據"

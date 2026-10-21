@@ -685,9 +685,14 @@ def test_the_item_cap_never_drops_what_the_problem_named(monkeypatch):
         {"model": "m"}, "x" * pb.MAX_REQUEST_CHARS, tail, pk,
         problems=problems, hints=[])
     assert rec and rec["mode"] == "evidence_slice", rec
-    assert rec["evidence_items"] <= mr._REPAIR_SLICE_MAX
+    assert rec["evidence_items"] <= mr._REPAIR_NAMED_MAX
     assert tid in rec["visible_ids"], (
         "問題點名的證據被 80 筆上限砍掉了", sorted(rec["visible_ids"])[:5])
+    # 2026-10-21 生產:前一版引用過的也不得被 80 筆上限砍掉 —— 看不到的 ID
+    # 會被要求移除引用,把已經合格的駁回與深入主題修壞。
+    cited = {f"n{i:03d}" for i in range(100)} & set(ep.evidence_ids(pk))
+    assert len(cited) > mr._REPAIR_SLICE_MAX and cited <= rec["visible_ids"]
+    assert rec["unseen_cited_ids"] == 0, rec
     assert tid in out["input"], "點名的證據沒有真的進到請求裡"
 
 

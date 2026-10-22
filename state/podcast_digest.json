@@ -2386,6 +2386,80 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "26c2ed87-7cfd-4d0a-8583-7cc066006ffa",
+        "title": "EP347. SpaceX AI 大噴發、為何該併購特斯拉、Grok Bot 旋風與新對手 | M觀點",
+        "published": "Thu, 22 Oct 2026 15:41:22 GMT",
+        "processed_at": "2026-10-22T19:08:28Z",
+        "digest": {
+          "summary_points": [
+            "主持人以 SpaceX 第三季財報為例，指出 AI 業務營收從第一季 8 億、第二季 25.6 億跳升至第三季 75.6 億美元，已占公司營收 52% 並轉虧為盈；他預測第四季 AI 營收將達 200～210 億美元、2027 年全年至少 2000 億美元，且營業利益率將快速爬升至 20% 以上。",
+            "主持人將 SpaceX 的 2027 年算力電力容量預期從先前 5～10GW（接近 10）上修至至少 13GW，並認為這等於把 2027 年 AI 營收年化金額拉高 62.5%；他形容這是「印鈔機」，並表示市場分析師對其 AI 營收預估普遍太低。",
+            "主持人強烈支持 SpaceX 併購特斯拉，理由是合併可讓馬斯克在特斯拉股權偏低、怕被趕走的風險解除，避免未來最重要的 AI／實體 AGI 專案全放在 SpaceX 而犧牲特斯拉股東；兩邊研發、算力、能源與製造能力也能完全互補，消除法律與重複開發成本。",
+            "主持人預測因 SpaceX 具美國國防承包商身分，合併後特斯拉將完全退出中國，包括賣掉上海超級工廠與中國銷售業務；他推演最可能做法是打包賣給中國廠商（如小米），授權其生產 Model 3/Y 約十年、提供 AI4 與 FSD 三到五年，交易金額約 200～300 億美元。",
+            "主持人認為這波 AI 股修正不是泡沫，但市場開始擔心資金與後續成長，修正幅度可能比他想像大；若未來市場意識到 AI 創造的價值多數跑到消費者剩餘、無法變成企業獲利，AI 股還會大修正，但目前尚未反映。",
+            "在 AI Agent 產品競爭上，主持人以自身重度使用 Grok（每月從 30 美元升級到 100 美元）為例，認為團隊型 Agent（Grok）比單一 Agent（OpenAI Dots、Anthropic Claude Duet、Meta Muse）更符合人類工作方式；他預期 2027 年各家都會投入，最終不會一家獨大，Grok、Muse、Claude Duet、OpenAI Dots 都有機會成功。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為其 AI 營收將從第三季 75.6 億美元爆發至第四季 200～210 億美元、2027 年至少 2000 億美元，並支持其併購特斯拉，看好合併後綜效。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為若合併失敗，馬斯克未來重要 AI 專案將放在 SpaceX 而非特斯拉，因此特斯拉股東應支持併入 SpaceX，以共享 AI、算力與機器人成長。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得這兩間公司合作最有價值的部分是兩邊的這兩家公司都是超強的技術公司",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Sea Limited",
+              "code": "SE",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人表示近期 Sea Limited 股價下跌、雲端與數位金融分拆消息尚待研究，將於 11 月中再評估，目前未表達明確多空。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為這波 AI 修正不是泡沫，而是市場開始擔心資金與後續成長；但若未來市場發現 AI 價值多數流向消費者剩餘、無法轉為企業獲利，AI 股將再大修正，目前尚未反映。",
+          "action_view": "主持人表示自己在這波 AI 修正前已小量進場，但認為修正可能比想像大；若尚未降槓桿的投資人要有熬過去的準備。他個人將等科技巨頭財報與 Sea Limited 財報出來後，11 月中再深入研究 Sea Limited。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "c7c515a4-9537-4e14-a43e-f83def808471",
         "title": "EP346. 特斯拉的飛天跑車、微軟 AI 加速跟上、八十億分之一的人生 | M觀點",
         "published": "Mon, 19 Oct 2026 06:15:31 GMT",
@@ -3231,48 +3305,6 @@
           }
         },
         "shown_at": "2026-09-15T00:18:20Z"
-      },
-      {
-        "guid": "095e9e51-2984-458c-81d7-038842234375",
-        "title": "EP335. 蘋果摺疊手機登場、大 Agent 時代來了、Vibe Coding 101 | M觀點",
-        "published": "Thu, 10 Sep 2026 17:30:02 GMT",
-        "processed_at": "2026-09-10T23:02:33Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為蘋果 iPhone Duo 即使售價高達 7.5 萬至 11.9 萬台幣且無驚喜，仍會成為最成功的摺疊手機，預估年銷量 1,200-1,300 萬支，高於 IDC 的 1,000 萬支，因果粉消費力強且具身份地位象徵。",
-            "主持人研判標準版 iPhone 18 延後是因記憶體太貴，蘋果將有限記憶體優先留給高毛利的 Pro 機型，並等待記憶體價格回穩或回落，反映記憶體成本對產品節奏的影響。",
-            "主持人認為 AI agent 已進入 2.0：從自建電腦跑 OpenCloud/Codex 轉為雲端託管，GrokBot 是他用過最像虛擬員工的產品，具長期記憶、跨 Bot 協作並可串接 Telegram 自動執行任務。",
-            "主持人認為 Meta Muse 若維持每週一億 token 免費額度並整合智慧眼鏡，殺傷力很強，可能只有 Google 能抗衡，對 Meta 生態系是利多。",
-            "主持人認為微軟 Project OPPO 的價值不在 AI 技術最強，而在企業資安與權限控管整合，讓 Copilot 能在 Fortune 500 落地，這是其他 AI 工具無法取代的企業缺口。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 iPhone Duo 將成為最成功摺疊機，高單價有助業績，預估銷量可達 1,200-1,300 萬支。"
-            },
-            {
-              "name": "微軟",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Project OPPO 結合企業資安與權限，能讓 Copilot 在大型企業落地，微軟在企業 AI agent 有獨特優勢。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Meta Muse 高免費額度與生活任務優化，加上智慧眼鏡整合，將非常有競爭力。"
-            }
-          ],
-          "market_view": "摺疊手機市場仍小眾，蘋果 iPhone Duo 不會改變整體格局，但會是摺疊機中最成功；AI agent 進入雲端託管 2.0，重量級廠商加入將加速應用。",
-          "action_view": "",
-          "notable_quote": "我如果是果粉我一定會買。"
-        },
-        "shown_at": "2026-09-10T23:30:44Z"
       }
     ]
   },

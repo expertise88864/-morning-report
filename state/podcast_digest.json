@@ -845,6 +845,51 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2424374559",
+        "title": "2026/10/23(五)颱風魔咒!美股出事了?費半狂瀉近7% 台積電ADR跌超4.5%【早晨財經速解讀】",
+        "published": "Fri, 23 Oct 2026 01:14:24 +0000",
+        "processed_at": "2026-10-23T06:57:14Z",
+        "digest": {
+          "summary_points": [
+            "主持人判斷本波美股重挫的核心不是單一利空多大，而是壞消息接連出現、恐懼感堆疊，他認為若利空一次反應反而比較健康。",
+            "主持人認為費半在乖離修正後已接近他理想中的佈建位置，股價「感覺受委屈」，而市場緊張的應是發債商而非這些賣鏟子的半導體企業。",
+            "主持人推測美國總統川普因多項政見未達標、股市幾乎是他少數亮點，若美股再跌，他可能出面喊話護盤。",
+            "主持人提醒中國AI算力高達55%被用於短劇與影片生成，若AI資源未提升生產力、只產出娛樂內容，將是AI長期最大的泡沫風險。",
+            "主持人導讀《實體AI革命》指出實體AI不會一家獨贏，投資機會在零組件需求與成本下壓，而非只看機器人品牌。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人說明Meta財報後股價重挫主因自由現金流轉負、CDS創高與龐大表外承諾，市場質疑其高估值。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人視本波下跌為情緒與乖離的修正，美股長線終將再創新高；他認為短期最大問題是利空接連出現、投資人恐懼堆疊。",
+          "action_view": "主持人建議以分散持股方式參與本輪行情，避免單壓個股；並認為費半乖離修正後可能是不錯的佈建機會，但需能承受波動。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2423613372",
         "title": "2026/10/22(四)美股財報反攻 誰最值得買?巨頭狂燒錢 誰來買單?【早晨財經速解讀】",
         "published": "Thu, 22 Oct 2026 01:12:20 +0000",
@@ -1577,100 +1622,56 @@
           }
         },
         "shown_at": "2026-10-09T01:36:29Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2414469291",
-        "title": "2026/10/7(三)輝達衝6兆市值 估值更便宜?AI越燒越多 錢從哪裡來？【早晨財經速解讀】",
-        "published": "Wed, 07 Oct 2026 01:07:24 +0000",
-        "processed_at": "2026-10-07T08:08:32Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為美股創高但廣度極差：標普等權指數距歷史高點仍低近5%，9月中旬以來僅約三分之一成分股上漲；高利率傷害集中在房地產、公用事業、生技與小型股，大型科技股因獲利上修而估值不升反降。",
-            "主持人以輝達為例，市值逼近6兆美元但前瞻本益比僅17.2倍、創10年新低，因市場上修獲利速度遠快於股價；他認為這與典型泡沫後期「股價漲幅超過獲利」相反，AI核心股「沒這麼貴」仍是機會。",
-            "主持人提醒資本支出是落後指標：2000年納指見頂時IT資本支出年增仍15%，13個月後才轉負；目前美國IT資本支出年增19%、比網路泡沫更快，不能因科技巨頭仍大舉投資就斷言股市不會見頂，股價通常提前資本支出半年至兩年下跌。",
-            "主持人認為市場「無法逃離AI」：SpaceX擬再籌400億美元購買輝達AI晶片（100億貸款、300億投等債），其2056年債券殖利率約7-8%、利差接近垃圾債；即使投資人買企業債或退休基金，最終仍可能間接替AI融資。",
-            "主持人提出操作思路：不敢全押AI者，可集中於科技/半導體ETF（如QQQ、SOXX或台股）並保留10-20%現金，用更高科技曝險參與上漲；若AI回檔30-40%，現金便取得低檔加碼的權利。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為輝達獲利上修速度比股價快，前瞻本益比降至10年低點，市值雖近6兆但不貴，AI行情仍是機會。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "怎麼會市值都要挑戰5.8兆都要挑戰6兆了,結果輝達的本益比居然低到10年的最低呢,當然不是因為股價便宜,是因為市場已經上修了,它的獲利速度比股價上漲速度實在快太多了",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "iShares Russell 2000 ETF",
-              "code": "IWM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人指出小型股空單達歷史高點，羅素2000已重新站上200日均線，不需大幅降息，只要急彈就可能引發大量空頭回補。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "羅素兩天的部分,這幾天其實嘗試著在陸續站穩,近期大概已經重新站上了200日均線,我們把它當年線了,至少已經嘗試著突破8月中旬以來的下降趨勢,而且最近幾個交易日,很明顯反彈幅度也很快,開始跑贏標普派指數了,現在值得注意的事情就是,羅素兩天,因為它是一個比較明顯的下行通道了,尤其槓桿基金對於小型股的空單,現在又來到歷史高點,所以小型股現在不一定需要聯準會大幅降息才能夠反彈,你只要稍微不小心急彈,你就有可能引發大量的空頭回撥",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Invesco QQQ Trust",
-              "code": "QQQ",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人建議以科技/半導體ETF為核心並保留現金；若AI上漲可維持參與度，若回檔可用現金加碼。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "iShares Semiconductor ETF",
-              "code": "SOXX",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人建議以科技/半導體ETF為核心並保留現金；若AI上漲可維持參與度，若回檔可用現金加碼。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為美股大盤由少數大型科技股支撐，標普/納指創高但廣度不佳；估值不算貴、AI仍有機會，但高利率對中小型股壓力仍在，小型股若利率不再升或空頭回補有反彈機會。",
-          "action_view": "主持人建議不敢全押AI的投資人可集中於科技/半導體ETF（如QQQ、SOXX或台股），保留10-20%現金，用較高波動參與上漲，保留低檔加碼能力。",
-          "notable_quote": "估值從來都不是市值的絕對數字,你要看的是這家公司,是不是大家相信能夠創造更多的獲利和現金流",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "估值從來都不是市值的絕對數字,你要看的是這家公司,是不是大家相信能夠創造更多的獲利和現金流"
-          },
-          "direction_quality": {
-            "attributed": 2,
-            "non_investment": 0,
-            "unverified": 2,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-08T01:24:07Z"
       }
     ]
   },
   "statementdog": {
     "name": "財報狗",
     "episodes": [
+      {
+        "guid": "cmvjoqc5800xr01ut9l5i0n91",
+        "title": "571.【財經時事放大鏡】TPCA x SpaceX",
+        "published": "Thu, 22 Oct 2026 23:02:08 GMT",
+        "processed_at": "2026-10-23T07:26:54Z",
+        "digest": {
+          "summary_points": [
+            "主持人 Sky 認為 SpaceX 法說中 AI 資料中心出租業務（SI 部門）單季營收 75.6 億美元、年增 830%，且 Musk 宣稱算力投資 6 個月即可回本、明年 ARR 上看 5,000 億至 1 兆美元，證明 AI 資本支出仍能快速回收，緩解市場對 Neo Cloud 融資與 AI 泡沫的疑慮。",
+            "主持人 Sky 從 TPCA 展觀察到 AI 需求成長速度超過 PCB 供應鏈擴產速度，關鍵材料缺 20-40%、部分 PCB 設備交期拉長至 30 個月，全產業進入大缺貨；他提醒 PCB 本身報價並未上漲，投資邏輯應由材料升級轉向外溢到二線廠與高階設備升級，並注意交期反轉風險。",
+            "主持人 Sky 認為 PCB 族群整體估值偏高（「投一塊錢賺十塊錢營收」），設備股相對本益比較低但需確認在手訂單；若設備交期從 30 個月縮短至 25 個月，股價會劇烈修正，不宜因長交期就安心持有。",
+            "主持人 Sky 對聯發科（2454）受惠於 Broadcom 延遲的市場題材持保留態度，認為高速產品延遲才是正常、ERBT 尚未驗證，市場預期過於樂觀，容易因出貨或設計問題導致股價回檔。"
+          ],
+          "tickers": [
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "主持人認為市場對聯發科受惠於 Broadcom 延遲的預期過於樂觀，相關高速產品延遲正常且尚未驗證，容易因出貨或設計問題導致股價修正。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "之前聯發哥他看起來好像跟伯通那邊比起來大家會說喔伯通就是因為delay所以變成聯發哥會比較受惠好像變成聯發哥也要delay了嗯對所以我覺得我要怎麼說就是這種東西delay才是正常的對我是這麼覺得啦因為ERBT的這個東西到還沒有驗證過吧",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "主持人對 PCB 族群的操作思路：不追高已大幅上漲的材料股，偏向從估值角度尋找外溢機會，例如設備股（需確認在手訂單）或二線廠；對聯發科等過度樂觀的題材保持觀望、不宜追高。",
+          "notable_quote": "反正就是重點是還是要注意這些過於樂觀的這種預期就對了很容易出現一些奇妙的事件把它打回來",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "反正就是重點是還是要注意這些過於樂觀的這種預期就對了很容易出現一些奇妙的事件把它打回來"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
       {
         "guid": "cmv9ow2i10hrf01wxc5685sr9",
         "title": "570.【財經時事放大鏡】4F² x OCP x 能源鬼轉AIDC",
@@ -2336,50 +2337,6 @@
           "notable_quote": "台積電什麼時候願意導入玻璃中介層幾乎就是玻璃中介層起飛的一個徵兆"
         },
         "shown_at": "2026-09-01T00:28:37Z"
-      },
-      {
-        "guid": "cmtblaork06q301zc1rxqdw3w",
-        "title": "548.【財經時事放大鏡】NVIDIA x Hotchips x FOPLP",
-        "published": "Thu, 27 Aug 2026 23:02:09 GMT",
-        "processed_at": "2026-08-28T04:44:59Z",
-        "digest": {
-          "summary_points": [
-            "NVIDIA 法說會直接回應市場對其擔保模式的疑慮，主持人分析這等於用 NVIDIA 的債信幫客戶移除信用風險，並確保客戶最終一定購買 NVIDIA 硬體，在長期需求上升時是狠招，但前提是需求要持續增加。",
-            "NVIDIA 表示 FY2028 需求成長 100%、營收成長 70% 只是產能受限，供應鏈到處是瓶頸；主持人認為這在市場對 AI 信心動搖時是「充值信心」，但短線股價仍由估值與信心主導。",
-            "主持人把 Agentic AI 的遞迴式自我改進（RSI）類比推薦演算法：模型上線後權重可持續調整，而目前 LLM 訓練完就固定到下一代；若 RSI 成真，將推動 AI 需求從投資驅動轉為滲透率大升的有機成長。",
-            "針對 ASIC 競爭，主持人認為系統整合（從單晶片到 rack/pod）門檻很高，目前大概只有 Google 有較完整能力；OpenAI 自研晶片號稱超過 GB300 但仍落後一個世代，而每 Gigawatt 銷售金額從 Hopper 18B、Blackwell 25B 到 Rubin 40B 大幅成長，是大家想做 ASIC 的原因。",
-            "TPU 出貨量預估差異大：美國券商估明年 600-700 萬顆、香港 800 萬顆、台灣估到 900 萬顆；主持人認為供應鏈金額顯示量確實大，但「2028 年 TPU 超過 NVIDIA GPU」是比較聳動的說法，且 NVIDIA 戰略性卡了 TPU 一年有影響。",
-            "Hot Chips 記憶體重點：美光稱記憶體短缺沒有減緩反而惡化；HBM 的 logic base die 與記憶體製程分離成競爭重點，三星/海力士都推 custom HBM 強化頻寬。新創 D-Matrix 的 3D DRAM 速度比 HBM 快、容量較小、功耗低，介於 SRAM 與 HBM 之間，主持人認為未來 2-3 年可能被加速器採用，但堆疊難度高、不會那麼快。",
-            "力成 FOPLP 已接單滿載，主持人認為面板級封裝技術真正成熟，且 WLP 已漲價 30-40%，PLP 有成本競爭力；相關廠商可關注，但半導體系與面板系要求有細節差異。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為法說會直球對決、需求成長100%且營收成長70%僅是產能受限，擔保模式確保客戶買單，長期看好但短線估值波動。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "美光表示記憶體短缺惡化、HBM 需求強勁，主持人認為記憶體/HBM 方向正向。"
-            },
-            {
-              "name": "力成",
-              "code": "6239",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "FOPLP 技術成熟、接單滿載，主持人認為面板級封裝方向不錯，相關廠商可關注。"
-            }
-          ],
-          "market_view": "主持人認為 NVIDIA 法說會幫 AI 陣營重新充值信心，短期股市仍受估值與資金流動主導；只要需求成長無虞，業績好的公司可續抱。",
-          "action_view": "操作上，業績真的好公司可續抱；可關注新技術成形（面板級封裝、3D DRAM）的相關廠商，並持續觀察未來廠商資本支出是否增加（雖是落後指標，但不能不觀察）。",
-          "notable_quote": "你不是看到我到處去吃飯嗎"
-        },
-        "shown_at": "2026-08-29T00:02:49Z"
       }
     ]
   },

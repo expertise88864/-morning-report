@@ -9150,6 +9150,51 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "9af27270-cedc-11f1-abf5-a3317f5b1940",
+        "title": "The Only Way Out Is Through | Weekly Roundup",
+        "published": "Fri, 23 Oct 2026 12:31:00 -0000",
+        "processed_at": "2026-10-23T12:53:22Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為債市大漲、股市下跌是典型風險趨避輪動，可能是景氣放緩或衰退輪動的初期；油價與殖利率近期背離，市場正從擔心經濟過熱轉向擔心成長放緩。",
+            "主持人預測油價續漲：全球庫存與戰略儲備緩衝已耗盡，供給面幾無壓抑油價的工具，長天期原油曲線仍便宜；他偏好海外原油曝險以規避美國出口禁令風險，並看重正展期收益，也提到布蘭特對 WTI 溢價擴大凸顯海外油價風險。",
+            "主持人認為金融條件全面緊縮：長天期油價、殖利率與房貸利率上升，加上利率市場已反映多次升息，小型股連跌九週、待售房屋數據極差；AI 資本支出是少數支撐，但市場對 AI 邊際失望愈來愈敏感。",
+            "主持人對房市看法：高房價與高房貸利率造成成交量凍結，短期難有自然出清，除非通膨完美降溫、房貸利率大幅回落。",
+            "主持人對加密貨幣：基本面看到早期復甦訊號，但流動性極差、AI 資本支出與大型 IPO 吸走資金，且利率仍偏緊；他認為底部過程已開始但太早，需等待流動性啟動訊號，現階段不部署、保留現金與耐心。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人以 Meta 的資本支出為例，認為即使公司願意大舉投入，市場仍對 AI 資本支出的邊際失望敏感；未給明確多空立場。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人整體偏風險趨避，認為債市大漲與股市下跌反映金融條件收緊，市場正從過熱擔憂轉向成長放緩；但他也說這較像高度輪動的震盪，還不是全面崩盤。",
+          "action_view": "他傾向保留現金、避開債券，以原油多頭與長天期曲線的正展期收益表達看法；加密貨幣則等流動性啟動訊號出現再部署。",
+          "notable_quote": "the only way out is through",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "the only way out is through"
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "0af4bada-c7f6-11f1-ac8f-c7640b318cdc",
         "title": "Where Is The Crypto Alpha Hiding This Cycle?",
         "published": "Tue, 20 Oct 2026 10:00:00 -0000",
@@ -9734,28 +9779,6 @@
           "market_view": "主持人認為美國財政部透過長債回購變相執行QE，驅動美元貶值與通膨回升，市場正經歷從科技股轉向硬資產的板塊輪動；短期政策寬鬆至少持續到年底，但長期有通膨失控風險。",
           "action_view": "操作上建議持有黃金、比特幣等通膨保護資產，做空美元，做多石油(XLE)；避免追高半導體與科技股，轉向被低估的防禦性板塊如醫療保健。",
           "notable_quote": "This is Japan stuff. And if you want to know how this ends, go price gold, oil and anything else that's a hard asset in yen, because this is the playbook."
-        }
-      },
-      {
-        "guid": "5cfaa964-95cb-11f1-8ae8-6b9f8f5585ff",
-        "title": "The Growth Strategy Trapping The Fed | Darius Dale",
-        "published": "Wed, 12 Aug 2026 10:00:00 -0000",
-        "processed_at": "2026-08-12T14:44:13Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為目前市場處於「風險偏好再通膨」的市場機制，自2025年4月進入paradigm C（經濟過熱）以來，股市出現泡沫化條件，債券長端因無法與名目GDP成長競爭而承壓。",
-            "主持人模型顯示r-star（實質中性利率）在過去3-4個月上升約50-75個基點，目前落在1.47%-1.78%，高於實質有效聯邦基金利率1.21%，代表全球資本供給稀缺性增加，投資難度升高。",
-            "主持人警告，若聯準會真的升息，對風險資產將是利空；但他認為聯準會最終將走向鴿派，透過「play action pass」策略——先週期性緊縮、再結構性寬鬆，相關政策建議可能在未來3-6個月出爐。",
-            "主持人表示，財政部長貝森特正盡力避免債市失控，選擇Kevin Warsh為聯準會主席是為了以「穿鷹派外衣的鴿派」來安撫債市與匯市，防止美元貶值導致長端公債失去信心。",
-            "主持人模型估算，10年期公債公平價值約5.8%、30年期在6%以上，因為期限溢價回歸歷史常態；若聯準會不升息來安撫債市，長端利率恐飆升。",
-            "主持人認為成功關鍵是盡量停留在paradigm C（成長），避免過度緊縮或過度寬鬆，因為劇烈削減開支可能導致戰爭，過度印鈔可能導致內戰。",
-            "主持人強調系統化投資與正偏態報酬分布的重要性，其KISS策略（60%股票、30%黃金、10%比特幣）自2023年1月上線以來年化報酬約16%，最大回撤-12%，優於60/40（-23%）與S&P 500（-34%）。",
-            "主持人指出，將風險管理信號（Dr. Mo）應用於全球股市可額外獲得11%的累積報酬、比特幣可額外增加18%，且能避開大幅波動與嚴重回撤。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為目前市場處於風險偏好再通膨機制，短期至中期相對看好股票、黃金、比特幣與大宗商品，但看空美元與公債；整體經濟偏熱，債市存在供給失衡風險。",
-          "action_view": "主持人建議投資人提升Alpha策略比重，因Beta策略在目前環境下較為艱困；應採用系統化風險管理（如KISS與Dr.Mo），讓資產保持接近高水位，避免大幅回撤。KISS策略為60%股票、30%黃金、10%比特幣，目前未滿倉。",
-          "notable_quote": "You have to have investors to have a confidence in the soundness of the dollar as money in order to have a bond market."
         }
       }
     ]

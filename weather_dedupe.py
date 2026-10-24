@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import re
+
 OFFICIAL_PREFIX = "人事總處公告:"
 
 
@@ -15,12 +17,17 @@ def _county(name: str) -> str:
 
 
 def announced(suspension: list | None) -> set[str]:
-    """人事總處**已公告**的縣市(只認官方列;新聞備援的說法不算定論)。"""
+    """人事總處**已作決定**的縣市(只認官方列;新聞備援的說法不算定論)。
+
+    官方表也列「尚未宣布消息」這種待定列(PR #27 外審)—— 那裡仍要看本報的預測。
+    """
     out = set()
     for row in suspension or []:
         title = str((row or {}).get("title") or "")
-        if title.startswith(OFFICIAL_PREFIX):
-            out.add(_county(title[len(OFFICIAL_PREFIX):]))
+        county, _, status = title[len(OFFICIAL_PREFIX):].partition(" ")
+        if (title.startswith(OFFICIAL_PREFIX) and "尚未" not in status
+                and re.search(r"(?:停止|照常)(?:上班|上課)", status)):
+            out.add(_county(county))
     return out
 
 

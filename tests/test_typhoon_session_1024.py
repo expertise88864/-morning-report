@@ -57,3 +57,14 @@ def test_official_suspension_replaces_the_forecast_and_merges_counties():
     html = mr._render_weather_html(locs + [dict(locs[0], name="南投市")], other)
     assert "南投市 風雨接近停班停課參考標準" in html and "彰化市 風雨" not in html
     assert html.count("人事總處公告") == 2
+
+
+def test_a_pending_official_row_keeps_the_forecast():
+    """PR #27 外審:官方表的「尚未宣布消息」不是決定,台中北區的預測要留著。"""
+    import weather_dedupe as wd
+    url = "https://www.dgpa.gov.tw/typh/daily/nds.html"
+    pending = [{"title": "人事總處公告:臺中市 尚未宣布消息。", "link": url}]
+    assert wd.announced(pending) == set()
+    locs = [{"name": "台中北區", "gust": 76}]
+    assert wd.without_announced(locs, pending) == locs
+    assert wd.announced([{"title": "人事總處公告:臺中市 今天停止上班、停止上課", "link": url}]) == {"台中"}

@@ -20,9 +20,12 @@ def _date(value: object) -> str:
         return ""
 
 
-def due_cases(state: dict, report_date: str, target_session: str = "") -> dict:
-    """Use the report day for expiry and the target session for model selection."""
+def due_cases(state: dict, report_date: str, target_session: str = "",
+              previous_session: str = "") -> dict:
+    """Report day for expiry, target session for selection; a deadline on a closed day was last
+    reviewable on the previous session (10-24: w64 due Saturday, reviewed 10/23, falsely flagged)."""
     today = _date(report_date)
+    session, previous = _date(target_session) or today, _date(previous_session)
     if not today or not isinstance(state, dict):
         return {"count": 0, "cases": []}
     try:
@@ -38,6 +41,9 @@ def due_cases(state: dict, report_date: str, target_session: str = "") -> dict:
         if (watch.get("status") != recap.WATCH_OPEN or not created
                 or created >= today or not deadline or deadline > today
                 or (reviewed and reviewed >= deadline)):
+            continue
+        if (previous and session > deadline and previous <= deadline
+                and reviewed and reviewed >= previous):
             continue
         raw_id = str(watch.get("watch_id") or "")
         case = {"watch_id": raw_id if re.fullmatch(r"w\d+", raw_id) else "?",

@@ -204,8 +204,25 @@ def _better(old: dict | None, new: dict) -> dict:
     return new if _quality(new) >= _quality(old) else old
 
 
+#: `cpbl.g.<YYMMDD><第幾戰>`;延賽另開一筆、舊的不一定標 postponed(10-24 颱風:編到 G11)。
+_GID_SLOT = re.compile(r"cpbl\.g\.(\d{6})(\d{3})")
+
+
+def _drop_superseded(games: list[dict]) -> list[dict]:
+    """同一戰只留完賽或最新排定的一筆;有代號對不上就原樣回傳(判不出第幾戰不猜)。"""
+    slots = [_GID_SLOT.fullmatch(str(g.get("gid") or "")) for g in games]
+    if not games or not all(slots):
+        return games
+    keep: dict[int, tuple] = {}
+    for g, m in zip(games, slots):
+        rank = (g["status"] == "status.type.final", m[1])
+        if int(m[2]) not in keep or rank > keep[int(m[2])][0]:
+            keep[int(m[2])] = (rank, g)
+    return [g for _, g in keep.values()]
+
+
 def _cpbl_series(game_type: str, games: list[dict], now: dt.datetime, advanced: set) -> dict | None:
-    everything = sorted(games, key=lambda g: g["start"])
+    everything = sorted(_drop_superseded(games), key=lambda g: g["start"])
     finals = [g for g in everything if g["status"] == "status.type.final"]
     # 開賽時間已過 6 小時還沒完賽的:系列已分勝負時是「如有必要」的剩餘場次(下面拿掉);
     # 系列**還沒**分勝負時,那是狀態不明的歷史場次 —— 刪掉再重編號會把 G3 標成 G2(第九輪審查)

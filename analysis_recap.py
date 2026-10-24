@@ -648,15 +648,15 @@ def usable(recap, target_session_date: str,
     觀點會被當成昨天,而 prompt 與渲染的語意都是「昨日觀點 vs 今日新證據」。
 
     `previous_session` 給 `market.LAST_TRADING_SESSION`(Python 從交易日曆
-    算的,不是日期減一)。給了就必須**正好相等**:週五 → 週一仍然成立
-    (上一個交易日就是週五),週五 → 週二則不成立(中間隔了週一)。
-    沒給(舊呼叫端/測試)時退回原本的判準 —— 但生產路徑一律要給。
+    算的,不是日期減一)。給了就**不得早於它**:週五 → 週一仍然成立
+    (上一個交易日就是週五),週五 → 週二則不成立(中間隔了週一)。晚於它可以:
+    10/23 颱風休市那班的觀點較新、沒漏交易日,先前被整包隔離(10-24 七之四消失)。
     """
     r = recap if isinstance(recap, dict) else {}
     date = str(r.get("date") or "")
     if not date or not target_session_date or date >= str(target_session_date):
         return []
-    if previous_session and date != str(previous_session):
+    if previous_session and date < str(previous_session):
         return []
     return [dict(it, date=date) for it in (r.get("items") or [])
             if isinstance(it, dict) and str(it.get("statement") or "").strip()]

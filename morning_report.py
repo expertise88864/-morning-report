@@ -15685,8 +15685,9 @@ def _render_weather_html(locs: list[dict],
                 f"{_h.escape(str(a.get('title', '')))}{_h.escape(tail)}</a>")
 
     alerts_html = "".join(_alert_line(a) for a in (alerts or []))
-    # 颱風風雨門檻警示(達標/接近才出現;紅字)
-    signal = _typhoon_signal(locs)
+    # 颱風風雨門檻警示(達標/接近才出現;紅字)。人事總處已公告的縣市不再列預測(10-24 重複訊息)
+    import weather_dedupe
+    signal = _typhoon_signal(weather_dedupe.without_announced(locs, suspension))
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
                    if signal else "")
     # 停班停課公告新聞(縣市公告即時,黑字可點;無公告日自動消失)
@@ -15694,7 +15695,7 @@ def _render_weather_html(locs: list[dict],
         f"<br><a href='{_h.escape(_safe_source_url(i.get('link')), quote=True)}' "
         f"style='color:#0f172a;text-decoration:none;font-weight:700;'>"
         f"🏫 {_h.escape(str(i.get('title', '')))}</a>"
-        for i in (suspension or []))
+        for i in weather_dedupe.merged(suspension))
     return (
         f"<div style='background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;"
         f"padding:12px 16px;margin:0 0 14px;font-size:13px;color:#0c4a6e;line-height:1.8;'>"
@@ -25201,7 +25202,8 @@ def _phase_events_and_models(ctx) -> None:
         quotes["EVENT_TIMELINE"] = []
     _recap_state = _arc.load(ANALYSIS_RECAP_FILE)
     ctx.recorder.data.setdefault("llm", {})["watch_due_at_start"] = _fwg.due_cases(
-        _recap_state, now_tpe.strftime("%Y-%m-%d"), target_session_date)
+        _recap_state, now_tpe.strftime("%Y-%m-%d"), target_session_date,
+        str(quotes.get("LAST_TRADING_SESSION") or ""))
     if _recap_state.get("unreadable"):
         # **壞檔要進正式的降級管道**(第二輪外審 F5)—— 只印 stderr 的話,
         # 生產監控分不出「昨天沒跑成」與「state 壞了」。

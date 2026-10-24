@@ -62,14 +62,15 @@ def for_prompt(record: dict, previous_session: str, target_session: str) -> dict
         previous, target = dt.date.fromisoformat(previous_session), dt.date.fromisoformat(target_session)
     except (ValueError, TypeError):
         return {}
-    if previous >= target or record.get('date') != previous_session:
+    # 與 analysis_recap.usable 同一條:不得早於上一個交易日;颱風臨時休市日那班較新,可用。
+    if previous >= target or not previous_session <= str(record.get('date') or '') < target_session:
         return {}
     if record.get('status') != 'unvalidated_model_opinion':
         return {}
     items = record.get('items')
     if not isinstance(items, list) or not items:
         return {}
-    return {'date': previous_session, 'analysis_origin': record['analysis_origin'],
+    return {'date': str(record['date']), 'analysis_origin': record['analysis_origin'],
             'status': 'unvalidated_model_opinion',
             'items': [{'statement': item['statement'], 'source_urls': item['source_urls']}
                       for item in items[:MAX_ITEMS]

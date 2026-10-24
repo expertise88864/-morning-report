@@ -592,3 +592,28 @@ def test_favorite_team_path_skips_preseason_before_picking_the_latest_game(monke
     assert len(rows) == 1 and rows[0]["date"] == "10/12", "季前賽不佔名額,找到的是更早的例行賽"
     out = mr._render_sports_html({"nba_fav": rows}, html)
     assert "NBA 關注球隊近況" in out and "10/12" in out
+
+
+
+def test_rescheduled_games_keep_only_the_latest_slot():
+    """2026-10-24 颱風實測(Yahoo 原始代號):延賽在新日期另開一筆,舊日期那筆仍是 pregame ——
+    信裡排成 G5…G11(七戰四勝制),而且舊的那筆隔天會變成「過期未完賽」讓整段放棄。"""
+    rows = [("cpbl.g.261017001", "Sat, 17 Oct 2026 09:05:00 +0000", "status.type.final", "1", "3"),
+            ("cpbl.g.261018002", "Sun, 18 Oct 2026 09:05:00 +0000", "status.type.final", "2", "4"),
+            ("cpbl.g.261020003", "Tue, 20 Oct 2026 10:35:00 +0000", "status.type.final", "0", "6"),
+            ("cpbl.g.261021004", "Wed, 21 Oct 2026 10:35:00 +0000", "status.type.final", "5", "4"),
+            ("cpbl.g.261023005", "Fri, 23 Oct 2026 10:35:00 +0000", "status.type.postponed", "0", "0"),
+            ("cpbl.g.261024005", "Sat, 24 Oct 2026 09:05:00 +0000", "status.type.postponed", None, None),
+            ("cpbl.g.261024006", "Sat, 24 Oct 2026 09:05:00 +0000", "status.type.pregame", None, None),
+            ("cpbl.g.261025005", "Sun, 25 Oct 2026 09:05:00 +0000", "status.type.pregame", None, None),
+            ("cpbl.g.261025006", "Sun, 25 Oct 2026 09:05:00 +0000", "status.type.pregame", None, None),
+            ("cpbl.g.261025007", "Sun, 25 Oct 2026 09:05:00 +0000", "status.type.pregame", None, None),
+            ("cpbl.g.261026006", "Mon, 26 Oct 2026 07:05:00 +0000", "status.type.pregame", None, None),
+            ("cpbl.g.261026007", "Mon, 26 Oct 2026 07:05:00 +0000", "status.type.pregame", None, None),
+            ("cpbl.g.261027007", "Tue, 27 Oct 2026 10:35:00 +0000", "status.type.pregame", None, None)]
+    games = cpbl_games(*(yahoo(gid, start, status=st, away_pts=a, home_pts=h) for gid, start, st, a, h in rows))
+    for day in (24, 25):   # 隔天舊的 10/24 那筆已過期,不得讓整段放棄
+        [post] = ss.cpbl_postseason(games, dt.datetime(2026, 10, day, 6, tzinfo=TPE))["series"]
+        pending = {g: n for g, n in post["numbers"].items() if n > 4}
+        assert pending == {"cpbl.g.261025005": 5, "cpbl.g.261026006": 6, "cpbl.g.261027007": 7}, post
+        assert post["next"]["game"] == 5 and post["next"]["when"] == "10/25 17:05"

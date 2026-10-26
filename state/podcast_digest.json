@@ -2343,6 +2343,64 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "71aa369b-7ba9-4bd3-81dd-ec041789fc6e",
+        "title": "EP348. 烏克蘭的星鏈羅生門、反蒸餾與中國模型、特斯拉自製地圖 | M觀點",
+        "published": "Mon, 26 Oct 2026 05:54:52 GMT",
+        "processed_at": "2026-10-26T07:41:06Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 AI 基建股這波修正是合理且幅度可能已不小，不應再用極負面角度看待，但長期不能假設 AI 成長無止盡；記憶體等硬體出貨量雖可年增三成，單價與毛利卻會下滑，獲利不會等幅成長。",
+            "主持人解讀特斯拉財報正面，自研 AI 地圖是用 FSD 車隊影像低成本補足第三方地圖不足，預計從 FSD V15 開始先用在出發地與目的地，改善上下車與停車體驗。",
+            "主持人推測 Cybercab 在奧斯汀已從 40 台增至 300 台以上，11 月進軍達拉斯，今年德州有機會 500 台；他認為特斯拉明年上半年全美有機會破 1 萬台、2027 年 3 至 5 萬台，可能超車 Waymo，但「幾個月內百萬台」不可能。",
+            "主持人認為 Kimi K3.1 分數雖高但與 K3 共用同一 foundation model，只是後訓練強化，反映中國前沿模型追趕遇算力瓶頸；反蒸餾措施不會阻止中國模型進步，只會把落後時間從約 3 個月拉長到 6 個月。"
+          ],
+          "tickers": [
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為特斯拉財報正面，Robotaxi 進度與自研 AI 地圖將提升 FSD 體驗，方向看多。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "特斯拉這次財報我覺得算是正面了啦,所以我不覺得它是一個不好的財報",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為記憶體出貨量可年增三成，但單價與毛利會下滑，獲利無法等幅成長，提醒估值不宜無止盡調高。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我不認為這麼好的展望會發生你知道他們的總記憶體的產出數量每年成長30%我覺得沒有問題可是第一個單價會掉,第二個毛利會掉所以整體而言他的獲利不會那樣子成長的",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "主持人認為近期 AI 基建股修正合理且幅度可能已不小，不需再極負面看待；但長期不應假設 AI 獲利無止盡成長，操作心態是漲高小心、跌深後勿過度悲觀。",
+          "action_view": "AI 股漲高時稍微小心，大跌一陣子後不要過度悲觀；特斯拉 Robotaxi 進度看好但勿追多「百萬台」樂觀敘事。",
+          "notable_quote": "我覺得大家就抱著一個大概的一個心態叫做一旦長高我們就稍微小心一點但是一旦大跌了一陣子之後你也不要太悲觀我覺得用這種角度來看會相對是比較好的",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我覺得大家就抱著一個大概的一個心態叫做一旦長高我們就稍微小心一點但是一旦大跌了一陣子之後你也不要太悲觀我覺得用這種角度來看會相對是比較好的"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "26c2ed87-7cfd-4d0a-8583-7cc066006ffa",
         "title": "EP347. SpaceX AI 大噴發、為何該併購特斯拉、Grok Bot 旋風與新對手 | M觀點",
         "published": "Thu, 22 Oct 2026 15:41:22 GMT",
@@ -3222,47 +3280,6 @@
           }
         },
         "shown_at": "2026-09-18T00:28:43Z"
-      },
-      {
-        "guid": "9abc2822-8cfe-49e3-a1bc-748fe3a54f44",
-        "title": "EP336. 前沿模型該減速嗎、Anthropic 威脅報告、為什麼要一直聊模型 | M觀點",
-        "published": "Mon, 14 Sep 2026 06:48:24 GMT",
-        "processed_at": "2026-09-14T07:51:28Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Dario Amodei 的「控速前沿模型」三步方案（第三方監督、民主陣營共同標準、全球協調）幾乎不可能讓中國配合；中國會表面同意、私下照做甚至趁美國綁手綁腳時加速追趕。",
-            "主持人認同 AI 風險真實（資安／生化武器／大失業），但反對讓 FDA/FAA 式政府機構主導監管，主張由多家民間第三方評估機構測試並給分、政府僅保留斷算力／關閉資料中心的 kill switch 作為最後嚇阻。",
-            "主持人判斷「模型開發減速」對 AI 硬體股不是利空，而是中性甚至偏多：安全與對齊測試本身也要大量 GPU/TPU，AI 公司不會減少總算力，只是重新分配或額外增加需求，不必因此減碼 AI infra 類股。",
-            "Anthropic 威脅報告揭露中國模型 Kimi 偷偷把用戶（含疑似解放軍相關 CCTV 影像、企業憑證）請求轉給 Claude 蒸餾，主持人認為 Kimi 高管被請去喝茶的傳聞很可能為真、此案暴露中國 AI 追趕的資安與治理隱憂。",
-            "主持人以「動態戰況」比喻 AI 價值分配：封閉 vs 開源模型能力差距決定模型是否淪為 commodity、影響該買模型廠或 SaaS／公有雲，因此追蹤模型進展是科技股配置的核心依據。"
-          ],
-          "tickers": [
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為 NVIDIA 傾向反對 AI 監管、希望市場競爭越激烈越好，因為 GPU 銷售受惠；但未對其股價前景給出明確多空。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "Invidia我最好你們競爭越大我的GPU越好賣啊",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "8月核心CPI月增0.3%與強勁就業讓升息機率上調，主持人認為9月聯準會升息與不升息呈現五五波；整體總經看法維持動態調整，未對股市方向給出單一判斷。",
-          "action_view": "AI模型控速不構成減碼AI硬體的理由，可視為中性偏多；應持續追蹤前沿模型戰況，動態調整科技股配置（例如封閉vs開源模型、模型廠vs SaaS／公有雲），而非固定押注單一贏家。",
-          "notable_quote": "當今天AI模型商,他們說他們要開始減速的時候,它事實上對於AI的硬體來講,它不是利空喔,我覺得是中性,甚至maybe你要說利多都有可能",
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 0,
-            "unverified": 1,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-15T00:18:20Z"
       }
     ]
   },

@@ -209,13 +209,15 @@ _GID_SLOT = re.compile(r"cpbl\.g\.(\d{6})(\d{3})")
 
 
 def _drop_superseded(games: list[dict]) -> list[dict]:
-    """同一戰只留完賽或最新排定的一筆;有代號對不上就原樣回傳(判不出第幾戰不猜)。"""
+    """同一戰只留真正完賽或最新排定的一筆;有代號對不上就原樣回傳(判不出第幾戰不猜)。
+
+    10-26:被取代的舊場次會改成「完賽 0:0、只到第 1 局」的空殼 —— 那不是完賽(暫列比分)。"""
     slots = [_GID_SLOT.fullmatch(str(g.get("gid") or "")) for g in games]
     if not games or not all(slots):
         return games
     keep: dict[int, tuple] = {}
     for g, m in zip(games, slots):
-        rank = (g["status"] == "status.type.final", m[1])
+        rank = (_quality(g) == 2 and not g.get("provisional"), m[1])
         if int(m[2]) not in keep or rank > keep[int(m[2])][0]:
             keep[int(m[2])] = (rank, g)
     return [g for _, g in keep.values()]
@@ -259,6 +261,9 @@ def _cpbl_series(game_type: str, games: list[dict], now: dt.datetime, advanced: 
     if not pending and not (finals and now - finals[-1]["start"] <= WINDOW):
         return None
     numbers = {g["gid"]: i for i, g in enumerate(sorted(finals + pending, key=lambda g: g["start"]), 1)}
+    slots = {g["gid"]: _GID_SLOT.fullmatch(str(g["gid"])) for g in finals + pending}
+    if all(slots.values()) and len({int(m[2]) for m in slots.values()}) == len(slots):
+        numbers = {gid: int(m[2]) for gid, m in slots.items()}   # 同時開賽的幾筆不靠排序猜第幾戰(10-26)
     results = [{"game": numbers[g["gid"]], "away": g["away"], "home": g["home"], "away_score": a,
                 "home_score": h, "date": g["start"].strftime("%m/%d"), "note": g.get("provisional") or ""}
                for g, a, h in scored if a is not None and now - WINDOW <= g["start"] <= now]

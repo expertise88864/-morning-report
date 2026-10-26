@@ -68,3 +68,65 @@ def test_a_pending_official_row_keeps_the_forecast():
     locs = [{"name": "台中北區", "gust": 76}]
     assert wd.without_announced(locs, pending) == locs
     assert wd.announced([{"title": "人事總處公告:臺中市 今天停止上班、停止上課", "link": url}]) == {"台中"}
+
+
+def test_phantom_zero_zero_finals_do_not_take_the_game_number():
+    """10-26 實信:被取代的舊場次被 Yahoo 改成「完賽 0:0、僅到第 1 局」,真正的 G5 4:3 排成 G7。"""
+    import datetime as dt
+    import sports_season as ss
+    from test_sports_season_1014 import TPE, cpbl_games, yahoo
+    rows = [("cpbl.g.261017001", "Sat, 17 Oct 2026 09:05:00 +0000", "status.type.final", "1", "3"),
+            ("cpbl.g.261018002", "Sun, 18 Oct 2026 09:05:00 +0000", "status.type.final", "2", "4"),
+            ("cpbl.g.261020003", "Tue, 20 Oct 2026 10:35:00 +0000", "status.type.final", "0", "6"),
+            ("cpbl.g.261021004", "Wed, 21 Oct 2026 10:35:00 +0000", "status.type.final", "5", "4"),
+            ("cpbl.g.261024006", "Sat, 24 Oct 2026 09:05:00 +0000", "status.type.final", "0", "0"),
+            ("cpbl.g.261025005", "Sun, 25 Oct 2026 09:05:00 +0000", "status.type.final", "4", "3"),
+            ("cpbl.g.261025006", "Sun, 25 Oct 2026 09:05:00 +0000", "status.type.final", "0", "0"),
+            ("cpbl.g.261025007", "Sun, 25 Oct 2026 09:05:00 +0000", "status.type.final", "0", "0"),
+            ("cpbl.g.261026006", "Mon, 26 Oct 2026 07:05:00 +0000", "status.type.pregame", None, None),
+            ("cpbl.g.261027007", "Tue, 27 Oct 2026 10:35:00 +0000", "status.type.pregame", None, None)]
+    games = cpbl_games(*(yahoo(gid, start, status=st, away_pts=a, home_pts=h) for gid, start, st, a, h in rows))
+    for g in games:   # Yahoo 把空殼標完賽但只列到第 1 局 → yahoo_cpbl_games 的暫列標記
+        if g["away_score"] == g["home_score"] == "0" and g["status"] == "status.type.final":
+            g["provisional"] = "來源標示結束，但僅列至第 1 局；結束方式待確認，比分暫列"
+    [post] = ss.cpbl_postseason(games, dt.datetime(2026, 10, 26, 6, tzinfo=TPE))["series"]
+    assert [(r["game"], r["away_score"], r["home_score"]) for r in post["results"]] == [(5, 4, 3)], post
+    assert post["next"]["game"] == 6 and post["next"]["when"] == "10/26 15:05"
+    assert post["note"] == "" and dict(post["teams"]) == {"味全": 3, "中信": 2}
+
+
+def test_twse_holiday_table_skips_closed_days_but_not_trading_markers():
+    import tw_holidays
+    rows = [{"Name": "臺灣光復暨金門古寧頭大捷紀念日", "Date": "1151026"},
+            {"Name": "國曆新年開始交易日", "Date": "1150102"},
+            {"Name": "市場無交易，僅辦理結算交割作業", "Date": "1150212"}, {"Date": "bad"}]
+    assert tw_holidays.closed_dates(rows) == {"2026-10-26", "2026-02-12"}
+    assert tw_holidays.closed_dates({"not": "a list"}) == frozenset()
+
+    class _R:
+        def json(self):
+            return rows
+    assert tw_holidays.target_session("2026-10-26", lambda *a, **k: _R()) == "2026-10-27"
+    assert tw_holidays.target_session("2026-10-24", lambda *a, **k: _R()) == "2026-10-27"
+
+    def _down(*a, **k):
+        raise OSError("offline")
+    assert tw_holidays.target_session("2026-10-26", _down) == "2026-10-26"   # 抓不到:退回只跳週末
+
+
+def test_category_tail_does_not_hide_a_local_duplicate():
+    import morning_report as mr
+    a = "影／二林鎮農會龍情蕎薏產業推廣紫晶盃葡萄酒新酒發表- 社會新聞 - PChome Online 新聞"
+    b = "影／二林鎮農會龍情蕎薏產業推廣 紫晶盃葡萄酒新酒發表 - 蕃新聞"
+    assert mr._local_title_is_dup(b, [mr._local_seen_entry(a)])
+    assert not mr._local_title_is_dup("二林鎮農會新酒發表延期 - 蕃新聞", [mr._local_seen_entry(a)])
+
+
+def test_top_world_local_sources_link_to_the_original():
+    """10-26 使用者:「有些新聞連結怎麼沒辦法點」—— 三大重點、世界大事、本地動態的來源是純文字。"""
+    import legacy_layout
+    pk = {"news": [{"source_item_id": "n1", "source_name": "中央社", "url": "https://x.com/a?b=1"},
+                   {"source_item_id": "n2", "source_name": "UDN"}]}
+    assert legacy_layout.source_of(pk, "n1") == "（[中央社](https://x.com/a?b=1)）"
+    assert legacy_layout.source_of(pk, "n2") == "（UDN）"
+    assert legacy_layout.source_of(pk, "") == ""

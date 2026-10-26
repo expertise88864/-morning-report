@@ -5,6 +5,11 @@ from news_display_quality import relevant
 from weekend_quality import award_key
 
 
+def strip_category(title: str) -> str:
+    """`…發表- 社會新聞` → `…發表`(媒體名去掉後還留著的分類尾綴,2026-10-26 重複)。"""
+    return re.sub(r"\s*-\s*\S{1,8}新聞\s*$", "", str(title or ""))
+
+
 def region_relevant(title: str, tokens: tuple[str, ...]) -> bool:
     probe = re.sub(r"中科院|最大里|十大里", "", title)
     return any(token in probe for token in tokens)

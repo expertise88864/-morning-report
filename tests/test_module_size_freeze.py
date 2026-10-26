@@ -204,13 +204,14 @@ MODULE_CEILINGS = {
     "watch_expiry.py": 30,
     "fallback_watch_gap.py": 96,   # +休市日期限的上一交易日回顧(2026-10-24)
     "weather_dedupe.py": 55,   # 天氣卡片重複訊息(2026-10-24)
+    "tw_holidays.py": 50,   # 證交所休市日表(2026-10-26)
     "conclusion_guard.py": 45,
-    "local_news_routing.py": 50,
+    "local_news_routing.py": 55,   # +分類尾綴去重(2026-10-26)
     "local_news_event_dates.py": 30,
     "company_ingress.py": 35,
     "scenario_window.py": 85,
     "sports_quality.py": 85,
-    "sports_season.py": 462,   # 季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24)
+    "sports_season.py": 468,   # 季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,
     "journal_selection.py": 55,

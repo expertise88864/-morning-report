@@ -15,20 +15,20 @@ def _session_distance(start_date: str, end_date: str, sessions: list[str]) -> Op
         return None
 
 
-def _next_tw_weekday(day: dt.date) -> dt.date:
-    """回傳 day 當日或下一個台股平日。休市日會在實際開盤對齊時再往後解析。"""
-    while day.weekday() >= 5:
+def _next_tw_weekday(day: dt.date, closed: frozenset = frozenset()) -> dt.date:
+    """回傳 day 當日或下一個台股平日;`closed` 是已知休市日(ISO)。臨時休市在實際開盤對齊時再解析。"""
+    while day.weekday() >= 5 or day.isoformat() in closed:
         day += dt.timedelta(days=1)
     return day
 
 
-def _infer_target_session_date(date_str: str) -> str:
-    """舊 state 沒有 target_session_date 時，依報告日期推導預測對應的台股開盤日。"""
+def _infer_target_session_date(date_str: str, closed: frozenset = frozenset()) -> str:
+    """依報告日期推導預測對應的台股開盤日(舊 state 補欄位時不帶 `closed`)。"""
     try:
         day = dt.datetime.strptime(date_str, "%Y-%m-%d").date()
     except (TypeError, ValueError):
         return str(date_str or "")
-    return _next_tw_weekday(day).strftime("%Y-%m-%d")
+    return _next_tw_weekday(day, closed).strftime("%Y-%m-%d")
 
 
 def _target_session_date(entry: dict) -> str:

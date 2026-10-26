@@ -162,6 +162,7 @@ from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 r
     _LLM_EVENT_TYPES,  # noqa: F401 — re-export:相容 mr.* 讀取
     _validate_llm_events,
 )
+import tw_holidays   # 2026-10-26:國定假日事先跳過(證交所休市日表)
 from session_calendar import (  # A5-B4:交易日/預測日期工具已抽出。只 re-export 本體/測試引用者;
     # _session_distance/_actual_open_date_for/_weekday_session_distance 僅內部用,不外露。
     _next_tw_weekday,   # 批#31:夜盤查詢需「當日或下一個台股平日」(週末報用下週一)
@@ -16680,10 +16681,10 @@ _LOCAL_REGION_TOKENS = (
 
 
 def _local_title_norm(title: str) -> str:
-    """標題正規化(去「 - 媒體名」尾綴與非文數字,小寫)。"""
+    """標題正規化(去「 - 媒體名」與「- 社會新聞」分類尾綴、非文數字,小寫)。"""
+    from local_news_routing import strip_category   # 10-26:同一則被當兩則(分類尾綴沒去)
     t = str(title or "")
-    if " - " in t:   # 去媒體名尾綴,避免同媒體墊高相似度
-        t = t.rsplit(" - ", 1)[0]
+    t = strip_category(t.rsplit(" - ", 1)[0] if " - " in t else t)   # 去媒體名尾綴,避免同媒體墊高相似度
     return "".join(ch for ch in t.lower() if ch.isalnum())
 
 
@@ -26172,7 +26173,7 @@ def main() -> int:
         return run_weekend_digest(now_tpe)
     mode = determine_mode(now_tpe)
     report_date = now_tpe.strftime("%Y-%m-%d (%a)")
-    target_session_date = _infer_target_session_date(now_tpe.strftime("%Y-%m-%d"))
+    target_session_date = tw_holidays.target_session(now_tpe.strftime("%Y-%m-%d"), _http_get)
     target_session_day = dt.datetime.strptime(target_session_date, "%Y-%m-%d").date()
 
     print(f"[main] 開始產生 {mode} 報告 — {report_date}")

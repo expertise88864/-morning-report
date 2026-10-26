@@ -18,9 +18,18 @@ _SENTENCE = re.compile(r"^.*?(?:[。！？!?]|$)", re.S)
 
 
 def source_of(packet, source_item_id) -> str:
-    """`（鉅亨）` —— 與備援信一樣在句末標發布者;查不到就不標。"""
+    """`（[鉅亨](原文)）` —— 句末標發布者並連到原文(10-26 使用者:連結點不開);查不到就不標。"""
     from analysis_render_depth import _attribution
-    return _attribution({"source_item_id": str(source_item_id or "")}, packet) if source_item_id else ""
+    from render_utils import safe_href
+    from urllib.parse import quote
+    sid = str(source_item_id or "")
+    who = _attribution({"source_item_id": sid}, packet)[1:-1] if sid else ""
+    item = next((x for x in ((packet or {}).get("news") or [])
+                 if isinstance(x, dict) and str(x.get("source_item_id") or "") == sid), {})
+    href = safe_href(str(item.get("url") or item.get("link") or ""), max_chars=2048) if who else ""
+    label = who.replace("[", "（").replace("]", "）")
+    return (f"（[{label}]({quote(href, safe=':/?=&%#@+;,$!-_~')})）" if href
+            else f"（{who}）" if who else "")
 
 
 def cluster_source(packet, cluster_id: str) -> str:

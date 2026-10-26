@@ -140,6 +140,10 @@ def _join_para_lines(lines: list[str]) -> str:
     return joined
 
 
+#: Markdown 連結目的地的 quote 安全字元(卡片與來源標籤共用;白名單比對用同一組)。
+MD_HREF_SAFE = ":/?=&%#@+;,$!-_~"
+
+
 def _md_to_html(text: str, *, trusted_urls=()) -> str:
     """
     自製 minimal Markdown → HTML 轉譯器，只用 stdlib `re`，不依賴第三方套件。
@@ -267,7 +271,10 @@ def _md_to_html(text: str, *, trusted_urls=()) -> str:
 
     # Convert escaped Markdown links before source-label dimming. Keep long RSS
     # destinations in href, not in visible text that expands narrow email tables.
-    allowed_urls = set(trusted_urls)
+    # 卡片/來源連結的 href 經過 quote(括號等字元編碼,MD_HREF_SAFE):白名單也收編碼後的同一網址,
+    # 否則 `story_(1)` 這類網址的連結被拿掉(PR #28 外審)。只多收「已收錄網址」的等價寫法。
+    from urllib.parse import quote as _quote
+    allowed_urls = set(trusted_urls) | {_quote(str(u), safe=MD_HREF_SAFE) for u in trusted_urls}
     def link(m):
         clean_url = safe_href(html_lib.unescape(m.group(2)), max_chars=2048)
         if not clean_url:

@@ -306,7 +306,7 @@ def _news_line(n: dict, packet=None) -> str:
     body = _s(n.get("why_it_matters"))
     if not body:
         return ""
-    from render_utils import safe_href
+    from render_utils import MD_HREF_SAFE, safe_href
     from urllib.parse import quote
     item = next((x for x in ((packet or {}).get("news") or [])
                  if isinstance(x, dict) and x.get("source_item_id") == n.get("source_item_id")), {})
@@ -327,10 +327,10 @@ def _news_line(n: dict, packet=None) -> str:
     tag = ""
     if who:
         safe_who = who.replace("[", "（").replace("]", "）")
-        tag = (f"（[{safe_who}]({quote(href, safe=':/?=&%#@+;,$!-_~')})）" if href
+        tag = (f"（[{safe_who}]({quote(href, safe=MD_HREF_SAFE)})）" if href
                else f"（{who}）")
     elif href:   # 沒有發布者名稱仍要能點回原文(標題連結拿掉之後的唯一入口)
-        tag = f"（[原文]({quote(href, safe=':/?=&%#@+;,$!-_~')})）"
+        tag = f"（[原文]({quote(href, safe=MD_HREF_SAFE)})）"
     # 同一事件群的其他發布者並列「（鉅亨）／（科技新報）」(比照備援;只第一個帶連結,省篇幅)。
     others = [w for w in _cluster_publishers(n, packet) if w != who][:MAX_PUBLISHERS - 1]
     tag += "".join(f"／（{w}）" for w in others) if tag else ""

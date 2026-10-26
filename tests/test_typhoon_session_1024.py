@@ -130,3 +130,35 @@ def test_top_world_local_sources_link_to_the_original():
     assert legacy_layout.source_of(pk, "n1") == "（[中央社](https://x.com/a?b=1)）"
     assert legacy_layout.source_of(pk, "n2") == "（UDN）"
     assert legacy_layout.source_of(pk, "") == ""
+
+
+
+def test_quoted_source_links_survive_the_collected_url_allowlist():
+    """PR #28 外審:href 經 quote 後 `story_(1)` 變 `story_%281%29`,白名單只有原始網址 → 連結被拿掉。"""
+    import legacy_layout
+    import render_utils
+    url = "https://example.com/story_(1)?a=1&b=2"
+    pk = {"news": [{"source_item_id": "n1", "source_name": "中央社", "url": url}]}
+    md = "- 事件" + legacy_layout.source_of(pk, "n1")
+    html = render_utils._md_to_html(md, trusted_urls=[url])
+    assert 'href="https://example.com/story_%281%29?a=1&amp;b=2"' in html, html
+    # 仍只收已收錄的網址
+    assert "<a " not in render_utils._md_to_html(md, trusted_urls=["https://example.com/other"])
+
+
+def test_the_evidence_packet_uses_the_holiday_adjusted_target(monkeypatch):
+    """PR #28 外審:預測卡用 10/27,證據包卻自己重算成 10/26(休市日)→ 模型與昨日觀點對錯日。"""
+    import morning_report as mr
+    seen = {}
+
+    def fake_build(*args, **kwargs):
+        seen["target"] = kwargs.get("target_session_date")
+        raise RuntimeError("stop after capturing the target")
+    monkeypatch.setattr(mr._ep, "build", fake_build)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "_prompt_profile_for", lambda *a: "luna56_xhigh_v1")
+    try:
+        mr._call_llm_analysis_impl({"TARGET_SESSION": "2026-10-27"}, {}, {}, [], [], {})
+    except Exception:   # noqa: BLE001 - 只看 build 拿到的日期
+        pass
+    assert seen.get("target") == "2026-10-27", seen

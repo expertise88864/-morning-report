@@ -14965,8 +14965,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             _packet = _ep.build(quotes, fair, predictions, news, tw0050 or [],
                                 calibration,
                                 as_of=dt.datetime.now(TPE).isoformat(),
-                                target_session_date=_infer_target_session_date(
-                                    dt.datetime.now(TPE).strftime("%Y-%m-%d")),
+                                target_session_date=(quotes.get("TARGET_SESSION") or _infer_target_session_date(
+                                    dt.datetime.now(TPE).strftime("%Y-%m-%d"))),   # 已跳休市日(PR #28)
                                 # r1(Codex,#1):外部文字進 prompt 的唯一入口。
                                 # 前一輪外審立的 P0 控制,新路徑必須接上。
                                 sanitize=_external_text)

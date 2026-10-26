@@ -8285,6 +8285,121 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "7ef13e4a-fe07-4f69-a4f4-e131d9916e94",
+        "title": "Micron's Roadmap, Meta's AI Infrastructure, and NVIDIA's Supply Chain Mastery",
+        "published": "Mon, 26 Oct 2026 12:40:34 -0700",
+        "processed_at": "2026-10-26T23:20:50Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為美光這場技術說明會是在反駁「記憶體是商品」：以 AI 專用產品藍圖、垂直堆疊與客製化路線爭取溢價 ASP，並向 CXMT 等中國對手示意節點推進與 3D 堆疊的工程門檻很高。",
+            "主持人認為拉姆研究雖繳出符合預期的紀錄季度，市場卻因供應與潔淨室限制不買單；真正訊號是公司把明年晶圓廠設備（WFE）市場上調到約 2,000 億美元，遠高於年初僅討論 1,500～1,600 億美元的水準。",
+            "主持人認為 Meta 自建 GW 級訓練叢集與自有模型，能更快衍生多個模型產品並以低於市場 token 成本服務；他並估算若半數上網人口（約 25 億人）各用個人代理，光執行代理每年就新增約 35GW 算力需求、每人每年約 50～100 美元成本。",
+            "主持人認為輝達正用資產負債表鎖定基板、雷射、封裝、晶圓代工與記憶體等供應，擠壓其他競爭者；明年供應鏈仍緊，只有博通等少數公司有財力抗衡。",
+            "主持人認為 AI 代理失控與大規模網攻會讓資安從「嘴上重要」變成真正的大預算項目，並預測資安會成為前沿模型僅次於程式開發的主要應用，支出循環將明顯升溫。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為美光以 AI 專用記憶體藍圖與垂直堆疊爭取技術領先和溢價，試圖證明記憶體不是純商品。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "they've got a whole product roadmap, there's product derivatives that are specifically designed and being innovated for AI. And I think they think that will command some premium pricing, some ASP increase for the memory that is innovated for and thus designed for AI",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "拉姆研究",
+              "code": "LRCX",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為拉姆研究業績符合預期但市場要求更高，焦點在供應與潔淨室限制，以及公司上調明年 WFE 至約 2,000 億美元。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Meta 自建 GW 級訓練算力與自有模型，讓它能更快推出多個模型產品並壓低服務成本，垂直整合程度比先前認知更高。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Meta is more more vertical than I guess I gave them credit for before",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為輝達用資產負債表鎖定關鍵零組件與產能，對競爭者形成供應鏈擠壓優勢。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "they are aggressively deploying their cash flow to lock everything down all the things that might be in short supply.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "博通",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為博通是少數有足夠資產負債表可與輝達在供應鏈上抗衡的公司。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "other than Broadcom I don't know who has the who has the balance sheet to stand up against that.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為谷歌的 TPU 更有效率、且一直沒有落後太多，自建基礎設施與自有模型仍具優勢。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I think they've been there all along. I don't think I don't think they're that far behind. I think Google is a little bit different because they have TPU and TPUs are much more efficient for the things Google needs it to do.",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為目前 AI 需求沒有崩壞，資料中心端看到 GPU 暫放倉庫是「分階段整合」而非通路塞貨；真正的市場風險是明年電力、潔淨室、PCB、變壓器等供應瓶頸隨機造成出貨遞延，且一旦遞延會沿供應鏈放大。",
+          "action_view": "主持人未給明確買賣建議；他強調要緊盯供應鏈遞延，並把資安預算升溫視為新一輪支出循環。",
+          "notable_quote": "there's no such thing as a one quarter problem.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "there's no such thing as a one quarter problem."
+          },
+          "direction_quality": {
+            "attributed": 5,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "c0b67ca1-ed1c-4ccb-85ff-f8e1676babd7",
         "title": "WFE to the Moon (Still), Semicon West and OCP Insights",
         "published": "Mon, 19 Oct 2026 10:10:29 -0700",
@@ -9116,85 +9231,6 @@
           "market_view": "",
           "action_view": "建議投資人聚焦機架規模時代內容價值提升的公司（如SiTime），並以長約品質與毛利率可持續性來評估記憶體類股，而非僅看價格漲幅。",
           "notable_quote": "CXL is the only solution that supports memory reuse."
-        }
-      },
-      {
-        "guid": "a146af29-cb5b-4c3d-86e8-74323d0bb8ba",
-        "title": "EP 186: Mobile Bottlenecks, Skyrocketing AI CapEx, and the Compute Crunch",
-        "published": "Mon, 03 Aug 2026 09:37:01 -0700",
-        "processed_at": "2026-08-03T20:55:29Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為手機市場疲軟但未崩盤，真正的瓶頸在供應鏈：連 Apple 都拿不到足夠記憶體與先進製程，Apple 不願支付溢價，AI 擠壓將持續傷害非 AI 消費電子。",
-            "ARM 雖因資料中心而優於預期，但對手機沒說好話；Qualcomm 暗示手機明年還會更差，且自有 AI 晶片仍在「洽談」，尚未有成案。",
-            "聯發科手機業務無人關注，市場焦點全在 TPU/ASIC 帶動的資料中心需求大增；這顯示 AI 客製化晶片需求正外溢到多家供應商。",
-            "超大型雲端業者資本支出續增、強調算力不足；主持人對 Amazon 評價最高，稱其 AI 投資回收期不到三年、企業雲端優勢最清晰，Meta 則傳出租多餘產能，變現說不清楚。",
-            "主持人認為推論（inference）將比訓練更分散，雲端業者會依每 token 利潤決定用誰的晶片；Nvidia 的 TCO 優勢須以實際量產規模證明，AMD 等競爭者讓其任務更困難。",
-            "後院式（behind-the-meter）天然氣供電因推論負載平穩而變可行，能加速電力到位；Bloom Energy 等業者受惠，但電工勞力短缺才是無解的瓶頸。",
-            "資金面亮警訊：Nvidia 傳計劃提供近 6000 億美元融資、大型資料中心債務案接連上場，Meta 與微軟以租賃/表外結構隱藏負債；主持人認為這不是好信號。",
-            "近期市場回檔可能主因是 Situational Awareness 避險基金被迫平倉；槓桿是雙面刃，若利率或 AI 變現不如預期，波動會更劇烈。"
-          ],
-          "tickers": [
-            {
-              "name": "ARM",
-              "code": "ARM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "資料中心營運動能強勁，AI CPU 需求明確，但手機仍有隱憂。"
-            },
-            {
-              "name": "Qualcomm",
-              "code": "QCOM",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "手機展望保守，暗示明年續弱，自有 AI 晶片仍在早期洽談。"
-            },
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "供應鏈受限、記憶體成本高，不願付溢價，但秋季新機可能仍暢銷。"
-            },
-            {
-              "name": "MediaTek",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "ASIC 資料中心需求大增，管理層上調展望，市場只在意 TPU/ASIC 商機。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "最理性的雲端業者，AI 投資回收期不到三年，企業雲端領導地位穩固。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "業績尚可，但 AI 變現故事未完，資產負債表操作引發疑慮。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI 變現說不清楚，傳出租多餘產能，用表外融資隱藏債務。"
-            },
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "TCO 優勢仍強，但推論市場競爭加劇，實際量產規模還需證明。"
-            }
-          ],
-          "market_view": "主持人認為基本面仍然強勁（算力短缺），但市場同時存在泡沫與槓桿風險，短期走勢恐更震盪。",
-          "action_view": "操作上留意企業 AI 變現證據，優先布局 Amazon 等企業 AI 受惠者，避開變現不明的 Meta；關注 ASIC、散熱、供電等供應鏈受惠族群。",
-          "notable_quote": "\"AI compute is wreaking havoc on every other section of the industry.\""
         }
       }
     ]

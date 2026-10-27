@@ -6,7 +6,8 @@ import sys
 import email_mobile
 
 from reader_editorial import OUTLOOK_HEADING
-SECTIONS = ("八、科技板塊脈動", "九、其他類股資訊", "十、台灣本地動態", OUTLOOK_HEADING)
+#: 七之二:2026-10-27 起總經卡渲染在這段,遺失偵測要涵蓋(外審 PR #29)。
+SECTIONS = ("七之二、世界大事速覽", "八、科技板塊脈動", "九、其他類股資訊", "十、台灣本地動態", OUTLOOK_HEADING)
 
 
 def _estimated_email_kb(html: str) -> float:

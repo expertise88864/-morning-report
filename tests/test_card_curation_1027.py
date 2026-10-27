@@ -105,3 +105,17 @@ def test_an_effect_that_admits_no_link_is_not_printed():
     assert "對中信金" not in ard._news_line(c, pk)
     ok = card("g", "公股投信整併" + LONG, [("2891", "與財報無關的一次性收益會墊高本季獲利")])
     assert "對中信金(2891)而言" in ard._news_line(ok, pk), "句中別處的「無關」不算"
+    # 外審 PR #29:否認後接了受詞、或句中有轉折,那一行仍有實質影響
+    for eff in ("裁罰沒有直接影響產能，但一次性費用將降低本季獲利", "沒有直接影響產能，獲利率下滑兩個百分點"):
+        mixed = card("g", "公股投信整併" + LONG, [("2891", eff)])
+        assert "對中信金(2891)而言" in ard._news_line(mixed, pk), eff
+    for eff in ("對中信金沒有直接影響", "本報看不出次級影響。"):
+        assert not cc.keep_asset(card("g", "x"), {"asset_id": "2891", "first_order_effect": eff}, pk, None)
+
+
+def test_declared_alias_counts_as_the_card_naming_its_company():
+    """外審 PR #29:標題寫 Apple、卡片寫蘋果 —— 已宣告的別名組要承認是同一家。"""
+    c = card("a", "蘋果上修本季營收展望，iPhone 拉貨力道比預期強" + LONG)
+    assert cc.referenced(c, "", ("Apple",))
+    assert cc.referenced(card("m", "美光罷工危機解除，記憶體供給不再受威脅" + LONG), "", ("Micron",))
+    assert not cc.referenced(card("x", "MUST 這個英文字不是那家公司的代號" + LONG), "MU", ())

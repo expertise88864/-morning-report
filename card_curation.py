@@ -25,7 +25,10 @@ CORE_ASSETS = frozenset({"2330", "TSM", "0050", "00662", "TAIEX"})
 _SUBSTANTIVE = 20
 #: 模型自己承認沒有關係的影響句(「可能整併案與中信金無關」)—— 那不是分析,是湊數。
 #: 只收「對**這個標的**沒有影響」的說法;句中別處的「無關」(「與財報無關的一次性損益」)不算。
-_NO_EFFECT = re.compile(r"看不出.{0,8}影響|沒有直接(?:影響|關係|關聯|傳導)|無直接(?:影響|關聯|傳導)")
+#: 否認後面直接接受詞(「沒有直接影響產能」)或句中有轉折(「…但一次性費用壓低獲利」)時,
+#: 那一行仍有實質影響,照印(外審 PR #29)。
+_NO_EFFECT = re.compile(r"(?:看不出.{0,8}?|沒有直接|無直接)(?:影響|關係|關聯|傳導)(?![一-鿿A-Za-z0-9])")
+_CONTRAST = re.compile(r"但|不過|然而|惟|卻|反而")
 #: AI 資本支出主線的延伸說法(event_graph 的 ai_capex 只收「資本支出 / 資料中心」等字)。
 _AI_CAPEX_EXTRA = re.compile(
     r"AI.{0,6}(?:基建|基礎建設|算力|融資|增資|支出承諾)|超大規模|hyperscaler"
@@ -56,7 +59,18 @@ def referenced(card: dict, code: str, names) -> bool:
         return True   # 解讀太短,看不出卡片在寫哪件事 → 不推翻標題的主角
     if code and re.search(r"(?<![A-Za-z0-9])" + re.escape(code) + r"(?![A-Za-z0-9])", text):
         return True
-    return any(n and len(str(n)) >= 2 and str(n) in text for n in names)
+    import entity_alias
+    # 卡片常用別的寫法(標題寫 Apple、卡片寫蘋果):已宣告的別名組一併承認(外審 PR #29)
+    groups = entity_alias.expand([code, *names])
+    aliases = {str(n) for n in names if n} | {a for g in groups for a in entity_alias.ALIAS_GROUPS[g]}
+    return any(_mentions(text, a) for a in aliases if len(a) >= 2)
+
+
+def _mentions(text: str, name: str) -> bool:
+    """英數名稱要整字(`MU` 不命中 `MUST`),中文名稱子字串即可。"""
+    if re.fullmatch(r"[A-Za-z0-9 .&-]+", name):
+        return bool(re.search(r"(?<![A-Za-z0-9])" + re.escape(name) + r"(?![A-Za-z0-9])", text))
+    return name in text
 
 
 def theme_of(card: dict, packet: dict) -> str:
@@ -134,7 +148,8 @@ def keep_asset(card: dict, asset: dict, packet: dict, budget: Counter | None) ->
     row = next((r for r in (packet or {}).get("tw_universe") or []
                 if isinstance(r, dict) and str(r.get("code")) == aid), {})
     names = [n for n in (aid, str(row.get("name") or "")) if n]
-    if _NO_EFFECT.search(effect) or any(f"與{n}無關" in effect for n in names):
+    denied = _NO_EFFECT.search(effect) and not _CONTRAST.search(effect)
+    if denied or any(f"與{n}無關" in effect for n in names):
         return False
     if budget is None or aid not in CORE_ASSETS:
         return True

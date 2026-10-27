@@ -115,10 +115,12 @@ def test_recap_ranking_uses_only_valid_history_and_reserves_deep_topics():
 
 def test_macro_cards_remain_in_final_html_loss_audit():
     import email_content_audit
-    # 2026-10-19:總經卡併回八/九;遺失偵測改數卡片標記。
-    md = '## 九、其他類股資訊\n本報解讀：成本推升通膨。'
-    html = '<h2>九、其他類股資訊</h2><p>總經摘要</p>'
+    # 2026-10-27:總經卡渲染在七之二;遺失偵測數卡片標記,也要涵蓋這一段。
+    md = '## 七之二、世界大事速覽\n本報解讀：成本推升通膨。'
+    html = '<h2>七之二、世界大事速覽</h2><p>總經摘要</p>'
     assert email_content_audit.audit(md, html)['lost_cards'] == 1
+    assert email_content_audit.audit(md, '<h2>八、科技板塊脈動</h2>')['missing_sections'] == [
+        '七之二、世界大事速覽']
 
 
 def test_quality_warning_counts_rendered_macro_cards():

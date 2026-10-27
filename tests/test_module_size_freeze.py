@@ -211,7 +211,7 @@ MODULE_CEILINGS = {
     "company_ingress.py": 35,
     "scenario_window.py": 85,
     "sports_quality.py": 85,
-    "card_curation.py": 170,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
+    "card_curation.py": 200,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
     "sports_season.py": 468,   # 季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,
@@ -258,7 +258,7 @@ MODULE_CEILINGS = {
     "finance_editorial.py": 220,  # 新模組首版含去重原始證據保留,不提高既有模組上限。
     "news_impact.py": 100,
     "email_mobile.py": 200,
-    "email_content_audit.py": 110,
+    "email_content_audit.py": 111,   # 10-27:總經卡移到七之二,稽核段落多一段
     "email_quality_findings.py": 60,  # 最終 HTML 品質診斷；不讓 run_quality 再膨脹。
     # 2026-08-22 repo-wide 外審 P1-3:持久 state 的四態讀取政策(單一出口)。
     "state_store.py": 110,

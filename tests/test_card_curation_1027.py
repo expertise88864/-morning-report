@@ -106,10 +106,11 @@ def test_an_effect_that_admits_no_link_is_not_printed():
     ok = card("g", "公股投信整併" + LONG, [("2891", "與財報無關的一次性收益會墊高本季獲利")])
     assert "對中信金(2891)而言" in ard._news_line(ok, pk), "句中別處的「無關」不算"
     # 外審 PR #29:否認後接了受詞、或句中有轉折,那一行仍有實質影響
-    for eff in ("裁罰沒有直接影響產能，但一次性費用將降低本季獲利", "沒有直接影響產能，獲利率下滑兩個百分點"):
+    for eff in ("裁罰沒有直接影響產能，但一次性費用將降低本季獲利", "沒有直接影響產能，獲利率下滑兩個百分點",
+                "一次性裁罰費用將降低本季獲利，對產能沒有直接影響。"):
         mixed = card("g", "公股投信整併" + LONG, [("2891", eff)])
         assert "對中信金(2891)而言" in ard._news_line(mixed, pk), eff
-    for eff in ("對中信金沒有直接影響", "本報看不出次級影響。"):
+    for eff in ("對中信金沒有直接影響", "本報看不出次級影響。", "可能對中信金無直接關聯。", "看不出直接影響"):
         assert not cc.keep_asset(card("g", "x"), {"asset_id": "2891", "first_order_effect": eff}, pk, None)
 
 

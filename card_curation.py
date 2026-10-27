@@ -26,9 +26,10 @@ _SUBSTANTIVE = 20
 #: 模型自己承認沒有關係的影響句(「可能整併案與中信金無關」)—— 那不是分析,是湊數。
 #: 只收「對**這個標的**沒有影響」的說法;句中別處的「無關」(「與財報無關的一次性損益」)不算。
 #: 泛稱的否認只在**整句只有否認**時才不印;同一行還寫了別的影響(「一次性費用將降低本季獲利,
-#: 對產能沒有直接影響」「沒有直接影響產能,但…」)照印(外審 PR #29 兩輪)。
-_NO_EFFECT = re.compile(r"(?:可能|本報)?(?:對[^，,。；;]{0,10})?(?:看不出[^，,。；;]{0,8}?|沒有直接|無直接)"
-                        r"(?:的)?(?:影響|關係|關聯|傳導)[。.!！]?")
+#: 對產能沒有直接影響」「對獲利不利但對產能沒有直接影響」)照印 —— 前綴只認「對**這個標的**」,
+#: 修飾詞只認固定幾個,不讓寬鬆的萬用字元吞掉實質影響(外審 PR #29 三輪)。
+_NO_EFFECT = (r"(?:可能|本報)?{prefix}(?:看不出(?:次級|直接|明顯|任何)?|沒有直接|無直接)"
+              r"(?:的)?(?:影響|關係|關聯|傳導)[。.!！]?")
 #: AI 資本支出主線的延伸說法(event_graph 的 ai_capex 只收「資本支出 / 資料中心」等字)。
 _AI_CAPEX_EXTRA = re.compile(
     r"AI.{0,6}(?:基建|基礎建設|算力|融資|增資|支出承諾)|超大規模|hyperscaler"
@@ -148,7 +149,8 @@ def keep_asset(card: dict, asset: dict, packet: dict, budget: Counter | None) ->
     row = next((r for r in (packet or {}).get("tw_universe") or []
                 if isinstance(r, dict) and str(r.get("code")) == aid), {})
     names = [n for n in (aid, str(row.get("name") or "")) if n]
-    denied = _NO_EFFECT.fullmatch(effect.strip())
+    prefix = "(?:對(?:" + "|".join(map(re.escape, names)) + "))?" if names else ""
+    denied = re.fullmatch(_NO_EFFECT.format(prefix=prefix), effect.strip())
     if denied or any(f"與{n}無關" in effect for n in names):
         return False
     if budget is None or aid not in CORE_ASSETS:

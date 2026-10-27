@@ -32,10 +32,13 @@ def test_macro_does_not_take_any_of_six_sector_slots():
     obj = fx.valid_analysis()
     obj['top_news_analysis'] = cards
     md = render.render(obj, {'news': news})
-    # 2026-10-19:備援信沒有總經段,總經卡併回九段,但不佔類股名額、排在類股卡之後。
+    # 2026-10-27 使用者:Fed/關稅這類總經卡不放「其他類股」;10-19 的排版一致仍守(不新增段落),
+    # 改進兩種版本都有的「七之二、世界大事速覽」。九段只剩六張類股卡,總經卡也不佔類股名額。
     sector = md.split('## 九、其他類股資訊')[1].split('\n## ')[0]
-    # 2026-10-20:卡片不再印標題;總經卡(無公司主體)排在類股卡之後、仍有原文連結。
-    assert sector.count('本報解讀：有待確認') == 8 and '航運新合約' not in sector
+    world = md.split('## 七之二、世界大事速覽')[1].split('\n## ')[0]
+    # 2026-10-20:卡片不再印標題。
+    assert sector.count('本報解讀：有待確認') == 6 and '航運新合約' not in sector
+    assert world.count('本報解讀：有待確認') == 2
 
 
 def test_company_specific_rate_effect_is_not_misrouted():

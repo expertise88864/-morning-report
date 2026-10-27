@@ -312,6 +312,10 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。
     tech_items, other_items = [], []
     tech_news, other_news, macro_news, _diag_rows = [], [], [], []
+    from collections import Counter as _Counter
+    import card_curation as _cc
+    from reader_selection import FRONT_LIMIT as _FRONT_LIMIT
+    _budget = _Counter()   # 核心標的「對X而言」的全天額度(10-27)
     from reader_editorial import is_macro
     import finance_editorial as _finance
     _selected, _limited = _reader.select_cards(
@@ -333,24 +337,41 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # `morning_report._cap_analysis_text` 的舊上限,2026-09-05 查明。)這裡把每一則
         # 的渲染結果記進 `diag`(進 manifest `llm.news_render`),讓判準說得出
         # 「分析了幾則、渲染了幾則、丟了哪幾則」;驗證器另擋空正文。
-        _text = _news_line(_n, packet)
+        _text = _news_line(_n, packet, _budget)
+        if _text and _is_macro:
+            # 2026-10-27 使用者:Fed/總經不放「其他類股」;10-19 的排版一致仍守 ——
+            # 不新增段落,併進兩種版本都有的「七之二、世界大事速覽」。
+            macro_news.append(_text)
+            _text = ""
         if _text and not _is_t and _text.startswith("**"):   # 10-21:九段比照備援標【類別】
             from analysis_render_depth import sector_tag
             _text = sector_tag(_n, packet) + _text
-        (tech_news if _is_t else other_news).append(_text) if _text else None  # 總經卡併回八/九(10-19)
+        (tech_news if _is_t else other_news).append(_text) if _text else None
         _diag_rows.append({"sid": _s(_n.get("source_item_id")),
                            "section": "macro" if _is_macro else "tech" if _is_t else "other",
-                           "rendered": bool(_text),
+                           "rendered": bool(_text) or _is_macro,
                            "why_chars": len(_s(_n.get("why_it_matters")))})
     if isinstance(diag, dict):
         diag.clear()
         diag.update({"analyzed": len(_diag_rows) + len(_limited),
-                     "editorial_limit": 6,
-                     "editorial_limit_tech": 4,
+                     "editorial_limit": _FRONT_LIMIT,
+                     "editorial_limit_tech": _FRONT_LIMIT,
                      "editorial_omitted": [_s(c.get("source_item_id")) for c in _limited],
                      "rendered_tech": len(tech_news), "rendered_other": len(other_news),
                      "rendered_macro": len(macro_news),
                      "dropped": [r for r in _diag_rows if not r["rendered"]][:20]})
+    # 同主線被收掉的卡併成一句,放在那條主線第一張卡所在的段落(讀者仍知道還有哪些事)
+    for _theme, _rest in _cc.overflow(_selected, _limited, packet or {}).items():
+        _line = _cc.overflow_line(_theme, _rest, packet or {})
+        _home = next((_reader.article_is_tech(c, packet or {}) for c in _selected
+                      if _cc.theme_of(c, packet or {}) == _theme), True)
+        (tech_news if _home else other_news).append(_line) if _line else None
+    if macro_news:
+        _world_at = next((i for i, p in enumerate(parts) if p.startswith(f"## {SECTION_WORLD}")), None)
+        if _world_at is None:
+            parts.append(f"## {SECTION_WORLD}" + chr(10) + (chr(10) * 2).join(macro_news))
+        else:
+            parts[_world_at] += (chr(10) * 2) + (chr(10) * 2).join(macro_news)
     news = tech_news + other_news
     notes = []
     if news:

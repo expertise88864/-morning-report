@@ -5,10 +5,11 @@ from news_actor_roles import comparison_target
 _NON_ISSUER_PHRASES = re.compile(r"東南亞|統一投信|統一發票|台灣大學")
 
 
-def companies(item: dict, packet: dict) -> str:
+def companies(item: dict, packet: dict, card: dict | None = None) -> str:
     import company_profiles
     from news_events import mentions_entity
     from official_announcements import issuer
+    from card_curation import referenced   # card 給了 → 標題點名的公司還要被卡片寫到(10-27)
 
     names = {str(code): str(value[0] or code)
              for code, value in company_profiles.PROFILES.items()}
@@ -26,7 +27,8 @@ def companies(item: dict, packet: dict) -> str:
             if name != longer and name in longer:
                 probe = re.sub(re.escape(longer), ' ', probe)
         if code == official or (mentions_entity(probe, code, {code: (name,)})
-                                and not comparison_target(probe, (name, code))):
+                                and not comparison_target(probe, (name, code))
+                                and (card is None or referenced(card, code, (name,)))):
             found.append((title_without_homonyms.find(name) if name in title_without_homonyms else len(title), code, name))
     grouped: dict[str, tuple[int, list[str]]] = {}
     for position, code, name in sorted(found):

@@ -125,6 +125,7 @@ def news_subject(n: dict, packet=None) -> dict:
     if _cp:
         cands += list(_cp.PROFILES)
     rival_named = rival_tech = False
+    import card_curation as _cc
     for c in dict.fromkeys(([issuer] if issuer else []) + cands):
         row = idx.get(c)
         if row is not None:
@@ -133,6 +134,8 @@ def news_subject(n: dict, packet=None) -> dict:
             kn = {code: (_s(row.get("name")),)}
             if code != issuer and (_ne is None or not _ne.mentions_entity(title, code, kn)):
                 continue
+            if code != issuer and not _cc.referenced(n, code, (_s(row.get("name")),)):
+                continue   # 2026-10-27:彙整稿標題的第一個公司 ≠ 卡片寫的那件事
             if code != issuer and comparison_target(title, (_s(row.get("name")), code)):
                 rival_named = True
                 rival_tech = rival_tech or is_tech({"industry": row.get("industry")})
@@ -154,6 +157,8 @@ def news_subject(n: dict, packet=None) -> dict:
         explicit = (c.upper(), disp) if disp != c else (c.upper(),)
         ticker_named = any(re.search(r"(?<![A-Za-z0-9])" + re.escape(name) + r"(?![A-Za-z0-9])", title) for name in explicit)
         if not ticker_named and not _ne.mentions_entity(title, c, {c: aliases}):
+            continue
+        if not _cc.referenced(n, c, (disp, c)):
             continue
         if comparison_target(title, (disp, c)):
             rival_named = True
@@ -285,7 +290,7 @@ def _attribution(n: dict, packet=None) -> str:
     return f"（{who}）" if who else ""
 
 
-def _news_line(n: dict, packet=None) -> str:
+def _news_line(n: dict, packet=None, budget=None) -> str:
     """一則新聞 = **備援信那樣的一段話**(使用者 2026-10-20 定案)。
 
     形狀(Markdown;HTML 併成同一段):
@@ -313,7 +318,7 @@ def _news_line(n: dict, packet=None) -> str:
     from news_heading import companies
     # 主體判定照舊(標題指名才算);registry 沒有的外國公司退而用 news_subject 的名字。
     sub = news_subject(n, packet)
-    company_label = companies(item, packet or {}) or _s(sub.get("name"))
+    company_label = companies(item, packet or {}, n) or _s(sub.get("name"))
     # 10-21 使用者:比照備援「台積電（2330，全球最大晶圓代工廠…）：」——單一主體帶簡介。
     # 同一個主體才換(「台塑化（6505）」不能換成「台塑」的簡介);簡介只是產業別就不加。
     full = _s(sub.get("label"))
@@ -338,7 +343,7 @@ def _news_line(n: dict, packet=None) -> str:
     said[0] = said[0].rstrip(_TERMINAL_MARKS) + tag + "。"
     # why_it_matters 的幾句**留在同一行**(PR #24 外審):「本報解讀：」與句中提到的
     # 公司都只在本行有效 —— 拆行會讓第二句起逃過因果防線與 2330 價格修正。
-    sentences = ["".join(said), _assets_prose(n, packet, second=False)]
+    sentences = ["".join(said), _assets_prose(n, packet, second=False, budget=budget)]
     if _s(n.get("materiality")) == "high":
         sentences.append(_watch_sentence(n))
     # 「本報解讀：」只留在 Markdown 給因果防線辨認本報分析(price/hedge guards),
@@ -409,7 +414,7 @@ def _watch_sentence(n: dict) -> str:
     return "；".join(bits)
 
 
-def _assets_prose(n: dict, packet=None, *, second: bool = True) -> str:
+def _assets_prose(n: dict, packet=None, *, second: bool = True, budget=None) -> str:
     """逐標的影響壓成**句子**:`2330:一階、二階;00662:…。`
 
     `second=False`:新聞卡只寫一階影響(使用者 10-20 精簡;二階仍驗證)。
@@ -424,6 +429,9 @@ def _assets_prose(n: dict, packet=None, *, second: bool = True) -> str:
     rows = []
     for a in (n.get("affected_assets") or []):
         if not isinstance(a, dict) or not _s(a.get("asset_id")):
+            continue
+        import card_curation   # 2026-10-27:不再每則都接「對台積電而言」;承認無關的不印
+        if not card_curation.keep_asset(n, a, packet, budget):
             continue
         aid = _s(a.get("asset_id"))
         spec = ""

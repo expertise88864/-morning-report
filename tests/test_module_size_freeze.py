@@ -189,12 +189,12 @@ MODULE_CEILINGS = {
     "reader_price_causality_guard.py": 80,  # Protect attributed quotes around known price claim.
     "sector_rotation.py": 80,  # Pure aggregation extracted from the main module.
     "reader_prose.py": 132,  # Conclusion projection extracted; do not reabsorb it.
-    "reader_selection.py": 60,  # Editorial priority moved into its own module.
+    "reader_selection.py": 62,  # Editorial priority moved out; 10-27 主題/產業/標的判準在 card_curation,這裡只接線
     "editorial_priority.py": 100,
     "reader_editorial.py": 111,
     "reader_revision.py": 85,
     "reader_evidence_writing.py": 45,
-    "news_heading.py": 40,
+    "news_heading.py": 42,   # 10-27:標題點名的公司還要被卡片寫到(判準在 card_curation)
     "news_actor_roles.py": 70,  # Rival and purchase-target roles, both source-headline-bound.
     "legacy_actor_guard.py": 65,  # Only evidence-bound correction, not open-ended prose rewriting.
     "price_reaction_guard.py": 52,  # Preserve quoted/source text while qualifying a price-cause claim.
@@ -211,6 +211,7 @@ MODULE_CEILINGS = {
     "company_ingress.py": 35,
     "scenario_window.py": 85,
     "sports_quality.py": 85,
+    "card_curation.py": 170,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
     "sports_season.py": 468,   # 季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,

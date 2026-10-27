@@ -44,7 +44,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 39  # Oct16: scheduled events stay future tense; flag same-day ones.
+DEEPSEEK_LEGACY_VERSION = 40  # Oct27: theme cap, four non-tech sectors, no forced 2330 links, macro in 七之二.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 39  # Oct16: scheduled events stay future tense; flag 
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 75  # Oct20: cards at most three sentences (fallback-letter length).
+LUNA_XHIGH_VERSION = 76  # Oct27: no forced core-asset links; one theme at most twice; non-tech spans four sectors.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -157,9 +157,9 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   該事件群 `transmission_candidates` 裡的名字﹙宣告過的供應鏈鄰居﹚,
   或 **當日 `tw_universe` 裡真實存在的台股代號**﹙那份清單證明它是
   真的在交易的股票﹚—— 三者之外的代號一律不收。
-  並且 `first_order_effect` 要寫出**那一步怎麼走**﹙不是「偏空」兩個字﹚:
-  台股不必被這則新聞點名,但**編造代號與說不出機制的「受影響」,
-  與亂灑沒有分別**﹔美股仍然要是新聞裡的主角。
+  並且 `first_order_effect` 要寫出**那一步怎麼走**﹙不是「偏空」兩個字﹚;編造代號、說不出機制、
+  或寫「與X無關」的標的**都不要列**。核心標的不是每則都要掛:沒有直接傳導就不寫 2330,
+  信裡同一個核心標的只會印前三則(先前一週近三成的新聞都硬接台積電)﹔美股仍然要是新聞裡的主角。
 - **新聞裡的數字用 `fact:` 引用。** 每則新聞的 `numeric_facts` 每一筆
   都自己帶著 `evidence_id`(附值、單位、上下文)——**照抄那個字串**,
   不要自己組編號。
@@ -311,8 +311,8 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   分配上**科技至少八則、科技之外至少七則**（金融／航運／傳產／生技／能源／
   營建／重電／汽車／觀光）——信裡的「八、科技板塊脈動」與「九、其他類股」
   是兩個獨立段落，各自靠自己的條目撐起來，不是一段的附屬。
-  同一族群（如記憶體、塑化）寫兩則以上時，**要是不同的事件**，不是同一件事
-  換句話說。真的不足時，在 `data_gaps` 說明為什麼（例如當日新聞面貧乏），
+  同一族群或同一條主線（如記憶體、AI 資本支出與融資）**最多兩則且要是不同事件**；
+  科技之外那七則**至少橫跨四個產業**，優先類股熱度表與資金輪動裡有動靜的產業。真的不足時，在 `data_gaps` 說明為什麼（例如當日新聞面貧乏），
   不要硬湊重複的事件；而且要用**指定的缺口代號**，這樣才對得上是哪一段：
   科技那一段不足填 `gap:other:tech_coverage`，
   科技以外那一段不足填 `gap:other:sector_coverage`。

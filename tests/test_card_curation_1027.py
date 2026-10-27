@@ -113,6 +113,11 @@ def test_an_effect_that_admits_no_link_is_not_printed():
         assert "對中信金(2891)而言" in ard._news_line(mixed, pk), eff
     for eff in ("對中信金沒有直接影響", "本報看不出次級影響。", "可能對中信金無直接關聯。", "看不出直接影響"):
         assert not cc.keep_asset(card("g", "x"), {"asset_id": "2891", "first_order_effect": eff}, pk, None)
+    # 外國標的不在台股清單:顯示名與別名一樣算(MU→美光、Micron)
+    for eff in ("對美光沒有直接影響。", "對Micron無直接影響", "與美光無關"):
+        assert not cc.keep_asset(card("g", "x"), {"asset_id": "MU", "first_order_effect": eff}, pk, None), eff
+    assert cc.keep_asset(card("g", "x"), {"asset_id": "MU", "first_order_effect": "對獲利不利但對美光產能沒有直接影響"},
+                         pk, None)
 
 
 def test_declared_alias_counts_as_the_card_naming_its_company():

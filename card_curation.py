@@ -148,8 +148,12 @@ def keep_asset(card: dict, asset: dict, packet: dict, budget: Counter | None) ->
     aid = str(asset.get("asset_id") or "")
     row = next((r for r in (packet or {}).get("tw_universe") or []
                 if isinstance(r, dict) and str(r.get("code")) == aid), {})
-    names = [n for n in (aid, str(row.get("name") or "")) if n]
-    prefix = "(?:對(?:" + "|".join(map(re.escape, names)) + "))?" if names else ""
+    import company_profiles
+    import entity_alias
+    # 外國標的不在 tw_universe:顯示名(MU→美光)與已宣告別名也算「這個標的」(外審 PR #29 四輪)
+    names = {n for n in (aid, str(row.get("name") or ""), company_profiles.display_name(aid)) if n}
+    names |= {a for g in entity_alias.expand(names) for a in entity_alias.ALIAS_GROUPS[g]}
+    prefix = "(?:對(?:" + "|".join(map(re.escape, sorted(names, key=len, reverse=True))) + "))?" if names else ""
     denied = re.fullmatch(_NO_EFFECT.format(prefix=prefix), effect.strip())
     if denied or any(f"與{n}無關" in effect for n in names):
         return False

@@ -4,9 +4,17 @@ import unicodedata
 from difflib import SequenceMatcher
 
 
+#: 個人討論貼文不是新聞(2026-10-28:「2891 中信金 - 富邦現金股利… - 股市爆料同學會 - CMoney」成了中信金新聞卡)。
+_FORUM = re.compile(r"股市爆料同學會|[-－–]\s*(?:PTT|批踢踢|Dcard|Mobile01)[^-－–]*$", re.I)
+
+
+def forum_post(title: str) -> bool:
+    return bool(_FORUM.search(str(title or "")))
+
+
 def relevant(label: str, title: str) -> bool:
     # A stock discussion repost is not local reporting, even with a ticker prefix.
-    if re.search(r"股市爆料同學會\s*[-－–]\s*CMoney\s*$", title, re.I):
+    if forum_post(title):
         return False
     if re.match(r"^\s*討論牆\s*[|｜]", title):
         return False

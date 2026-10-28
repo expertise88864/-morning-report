@@ -189,7 +189,7 @@ MODULE_CEILINGS = {
     "reader_price_causality_guard.py": 80,  # Protect attributed quotes around known price claim.
     "sector_rotation.py": 80,  # Pure aggregation extracted from the main module.
     "reader_prose.py": 132,  # Conclusion projection extracted; do not reabsorb it.
-    "reader_selection.py": 62,  # Editorial priority moved out; 10-27 主題/產業/標的判準在 card_curation,這裡只接線
+    "reader_selection.py": 68,  # Editorial priority moved out; 10-27 主題/產業/標的判準在 card_curation,這裡只接線
     "editorial_priority.py": 100,
     "reader_editorial.py": 111,
     "reader_revision.py": 85,
@@ -211,7 +211,7 @@ MODULE_CEILINGS = {
     "company_ingress.py": 35,
     "scenario_window.py": 85,
     "sports_quality.py": 85,
-    "card_curation.py": 200,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
+    "card_curation.py": 255,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
     "sports_season.py": 468,   # 季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,
@@ -226,7 +226,7 @@ MODULE_CEILINGS = {
     "email_style_dictionary.py": 210,
     "email_syntax_compact.py": 130,
     "reader_fact_labels.py": 65,
-    "news_display_quality.py": 65,
+    "news_display_quality.py": 70,
     "news_memory_selection.py": 60,
     "news_memory.py": 330,
     "news_research_context.py": 310,
@@ -530,7 +530,7 @@ MODULE_CEILINGS = {
     # 第十九輪 P1-3:新聞正規化與截斷拆出來 ——「誰留下來」是獨立的決定,
     # 而先前的順序錯誤(先截斷再算必分析)在 `build()` 裡看不出來。
     # 深度加強第二批:改版重發去重(+15 行)。
-    "news_normalize.py": 260,
+    "news_normalize.py": 263,
     # 深度加強第二批:數字事實抽取(帶單位的數字 → fact: 命名空間)與
     # 同源標題指紋。借自 5W1H 結構化抽取與 RSS 聚合器的內容指紋做法,
     # 取其中純規則做得到的一塊 —— ML 相依違反本 repo 的確定性約束。

@@ -41,7 +41,9 @@ def select_cards(cards: list, packet: dict) -> tuple[list, list]:
     ordered = importance_order(cards, packet)
     distinct = editorial_priority.distinct(ordered, packet)
     reps = editorial_priority.required_representatives(distinct, packet)
-    capped, _ = cc.cap_themes([c for c in distinct if not is_macro(c, packet)], packet, reps)  # 同主線最多兩張
+    capped, spill = cc.cap_themes([c for c in distinct if not is_macro(c, packet)], packet, reps)  # 同主線先上兩張
+    capped = cc.first_per_company(capped, packet, reps)   # 10-28:同一家公司一張,其餘「同公司還有」
+    spill = [c for c in distinct if any(c is s for v in spill.values() for s in v)]
     selected = []
     for tech in (True, False):
         group = [c for c in capped if article_is_tech(c, packet) == tech]
@@ -50,7 +52,10 @@ def select_cards(cards: list, packet: dict) -> tuple[list, list]:
         if not tech:
             preferred = finance.balanced([items.get(c.get("source_item_id"), {}) for c in group], 1)
             reserve += [c for c in group if c not in reserve and any(items.get(c.get("source_item_id")) is n for n in preferred)]
-        selected.extend((reserve + [c for c in group if c not in reserve])[:FRONT_LIMIT])
+        chosen = (reserve + [c for c in group if c not in reserve])[:FRONT_LIMIT]
+        taken = {cc.company_key(c, packet) for c in selected + chosen} - {""}
+        selected.extend(cc.backfill(chosen, [c for c in spill if article_is_tech(c, packet) == tech],
+                                    packet, FRONT_LIMIT, taken))   # 10-28:有空位就補回同主線的卡
     selected.extend(c for c in distinct if is_macro(c, packet))
     return selected, [c for c in ordered if c not in selected]
 

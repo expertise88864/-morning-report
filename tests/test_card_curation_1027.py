@@ -57,8 +57,12 @@ def test_ai_vocabulary_in_the_headline_does_not_make_freight_news_tech():
     assert not rs.article_is_tech(c, pk)
 
 
-def test_one_theme_takes_at_most_two_cards_and_the_rest_become_one_line():
-    """實信:AI 資本支出與融資一條主線佔了四五張(Anthropic×2、Meta、微軟)。"""
+def test_one_theme_takes_at_most_two_cards_and_the_rest_become_one_line(monkeypatch):
+    """實信:AI 資本支出與融資一條主線佔了四五張(Anthropic×2、Meta、微軟)。
+
+    2026-10-28 使用者「有空位就補回」:上限只決定先後;段落**滿了**才併成一句(這裡把段落縮成 2 張)。
+    """
+    monkeypatch.setattr(rs, "FRONT_LIMIT", 2)
     titles = ["Meta擬增資950億美元支應AI基建", "Anthropic揭露十年逾5000億美元支出承諾",
               "微軟以自願離職對沖AI資本支出", "Alphabet上調資料中心資本支出"]
     pk = packet(*[(f"a{i}", t) for i, t in enumerate(titles)], ("s", "陽明11月兩條航線恢復紅海"))
@@ -82,8 +86,12 @@ def test_other_sectors_rotate_before_a_third_card_from_the_same_sector():
     cards = [card(s, t + LONG, [(assets[s], "營運面影響")]) for s, t in titles]
     order = [c["source_item_id"] for c in cc.sector_balanced(cards, pk)]
     assert order.index("y") < order.index("f2") and order.index("c") < order.index("f2")
-    picked = [c["source_item_id"] for c in rs.select_cards(cards, pk)[0]]   # 選卡真的有接上
-    assert picked.index("y") < picked.index("f2") and picked.index("c") < picked.index("f2")
+    selected, limited = rs.select_cards(cards, pk)   # 選卡真的有接上
+    picked = [c["source_item_id"] for c in selected]
+    # 2026-10-28 使用者:同一家公司一段只放一張,第二則接成「同公司還有」
+    assert picked == ["f0", "f1", "y", "c"], picked
+    extras = cc.company_extras(selected, limited, pk)
+    assert [c["source_item_id"] for c in extras["f0"]] == ["f2"]
 
 
 def test_core_asset_is_printed_on_at_most_three_cards_a_day():
@@ -126,3 +134,46 @@ def test_declared_alias_counts_as_the_card_naming_its_company():
     assert cc.referenced(c, "", ("Apple",))
     assert cc.referenced(card("m", "美光罷工危機解除，記憶體供給不再受威脅" + LONG), "", ("Micron",))
     assert not cc.referenced(card("x", "MUST 這個英文字不是那家公司的代號" + LONG), "MU", ())
+
+
+
+def test_a_theme_backfills_when_the_section_has_room():
+    """2026-10-28 實信:AI 資本支出四則被併成一行,八段只剩四張 —— 段落沒滿就補回。"""
+    titles = ["Meta擬增資950億美元支應AI基建", "Anthropic揭露十年逾5000億美元支出承諾",
+              "微軟以自願離職對沖AI資本支出", "Alphabet上調資料中心資本支出"]
+    pk = packet(*[(f"a{i}", t) for i, t in enumerate(titles)])
+    cards = [card(f"a{i}", t + LONG) for i, t in enumerate(titles)]
+    selected, limited = rs.select_cards(cards, pk)
+    assert len(selected) == 4 and not limited
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"] = cards
+    assert "同主題（" not in ar.render(obj, pk)
+
+
+def test_one_card_per_company_with_a_same_company_line():
+    """2026-10-28 實信:九段兩張中信金。第二則接在第一張後面一句,不另起一張。"""
+    pk = packet(("m", "中信金：中信銀公告轉讓授信資產", "2891"), ("n", "中信金發行無擔保公司債", "2891"),
+                ("y", "陽明復航紅海", "2609"))
+    cards = [card("m", "中信銀把授信資產轉讓給遠東銀與台新銀" + LONG, [("2891", "資產配置調整")]),
+             card("n", "中信金子公司取得集團公司債" + LONG, [("2891", "資金結構調整")]),
+             card("y", "陽明復航紅海" + LONG, [("2609", "運價")])]
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"] = cards
+    md = ar.render(obj, pk)
+    assert md.count("**中信金（2891") == 1, md
+    assert "同公司還有：中信金發行無擔保公司債" in md
+
+
+def test_forum_posts_never_become_news():
+    """「2891 中信金 - 富邦現金股利… - 股市爆料同學會 - CMoney」是個人貼文,不是新聞。"""
+    import news_display_quality as q
+    import news_normalize
+    assert q.forum_post("2891 中信金 - 富邦現金股利108萬… - 股市爆料同學會 - CMoney")
+    assert q.forum_post("台積電法說會心得 - PTT批踢踢實業坊")
+    assert q.forum_post("買房該選北屯還南屯 - Dcard")
+    assert not q.forum_post("中信金前三季獲利創高 - 經濟日報")
+    assert not q.forum_post("PTT 鄉民熱議台積電漲價 - 自由時報")
+    news = [{"source_item_id": "a", "title": "2891 中信金 - 貼文 - 股市爆料同學會 - CMoney"},
+            {"source_item_id": "b", "title": "中信金前三季獲利創高 - 經濟日報"}]
+    items = news_normalize.normalize_news(news)[0]
+    assert [i["source_item_id"] for i in items] == ["b"]

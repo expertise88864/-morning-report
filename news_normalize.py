@@ -105,12 +105,13 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     from evidence_packet import (
         MAX_FULLTEXT_CHARS, MAX_NEWS_ITEMS, MAX_SUMMARY_CHARS,
         _GRADE_RANK, _grade, _identity, _sid)
+    from news_display_quality import forum_post
     items, seen = [], set()
     for i, n in enumerate(news or []):
         if not isinstance(n, dict):
             continue
         sid = _sid(n, i)
-        if sid in seen:          # 上游已去重,這裡只是防守
+        if sid in seen or forum_post(n.get("title")):   # 討論區貼文不是新聞(10-28)
             continue
         seen.add(sid)
         # **每一個外部字串都要過消毒器。** 標題、摘要、全文、來源名、

@@ -109,6 +109,64 @@ def cap_themes(cards: list, packet: dict, keep: list | None = None) -> tuple[lis
     return kept, overflow
 
 
+def backfill(chosen: list, spill: list, packet: dict, limit: int, taken: set) -> list:
+    """段落不滿 `limit` 張時,把主線超額的卡依原順序補回(使用者 2026-10-28「有空位就補回」)。
+
+    主線上限只決定先後:不同主線先上版;科技新聞大多屬於同一主線的日子,段落不再只剩四張。
+    同一家公司已經有卡的不補(那一則改走「同公司還有」)。
+    """
+    out = list(chosen)
+    for c in spill:
+        key = company_key(c, packet)
+        if len(out) >= limit:
+            break
+        if key not in taken:
+            out.append(c)
+            taken.add(key) if key else None
+    return out
+
+
+def company_key(card: dict, packet: dict) -> str:
+    """卡片的單一公司主角(`中信金（2891）`);多家或沒有公司回空字串。"""
+    from news_heading import companies
+    label = companies(_item(card, packet), packet or {})
+    return label if label and "、" not in label else ""
+
+
+def first_per_company(cards: list, packet: dict, keep: list | None = None) -> list:
+    """同一家公司只留第一張(依重要性);`keep` 裡的卡一定留(使用者 2026-10-28:中信金兩張)。"""
+    seen, out = set(), []
+    for c in cards:
+        key = company_key(c, packet)
+        if key and key in seen and c not in (keep or []):
+            continue
+        seen.add(key)
+        out.append(c)
+    return out
+
+
+def company_extras(selected: list, limited: list, packet: dict) -> dict:
+    """{留下那張的 source_item_id: [同公司被併掉的卡…]}。"""
+    home = {}
+    for c in selected:
+        home.setdefault(company_key(c, packet), c.get("source_item_id"))
+    out: dict = {}
+    for c in limited:
+        key = company_key(c, packet)
+        if key and key in home:
+            out.setdefault(home[key], []).append(c)
+    return out
+
+
+def company_line(cards: list, packet: dict) -> str:
+    """`同公司還有：標題（來源）；…。` —— 接在那家公司那張卡後面。"""
+    from analysis_render_depth import _headline_of
+    import legacy_layout
+    heads = [legacy_layout.with_source(h, legacy_layout.source_of(packet, c.get("source_item_id"))).rstrip("。")
+             for c in cards for h in [_headline_of(c, packet)] if h][:3]
+    return "同公司還有：" + "；".join(heads) + "。" if heads else ""
+
+
 def sector_balanced(cards: list, packet: dict) -> list:
     """「其他類股」:每個產業第一輪最多 SECTOR_FIRST_PASS 張,讓不同產業先上版,其餘照原順序補在後面。"""
     from analysis_render_depth import sector_tag

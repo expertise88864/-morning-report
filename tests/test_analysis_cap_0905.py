@@ -56,17 +56,32 @@ def _pad(prefix: str, n: int) -> str:
     return s[:n]
 
 
+#: 每張卡一家不同的公司(2026-10-28 起同一家公司一段只放一張;實信本來就是各家各一則)。
+_TECH_CODES = [str(3000 + i) for i in range(40)]
+_OTHER_CODES = [str(5000 + i) for i in range(40)]
+_OTHER_INDUSTRIES = ("金融保險業", "航運業", "鋼鐵工業", "塑膠工業", "生技醫療業", "建材營造業")
+
+
+def _name(code: str) -> str:
+    kind = "晶片廠" if code.startswith("3") else "傳產廠"
+    return kind + "甲乙丙丁戊己庚辛壬癸"[int(code) % 10] + "子丑寅卯辰巳午未申酉"[int(code) // 10 % 10]
+
+
 def _packet(n_tech: int, n_other: int) -> dict:
     news = []
     for i in range(n_tech):
-        news.append({"source_item_id": f"t{i}", "title": f"台積電 CoWoS 產能再擴一倍(第 {i} 則)",
+        news.append({"source_item_id": f"t{i}", "title": f"{_name(_TECH_CODES[i])} CoWoS 產能再擴一倍(第 {i} 則)",
                      "summary": "先進封裝擴產。", "source_name": "鉅亨網", "source_grade": "B",
-                     "entities": ["2330"], "published_at": "2026-09-04T20:00:00+08:00"})
+                     "entities": [_TECH_CODES[i]], "published_at": "2026-09-04T20:00:00+08:00"})
     for i in range(n_other):
-        news.append({"source_item_id": f"o{i}", "title": f"富邦金 8 月獲利創新高(第 {i} 則)",
-                     "summary": "壽險與銀行雙引擎。", "source_name": "經濟日報", "source_grade": "B",
-                     "entities": ["2881"], "published_at": "2026-09-04T20:00:00+08:00"})
-    return {"news": news, "tw_universe": [
+        news.append({"source_item_id": f"o{i}", "title": f"{_name(_OTHER_CODES[i])} 8 月獲利創新高(第 {i} 則)",
+                     "summary": "本業與業外雙引擎。", "source_name": "經濟日報", "source_grade": "B",
+                     "entities": [_OTHER_CODES[i]], "published_at": "2026-09-04T20:00:00+08:00"})
+    universe = [{"code": c, "name": _name(c), "industry": "半導體業", "desc": f"{_name(c)} — 晶圓代工"}
+                for c in _TECH_CODES]
+    universe += [{"code": c, "name": _name(c), "industry": _OTHER_INDUSTRIES[i % len(_OTHER_INDUSTRIES)],
+                  "desc": f"{_name(c)} — 傳產"} for i, c in enumerate(_OTHER_CODES)]
+    return {"news": news, "tw_universe": universe + [
         {"code": "2330", "name": "台積電", "industry": "半導體業",
          "desc": "台積電 — 全球晶圓代工龍頭"},
         {"code": "2881", "name": "富邦金", "industry": "金融保險業",
@@ -90,8 +105,8 @@ def production_scale_analysis(n_tech: int, n_other: int) -> dict:
     """一份**生產量級**的分析物件:每段都有料、每張卡都是實信的尺寸。"""
     obj = fx.valid_analysis()
     tpl = obj["top_news_analysis"][0]
-    obj["top_news_analysis"] = ([_card(tpl, f"t{i}", "2330") for i in range(n_tech)]
-                                + [_card(tpl, f"o{i}", "2881") for i in range(n_other)])
+    obj["top_news_analysis"] = ([_card(tpl, f"t{i}", _TECH_CODES[i]) for i in range(n_tech)]
+                                + [_card(tpl, f"o{i}", _OTHER_CODES[i]) for i in range(n_other)])
     obj["world_events"] = [
         {"what": _pad(f"世界大事 {i}:", _WORLD_WHAT),
          "why_it_matters": _pad("為什麼重要:", _WORLD_WHY),

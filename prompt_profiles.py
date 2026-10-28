@@ -44,7 +44,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 40  # Oct27: theme cap, four non-tech sectors, no forced 2330 links, macro in 七之二.
+DEEPSEEK_LEGACY_VERSION = 41  # Oct28: same theme allowed when the events differ (order decided by Python).
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 40  # Oct27: theme cap, four non-tech sectors, no forc
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 76  # Oct27: no forced core-asset links; one theme at most twice; non-tech spans four sectors.
+LUNA_XHIGH_VERSION = 77  # Oct28: a theme may have several distinct events; Python orders them.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -311,7 +311,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   分配上**科技至少八則、科技之外至少七則**（金融／航運／傳產／生技／能源／
   營建／重電／汽車／觀光）——信裡的「八、科技板塊脈動」與「九、其他類股」
   是兩個獨立段落，各自靠自己的條目撐起來，不是一段的附屬。
-  同一族群或同一條主線（如記憶體、AI 資本支出與融資）**最多兩則且要是不同事件**；
+  同一族群或同一條主線（如記憶體、AI 資本支出與融資）寫兩則以上時**要是不同事件**（排序與先後由程式決定）；
   科技之外那七則**至少橫跨四個產業**，優先類股熱度表與資金輪動裡有動靜的產業。真的不足時，在 `data_gaps` 說明為什麼（例如當日新聞面貧乏），
   不要硬湊重複的事件；而且要用**指定的缺口代號**，這樣才對得上是哪一段：
   科技那一段不足填 `gap:other:tech_coverage`，

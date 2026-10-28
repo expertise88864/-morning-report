@@ -320,6 +320,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     import finance_editorial as _finance
     _selected, _limited = _reader.select_cards(
         _finance.order_analyses(obj.get("top_news_analysis"), packet), packet or {})
+    _extras = _cc.company_extras(_selected, _limited, packet or {})   # 10-28:同公司併卡
+    _merged = [c for v in _extras.values() for c in v]
     for _n in _selected:
         if not isinstance(_n, dict):
             continue
@@ -338,6 +340,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 的渲染結果記進 `diag`(進 manifest `llm.news_render`),讓判準說得出
         # 「分析了幾則、渲染了幾則、丟了哪幾則」;驗證器另擋空正文。
         _text = _news_line(_n, packet, _budget)
+        if _text and _extras.get(_n.get("source_item_id")):
+            _text += chr(10) * 2 + _cc.company_line(_extras[_n.get("source_item_id")], packet or {})
         if _text and _is_macro:
             # 2026-10-27 使用者:Fed/總經不放「其他類股」;10-19 的排版一致仍守 ——
             # 不新增段落,併進兩種版本都有的「七之二、世界大事速覽」。
@@ -361,7 +365,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                      "rendered_macro": len(macro_news),
                      "dropped": [r for r in _diag_rows if not r["rendered"]][:20]})
     # 同主線被收掉的卡併成一句,放在那條主線第一張卡所在的段落(讀者仍知道還有哪些事)
-    for _theme, _rest in _cc.overflow(_selected, _limited, packet or {}).items():
+    for _theme, _rest in _cc.overflow(_selected, [c for c in _limited if not any(c is m for m in _merged)],
+                                      packet or {}).items():
         _line = _cc.overflow_line(_theme, _rest, packet or {})
         _home = next((_reader.article_is_tech(c, packet or {}) for c in _selected
                       if _cc.theme_of(c, packet or {}) == _theme), True)

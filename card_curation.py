@@ -129,7 +129,8 @@ def backfill(chosen: list, spill: list, packet: dict, limit: int, taken: set) ->
 def company_key(card: dict, packet: dict) -> str:
     """卡片的單一公司主角(`中信金（2891）`);多家或沒有公司回空字串。"""
     from news_heading import companies
-    label = companies(_item(card, packet), packet or {})
+    # 傳卡片:標題點名、但卡片沒寫到的公司不算主角(彙整稿,10-27;PR #30 外審)
+    label = companies(_item(card, packet), packet or {}, card)
     return label if label and "、" not in label else ""
 
 

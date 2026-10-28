@@ -177,3 +177,34 @@ def test_forum_posts_never_become_news():
             {"source_item_id": "b", "title": "中信金前三季獲利創高 - 經濟日報"}]
     items = news_normalize.normalize_news(news)[0]
     assert [i["source_item_id"] for i in items] == ["b"]
+
+
+
+def test_company_key_uses_the_card_not_just_the_headline():
+    """PR #30 外審:彙整稿標題點名美光、卡片寫公股投信 —— 不得被當成美光卡併掉另一張美光卡。"""
+    pk = packet(("r", "〈台股盤前要聞〉中鋼罷工危機解除、四大公股投信整併案拍板", "2002"),
+                ("s", "中鋼熱鐵磚投資250億", "2002"))
+    roundup = card("r", "四大公股投信整併案拍板，合併後資產規模躍居前段" + LONG)
+    steel = card("s", "中鋼與夥伴切入熱鐵磚商機" + LONG, [("2002", "減碳布局")])
+    assert cc.company_key(roundup, pk) == ""
+    assert cc.company_key(steel, pk) == "中鋼（2002）"
+    selected, _ = rs.select_cards([roundup, steel], pk)
+    assert roundup in selected and steel in selected
+
+
+def test_the_legacy_prompt_never_sees_forum_posts(monkeypatch):
+    """PR #30 外審:過濾只在特化證據包;落回備援時原始新聞清單仍會進提示詞。"""
+    import morning_report as mr
+    seen = {}
+
+    def fake_build_prompt(quotes, fair, predictions, news, *rest):
+        seen["titles"] = [n.get("title") for n in news]
+        raise RuntimeError("stop after capturing the news list")
+    monkeypatch.setattr(mr, "_build_prompt", fake_build_prompt)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "")
+    news = [{"title": "2891 中信金 - 貼文 - 股市爆料同學會 - CMoney"}, {"title": "中信金獲利創高 - 經濟日報"}]
+    try:
+        mr._call_llm_analysis_impl({}, {}, {}, news)
+    except Exception:   # noqa: BLE001 - 只看送進提示詞的新聞清單
+        pass
+    assert seen["titles"] == ["中信金獲利創高 - 經濟日報"], seen

@@ -12,6 +12,10 @@ def forum_post(title: str) -> bool:
     return bool(_FORUM.search(str(title or "")))
 
 
+def without_forum_posts(news: list | None) -> list:
+    return [n for n in news or [] if not (isinstance(n, dict) and forum_post(n.get("title")))]
+
+
 def relevant(label: str, title: str) -> bool:
     # A stock discussion repost is not local reporting, even with a ticker prefix.
     if forum_post(title):

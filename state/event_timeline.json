@@ -178,8 +178,8 @@
  },
  "geopolitical:2324:2026-10": {
   "first_seen": "2026-10-28",
-  "days": 1,
-  "last_seen": "2026-10-28",
+  "days": 2,
+  "last_seen": "2026-10-29",
   "latest_title": "2324 仁寶 - 美伊戰爭，油價大漲，美國國債40兆美元，美國9月cpi 3.... - 股市爆料同學會 - CMoney",
   "latest_summary": "",
   "object": "",
@@ -253,6 +253,117 @@
    "台塑化"
   ],
   "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:China Airlines:2026-10": {
+  "first_seen": "2026-10-29",
+  "days": 1,
+  "last_seen": "2026-10-29",
+  "latest_title": "Pakistan restores airspace access for China Airlines",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "access",
+   "airspace",
+   "pakistan",
+   "restores"
+  ],
+  "entity": "China Airlines",
+  "subject_basis": "literal",
+  "subjects": [
+   "China Airlines"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:EVA Air:2026-10": {
+  "first_seen": "2026-10-29",
+  "days": 1,
+  "last_seen": "2026-10-29",
+  "latest_title": "Pakistan restores airspace access for EVA Air",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "access",
+   "airspace",
+   "pakistan",
+   "restores"
+  ],
+  "entity": "EVA Air",
+  "subject_basis": "literal",
+  "subjects": [
+   "EVA Air"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:美光:2026-10": {
+  "first_seen": "2026-10-29",
+  "days": 1,
+  "last_seen": "2026-10-29",
+  "latest_title": "Taiwan labor ministry says Taichung Micron agreement is a valid civil contract",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "agreement",
+   "civil",
+   "contract",
+   "is",
+   "labor",
+   "ministry",
+   "taichung",
+   "taiwan",
+   "valid"
+  ],
+  "entity": "美光",
+  "subject_basis": "alias",
+  "subjects": [
+   "美光"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:特斯拉:2026-10": {
+  "first_seen": "2026-10-29",
+  "days": 1,
+  "last_seen": "2026-10-29",
+  "latest_title": "美男大生涉酒駕肇逃2女遭特斯拉超速撞飛訴訟稱：像垃圾丟路邊- 國際 - dotdotnews",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "dotdotnews",
+   "丟路",
+   "像垃",
+   "國際",
+   "圾丟",
+   "垃圾",
+   "大生",
+   "女遭",
+   "撞飛",
+   "涉酒",
+   "生涉",
+   "男大",
+   "美男",
+   "肇逃",
+   "訟稱",
+   "訴訟",
+   "超速",
+   "路邊",
+   "速撞",
+   "酒駕",
+   "飛訴",
+   "駕肇"
+  ],
+  "entity": "特斯拉",
+  "subject_basis": "alias",
+  "subjects": [
+   "特斯拉"
+  ],
+  "event_type": "litigation",
   "action": "",
   "identity_schema": 14
  }

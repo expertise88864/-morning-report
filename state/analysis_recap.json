@@ -643,5 +643,49 @@
    "deadline": "2026-11-02"
   }
  ],
- "watch_seq": 96
+ "watch_seq": 96,
+ "legacy_report": {
+  "date": "2026-10-29",
+  "analysis_origin": "legacy_fallback_after_luna_failure",
+  "status": "unvalidated_model_opinion",
+  "items": [
+   {
+    "statement": "Alphabet（GOOGL，全球最大搜尋與雲端廣告商之一）與微軟（MSFT，Azure 雲端與 Office 生態系）：Alphabet 第三季營收與獲利雙雙低於預期，為近四年首見，2026 年資本支出維持不變、預告 2027 年才顯著增加，盤後跌 10% （CNBC）。同晚微軟 Azure 營收年增 48%、盤後漲 4%，但資本支出低於市場期待，CoreWeave、Nebius 等新雲端商跟著下挫 （CNBC）。傳導機制是這樣：AI 伺服器拉貨節奏由四大雲端商的資本支出曲線決定，capex 遞延會把 CoWoS（把多顆晶片疊在一起、當成一顆用的先進封裝）與先進製程的訂單認列時點往後推。這則新聞說不出量級——2027 年「顯著增加」沒有金額，只有方向。[A 級・信心:中]",
+    "source_urls": [
+     "https://www.cnbc.com/2026/10/28/alphabet-googl-earnings-q3-2026.html"
+    ]
+   },
+   {
+    "statement": "聯電（2303，全球第三大晶圓代工廠，以成熟與特殊製程為主）：董事會核准追加約 32 億美元資本支出，加速新加坡與台南廠擴充，並定調三年內 AI 相關營收從 3 億美元拉升到占全公司 25% （鉅亨）。這條走的是矽光子與先進封裝的區隔路線，與台積電先進製程不直接競爭，但會排擠設備與廠務資源。32 億美元是明確金額，營收貢獻得等裝機與客戶驗證，時點未揭露。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE9xWDV4d0hEWjBFOXl6WWtjVmZnVE1Jb0lQNDl5SFo1WFRnOVRiM0VfMVVlWHhYX0l4eG1DMFFuRk1CekZUb20yUTA5dDZHRXc?oc=5"
+    ]
+   },
+   {
+    "statement": "台光電（2383，銅箔基板股王，AI 伺服器高速板材供應商）：第三季稅後純益 145 億元、年增 265.8%，單季每股盈餘 40.47 元，前三季累計 82.92 元，同創單季新高 （鉅亨）。銅箔基板是 AI 伺服器與高階交換器的關鍵材料，獲利暴衝反映高階板材出貨結構改善。它與第二條日月光同向——封裝擴產、板材升級，都指向 AI 硬體規格還在往上走。但台光電不供貨給 2330，與台積電營收沒有直接關聯。[A 級・信心:中-高]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6639854"
+    ]
+   },
+   {
+    "statement": "台達電（2308，電源管理與散熱龍頭，AI 伺服器電源代工）：前三季稅後純益 691 億元、年增 61% （經濟日報）；同日公告德國子公司合併 Delta Controls Germany，並對荷蘭、新加坡子公司增資以轉投資 DHK （MOPS）。AI 資料中心的電源與散熱需求是這波成長主因，海外增資則是把產能往外鋪。獲利是已實現的，接下來要看第四季電源出貨能否延續，這比營收年增率本身更關鍵。[A 級・信心:中-高]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE44d0Y0U1dSd2RsWTEySzdDaTR1TEQ5d1o2SjhtSWdFWE9yeW5sdkZxU0M4MGZKUW5nUUZvZllXSUVZSTNnRWxZSi1yamE4X1JKeVp4a3VnVDJoZ9IBX0FVX3lxTFBIVG9WNW5tVTlkbzRmaFRKbjVrX19fVFZlZEpxWEsxQThxTHZSVk03eG42dzhOTGVnNU8xWlBYT1duLThlS3A2TGtDMXdzSG5QdFVzUjZxOTUxUVdNRFhz?oc=5"
+    ]
+   },
+   {
+    "statement": "中華精測（6510，半導體測試介面廠）：第三季合併營收與獲利同步改寫歷史新高，總經理黃水可看好全年營收年增 50%、明年維持高成長 （鉅亨）。測試介面需求直接對應高階晶片測試量，AI 與 HPC 晶片複雜度提高會拉長每顆晶片的測試時間與介面更換頻率。它是 2330 先進製程出貨量的下游驗證指標，但本身市值小，對加權指數貢獻有限。[A 級・信心:中]",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6640029"
+    ]
+   },
+   {
+    "statement": "【房市政策｜台灣】央行第二戶房貸：立法院質詢揭露不動產放款增加 1.4 兆元、第二戶房貸卻放寬，楊金龍在備詢時承認這項調整 （Newtalk）；同時他回應房貸四大問題，表示短期不全面鬆綁限貸令 （娛樂星聞）。政策方向是「選擇性鬆綁、整體不放」，機制上對換屋族與第二戶買方的自備款壓力略有緩解，對建商推案去化是溫和利多，但幅度遠小於全面鬆綁。[B 級・信心:中-低，資訊有限]",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiW0FVX3lxTE0teTg0U3B5VkZ2aDM1TkZOaDRKejYxZXQzaE1oaVBURHhFZm14TV9OYWFMNWVGUldRUzg1a05yd1ROYnE2ck10cXFmVFd0dHVfVTVtWHlWeTVBaEU?oc=5",
+     "https://news.google.com/rss/articles/CBMiSkFVX3lxTE5WOFp6XzBtdU9yZDFIY1V6U3h6Yy1YeWZaWENlaE9BRmlHSWc2MEVBWTVrc3I3elBueTNwWUZtbU9DbEE4R2kzX2lR0gFfQVVfeXFMTkYxX0lyS1BiSXQ4dXBSeUFMWEVQUERMQ1U4U1pxVWtBM0JkbS1heUFITzE5TGM3NVlGbFgxZENjWHEtWXY5a2FhSDQwNEROblZtTlRTSG9IaV9aaXdMOTA?oc=5"
+    ]
+   }
+  ]
+ }
 }

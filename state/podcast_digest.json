@@ -862,6 +862,79 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2428181679",
+        "title": "2026/10/29(四)微軟噴谷歌崩 巨頭撐得住?聯準會攤牌 升息還沒完?【早晨財經速解讀】",
+        "published": "Thu, 29 Oct 2026 01:08:35 +0000",
+        "processed_at": "2026-10-29T07:53:24Z",
+        "digest": {
+          "summary_points": [
+            "聯準會本次維持利率3.75%至4%，但兩名官員主張升息；主持人認為主席刻意不給前瞻指引，12月是否升息未有定論，華爾街與聯準會陷入「預判來預判去」的僵局，高利率將維持但方向難測。",
+            "微軟財報因AI雲端收入強勁、資本支出未爆衝，主持人認為市場會給較公正評價；Google則因廣告營收與股權投資損失不如預期，股價出現M頭與套牢區壓力，兩巨頭內部評價極端分歧。",
+            "主持人以甲骨文預估2028年現金流轉正、2030年營收至少2250億美元後盤後大漲約10%為例，認為算力需求本質強勁，真正關鍵是巨頭能否在高利率下熬到後年；AI投資有時間線，不能一直靠融資硬撐。",
+            "主持人指出美債買家結構從央行轉向私人投資者（近70%），亞洲盟友減持美債；但強調勿預設立場解讀為美元霸權瓦解，而是日本公債利率、匯率配置與台灣資金偏好股市等因素，美債波動將加大、政府融資成本承壓。",
+            "主持人從精品、汽車、家電到廣告支出下滑，認為K型經濟加劇：美國前10%家庭持有87%股票，消費靠頂層支撐；非AI產業明顯疲弱，廣告主沒錢下單反過來壓迫Google廣告現金流，AI榮景只靠少數巨頭硬撐。"
+          ],
+          "tickers": [
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為微軟AI雲端收入強勁且資本支出未失控，市場會給較公正評價，股價不再疲弱。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "從投資人的角度來看,這說明著AI的確已經開始反映在營收和獲利上,但是還沒有完全轉化成現金流。但是重點在於它的資本支出也不是毫無節制的往上拉升",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet/Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為Google廣告營收不如預期且認列股權損失，股價破套牢區並出現M頭警訊，現金流與廣告主縮手壓力較大。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "可是Google的部分完了,有點M頭的感覺了。",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人提到甲骨文預估2028年現金流轉正、2030年營收至少2250億美元，盤後大漲約10%，認為算力需求強勁。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "已經針對2028年有信心預估現金流即將轉正。盤後股價也是大漲了,接近有10%左右。",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為聯準會高利率僵局加上AI巨頭評價分歧，使大盤極度依賴少數巨頭與頂層消費；AI需求真實但有現金流時間線，市場波動將加大，非AI與消費端已明顯承壓。",
+          "action_view": "操作上不要預設立場或因Google單日大跌就恐慌，巨頭本業強、終究否極泰來；但需盯緊自由現金流與融資成本，若巨頭接連鬆動就要提高警覺。",
+          "notable_quote": "所以投資最重要的一件事情就是不要預設立場啊。",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "所以投資最重要的一件事情就是不要預設立場啊。"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2427272874",
         "title": "2026/10/28(三)川普選情告急!美股將迎政治變局?Anthropic IPO行情 美股買點到了?【早晨財經速解讀】",
         "published": "Wed, 28 Oct 2026 01:07:51 +0000",
@@ -1578,108 +1651,6 @@
           }
         },
         "shown_at": "2026-10-15T00:28:23Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2417993178",
-        "title": "2026/10/13(二)記憶體重挫 買股趁現在?美債殖利率突破5% AI巨頭反而加速舉債？【早晨財經速解讀】",
-        "published": "Tue, 13 Oct 2026 01:06:20 +0000",
-        "processed_at": "2026-10-13T02:05:07Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為美股創高不是全面追多，而是低本益比造成的價值回調：標普75%成分股距52週高點跌逾10%、37%跌逾20%，前五大股市值等於後434家總和，等權指數只漲20%，但資安股CIBR卻因AI資安熱潮逆勢創高、9月以來流入9.5億美元。",
-            "主持人指出本波回調的瓶頸不是AI需求消失，而是電力與資金成本跟不上：瑞銀預估電力追不上GPU、資料中心2030前無法完成，博通CEO稱最大瓶頸是「錢」，AI算力租金高達合理報酬4倍，促使博通、甲骨文、SpaceX相繼安排數百億美元晶片融資，並把當前5%利率視為最後便宜資金。",
-            "主持人對費半與台積電偏多：費半回檔2.67%，台積電ADR從7月370美元上漲至10月初480美元後拉回，財報前賣壓常是財報後機會，均值回調後下半年本益比更低，且費半是唯一賺到錢的板塊，機會陸續存在。",
-            "主持人說美債殖利率突破5.3%創2002年新高，黃金連六週下跌但突破當日反而收漲，顯示部分資金已把債券視為風險來源；黃金最大壓力是利率預期反壓與央行買盤成為市場假設，全球央行每月買60噸難再提供邊際動能。",
-            "主持人以台韓分歧提醒市場謹慎：台股在歷史新高附近震盪、韓股破底，Hynix與三星三角收斂跌破，但本益比低至8倍，靠獲利拉升創高才健康；當前AI融資循環像科技巨頭認為5%利率可能是最後一天便宜資金。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電 (TSM)",
-              "code": "TSM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為財報前賣壓形成均值回調，下半年本益比更低，費半唯一賺錢板塊，機會存在。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "適度拉回表現並不差",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "年線支撐明顯，沿200日線慢慢上推，不容易跌破。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "上升三角形整理準備挑戰歷史新高，上方無賣壓。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "突破後三角形整理，挑戰短線下降壓力區，下方集體買盤支撐。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "CIBR ETF",
-              "code": "CIBR",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "AI資安熱潮下沿上升通道走高，9月以來流入9.5億美元。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為美股大盤仍高檔但內部高度分化，標普/那指創高不是全面樂觀追高，而是本益比回調與少數權值股撐盤；本波回調主因是電力、資金成本等供給瓶頸而非AI需求消失，市場整體謹慎。",
-          "action_view": "主持人傾向把費半/台積電的均值回調視為布局機會，認為下半年本益比更低、費半是唯一賺錢板塊；但對大盤因內部分化與高資金成本保持謹慎，提醒「拉回就買」的週期邏輯須思考4.8萬點是否該進場。",
-          "notable_quote": "",
-          "quote_evidence": {
-            "version": 1,
-            "status": "unverified",
-            "quote": ""
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 4,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-14T00:50:03Z"
       }
     ]
   },

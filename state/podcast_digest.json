@@ -2348,6 +2348,79 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "ea789dd2-82f0-4825-a495-aa8488ed3964",
+        "title": "EP349. Anthropic S1 重點、谷歌新模型與財報、微軟又要員工優退 | M觀點",
+        "published": "Thu, 29 Oct 2026 16:47:26 GMT",
+        "processed_at": "2026-10-29T19:40:02Z",
+        "digest": {
+          "summary_points": [
+            "主持人拆解 Anthropic S1：帳面大虧 807 億美元中 724 億是可轉債轉換差額，第二季本業營業利益已轉正約 9.74 億美元，他預估下半年營業利益可能突破 100 億美元。",
+            "主持人推算 Anthropic 今年全年營收可達 540 億美元、連兩年約十倍成長，但 2027 年增速將放緩至 200–300%；若要競爭前沿模型，一年約需 100 億美元的算力訓練門檻。",
+            "主持人認為 Anthropic 推論毛利率約 85% 是它能高價承租 SpaceX 算力的底氣；8500 億採購承諾中不可取消 4300 億，以未來算力需求看很快可消化，不是利空。",
+            "主持人認為 Google Gemini 4 Carbon 在第三方榜登頂代表 Google 重回前沿模型「御三家」；但 OpenAI/Anthropic 一兩個月內可能反超，Google 不一定長期第一，惟已重新具備競爭力。",
+            "主持人趁 Google 財報大跌分批加碼；他長期看好 Google 搜尋作為 AI agent 基礎設施、可轉向收費，認為市場因廣告成長下滑和自由現金流轉負賣出是短線誤判；微軟優退則反映 AI 生產力過剩，但財報營業利益率 49.8% 創高、自由現金流仍正，市場反應正面。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "ANT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人拆解 S1 後認為第二季本業已轉正，預估今年營收可達 540 億美元、連兩年約十倍成長，且推論毛利率約 85%，估值 1.5 兆美元沒有問題。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我目前看起來我覺得1.5兆沒有問題我覺得1.5兆應該沒有問題",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Google/Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人趁財報後大跌分批小加碼，認為市場因廣告成長下滑與自由現金流轉負賣出是短線，長期 Google 搜尋是 AI agent 可收費基礎設施。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "其實我Google我加碼了喔,那個在盤後的時候我就小加碼,那我剛剛又再進去稍微再加碼一些,沒有加很多啦。但是我覺得這個價格還蠻漂亮的喔,所以就進去買了喔",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為微軟財報優於 Google，營業利益率 49.8% 創新高、自由現金流仍正，優退方案合理，市場反應正面。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "主持人已趁 Google 財報後大跌分批小加碼，理由為市場短線誤判、Google 搜尋是 AI agent 時代可收費的基礎設施。",
+          "notable_quote": "市場看到太短線還沒有看到最終他要看到終局啊你要看到終局啊",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "市場看到太短線還沒有看到最終他要看到終局啊你要看到終局啊"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "71aa369b-7ba9-4bd3-81dd-ec041789fc6e",
         "title": "EP348. 烏克蘭的星鏈羅生門、反蒸餾與中國模型、特斯拉自製地圖 | M觀點",
         "published": "Mon, 26 Oct 2026 05:54:52 GMT",
@@ -3189,103 +3262,6 @@
           }
         },
         "shown_at": "2026-09-22T00:29:50Z"
-      },
-      {
-        "guid": "e0ba1ac6-9a8e-4fa9-b60b-3364095f28ce",
-        "title": "EP337. 微軟的 AI 憲法、PLTR 輝達合作、逆風看法的本質 | M觀點",
-        "published": "Thu, 17 Sep 2026 16:03:26 GMT",
-        "processed_at": "2026-09-17T18:23:46Z",
-        "digest": {
-          "summary_points": [
-            "主持人強烈支持微軟「人文主義AI」準則，認為不應賦予AI人格或權利，批評Anthropic與OpenAI一邊警告AI風險、一邊又發展AI人格是自相矛盾且偽善，並強調可控性比絕對能力重要。",
-            "Palantir與NVIDIA合作對抗前沿模型，主持人看好Palantir後訓練能力，將Nemotron Lightning從17.5%提升至86.7%，並認為企業可用本地開源模型保護機密；但風險在於前沿模型若拉大差距，開源模型可能追不上，惟NVIDIA憑GPU成本優勢（內用成本僅外售20%）可維持開源模型落後前沿模型約三個月。",
-            "主持人以逆風案例說明市場主流常犯錯：7月仍有人稱OpenAI營收增速輸給Anthropic，但實際上OpenAI從5、6月回升、7月爆發已超越，錯誤敘事會害投資人。",
-            "Meta在7月底財報後股價跌8%至539美元，全市場看衰時主持人獨排眾議認為Meta決策正確，因Alice Wang是工程師而非科學家，適合Meta，如今股價漲至673美元（+24%），驗證其判斷。",
-            "主持人反駁SpaceX買XAI是替馬斯克解套的說法，指出XAI營收爆發：Q1 8億、Q2 25億、Q3估60億、Q4估160億美元，將成SpaceX最大營收部門，且Grokbot爆紅，他買SpaceX主因即XAI。"
-          ],
-          "tickers": [
-            {
-              "name": "微軟",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認同微軟AI憲法方向，認為軟體不會被消滅，微軟與Palantir上半年被錯殺後已回升。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我今年整個上半年包含了科技巨頭節嘛包含了我們的節目都一直跟大家講說沒有啦軟體不會被消滅特別是這兩家應該都可以活得很好啦我市長錯殺了所以現在市長就回來了嘛",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "看好Palantir後訓練開源模型能力，合作NVIDIA具示範效應，但需關注前沿模型進展風險。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "認為NVIDIA憑藉GPU成本優勢（內部成本比外部低80%）和併購人才，有能力讓其開源模型Nemotron持續追趕前沿模型，落後約三個月。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我跟你講Emilia絕對絕對有能力讓他們的開源模型維持在落後前沿模型maybe 三個月左右的實力",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人逆風看好Meta，認為市場錯殺，Alice Wang是工程師適合Meta，MuSpark 1.3很強，股價已回升24%。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "市場認為Meta大錯特錯所以用股價懲罰他但是你如果看懂Meta沒有錯的話那你就不你不會去買單市場給他懲罰嘛",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Sea Limited",
-              "code": "SE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人長線看好SE，電商與Fintech業務沒問題，從40漲到100仍會持續上漲，但若高點套牢需多年解套。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我對他的長線看法完全都沒有改變因為我們長線的觀察SE的所有的業務我認為他電商業務的發展還會非常的長線沒有問題他的Fintech的業務也是很沒有問題遊戲大概就那樣子所以SE當然你說2021年那時候的SE漲到兩三百塊那時候的確是過度高估了可是我只能跟你講啊現在SE大概100塊嘛然後從40塊漲到100塊我認為他未來還是會一直漲上去的",
-                "direction": "bullish"
-              }
-            }
-          ],
-          "market_view": "主持人認為聯準會升息一碼影響不大，但預計今年還會再升息一次，限制性利率將更高；美國景氣很熱，Core CPI降速慢，需觀察後續。",
-          "action_view": "主持人提倡以逆風角度看市場，應基於正確事實與邏輯，在市場合因錯誤敘事錯殺時勇於買入；他本人因XAI而買SpaceX，並長期看好SE等。",
-          "notable_quote": "你如果看懂Meta沒有錯的話那你就不你不會去買單市場給他懲罰嘛",
-          "direction_quality": {
-            "attributed": 4,
-            "non_investment": 0,
-            "unverified": 1,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-18T00:28:43Z"
       }
     ]
   },

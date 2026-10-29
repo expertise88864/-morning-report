@@ -58,7 +58,10 @@ def order(cards: list, packet: dict) -> list:
         repeated = repeated or recurring_revenue(source, [history[eid] for eid in
             (contexts.get(sid) or {}).get('evidence_ids', []) if eid in history],
             news_subject(card, packet).get('name', ''))
-        return (-tier, repeated, ranks.get(membership.get(sid), 999))
+        # 10-29 使用者:「有沒有更大條的」—— 同一件事有越多家獨立媒體在報,越先上(最多算到 3 家)
+        from analysis_render_depth import _cluster_publishers
+        breadth = min(len(_cluster_publishers(card, packet)), 3)
+        return (-tier, repeated, -breadth, ranks.get(membership.get(sid), 999))
     return sorted((c for c in cards if isinstance(c, dict)), key=key)
 
 

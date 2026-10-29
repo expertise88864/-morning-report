@@ -3,6 +3,8 @@ import re
 
 #: 前台每類最多幾則(使用者 2026-10-19:與備援相當;原 4 科技 / 6 其他)。
 FRONT_LIMIT = 10
+#: 使用者 2026-10-29:「太多科技類股新聞」—— 科技最多 6 則,其他類股仍 10 則。
+FRONT_LIMIT_TECH, FRONT_LIMIT_OTHER = 6, FRONT_LIMIT
 
 
 def article_is_tech(card: dict, packet: dict) -> bool:
@@ -52,10 +54,12 @@ def select_cards(cards: list, packet: dict) -> tuple[list, list]:
         if not tech:
             preferred = finance.balanced([items.get(c.get("source_item_id"), {}) for c in group], 1)
             reserve += [c for c in group if c not in reserve and any(items.get(c.get("source_item_id")) is n for n in preferred)]
-        chosen = (reserve + [c for c in group if c not in reserve])[:FRONT_LIMIT]
+            reserve += cc.taiwan_economy(group, packet, reserve)   # 10-29:至少一則台灣經濟與產業
+        limit = FRONT_LIMIT_TECH if tech else FRONT_LIMIT_OTHER
+        chosen = (reserve + [c for c in group if c not in reserve])[:limit]
         taken = {cc.company_key(c, packet) for c in selected + chosen} - {""}
         selected.extend(cc.backfill(chosen, [c for c in spill if article_is_tech(c, packet) == tech],
-                                    packet, FRONT_LIMIT, taken))   # 10-28:有空位就補回同主線的卡
+                                    packet, limit, taken))   # 10-28:有空位就補回同主線的卡
     selected.extend(c for c in distinct if is_macro(c, packet))
     return selected, [c for c in ordered if c not in selected]
 

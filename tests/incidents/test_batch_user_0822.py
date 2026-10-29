@@ -100,7 +100,7 @@ def test_sector_targets_were_raised():
     """使用者 2026-08-22:科技與其他類股都偏少。兩段各自要有下限。"""
     src = io.open(Path(pp.__file__), encoding="utf-8").read()
     assert "十五到二十則為目標" in src
-    assert "科技至少八則、科技之外至少七則" in src
+    assert "科技至少五則（最多七則）、科技之外至少十則" in src
     assert "六到十則為目標" not in src, "舊目標還在(兩個數字打架)"
     # **prompt 的數字要與守衛的常數是同一組**(2026-08-24):兩邊各養一份的
     # 話,守衛催的下限與 prompt 要求的下限可以不一樣 —— 模型照 prompt 交

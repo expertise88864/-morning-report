@@ -44,7 +44,7 @@ _MACRO_FACET = 250
 #: prompt 給模型的上限:八段最多 12 張、九段最多 10 張
 _MAX_TECH, _MAX_OTHER = 12, 10
 #: 9/5 實信的形狀:18 張(9 + 9)
-_TYPICAL_TECH, _TYPICAL_OTHER = 9, 9
+_TYPICAL_TECH, _TYPICAL_OTHER = 7, 10   # 10-29:科技前台 6 則
 
 
 def _pad(prefix: str, n: int) -> str:
@@ -148,7 +148,7 @@ def test_the_builder_really_produces_both_sections():
     """先確認 fixture 自己成立:九段真的有卡(否則下面全在守一個空集合)。"""
     text, diag = _render(_TYPICAL_TECH, _TYPICAL_OTHER)
     # 2026-10-19 使用者:前台每類最多 FRONT_LIMIT(10)則,與備援相當(原 4 / 6)。
-    shown_tech, shown_other = min(_TYPICAL_TECH, rp.FRONT_LIMIT), min(_TYPICAL_OTHER, rp.FRONT_LIMIT)
+    shown_tech, shown_other = min(_TYPICAL_TECH, rp.FRONT_LIMIT_TECH), min(_TYPICAL_OTHER, rp.FRONT_LIMIT_OTHER)
     assert diag["rendered_tech"] == shown_tech and diag["rendered_other"] == shown_other
     assert len(diag["editorial_omitted"]) == _TYPICAL_TECH + _TYPICAL_OTHER - shown_tech - shown_other
     assert diag["dropped"] == []
@@ -166,7 +166,8 @@ def test_the_old_fuse_cut_the_letter_inside_section_eight():
     assert f"## {ar.SECTION_TECH}" in old
     assert len(old) < len(text), "舊上限仍會截斷四則科技新聞後的完整內容"
     assert f"## {ar.SECTION_MACRO}" not in old
-    assert old.count("本報解讀：") < text.count("本報解讀："), "舊上限仍遺失部分逐則分析"
+    # 2026-10-29 起科技前台 6 則,舊上限的截斷點移到卡片之後 —— 丟的是立場與總結段
+    assert ar.SECTION_STANCE in text and ar.SECTION_STANCE not in old, "舊上限仍會截掉後段"
 
 
 def test_the_default_fuse_keeps_the_whole_letter():

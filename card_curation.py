@@ -168,6 +168,17 @@ def company_line(cards: list, packet: dict) -> str:
     return "同公司還有：" + "；".join(heads) + "。" if heads else ""
 
 
+#: 台灣經濟與跨產業新聞(使用者 2026-10-29:九段每天至少一則,有當期新數據才寫)。
+_TW_ECONOMY = re.compile(r"外銷訂單|景氣(?:燈號|對策信號|領先指標)|出口|進口|海關|經濟成長|GDP|失業率|就業|薪資"
+                         r"|消費者信心|PMI|零售|內需|觀光|來台旅客|房市|房價|預售屋|電價")
+
+
+def taiwan_economy(cards: list, packet: dict, reserve: list) -> list:
+    """第一張台灣經濟/跨產業的卡(標題判斷),保證上九段;已在保留名單裡就不重複。"""
+    hit = next((c for c in cards if _TW_ECONOMY.search(str(_item(c, packet).get("title") or ""))), None)
+    return [hit] if hit is not None and hit not in reserve else []
+
+
 def sector_balanced(cards: list, packet: dict) -> list:
     """「其他類股」:每個產業第一輪最多 SECTOR_FIRST_PASS 張,讓不同產業先上版,其餘照原順序補在後面。"""
     from analysis_render_depth import sector_tag

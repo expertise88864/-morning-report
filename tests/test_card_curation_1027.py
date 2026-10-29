@@ -62,7 +62,8 @@ def test_one_theme_takes_at_most_two_cards_and_the_rest_become_one_line(monkeypa
 
     2026-10-28 使用者「有空位就補回」:上限只決定先後;段落**滿了**才併成一句(這裡把段落縮成 2 張)。
     """
-    monkeypatch.setattr(rs, "FRONT_LIMIT", 2)
+    monkeypatch.setattr(rs, "FRONT_LIMIT_TECH", 2)
+    monkeypatch.setattr(rs, "FRONT_LIMIT_OTHER", 2)
     titles = ["Meta擬增資950億美元支應AI基建", "Anthropic揭露十年逾5000億美元支出承諾",
               "微軟以自願離職對沖AI資本支出", "Alphabet上調資料中心資本支出"]
     pk = packet(*[(f"a{i}", t) for i, t in enumerate(titles)], ("s", "陽明11月兩條航線恢復紅海"))

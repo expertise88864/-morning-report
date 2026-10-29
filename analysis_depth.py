@@ -48,7 +48,7 @@ COVERAGE_GAPS = frozenset({TECH_COVERAGE_GAP, SECTOR_COVERAGE_GAP})
 #: 2026-08-24 使用者第二次反映「科技/其他類股新聞有點少」—— 那天的信是
 #: 7 + 6 = 13 則,**剛好卡在舊目標**(10–16 / ≥6 / ≥5),所以沒有任何守衛
 #: 會催它。目標整組上調;字面值只寫在這裡,比較與文案都從這裡取。
-COVERAGE_FLOORS = {TECH_COVERAGE_GAP: 8, SECTOR_COVERAGE_GAP: 7}
+COVERAGE_FLOORS = {TECH_COVERAGE_GAP: 5, SECTOR_COVERAGE_GAP: 10}   # 10-29 使用者:科技太多,其他類股加寬
 
 #: `top_news_analysis` 的總則數目標(下限就是兩段下限之和 —— 分開訂會
 #: 出現「兩段都達標而總數不達標」這種自相矛盾的催促)。

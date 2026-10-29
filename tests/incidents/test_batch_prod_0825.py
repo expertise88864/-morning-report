@@ -297,19 +297,19 @@ def test_section_coverage_is_judged_by_that_sections_own_material():
                   {"code": "2603", "name": "長榮", "industry": "航運業"}]}
         return chr(10).join(ad.depth_advisories(obj, pk))
 
-    # 外審的反例:素材 29 則(科技 15 / 其他 14),輸出只有 7 + 6
-    a = _adv(7, 6, src_tech=15, src_other=14)
+    # 外審的反例:素材 29 則(科技 15 / 其他 14),輸出偏少(10-29 起下限是科技 5 / 其他 10)
+    a = _adv(4, 6, src_tech=15, src_other=14)
     assert "第八段靠它" in a, ("29 則素材落進盲區,科技不足沒有被催", a)
     assert "第九段靠它" in a, a
 
-    # 更小的例子:素材 20 則也足以達成 8 + 7
-    b = _adv(6, 6, src_tech=10, src_other=10)
+    # 更小的例子:素材 20 則也足以達成 5 + 10
+    b = _adv(4, 6, src_tech=10, src_other=10)
     assert "第八段靠它" in b and "第九段靠它" in b, b
 
     # **不得逼它湊**:那一段的素材真的不夠時不催(這是既有的規則,
     # 拆掉全域門檻不可以把它一起拆掉)
-    c = _adv(6, 9, src_tech=7, src_other=20)
-    assert "第八段靠它" not in c, ("科技素材只有 7 則卻要求 8 則", c)
+    c = _adv(4, 10, src_tech=4, src_other=20)
+    assert "第八段靠它" not in c, ("科技素材只有 4 則卻要求 5 則", c)
     assert "第九段靠它" not in c, c
 
     # 總則數那一條有自己的素材前提:素材本身就少於目標時不催

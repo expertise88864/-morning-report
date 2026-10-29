@@ -52,15 +52,15 @@ def test_supporting_conditions_move_out_of_conclusion_without_loss():
 
 def test_categories_limit_and_technology_without_registry_subject():
     # Distinct events exercise category caps, not syndicated-copy deduplication.
-    # 2026-10-19 使用者:前台每類最多 10 則(原 4 科技 / 6 其他),與備援相當。
+    # 2026-10-19 使用者:前台每類最多 10 則;10-29 使用者「太多科技類股新聞」→ 科技 6 則。
     import reader_selection
-    assert reader_selection.FRONT_LIMIT == 10
+    assert reader_selection.FRONT_LIMIT_TECH == 6 and reader_selection.FRONT_LIMIT_OTHER == 10
     news = [{'source_item_id': str(i), 'title': ('台積擴產' if i < 12 else '航運運價') + f'第{i}案'} for i in range(24)]
     cards = [{'source_item_id': str(i), 'why_it_matters': '有新的需求'} for i in range(24)]
     pk = {'news': news}
     selected, omitted = rp.select_cards(cards, pk)
-    assert len(selected) == 20 and len(omitted) == 4
-    assert sum(rp.article_is_tech(c, pk) for c in selected) == 10
+    assert len(selected) == 16 and len(omitted) == 8
+    assert sum(rp.article_is_tech(c, pk) for c in selected) == 6
     for title in ('美光重返高點', '聯亞營收成長', '廠務工程在手訂單', 'Claude 模型發布'):
         assert rp.article_is_tech({'source_item_id': 'x'}, {'news': [{'source_item_id': 'x', 'title': title}]})
 
@@ -96,13 +96,15 @@ def test_ai_model_news_reaches_sanitized_packet_and_reserve(monkeypatch):
     assert 'tech:ai-models' in item['coverage_buckets']
     cards = [{'source_item_id': str(i)} for i in range(7)] + [{'source_item_id': item['source_item_id']}]
     pk['news'] += [{'source_item_id': str(i), 'title': f'半導體產能第{i}案'} for i in range(7)]
-    monkeypatch.setattr('reader_selection.FRONT_LIMIT', 4)  # 保留名額的邏輯與上限數字無關
+    monkeypatch.setattr('reader_selection.FRONT_LIMIT_TECH', 4)
+    monkeypatch.setattr('reader_selection.FRONT_LIMIT_OTHER', 4)  # 保留名額的邏輯與上限數字無關
     selected, _ = rp.select_cards(cards, pk)
     assert len(selected) == 4 and selected[0]['source_item_id'] == item['source_item_id']
 
 
 def test_financial_subject_with_ai_words_stays_other_and_both_groups_reserved(monkeypatch):
-    monkeypatch.setattr('reader_selection.FRONT_LIMIT', 6)  # 保留名額的邏輯與上限數字無關
+    monkeypatch.setattr('reader_selection.FRONT_LIMIT_TECH', 6)
+    monkeypatch.setattr('reader_selection.FRONT_LIMIT_OTHER', 6)  # 保留名額的邏輯與上限數字無關
     pk = {'news': [{'source_item_id': str(i), 'title': f'航運運價第{i}案'} for i in range(7)] + [
           {'source_item_id': 'c', 'title': '中信金 AI 營運成長', 'published': '2026-09-07'},
           {'source_item_id': 'k', 'title': '國泰金 獲利', 'published': '2026-09-07'}]}
@@ -157,7 +159,8 @@ def test_conflicts_stay_out_of_every_section(field, heading, ref):
 
 
 def test_selection_uses_full_python_ranking_beyond_top_three(monkeypatch):
-    monkeypatch.setattr('reader_selection.FRONT_LIMIT', 4)  # 排序邏輯與上限數字無關
+    monkeypatch.setattr('reader_selection.FRONT_LIMIT_TECH', 4)
+    monkeypatch.setattr('reader_selection.FRONT_LIMIT_OTHER', 4)  # 排序邏輯與上限數字無關
     cards = [{'source_item_id': str(i)} for i in reversed(range(9))]
     packet = {'news': [{'source_item_id': str(i), 'title': f'台積擴產第{i}案'} for i in range(9)],
               'news_clusters': {'clusters': [{'cluster_id': f'c{i}', 'member_source_ids': [str(i)]} for i in range(9)]},

@@ -180,7 +180,8 @@ def test_production_sized_report_reaches_final_html_without_missing_sectors(monk
     assert 'PREAMBLE_MUST_NOT_REACH_EMAIL' not in html
     assert diag["missing_sections"] == [] and diag["lost_cards"] == 0
     import reader_selection
-    shown_o, shown_t = min(reader_selection.FRONT_LIMIT, other), min(reader_selection.FRONT_LIMIT, tech)
+    shown_o, shown_t = (min(reader_selection.FRONT_LIMIT_OTHER, other),
+                        min(reader_selection.FRONT_LIMIT_TECH, tech))   # 10-29:科技 6、其他 10
     assert diag["chain_counts"][ar.SECTION_OTHER] == {"expected": shown_o, "html": shown_o}
     assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": shown_t, "html": shown_t}
     assert 'id="morning-mobile"' in html

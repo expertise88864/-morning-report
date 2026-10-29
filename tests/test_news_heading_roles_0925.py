@@ -158,6 +158,6 @@ def test_named_nontech_rival_stays_sector_even_with_macro_or_ai_words():
     assert not article_is_tech({"source_item_id": "costco"}, foreign)
 
     source_packet = {"tw_universe": packet["tw_universe"], "news": [
-        {"source_item_id": f"retail-{i}", "title": title} for i in range(7)]}
+        {"source_item_id": f"retail-{i}", "title": title} for i in range(10)]}   # 10-29:其他類股下限 10
     advisories = depth_advisories({"top_news_analysis": []}, source_packet)
-    assert any("科技以外只有 0 則,而素材有 7 則" in note for note in advisories)
+    assert any("科技以外只有 0 則,而素材有 10 則" in note for note in advisories)

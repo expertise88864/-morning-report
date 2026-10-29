@@ -314,7 +314,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     tech_news, other_news, macro_news, _diag_rows = [], [], [], []
     from collections import Counter as _Counter
     import card_curation as _cc
-    from reader_selection import FRONT_LIMIT as _FRONT_LIMIT
+    from reader_selection import FRONT_LIMIT as _FRONT_LIMIT, FRONT_LIMIT_TECH as _FRONT_LIMIT_TECH
     _budget = _Counter()   # 核心標的「對X而言」的全天額度(10-27)
     from reader_editorial import is_macro
     import finance_editorial as _finance
@@ -359,7 +359,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         diag.clear()
         diag.update({"analyzed": len(_diag_rows) + len(_limited),
                      "editorial_limit": _FRONT_LIMIT,
-                     "editorial_limit_tech": _FRONT_LIMIT,
+                     "editorial_limit_tech": _FRONT_LIMIT_TECH,
                      "editorial_omitted": [_s(c.get("source_item_id")) for c in _limited],
                      "rendered_tech": len(tech_news), "rendered_other": len(other_news),
                      "rendered_macro": len(macro_news),

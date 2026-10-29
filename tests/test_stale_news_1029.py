@@ -60,7 +60,8 @@ def test_the_repair_slice_shows_the_named_groups_news(monkeypatch):
 def test_technical_windows_are_not_dates():
     """PR #31 外審:「股價突破20日移動平均線」不是 10/20 的舊聞。"""
     for fresh in ("台積電法說報喜，股價突破20日移動平均線", "大盤站回60日新高", "連3個交易日賣超",
-                  "近10個交易日累計漲幅", "10日KD黃金交叉", "5日內漲兩成"):
+                  "近10個交易日累計漲幅", "10日KD黃金交叉", "5日內漲兩成",
+                  "新機5日後上市", "3日前公告的財測"):   # 相對期間(PR #31 第二輪)
         assert not q.stale_title_date(fresh, TODAY), fresh
 
 

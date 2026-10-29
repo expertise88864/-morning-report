@@ -54,3 +54,23 @@ def test_the_repair_slice_shows_the_named_groups_news(monkeypatch):
                                         problems=problems, hints=[])
     assert rec and rec["mode"] == "evidence_slice", rec
     assert "n0399" in rec["visible_ids"], sorted(rec["visible_ids"])[-5:]
+
+
+
+def test_technical_windows_are_not_dates():
+    """PR #31 外審:「股價突破20日移動平均線」不是 10/20 的舊聞。"""
+    for fresh in ("台積電法說報喜，股價突破20日移動平均線", "大盤站回60日新高", "連3個交易日賣超",
+                  "近10個交易日累計漲幅", "10日KD黃金交叉", "5日內漲兩成"):
+        assert not q.stale_title_date(fresh, TODAY), fresh
+
+
+def test_supplementary_pools_are_filtered_too():
+    """PR #31 外審:研究用新聞與 AI 模型新聞也會進證據包與備援提示詞。"""
+    stale = {"title": "薔琵颱風24日颱風假資訊 - 天下雜誌"}
+    fresh = {"title": "Fed 維持利率不變 - CNBC"}
+    quotes = {"NEWS_RESEARCH_SOURCES": [stale, fresh], "AI_MODELS": {"news": [stale, fresh], "pricing": ["x"]},
+              "OTHER": 1}
+    news, q2 = q.current_inputs([stale, fresh], quotes, TODAY)
+    assert news == [fresh] and q2["NEWS_RESEARCH_SOURCES"] == [fresh]
+    assert q2["AI_MODELS"] == {"news": [fresh], "pricing": ["x"]} and q2["OTHER"] == 1
+    assert quotes["NEWS_RESEARCH_SOURCES"] == [stale, fresh], "呼叫端的 quotes 不被改寫"

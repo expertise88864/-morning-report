@@ -14950,8 +14950,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                             calibration: str = "") -> str:
     """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。任何環節失敗都回傳備援文字而非 raise，
     確保 main() 一定能寄出基本版晨報。"""
-    from news_display_quality import without_forum_posts   # 特化與備援共用的入口(PR #30)
-    news = without_forum_posts(news, dt.datetime.now(TPE).date())   # 10-28 討論區貼文;10-29 標題日期過期的舊聞
+    from news_display_quality import current_inputs   # 特化與備援共用的入口(PR #30、#31)
+    news, quotes = current_inputs(news, quotes, dt.datetime.now(TPE).date())   # 討論區貼文、標題日期過期的舊聞
     # Luna 特化路徑:任一環節失敗就落回下面的既有路徑 —— 晨報不可斷。
     _packet = None
     _pending_failure = None   # r1 #1:延到落回跑完才寫,否則漏算 legacy 計費

@@ -226,7 +226,7 @@ MODULE_CEILINGS = {
     "email_style_dictionary.py": 210,
     "email_syntax_compact.py": 130,
     "reader_fact_labels.py": 65,
-    "news_display_quality.py": 100,   # +標題日期過期(2026-10-29)
+    "news_display_quality.py": 115,   # +標題日期過期與補充池(2026-10-29)
     "news_memory_selection.py": 60,
     "news_memory.py": 330,
     "news_research_context.py": 310,

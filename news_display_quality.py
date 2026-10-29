@@ -18,10 +18,26 @@ def without_forum_posts(news: list | None, today=None) -> list:
         forum_post(n.get("title")) or (today is not None and stale_title_date(n.get("title"), today))))]
 
 
+def current_inputs(news: list | None, quotes: dict | None, today) -> tuple[list, dict]:
+    """主新聞與兩個補充池(研究用新聞、AI 模型新聞)一起濾 —— 特化證據包與備援提示詞
+    都會另外讀補充池,只濾主清單的話舊聞會從那裡回來(PR #31 外審)。回傳 quotes 的淺拷貝。"""
+    q = dict(quotes or {})
+    if isinstance(q.get("NEWS_RESEARCH_SOURCES"), list):
+        q["NEWS_RESEARCH_SOURCES"] = without_forum_posts(q["NEWS_RESEARCH_SOURCES"], today)
+    if isinstance(q.get("AI_MODELS"), dict) and isinstance(q["AI_MODELS"].get("news"), list):
+        q["AI_MODELS"] = dict(q["AI_MODELS"], news=without_forum_posts(q["AI_MODELS"]["news"], today))
+    return without_forum_posts(news, today), q
+
+
 #: 標題自己寫的日期早於報告日這麼多天,就是被重新收錄的舊聞(週五→週一是 3 天,留餘裕)。
 STALE_TITLE_DAYS = 5
-_TITLE_DAY = re.compile(r"(?:(?<!\d)(\d{1,2})月|(?<![\d/]))(\d{1,2})日(?!均|線|內|來|以來|新高|新低|起|前|後|K)")
+_TITLE_DAY = re.compile(r"(?:(?<!\d)(\d{1,2})月|(?<![\d/]))(\d{1,2})日(?!起)")
 _FUTURE = re.compile(r"將|預計|預定|訂於|即將|起跑|登場")
+#: 「N 日」不是日期的寫法:期間(近5日、連3個交易日)與技術指標(20日移動平均線、60日新高;PR #31 外審)。
+_NOT_A_DATE = re.compile(
+    r"(?:近|連|前|後|第|每|逾|約|過去|最近|未來|上)\s*\d{1,2}\s*個?(?:交易)?日"
+    r"|\d{1,2}\s*個?(?:交易)?日\s*(?:移動|平均|均|線|[KkＫ]|RSI|KD|MACD|乖離|內|來|以來|新高|新低|高點|低點"
+    r"|漲幅|跌幅|累計|累積)", re.I)
 
 
 def stale_title_date(title, today) -> bool:
@@ -29,7 +45,7 @@ def stale_title_date(title, today) -> bool:
     import datetime as dt
     text = str(title or "")
     m = _TITLE_DAY.search(text)
-    if not m or _FUTURE.search(text) or re.search(r"[近連前後第每逾約]\s*\d{1,2}日", text):
+    if not m or _FUTURE.search(text) or _NOT_A_DATE.search(text):
         return False
     try:   # 只認同年內「已經過去」的日期;比今天晚的一律當作還沒發生(「聯發科30日法說」)
         event = dt.date(today.year, int(m[1] or today.month), int(m[2]))

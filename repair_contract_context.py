@@ -7,6 +7,21 @@ from llm_postprocess import neutralize_fence_tags
 from podcast_prompt_context import section as opinion_section
 
 
+def cluster_members(problems, packet: dict, legal, have) -> list:
+    """問題點名的事件群 → 它自己的新聞 ID(第 1 層)。
+
+    2026-10-29:問題要求「分析或駁回 cluster:n1234…」,修補切片卻沒附那群的新聞;
+    模型引用看不到的 n1234… 被判無根據,拿掉引用又被判「駁回沒引用自家新聞」,四輪落 legacy。
+    """
+    import re
+    named = set(re.findall(r"cluster:[A-Za-z0-9_]+", " ".join(map(str, problems or []))))
+    legal, out = set(legal), []
+    for c in (((packet or {}).get("news_clusters") or {}).get("clusters")) or []:
+        if isinstance(c, dict) and str(c.get("cluster_id") or "") in named:
+            out += [s for s in c.get("member_source_ids") or [] if s in legal and s not in have and s not in out]
+    return out
+
+
 def section(packet: dict) -> str:
     """Project relations, not source text; budgeted with the entire request.
 

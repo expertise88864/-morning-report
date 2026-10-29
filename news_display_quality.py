@@ -12,8 +12,31 @@ def forum_post(title: str) -> bool:
     return bool(_FORUM.search(str(title or "")))
 
 
-def without_forum_posts(news: list | None) -> list:
-    return [n for n in news or [] if not (isinstance(n, dict) and forum_post(n.get("title")))]
+def without_forum_posts(news: list | None, today=None) -> list:
+    """討論區貼文、與標題日期已過期的舊聞都不進分析(兩條生成路徑共用的入口)。"""
+    return [n for n in news or [] if not (isinstance(n, dict) and (
+        forum_post(n.get("title")) or (today is not None and stale_title_date(n.get("title"), today))))]
+
+
+#: 標題自己寫的日期早於報告日這麼多天,就是被重新收錄的舊聞(週五→週一是 3 天,留餘裕)。
+STALE_TITLE_DAYS = 5
+_TITLE_DAY = re.compile(r"(?:(?<!\d)(\d{1,2})月|(?<![\d/]))(\d{1,2})日(?!均|線|內|來|以來|新高|新低|起|前|後|K)")
+_FUTURE = re.compile(r"將|預計|預定|訂於|即將|起跑|登場")
+
+
+def stale_title_date(title, today) -> bool:
+    """「薔琵颱風24日颱風假資訊…」(10-29 收到、RSS 發布時間是 10-28):標題日期 5 天前 → 舊聞。"""
+    import datetime as dt
+    text = str(title or "")
+    m = _TITLE_DAY.search(text)
+    if not m or _FUTURE.search(text) or re.search(r"[近連前後第每逾約]\s*\d{1,2}日", text):
+        return False
+    try:   # 只認同年內「已經過去」的日期;比今天晚的一律當作還沒發生(「聯發科30日法說」)
+        event = dt.date(today.year, int(m[1] or today.month), int(m[2]))
+    except ValueError:
+        return False
+    # 寫了月份但遠在兩個月前:可能是明年的公告(「1月3日開始交易」),不猜
+    return STALE_TITLE_DAYS <= (today - event).days <= 60
 
 
 def relevant(label: str, title: str) -> bool:

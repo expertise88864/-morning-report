@@ -226,7 +226,7 @@ MODULE_CEILINGS = {
     "email_style_dictionary.py": 210,
     "email_syntax_compact.py": 130,
     "reader_fact_labels.py": 65,
-    "news_display_quality.py": 73,
+    "news_display_quality.py": 100,   # +標題日期過期(2026-10-29)
     "news_memory_selection.py": 60,
     "news_memory.py": 330,
     "news_research_context.py": 310,
@@ -499,7 +499,7 @@ MODULE_CEILINGS = {
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。
     "payload_compact.py": 215,   # 2026-08-08:top_events dict 形狀修正 + 註解(外審 P1-3)
-    "repair_contract_context.py": 55,
+    "repair_contract_context.py": 70,
     "quality_rejection_detail.py": 30,
     "sports_news_selection.py": 75,
     "tennis_news_context.py": 45,

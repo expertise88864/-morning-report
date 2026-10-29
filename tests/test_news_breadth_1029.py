@@ -29,6 +29,12 @@ def test_routine_small_announcements_do_not_become_news():
     assert af.routine({"code": "9999", "title": "公告本公司取得機器設備", "summary": "新台幣3億元"}, {})
     assert not af.routine({"code": "9999", "title": "公告本公司取得機器設備", "summary": "約新台幣509億元"}, {})
     assert af.amount_twd("交易總金額:美元100,000,000元") == 3.2e9
+    # PR #32 外審:重大事項優先於程序字眼;「美金」與「新臺幣」寫法
+    assert not af.routine({"code": "3711", "title": "公告本公司股東會決議通過合併案"}, caps)
+    assert af.amount_twd("交易總金額:美金100,000,000元") == 3.2e9
+    assert af.amount_twd("新臺幣2億元") == 2e8
+    assert not af.routine({"code": "8046", "title": "公告本公司取得機器設備",
+                           "summary": "交易總金額:美金100,000,000元"}, {"8046": 2.0e11})   # 1.6% 市值
 
 
 def test_routine_announcements_are_removed_at_the_shared_entry():

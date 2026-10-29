@@ -33,7 +33,10 @@ _RATE = {"美元": 32.0, "USD": 32.0, "US$": 32.0, "人民幣": 4.5, "RMB": 4.5,
 def amount_twd(text: str) -> float:
     """公告裡最大的一筆金額(新台幣);要有幣別或「元」才算,避免把股數、日期當金額。"""
     best = 0.0
-    for cur, num, unit, suffix in _AMOUNT.findall(str(text or "")):
+    text = str(text or "")
+    for alias, canonical in (("美金", "美元"), ("新臺幣", "新台幣"), ("臺幣", "台幣")):   # PR #32:「美金」
+        text = text.replace(alias, canonical)
+    for cur, num, unit, suffix in _AMOUNT.findall(text):
         if not (cur or suffix):
             continue
         try:
@@ -47,9 +50,11 @@ def amount_twd(text: str) -> float:
 def routine(item: dict, market_caps: dict) -> bool:
     """這則觀測站公告是不是「例行、小額」(不送進分析)。"""
     title = re.sub(r"\s+", "", str(item.get("title") or ""))   # 觀測站標題常斷在「使用 權資產」
+    if _SUBSTANTIVE.search(title):   # 先看重大事項:「股東會決議通過合併案」不是程序公告(PR #32)
+        return False
     if _PROCEDURAL.search(title):
         return True
-    if not _ROUTINE.search(title) or _SUBSTANTIVE.search(title):
+    if not _ROUTINE.search(title):
         return False
     amount = amount_twd(title + " " + str(item.get("summary") or item.get("excerpt") or ""))
     codes = [str(item.get("code") or "")] + [str(c) for c in item.get("entities") or []]

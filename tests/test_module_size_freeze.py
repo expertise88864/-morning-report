@@ -206,6 +206,8 @@ MODULE_CEILINGS = {
     "weather_dedupe.py": 55,   # 天氣卡片重複訊息(2026-10-24)
     "legacy_evidence.py": 250,   # 備援逐句證據核對(2026-10-30;含英文來源單位)
     "legacy_watch.py": 125,   # 備援觀察點跨日追蹤(2026-10-30)
+    "fulltext_fetch.py": 60,   # 全文並行抓取(2026-10-30)
+    "mover_news.py": 75,   # 大漲大跌權值股補查新聞(2026-10-30)
     "announcement_filter.py": 110,   # 觀測站例行公告不上卡(2026-10-29);募資、法說、生技(10-30)
     "tw_holidays.py": 50,   # 證交所休市日表(2026-10-26)
     "conclusion_guard.py": 45,
@@ -637,7 +639,8 @@ MODULE_CEILINGS = {
     # 用行數當代理在這裡擋錯了東西,所以改成**直接驗那個性質**:
     # `test_the_writing_rules_module_holds_no_logic` 保證這裡只有字串常數。
     # 上限仍然留著,當「有人把整個 prompt 系統搬進來」的最後一道背牆。
-    "writing_rules.py": 410,  # Reader editorial rules extracted; ceiling reduced from 420.
+    # 2026-10-30 410 → 420:使用者要求的 R21「同主題正反並陳」(純 prompt 文字,見上段理由)。
+    "writing_rules.py": 420,  # Reader editorial rules extracted; ceiling reduced from 420.
     # 第十四輪 P1-4:**逐側**的成本與延遲(manifest 隔天被覆蓋,帳本是追加的)。
     # 兩件事:從 manifest 擷取一列、跨帳本彙總。**不做任何分攤** ——
     # 抽取器標 shared,按比例拆給兩側是編造。實測 151 行。

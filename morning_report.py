@@ -133,7 +133,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     _matches_any,  # noqa: F401 — re-export:相容 mr.* 讀取
     _news_source_grade,
     _credibility_tag,
-    _news_keep_score,
+    _news_keep_score, prompt_order as _news_prompt_order,
     _strip_html,
     _is_low_value_tech_headline,
 )
@@ -6916,9 +6916,9 @@ POLICY_KEYWORDS_KEEP = 4000      # 上限:超過則丟最舊(公報每日約 100
 def _fulltext_target_link(item: dict) -> str:
     link = str(item.get("link") or "")
     if "news.google.com" in link:
-        return (_extract_google_news_target(link)
-                or str(item.get("source_url") or "")
-                or str(item.get("publisher_url") or ""))
+        # 只認轉址裡夾帶的原文網址。source_url 是 RSS <source> 的**媒體首頁**:抓它會把
+        # 首頁頭條當成這則的全文(2026-10-30 實害:兩則 UDN 新聞的全文都是 OPPO 發表會)。
+        return _extract_google_news_target(link)
     return link
 
 
@@ -6967,18 +6967,10 @@ def fetch_news_fulltext(news: list[dict],
     # 第二十三輪 P1-3:`[]` 是合法計畫,`None` 才是沒有計畫 —— 空清單
     # 不得落回逐文章掃描(那正是兩階段要取代的重複計權路徑)。
     if targets is not None:
-        by_id = {str(n.get("source_item_id")): n for n in news
-                 if isinstance(n, dict) and n.get("source_item_id")}
-        got = 0
-        for sid in targets:
-            if _run_seconds_left() < _FULLTEXT_FLOOR:
-                break
-            n = by_id.get(str(sid))
-            if not isinstance(n, dict):
-                continue
-            crit = n.get("importance") == "critical"
-            got += bool(_fetch_one_fulltext(n, 10 if crit else 8,
-                                            2500 if crit else 2000))
+        # 2026-10-30:改由 `fulltext_fetch` 並行抓(順序仍是優先序、每篇動工前仍檢查時間地板)
+        import fulltext_fetch as _ftf
+        got = _ftf.fetch_targets(news, targets, _fetch_one_fulltext,
+                                 _run_seconds_left, _FULLTEXT_FLOOR)
         print(f"[news_full] 逐事件群抓到 {got}/{len(targets)} 篇全文")
         return news
     crit_fetched = high_fetched = 0
@@ -11245,9 +11237,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # world_and_market=同一事件同時來自市場與世界來源(dedup 時標記)→ 兩個版面都收
     market_news = [n for n in _legacy_actor_guard.fresh_ids(news)   # 每次組提示詞重新編號(N1 起)
                    if not _world_cat_of(n) or n.get("world_and_market")]
-    crit_news = [n for n in market_news if n.get("importance") == "critical"]
-    high_news = [n for n in market_news if n.get("importance") == "high"]
-    norm_news = [n for n in market_news if n.get("importance") == "normal"]
+    crit_news, high_news, norm_news = (_news_prompt_order(   # 各層先排再截(2026-10-30,見 news_rules)
+        [n for n in market_news if n.get("importance") == _t]) for _t in ("critical", "high", "normal"))
 
     # 批#38:安全規則移到圍欄**外**(見本函式後段的整塊圍欄)——規則寫在圍欄內
     # 等於讓不可信資料與規則同處一區,規則本身也變成可被後續內容覆寫的素材。
@@ -25061,13 +25052,14 @@ def _phase_twse_universe(ctx) -> None:
         print(f"[main] MOPS 抓取失敗: {e}", file=sys.stderr)
         tw_mops = []
 
-    # 6.3 對「爆發力前 20 檔候選」動態查 Google News(補五檔候選的自家催化訊號;
-    #     已被固定 12 檔權值查過的不重複)。tag company_label → 直接歸因到該股。
+    # 6.3 對「爆發力前 20 檔候選」+ 市值前百大當日漲跌 ≥7% 者(`mover_news`,2026-10-30)
+    #     動態查 Google News(已被固定 12 檔權值查過的不重複)。tag company_label → 直接歸因到該股。
     print("[main] 對爆發力候選查個股新聞…")
     try:
-        cand_news = fetch_candidate_company_news(
-            tw0050, top_n=20,
-            exclude_codes={lbl for _, lbl in GOOGLE_NEWS_COMPANIES})
+        import mover_news as _mover_news
+        _fixed = {lbl for _, lbl in GOOGLE_NEWS_COMPANIES}
+        cand_news = (fetch_candidate_company_news(tw0050, top_n=20, exclude_codes=_fixed)
+                     + _mover_news.fetch(tw0050, fetch_candidate_company_news, _fixed))
         if cand_news:
             news = dedup_news(news + classify_news_importance(cand_news))
             print(f"[main] 併入候選個股新聞後共 {len(news)} 則")

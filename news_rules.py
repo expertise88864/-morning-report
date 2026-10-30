@@ -111,6 +111,30 @@ def _news_keep_score(item: dict) -> tuple[int, int]:
     return grade_score, content_len
 
 
+def prompt_order(items: list[dict]) -> list[dict]:
+    """備援 prompt 各重要性層**先排再截**(2026-10-30 使用者同意)。
+
+    `_build_prompt` 對 critical/high/normal 各取前 10/20/30 則,原本是**抓取順序**:
+    同一層裡晚抓到的新聞(如微軟財報)可能只因排在後面就被截掉。改依
+    ①幾家獨立媒體報導(`merged_n`)②含官方來源 ③來源分級 ④有全文 ⑤較新
+    ⑥內容較完整 由高到低排;同分維持原順序(sorted 穩定)。只改排列,不改任何計分。
+    """
+    import datetime as _dt
+
+    def _key(item: dict) -> tuple:
+        merged = item.get("merged_n")
+        merged = merged if isinstance(merged, int) and merged > 0 else 1
+        grade, length = _news_keep_score(item)
+        try:
+            ts = _dt.datetime.fromisoformat(str(item.get("published_dt") or "")).timestamp()
+        except (TypeError, ValueError, OverflowError, OSError):
+            ts = 0.0
+        return (merged, item.get("official") is True, grade,
+                bool(item.get("fulltext")), ts, length)
+
+    return sorted(items, key=_key, reverse=True)
+
+
 def _credibility_tag(item: dict) -> str:
     """G6:可信度確定性標記。獨立來源數(dedup 累計的 merged_n)> 1 或含官方來源時,
     回「〔獨立來源 N・含官方來源〕」供 prompt 顯示;否則回 ""。純確定性,不進計分。

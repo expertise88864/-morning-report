@@ -35,6 +35,7 @@ _IMPORTANCE = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 #: 一個事件群最多抓幾篇。第二篇的用途是**互相對照**(同一事件的兩個
 #: 獨立群組寫的不一樣時,那個差異本身就是資訊);第三篇的邊際極低。
 MAX_PER_CLUSTER = 2
+BUDGET = 48  # 全文額度(篇);26 → 48(2026-10-30),抓取改並行(`fulltext_fetch`)
 
 
 def _imp(item) -> int:
@@ -74,15 +75,20 @@ def _rank(cluster: dict, by_id: dict, days: int = 0) -> tuple:
 
 
 def _fetchable(item) -> bool:
-    """已經有全文、或根本沒有可抓的連結時,這一格不該佔預算。"""
+    """已有全文或沒有可抓連結時不佔預算。判準同 `morning_report._fulltext_target_link`
+    (2026-10-30):只看 `link`,Google News 轉址要夾帶 `url=`/`u=` 原文網址才算可抓。"""
     if not isinstance(item, dict) or item.get("fulltext"):
         return False
-    link = str(item.get("link") or item.get("source_url") or "")
-    return link.startswith("http")
+    link = str(item.get("link") or "")
+    if "news.google.com" in link:
+        from urllib.parse import parse_qs, urlparse
+        query = parse_qs(urlparse(link).query or "")
+        link = next((v[0] for k in ("url", "u") for v in [query.get(k)] if v), "")
+    return link.startswith("http") and "news.google.com" not in link
 
 
 def plan(news: Optional[list], clusters: Optional[list],
-         budget: int = 26, timeline: Optional[list] = None) -> dict:
+         budget: int = BUDGET, timeline: Optional[list] = None) -> dict:
     """回 `{targets, per_cluster, uncovered_clusters, budget, basis}`。
 
     **純函式**:不抓網路、不改輸入。`targets` 是有序的 `source_item_id`
@@ -185,7 +191,7 @@ def timeline_records(path) -> list:
     return [dict(v, key=k) for k, v in state.items() if isinstance(v, dict)]
 
 
-def plan_for_run(news: Optional[list], recorder=None, budget: int = 26,
+def plan_for_run(news: Optional[list], recorder=None, budget: int = BUDGET,
                  timeline_file=None) -> list:
     """生產用的一行入口:**補 ID** → 分群 → 排計畫 → 記進 recorder → 回 `targets`。
 

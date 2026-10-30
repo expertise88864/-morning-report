@@ -72,8 +72,9 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 # 2026-09-04 使用者(刻意變更):世界大事速覽「3-5 條」→「5 條」;過長重試「最多 3 條」→
 # 「仍要 5 條」。逐行 diff 過,只有這兩處字面動了。
 # CR-02 2026-09-05:刻意修正未知模式,禁止 LLM 自算;有 Python 權威時抄錄規則不變。
+# 2026-10-30c 使用者(刻意變更):新增 R21「同主題正反並陳」。逐行 diff 過,只多這一條。
 LEGACY_PROMPT_SHA256 = (
-    "507890faeca5d1845a0acc9b2461e0c6e64cb20e46f7b8687a6d1a84b77d15dc")  # 10/30b: news IDs [N12] + watch trigger/review sections (deliberate).
+    "0977e5f2daf6fd3651a45a61c90d1f2a9574f3fd424b77457bd5c639cefc9bf4")  # 10/30c: R21 opposing signals (deliberate).
 #: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。

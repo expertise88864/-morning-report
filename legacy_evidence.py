@@ -26,18 +26,27 @@ _REGISTRY: dict[str, dict] = {}
 _BY_KEY: dict[str, str] = {}
 _ID = re.compile(r"\[(N\d{1,4})\]")
 _CITE = re.compile(r"(?:\[([^\[\]\n]{1,24})\])?((?:\s*\[N\d{1,4}\])+)")
-#: 數字 + 量級 + 單位。前面只排除數字本身(「大增50%」緊貼中文也要抓到;PR #34 外審)。
-_QUANT = re.compile(r"(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(兆|億|萬|千)?\s*(%|美元|元|倍|bp|個基點)?"
+#: 幣別 → 種類(中英文、寫在數字前或後都認;外幣各自一類,日圓不能替美元背書)。PR #34 外審第四輪。
+_CURRENCY = {"美元": "usd", "美金": "usd", "us$": "usd", "$": "usd", "usd": "usd", "dollar": "usd", "dollars": "usd",
+             "us dollar": "usd", "us dollars": "usd", "新台幣": "twd", "台幣": "twd", "nt$": "twd", "twd": "twd",
+             "ntd": "twd", "元": "twd", "人民幣": "cny", "yuan": "cny", "日圓": "jpy", "日元": "jpy", "日幣": "jpy",
+             "yen": "jpy", "歐元": "eur", "euro": "eur", "euros": "eur", "港元": "hkd", "港幣": "hkd", "韓元": "krw"}
+_ZH_CUR = "美元|美金|新台幣|台幣|人民幣|日圓|日元|日幣|歐元|港元|港幣|韓元"
+#: 幣別 + 數字 + 量級 + 單位 + 量詞。數字前只排除數字本身(「大增50%」緊貼中文也要抓到;PR #34 外審)。
+_QUANT = re.compile(rf"({_ZH_CUR})?\s*(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(兆|億|萬|千)?\s*(%|{_ZH_CUR}|元|倍|bp|個基點)?"
                     r"\s*(人次|人|用戶|戶|名|張|股|件|台|輛|支|次|位|個|顆|片|噸|桶|架|艘)?")
-#: 英文來源的寫法:「$200」「US$38 billion」「3 percent」(中文轉述成「200美元」「380億美元」;PR #34 外審)。
-_EN = re.compile(r"(US\$|NT\$|\$)?\s?(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(trillion|billion|million|thousand|percent|bn|tn)?\b", re.I)
+#: 英文來源:「$200」「US$38 billion」「200 million dollars」「3 percent」(中文轉述成「200美元」「380億美元」)。
+_EN = re.compile(r"(US\$|NT\$|\$|USD|TWD|NTD)?\s?(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*"
+                 r"(trillion|billion|million|thousand|percent|bn|tn)?\s*(US dollars?|dollars?|USD|TWD|NTD|yuan|yen|euros?)?\b",
+                 re.I)
 _SCALE = {"兆": 1e12, "億": 1e8, "萬": 1e4, "千": 1e3,
           "trillion": 1e12, "tn": 1e12, "billion": 1e9, "bn": 1e9, "million": 1e6, "thousand": 1e3}
-_KIND = {"%": "pct", "美元": "usd", "元": "twd", "倍": "x", "bp": "bp", "個基點": "bp"}
+_KIND = {"%": "pct", "倍": "x", "bp": "bp", "個基點": "bp"}
 #: 單位要對得上才算有根據(「3,300 億元」不能替「3,300 兆元」背書;PR #34 外審)。
 #: 「2億用戶」「200 million users」是數量不是金額,不能替「2億美元」背書(PR #34 外審第三輪)。
-_COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "count": {"count"}, "twd": {"twd", "amt"},
-               "usd": {"usd", "amt"}, "amt": {"twd", "usd", "amt"}}
+_MONEY = set(_CURRENCY.values())
+_COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "count": {"count"}, "amt": _MONEY | {"amt"},
+               **{k: {k, "amt"} for k in _MONEY}}
 _META = re.compile(r"\[[A-C] 級[^\]]*\]|\*\*\[[^\]]*\]\*\*|\]\(https?://[^)\s]+\)")
 
 
@@ -73,28 +82,29 @@ def known(evidence_id: str) -> bool:
 def _quantities(text, *, bare: bool = False) -> list[tuple[str, float, str, str, str]]:
     """(原文數字, 換算後的值, 種類, 量級, 單位), 例如「3,300 億元」→ ("3,300", 3.3e11, "twd", "億", "元")。
     `bare=False` 只回有量級或單位的(句子裡的「第3季」「10月」不算)。"""
-    out = []
-    for raw, mag, unit, noun in _QUANT.findall(unicodedata.normalize("NFKC", str(text or ""))):
-        if not (mag or unit or bare):
+    out, text = [], unicodedata.normalize("NFKC", str(text or ""))
+    for pre, raw, mag, unit, noun in _QUANT.findall(text):
+        if not (pre or mag or unit or bare):
             continue
-        try:
-            value = float(raw.replace(",", "")) * _SCALE.get(mag, 1.0)
-        except ValueError:
-            continue
-        kind = _KIND.get(unit) or ("count" if noun else "amt" if mag else "")
-        out.append((raw, value, kind, mag, unit or noun))
-    for cur, raw, mag in _EN.findall(unicodedata.normalize("NFKC", str(text or ""))):
-        mag = mag.lower()
+        # 「人民幣100億元」的「元」跟著前面的幣別;沒有幣別的量級看後面是不是量詞(「2億用戶」)
+        money = _CURRENCY.get(pre) if pre and unit in ("", "元") else _CURRENCY.get(unit)
+        kind = _KIND.get(unit) or money or ("count" if noun else "amt" if mag else "")
+        out.extend((raw, value, kind, mag, unit or noun or pre) for value in _scaled(raw, mag))
+    for pre, raw, mag, post in _EN.findall(text):
+        mag, cur = mag.lower(), (pre or post).lower()
         if not (cur or mag):
             continue
-        kind = "pct" if mag == "percent" else {"US$": "usd", "$": "usd", "NT$": "twd"}.get(cur.upper(), "count")   # 英文沒有幣別的 million 多半是數量
+        kind = "pct" if mag == "percent" else _CURRENCY.get(cur, "count")   # 沒有幣別的 million 是數量
         mag = "" if mag == "percent" else mag
-        try:
-            value = float(raw.replace(",", "")) * _SCALE.get(mag, 1.0)
-        except ValueError:
-            continue
-        out.append((raw, value, kind, mag, cur))
+        out.extend((raw, value, kind, mag, pre or post) for value in _scaled(raw, mag))
     return out
+
+
+def _scaled(raw: str, mag: str) -> list[float]:
+    try:
+        return [float(raw.replace(",", "")) * _SCALE.get(mag, 1.0)]
+    except ValueError:
+        return []
 
 
 def _item_text(item: dict) -> str:

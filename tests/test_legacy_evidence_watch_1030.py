@@ -120,6 +120,16 @@ def test_counts_never_back_money_claims():
     assert _failed("- 平台用戶已經達到2億用戶 [經濟日報][N2]") == 0
 
 
+def test_currency_words_before_or_after_the_number():
+    """PR #34 外審第四輪:「200 million dollars」(幣別在後)、「人民幣100億元」、各國外幣。"""
+    le.tag({"title": "Firm says revenue hits 200 million dollars; USD 5 billion buyback", "link": "https://n.example/a"})
+    le.tag({"title": "子公司增資人民幣100億元、另投資500億日圓", "link": "https://n.example/b"})
+    assert _failed("- 公司營收達2億美元,另宣布50億美元庫藏股 [Reuters][N1]") == 0
+    assert _failed("- 子公司增資100億人民幣、投資500億日圓 [經濟日報][N2]") == 0
+    assert _failed("- 子公司增資新台幣100億元,規模可觀 [經濟日報][N2]") == 1   # 人民幣不能替新台幣背書
+    assert _failed("- 子公司另投資500億美元布局海外 [經濟日報][N2]") == 1        # 日圓不能替美元背書
+
+
 def test_only_the_legacy_path_is_audited_and_quality_alert_carries_it():
     _register()
     manifest = {}

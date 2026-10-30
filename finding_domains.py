@@ -111,6 +111,8 @@ _FINDING_DOMAINS = {
     "watch_dropped_capacity": DOMAIN_CONTENT,
     "watch_expired_unreviewed": DOMAIN_CONTENT,
     "watch_due_unreviewed": DOMAIN_CONTENT,
+    # 2026-10-30:備援分析逐句證據核對未通過(觀察期只記錄)。
+    "legacy_evidence_unverified": DOMAIN_CONTENT,
     "watch_due_scan_failed": DOMAIN_CONTROL_PLANE,
     # ---- `_ALARMING` 家族(**動態產生**,不是字面 `add("...")`)
     # r10 外審:守衛只掃字面 code,這三個因此從來沒被檢查過,

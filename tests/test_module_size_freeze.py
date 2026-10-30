@@ -204,6 +204,8 @@ MODULE_CEILINGS = {
     "watch_expiry.py": 30,
     "fallback_watch_gap.py": 96,   # +休市日期限的上一交易日回顧(2026-10-24)
     "weather_dedupe.py": 55,   # 天氣卡片重複訊息(2026-10-24)
+    "legacy_evidence.py": 215,   # 備援逐句證據核對(2026-10-30)
+    "legacy_watch.py": 125,   # 備援觀察點跨日追蹤(2026-10-30)
     "announcement_filter.py": 110,   # 觀測站例行公告不上卡(2026-10-29);募資、法說、生技(10-30)
     "tw_holidays.py": 50,   # 證交所休市日表(2026-10-26)
     "conclusion_guard.py": 45,

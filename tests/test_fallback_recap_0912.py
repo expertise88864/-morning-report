@@ -134,7 +134,8 @@ def test_both_prompt_paths_apply_date_and_injection_guards():
     assert '不是新聞事實或有效證據' in bundle['developer_instructions']
     assert 'legacy_report' not in rc.prompt_recap(raw, '2026-09-15', '2026-09-14')
     quotes['LAST_TRADING_SESSION'] = '2026-09-14'
-    assert runtime.prompt_section(quotes, mr._external_text) == ''
+    # 2026-10-30 起只剩觀察點指示(備援觀察點跨日追蹤),不再帶前日備援觀點
+    assert '先前備援模型觀點' not in runtime.prompt_section(quotes, mr._external_text)
 
 
 def test_malformed_origin_is_rejected_without_crashing_prompt():

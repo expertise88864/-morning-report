@@ -8,6 +8,8 @@ sentence authorize a correction; otherwise the original prose is preserved.
 import re
 
 import analysis_origin
+import legacy_evidence
+from legacy_evidence import fresh_ids, tag  # noqa: F401  備援提示詞的新聞編號(2026-10-30 逐句證據核對)
 from news_actor_roles import purchase_target_actor
 from price_reaction_guard import neutralize
 
@@ -51,10 +53,12 @@ def correct_investment_target_headings(text: str, news: list[dict], *,
 
 
 def correct_reader_claims(text: str, news: list[dict], *,
-                          origin: str, manifest: dict) -> str:
+                          origin: str, manifest: dict, quotes=None) -> str:
     """Apply the narrow actor and price-causality safeguards before recap."""
     if origin == analysis_origin.EMERGENCY_FALLBACK:
         return text  # This path is a verbatim source-title list, not model prose.
+    if origin in (analysis_origin.LEGACY_PRIMARY, analysis_origin.LEGACY_AFTER_LUNA_FAILURE):
+        text = legacy_evidence.audit(text, quotes, manifest)   # 編號 → 原文連結;下面的守衛靠連結
     corrected = correct_investment_target_headings(
         text, news, origin=origin, manifest=manifest)
     return neutralize(corrected, manifest)

@@ -75,6 +75,7 @@ import analysis_recap as _arc
 import llm_telemetry as _lt
 import email_quality_findings as _eqf
 import fallback_watch_gap as _fwg
+import legacy_evidence as _lev
 import watch_assessment as _wa
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
@@ -311,7 +312,7 @@ def assess(manifest, *, mode: str = "watchdog",
     digest = is_weekend_digest(m)
     origin, _choice = _ao.normalize(_dig(m, "llm", "analysis_origin")), _ao.legacy_by_choice(m)   # 10-30 備援為主
     for _code, _severity, _detail in _fwg.findings(
-            _dig(m, "llm", "watch_due_at_start"), origin, digest=digest):
+            _dig(m, "llm", "watch_due_at_start"), origin, digest=digest) + _lev.findings(m):   # 10-30 證據核對
         if not (_choice and _code == "watch_due_unreviewed"):   # 帳本壞掉照報(PR #33 外審)
             add(_code, _severity, _detail)
     # 失敗原因跟著**會發出的那一筆**走(2026-08-22 生產 + 外審 r1 P2):

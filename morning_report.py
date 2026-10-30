@@ -11219,7 +11219,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         # sanitizer——先前只包全文,title/summary 直接插 prompt(GPT-5.6 三審 P1)
         safe_title = _sanitize_untrusted_text(str(n.get("title") or ""))
         safe_summary = _sanitize_untrusted_text(str(n.get("summary") or ""))[:600]
-        text = (f"- {prefix}[來源{grade}:{n['source']}]{cred} "
+        text = (f"- {_legacy_actor_guard.tag(n)}{prefix}[來源{grade}:{n['source']}]{cred} "
                 f"{safe_title}（{safe_summary}）")
         if with_full and n.get("fulltext"):
             # 網頁全文=不可信外部資料,先剝除疑似注入指令句。
@@ -11243,7 +11243,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         return world_cat_of(n)
 
     # world_and_market=同一事件同時來自市場與世界來源(dedup 時標記)→ 兩個版面都收
-    market_news = [n for n in news
+    market_news = [n for n in _legacy_actor_guard.fresh_ids(news)   # 每次組提示詞重新編號(N1 起)
                    if not _world_cat_of(n) or n.get("world_and_market")]
     crit_news = [n for n in market_news if n.get("importance") == "critical"]
     high_news = [n for n in market_news if n.get("importance") == "high"]
@@ -11295,7 +11295,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         #   (2) 深耕公司(2330/2882/2891)的第 2-5 則優先保留(3 家 × 4 = 12 行);
         #   (3) 還有餘裕才輪替遞補一般公司的第 2、3 則。42 行上限恰容納 (1)+(2)。
         def _fmt_company_line(label, tag, n):
-            return (f"- [{label}] {tag}{_external_text(n['title'])}"
+            return (f"- [{label}] {_legacy_actor_guard.tag(n)}{tag}{_external_text(n['title'])}"
                     f"（{_external_text(n.get('summary'), 300)}）")
 
         lines = []
@@ -11328,7 +11328,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         for label, lst in sector_news.items():
             sec_lines.append(f"\n■ {label}")
             for n in lst[:6]:  # 每類股最多 6 則;Google News 標題末已含來源媒體,摘要多為 HTML 雜訊故不放
-                sec_lines.append(f"- {_external_text(n['title'])}")
+                sec_lines.append(f"- {_legacy_actor_guard.tag(n)}{_external_text(n['title'])}")
         news_block += ("\n\n【其他類股最新新聞（Google News；依類股分組,標題末為來源媒體;"
                        "此處為「新聞」非股價數據）】\n"        # 取材對應在圍欄外(LM-7)
                        + "\n".join(sec_lines))
@@ -11350,7 +11350,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             continue
         for n in lst[:6]:
             published = str(n.get("published_dt") or n.get("published") or "")[:19]
-            sec_lines.append(f"- [{published}] {_external_text(n['title'])}")
+            sec_lines.append(f"- {_legacy_actor_guard.tag(n)}[{published}] {_external_text(n['title'])}")
     news_block += ("\n\n[Other sector coverage (dated headlines only)]\n"   # 規則在圍欄外(LM-7)
                    + "\n".join(sec_lines))
 
@@ -11368,7 +11368,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         if _world_per_cat[cat] > 4:
             continue
         published = str(n.get("published_dt") or n.get("published") or "")[:16]
-        world_lines.append(f"- [{published}][{cat}] {_external_text(n['title'])}")
+        world_lines.append(f"- {_legacy_actor_guard.tag(n)}[{published}][{cat}] {_external_text(n['title'])}")
     if world_lines:
         news_block += ("\n\n【昨日世界大事新聞(非市場導向;[類別] 標示,標題末為來源媒體)】\n"
                        + "\n".join(world_lines[:18]))     # 取材對應在圍欄外(LM-7)
@@ -11376,7 +11376,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 批#16:AI 前沿模型動態(新模型/跑分排名/API 定價,供「八、科技板塊」
     # 的『AI 模型競賽』條目取材;標題與模型 id 均為外部字串,一律過 sanitizer)
     _ai = quotes.get("AI_MODELS") or {}
-    _ai_lines = [f"- {_external_text(n.get('title'), 110)}"
+    _ai_lines = [f"- {_legacy_actor_guard.tag(n)}{_external_text(n.get('title'), 110)}"
                  for n in (_ai.get("news") or [])[:8]]
     _ai_price = [f"- {_external_text(r, 110)}"
                  for r in (_ai.get("pricing") or [])[:8]]
@@ -11658,7 +11658,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
         def _mops_line(m: dict) -> str:
             # MOPS 標題/摘要同屬外部字串,過 sanitizer(五審 P1:injection 旁路)
-            line = f"- {m.get('code','')} {_external_text(m.get('title'), 80)}"
+            line = f"- {_legacy_actor_guard.tag(m)}{m.get('code','')} {_external_text(m.get('title'), 80)}"
             # 深耕公司附「說明」摘要:人事異動的人名/生效日、投資案的金額/交易對象
             # 常只在 summary、標題僅泛稱「公告總經理異動」——不附摘要 LLM 寫不出
             # 具體內容甚至瞎編(Codex review P1)。其他公司維持標題,控 prompt 長度。
@@ -13811,7 +13811,7 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
     try:
         text = _call_llm_analysis_impl(
             quotes, fair, predictions, news, tw0050, calibration)
-        text = _legacy_actor_guard.correct_reader_claims(text, news, origin=_analysis_origin(), manifest=_RUN_MANIFEST)
+        text = _legacy_actor_guard.correct_reader_claims(text, news, origin=_analysis_origin(), manifest=_RUN_MANIFEST, quotes=quotes)
         _record_report_writer(text)
         return text
     finally:

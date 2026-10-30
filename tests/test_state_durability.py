@@ -197,13 +197,19 @@ def test_history_state_wrong_root_type_is_not_overwritten(monkeypatch, tmp_path)
 
 
 def test_history_state_still_saves_when_healthy(monkeypatch, tmp_path):
-    """防護不得把正常路徑一起關掉。"""
+    """防護不得把正常路徑一起關掉。
+
+    日期相對今天計算:`save_history_state` 只留最近 90 天,寫死 2026-08-01
+    的版本在 2026-10-31 起把舊列判成過期而失敗(與防護無關的定時炸彈)。"""
+    import datetime as _dt
+    today = _dt.datetime.now(mr.TPE).date()
+    old, new = str(today - _dt.timedelta(days=10)), str(today)
     f = tmp_path / "history.json"
-    f.write_text(json.dumps([{"date": "2026-08-01"}]), encoding="utf-8")
+    f.write_text(json.dumps([{"date": old}]), encoding="utf-8")
     monkeypatch.setattr(mr, "STATE_FILE", f)
-    assert mr.save_history_state({"date": "2026-08-22"}, push=False) is True
+    assert mr.save_history_state({"date": new}, push=False) is True
     rows = json.loads(f.read_text(encoding="utf-8"))
-    assert sorted(r["date"] for r in rows) == ["2026-08-01", "2026-08-22"]
+    assert sorted(r["date"] for r in rows) == [old, new]
 
 
 def test_corrupt_state_gets_its_own_finding_not_generic_unknown():

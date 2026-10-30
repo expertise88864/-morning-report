@@ -25,8 +25,9 @@ def test_investor_conference_schedules_are_not_news():
     for title in ("本公司受邀參加摩根士丹利舉辦之投資人會議", "公告本公司將召開法人說明會",
                   "本公司應邀參加法說會"):
         assert af.routine({"code": "2330", "title": title}, CAPS), title
-    # 法說的實際內容(財報、營收)仍照常
+    # 法說的實際內容仍照常(PR #33 外審:沒有「營收」字眼的簡報內容也要留)
     assert not af.routine({"code": "2330", "title": "公告本公司法說會簡報內容:第3季合併營收"}, CAPS)
+    assert not af.routine({"code": "2330", "title": "公告本公司法說會簡報內容：明年先進封裝產能倍增"}, CAPS)
 
 
 def test_plant_and_land_purchases_are_judged_by_amount_like_equipment():
@@ -36,12 +37,14 @@ def test_plant_and_land_purchases_are_judged_by_amount_like_equipment():
 
 
 def test_biotech_only_major_progress_reaches_the_analysis():
-    universe = [{"code": "6446", "industry": "生技醫療業", "market_cap": 3.0e11},
+    universe = [{"code": "6446", "name": "藥華藥", "industry": "生技醫療業", "market_cap": 3.0e11},
                 {"code": "2330", "industry": "半導體業", "market_cap": 3.0e13}]
     news = [{"title": "藥華藥9月營收年增四成", "entities": ["6446"]},
             {"title": "藥華藥新藥獲美國FDA核准上市", "entities": ["6446"]},
             {"title": "台積電9月營收創新高", "entities": ["2330"]},
-            {"title": "Fed 維持利率不變 - CNBC"}]
+            {"title": "Fed 維持利率不變 - CNBC"},
+            {"title": "藥華藥股價走揚", "cnyes_stocks": ["6446"]},          # PR #33 外審:鉅亨欄位
+            {"title": "藥華藥法人目標價上調", "company_label": "藥華藥"}]
     mops = [{"code": "6446", "title": "公告本公司董事會通過資金運用計畫"},
             {"code": "6446", "title": "公告本公司新藥第三期臨床試驗解盲成功"}]
     kept, quotes = q.current_inputs(news, {"TW_MOPS": mops}, TODAY, universe)
@@ -79,3 +82,7 @@ def test_choosing_the_legacy_path_is_not_reported_as_a_degradation():
     assert not ao.legacy_by_choice(failed)
     for bad in (None, [], "x", {"llm": "x"}, {"llm": {"config": []}}):
         assert not ao.legacy_by_choice(bad)
+    # PR #33 外審:選了備援,帳本壞掉仍是缺陷
+    broken = _legacy_manifest(ao.LEGACY_PROFILE)
+    broken["llm"]["watch_due_at_start"] = {"error": "invalid_ledger"}
+    assert "watch_due_scan_failed" in {f["code"] for f in rq.assess(broken)}

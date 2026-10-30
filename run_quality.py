@@ -311,8 +311,9 @@ def assess(manifest, *, mode: str = "watchdog",
     digest = is_weekend_digest(m)
     origin, _choice = _ao.normalize(_dig(m, "llm", "analysis_origin")), _ao.legacy_by_choice(m)   # 10-30 備援為主
     for _code, _severity, _detail in _fwg.findings(
-            _dig(m, "llm", "watch_due_at_start"), origin, digest=digest or _choice):
-        add(_code, _severity, _detail)
+            _dig(m, "llm", "watch_due_at_start"), origin, digest=digest):
+        if not (_choice and _code == "watch_due_unreviewed"):   # 帳本壞掉照報(PR #33 外審)
+            add(_code, _severity, _detail)
     # 失敗原因跟著**會發出的那一筆**走(2026-08-22 生產 + 外審 r1 P2):
     # 例外名先前只從 unknown_degradation 漏出來,該家族在第 11 條列為
     # 已知之後,原因必須騎在真的會發出的 finding 上 —— 而 emergency 也是

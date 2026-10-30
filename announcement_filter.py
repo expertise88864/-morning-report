@@ -23,7 +23,8 @@ _ROUTINE = re.compile(
 #: 股本／治理類程序公告(金額是資本額不是交易額;座談、委員、發言人等異動):一律不寫成新聞卡。
 _PROCEDURAL = re.compile(r"限制員工權利新股|註銷|變更登記|競業禁止|庫藏股.{0,6}(?:轉讓|註銷)|法人座談|受邀參加"
                          r"|發言人|審計委員|薪資報酬委員|員工持股|員工認股權|股東會|真除|代理人|會計主管|稽核主管"
-                         r"|更新取得|代子公司.{0,40}盈餘分配|法人說明會|法說會|投資人會議|座談會"
+                         r"|更新取得|代子公司.{0,40}盈餘分配"   # 法說只濾行程,簡報內容照常(PR #33 外審)
+                         r"|(?:受邀|應邀|參加|出席|召開|舉辦).{0,30}(?:法人說明會|法說會|投資人會議|座談會)"
                          r"|公司債|次順位|金融債|增資|私募|發行新股|轉投資|認購"   # 募資一律不寫(10-30)
                          r"|(?:投資|參與).{0,30}(?:股權|普通股|特別股|基金|現金增資)")
 #: 就算長得像例行公告,有這些字就不是(「自結營收」「合併」「訂單」…)。
@@ -59,7 +60,8 @@ def biotech_minor(item: dict, industries: dict) -> bool:
     """生技醫療公司、但標題不是新藥／藥證／解盲／授權這類重大進展(不送進分析)。"""
     if not isinstance(item, dict):
         return False
-    codes = [str(item.get("code") or "")] + [str(c) for c in item.get("entities") or []]
+    from news_normalize import entities_of   # 鉅亨的 cnyes_stocks、company_label 也算(PR #33 外審)
+    codes = [str(item.get("code") or "")] + entities_of(item)
     if not any(_BIOTECH.search(str(industries.get(c) or "")) for c in codes if c):
         return False
     return not _BIOTECH_MAJOR.search(str(item.get("title") or ""))
@@ -81,8 +83,14 @@ def routine(item: dict, market_caps: dict) -> bool:
 
 
 def industries(universe) -> dict:
-    return {str((row or {}).get("code") or ""): str((row or {}).get("industry") or "")
-            for row in universe or [] if isinstance(row, dict) and row.get("industry")}
+    """代號與公司名 → 產業別(新聞的 company_label 是公司名)。"""
+    out = {}
+    for row in universe or []:
+        if isinstance(row, dict) and row.get("industry"):
+            for key in (row.get("code"), row.get("name")):
+                if str(key or "").strip():
+                    out[str(key).strip()] = str(row["industry"])
+    return out
 
 
 def market_caps(universe) -> dict:

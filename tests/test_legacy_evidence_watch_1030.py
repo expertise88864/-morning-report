@@ -75,6 +75,30 @@ def test_rounded_numbers_match_but_a_wrong_decimal_does_not():
     assert "[鉅亨](https://news.example/a)" in ok and "[N1]" not in bad
 
 
+def _failed(line: str) -> int:
+    manifest = {}
+    le.audit("## 九、其他類股資訊\n" + line + "\n", {"MACRO": {"TWII": {"close": 23000}}}, manifest)
+    return manifest["llm"]["legacy_evidence"]["failed"]
+
+
+def test_review_findings_pr34_ids_units_and_adjacent_numbers():
+    # 觀測站公告共用同一個網址:不同公告要拿到不同編號,核對時看的是自己那則
+    mops = "https://mops.twse.com.tw/mops/#/web/t05st01"
+    assert le.tag({"code": "2881", "title": "富邦人壽發行次順位債 400 億元", "link": mops}) == "[N1] "
+    assert le.tag({"code": "2882", "title": "國泰人壽取得不動產 50 億元", "link": mops}) == "[N2] "
+    assert _failed("- 國泰人壽公告取得不動產 50 億元 [MOPS][N2]") == 0
+    assert _failed("- 國泰人壽公告取得不動產 400 億元 [MOPS][N2]") == 1   # 那是 N1 的數字
+    # 數字緊貼中文也要抓到;單位(億／兆、元／美元、%)要對得上
+    le.tag({"title": "聯發科營收年增 20%,達 3,300 億元", "link": "https://news.example/m"})
+    assert _failed("- 聯發科營收大增50%,表現亮眼 [鉅亨][N3]") == 1
+    assert _failed("- 聯發科營收達3,300兆元,表現亮眼 [鉅亨][N3]") == 1
+    assert _failed("- 聯發科營收達 3,300 美元,表現亮眼 [鉅亨][N3]") == 1
+    assert _failed("- 聯發科營收年增20%、達3,300億元 [鉅亨][N3]") == 0
+    # 行情資料只對沒有量級的價格與漲跌幅
+    assert _failed("- 加權指數收在 23,000 點附近,收 23,000 元 [鉅亨][N3]") == 0
+    assert _failed("- 加權指數成交 23,000 億元,創新高 [鉅亨][N3]") == 1
+
+
 def test_only_the_legacy_path_is_audited_and_quality_alert_carries_it():
     _register()
     manifest = {}

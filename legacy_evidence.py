@@ -26,8 +26,13 @@ _REGISTRY: dict[str, dict] = {}
 _BY_KEY: dict[str, str] = {}
 _ID = re.compile(r"\[(N\d{1,4})\]")
 _CITE = re.compile(r"(?:\[([^\[\]\n]{1,24})\])?((?:\s*\[N\d{1,4}\])+)")
-_NUMBER = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)\s*(%|％|億|萬|兆|美元|元|倍|bp|個基點)")
-_ANY_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+#: 數字 + 量級 + 單位。前面只排除數字本身(「大增50%」緊貼中文也要抓到;PR #34 外審)。
+_QUANT = re.compile(r"(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(兆|億|萬|千)?\s*(%|美元|元|倍|bp|個基點)?")
+_SCALE = {"兆": 1e12, "億": 1e8, "萬": 1e4, "千": 1e3}
+_KIND = {"%": "pct", "美元": "usd", "元": "twd", "倍": "x", "bp": "bp", "個基點": "bp"}
+#: 單位要對得上才算有根據(「3,300 億元」不能替「3,300 兆元」背書;PR #34 外審)。
+_COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "twd": {"twd", "amt"},
+               "usd": {"usd", "amt"}, "amt": {"twd", "usd", "amt"}}
 _META = re.compile(r"\[[A-C] 級[^\]]*\]|\*\*\[[^\]]*\]\*\*|\]\(https?://[^)\s]+\)")
 
 
@@ -43,11 +48,12 @@ def fresh_ids(news):
 
 
 def tag(item) -> str:
-    """備援提示詞裡這則新聞的編號(`[N12] `);同一則(同連結或同標題)整班同一號。"""
+    """備援提示詞裡這則新聞的編號(`[N12] `);同一則新聞整班同一號。
+    觀測站公告全部共用同一個網址,身分要連標題、代號、時間一起看(PR #34 外審)。"""
     if not isinstance(item, dict):
         return ""
-    key = str(item.get("link") or item.get("url") or item.get("title") or "").strip()
-    if not key:
+    key = "|".join(str(item.get(k) or "").strip() for k in ("link", "url", "title", "code", "published"))
+    if not key.strip("|"):
         return ""
     if key not in _BY_KEY:
         _BY_KEY[key] = f"N{len(_BY_KEY) + 1}"
@@ -59,17 +65,18 @@ def known(evidence_id: str) -> bool:
     return evidence_id in _REGISTRY
 
 
-def _norm(text) -> str:
-    return re.sub(r"[,\s]", "", unicodedata.normalize("NFKC", str(text or "")))
-
-
-def _values(text) -> list[float]:
+def _quantities(text, *, bare: bool = False) -> list[tuple[str, float, str, str, str]]:
+    """(原文數字, 換算後的值, 種類, 量級, 單位), 例如「3,300 億元」→ ("3,300", 3.3e11, "twd", "億", "元")。
+    `bare=False` 只回有量級或單位的(句子裡的「第3季」「10月」不算)。"""
     out = []
-    for raw in _ANY_NUMBER.findall(_norm(text)):
+    for raw, mag, unit in _QUANT.findall(unicodedata.normalize("NFKC", str(text or ""))):
+        if not (mag or unit or bare):
+            continue
         try:
-            out.append(float(raw))
+            value = float(raw.replace(",", "")) * _SCALE.get(mag, 1.0)
         except ValueError:
             continue
+        out.append((raw, value, _KIND.get(unit, "amt" if mag else ""), mag, unit))
     return out
 
 
@@ -91,11 +98,15 @@ def _market_values(quotes, budget: int = 20000) -> list[float]:
     return out
 
 
-def _supported(value: float, pool: list[float], raw: str = "") -> bool:
-    """「13%」可對 12.6～13.4(四捨五入到整數);「13.2%」只對 13.15～13.25。大金額另容許 0.5%。"""
+def _supported(claim: tuple, pool: list[tuple], market: list[float] = ()) -> bool:
+    """「13%」可對 12.6～13.4(四捨五入到整數);「13.2%」只對 13.15～13.25。大金額另容許 0.5%。
+    行情資料只有數字沒有單位:只拿來對漲跌幅與沒有量級的價格(「收 1,100 元」)。"""
+    raw, value, kind, mag, _ = claim
     decimals = len(raw.split(".", 1)[1]) if "." in raw else 0
-    tol = max(0.5 * 10 ** -decimals + 1e-9, abs(value) * 0.005)
-    return any(abs(v - value) <= tol for v in pool)
+    tol = max(0.5 * 10 ** -decimals * _SCALE.get(mag, 1.0) + 1e-9, abs(value) * 0.005)
+    if any(k in _COMPATIBLE.get(kind, ()) and abs(v - value) <= tol for _, v, k, *_ in pool):
+        return True
+    return (kind == "pct" or (kind in ("twd", "usd") and not mag)) and any(abs(v - value) <= tol for v in market)
 
 
 def _publisher(item: dict) -> str:
@@ -136,17 +147,13 @@ def _check(block: str, market: list[float]) -> list[str]:
     unknown = [i for i in ids if not known(i)]
     if unknown:
         problems.append("編號不存在:" + "、".join(unknown[:3]))
-    cited = [v for i in ids if known(i) for v in _values(_item_text(_REGISTRY[i]))]
-    everything = [v for item in _REGISTRY.values() for v in _values(_item_text(item))]
-    for raw, unit in _NUMBER.findall(_META.sub(" ", block)):
-        try:
-            value = float(raw.replace(",", ""))
-        except ValueError:
+    cited = [q for i in ids if known(i) for q in _quantities(_item_text(_REGISTRY[i]))]
+    everything = [q for item in _REGISTRY.values() for q in _quantities(_item_text(item))]
+    for claim in _quantities(_ID.sub(" ", _META.sub(" ", block))):
+        if _supported(claim, cited, market):
             continue
-        if _supported(value, cited, raw) or _supported(value, market, raw):
-            continue
-        where = "其他新聞" if _supported(value, everything, raw) else "任何素材"
-        problems.append(f"數字 {raw}{unit} 不在引用的新聞裡(查{where})")
+        where = "其他新聞" if _supported(claim, everything) else "任何素材"
+        problems.append(f"數字 {claim[0]}{claim[3]}{claim[4]} 不在引用的新聞裡(查{where})")
     return problems
 
 

@@ -44,7 +44,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 42  # Oct29: tech 5-6 / other 8-10 across six sectors incl. a Taiwan-economy item.
+DEEPSEEK_LEGACY_VERSION = 43  # Oct30: top-3 = global market movers; no financing/routine filings; biotech only major progress.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。

@@ -2,8 +2,11 @@
 
 取得設備／廠務工程／子公司增資或轉投資／授信資產處分／發行公司債／背書保證這類公告,
 每天幾十則,多數金額相對公司規模很小。**金額沒到公司市值 1% 就不送進分析**;
-財報、自結營收、法說、併購、重大合約、人事等照常(不符合例行樣式就不過濾)。
+財報、自結營收、併購、重大合約、人事等照常(不符合例行樣式就不過濾)。
 純函式,不做網路呼叫;判不出金額的例行公告視同小額。
+
+使用者 2026-10-30 再收緊:募資(發債、增資、私募、投資股權或基金)不論金額一律不寫;
+法說會行程公告不寫;取得廠房／土地比照設備看金額;生技公司只留新藥、藥證、解盲、授權這類重大進展。
 """
 from __future__ import annotations
 
@@ -14,16 +17,21 @@ MATERIAL_SHARE = 0.01
 #: 查不到市值時的絕對門檻(新台幣)。
 MATERIAL_TWD = 5e9
 _ROUTINE = re.compile(
-    r"(?:取得|購置|購買).{0,24}(?:設備|機器|廠務|工程|使用權資產|不動產|有價證券)"
+    r"(?:取得|購置|購買).{0,24}(?:設備|機器|廠務|工程|使用權資產|不動產|有價證券|廠房|土地|建物|無塵室)"
     r"|處分.{0,24}(?:設備|機器|使用權資產|有價證券|債權)|增資|轉投資|授信|聯貸|公司債|背書保證|資金貸與|租賃"
     r"|資本(?:支出)?預算")
 #: 股本／治理類程序公告(金額是資本額不是交易額;座談、委員、發言人等異動):一律不寫成新聞卡。
 _PROCEDURAL = re.compile(r"限制員工權利新股|註銷|變更登記|競業禁止|庫藏股.{0,6}(?:轉讓|註銷)|法人座談|受邀參加"
                          r"|發言人|審計委員|薪資報酬委員|員工持股|員工認股權|股東會|真除|代理人|會計主管|稽核主管"
-                         r"|更新取得|代子公司.{0,40}盈餘分配")
+                         r"|更新取得|代子公司.{0,40}盈餘分配|法人說明會|法說會|投資人會議|座談會"
+                         r"|公司債|次順位|金融債|增資|私募|發行新股|轉投資|認購"   # 募資一律不寫(10-30)
+                         r"|(?:投資|參與).{0,30}(?:股權|普通股|特別股|基金|現金增資)")
 #: 就算長得像例行公告,有這些字就不是(「自結營收」「合併」「訂單」…)。
-_SUBSTANTIVE = re.compile(r"自結|營收|財報|財務報告|法說|合併|收購|併購|股利|配息|董事長|總經理|執行長"
+_SUBSTANTIVE = re.compile(r"自結|營收|財報|財務報告|合併|收購|併購|股利|配息|董事長|總經理|執行長"
                           r"|重大合約|訂單|得標|停工|停產|火災|罰|訴訟|減產")
+#: 生技公司只有這些才算重大進展(使用者 2026-10-30:「除非他有特別出新藥物、前瞻性特別好的」)。
+_BIOTECH_MAJOR = re.compile(r"新藥|藥證|核准|許可證|FDA|EMA|TFDA|解盲|臨床|授權|合作開發|收購|併購|上市許可", re.I)
+_BIOTECH = re.compile(r"生技|醫療|製藥")
 _AMOUNT = re.compile(r"(?:(新台幣|台幣|NT\$|美元|USD|US\$|人民幣|RMB|日圓|日幣)\s*)?約?\s*([\d,]+(?:\.\d+)?)\s*"
                      r"(兆|億|萬|千)?\s*(元|美元|日圓)?")
 _UNIT = {"兆": 1e12, "億": 1e8, "萬": 1e4, "千": 1e3}
@@ -47,6 +55,16 @@ def amount_twd(text: str) -> float:
     return best
 
 
+def biotech_minor(item: dict, industries: dict) -> bool:
+    """生技醫療公司、但標題不是新藥／藥證／解盲／授權這類重大進展(不送進分析)。"""
+    if not isinstance(item, dict):
+        return False
+    codes = [str(item.get("code") or "")] + [str(c) for c in item.get("entities") or []]
+    if not any(_BIOTECH.search(str(industries.get(c) or "")) for c in codes if c):
+        return False
+    return not _BIOTECH_MAJOR.search(str(item.get("title") or ""))
+
+
 def routine(item: dict, market_caps: dict) -> bool:
     """這則觀測站公告是不是「例行、小額」(不送進分析)。"""
     title = re.sub(r"\s+", "", str(item.get("title") or ""))   # 觀測站標題常斷在「使用 權資產」
@@ -60,6 +78,11 @@ def routine(item: dict, market_caps: dict) -> bool:
     codes = [str(item.get("code") or "")] + [str(c) for c in item.get("entities") or []]
     cap = next((market_caps[c] for c in codes if market_caps.get(c)), 0)
     return amount < (cap * MATERIAL_SHARE if cap else MATERIAL_TWD)
+
+
+def industries(universe) -> dict:
+    return {str((row or {}).get("code") or ""): str((row or {}).get("industry") or "")
+            for row in universe or [] if isinstance(row, dict) and row.get("industry")}
 
 
 def market_caps(universe) -> dict:

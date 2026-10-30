@@ -61,6 +61,20 @@ def counts_as_primary_success(origin, *, has_text: bool = True) -> bool:
     return bool(has_text) and normalize(origin) == LUNA_SPECIALIZED
 
 
+#: 使用者 2026-10-30 選「改回備援為主」:repo 變數 LLM_PRIMARY_PROMPT_PROFILE 設成這個。
+LEGACY_PROFILE = "deepseek_legacy_v1"
+
+
+def legacy_by_choice(manifest) -> bool:
+    """既有路徑是設定選的(不是特化失敗)—— 這時「未走特化」「觀察點沒回顧」不是降級。"""
+    node = manifest
+    for key in ("llm", "config", "sources", "LLM_PRIMARY_PROMPT_PROFILE", "resolved"):
+        node = node.get(key) if isinstance(node, dict) else None
+    llm = manifest.get("llm") if isinstance(manifest, dict) else None
+    origin = llm.get("analysis_origin") if isinstance(llm, dict) else None
+    return node == LEGACY_PROFILE and normalize(origin) == LEGACY_PRIMARY
+
+
 def describe(origin) -> str:
     """給人看的一句話。帳本要能被人讀懂,不只是被程式讀。"""
     return {

@@ -21,20 +21,22 @@ def without_forum_posts(news: list | None, today=None) -> list:
 def current_inputs(news: list | None, quotes: dict | None, today, universe=None) -> tuple[list, dict]:
     """主新聞與兩個補充池(研究用新聞、AI 模型新聞)一起濾 —— 特化證據包與備援提示詞
     都會另外讀補充池,只濾主清單的話舊聞會從那裡回來(PR #31 外審)。回傳 quotes 的淺拷貝。
-    觀測站的例行小額公告(取得設備、增資子公司…)也在這裡拿掉(使用者 2026-10-29)。"""
+    觀測站的例行小額公告(取得設備、增資子公司…)也在這裡拿掉(使用者 2026-10-29);
+    生技公司沒有新藥／藥證／解盲這類重大進展的新聞與公告也不進(使用者 2026-10-30)。"""
     import announcement_filter as af
-    caps = af.market_caps(universe)
+    caps, kinds = af.market_caps(universe), af.industries(universe)
 
     def keep(rows):
-        return [n for n in without_forum_posts(rows, today)
-                if not (str(n.get("source") or "") == "MOPS" and af.routine(n, caps))]
+        return [n for n in without_forum_posts(rows, today) if not af.biotech_minor(n, kinds)
+                and not (str(n.get("source") or "") == "MOPS" and af.routine(n, caps))]
     q = dict(quotes or {})
     if isinstance(q.get("NEWS_RESEARCH_SOURCES"), list):
         q["NEWS_RESEARCH_SOURCES"] = keep(q["NEWS_RESEARCH_SOURCES"])
     if isinstance(q.get("AI_MODELS"), dict) and isinstance(q["AI_MODELS"].get("news"), list):
         q["AI_MODELS"] = dict(q["AI_MODELS"], news=keep(q["AI_MODELS"]["news"]))
     if isinstance(q.get("TW_MOPS"), list):
-        q["TW_MOPS"] = [m for m in q["TW_MOPS"] if not (isinstance(m, dict) and af.routine(m, caps))]
+        q["TW_MOPS"] = [m for m in q["TW_MOPS"]
+                        if not (isinstance(m, dict) and (af.routine(m, caps) or af.biotech_minor(m, kinds)))]
     return keep(news), q
 
 

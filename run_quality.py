@@ -309,9 +309,9 @@ def assess(manifest, *, mode: str = "watchdog",
     # 判準套上去等於每個週日發一封假警報 —— 而假警報的代價是使用者
     # 開始忽略這封信,連真的那天也一起忽略。
     digest = is_weekend_digest(m)
-    origin = _ao.normalize(_dig(m, "llm", "analysis_origin"))
+    origin, _choice = _ao.normalize(_dig(m, "llm", "analysis_origin")), _ao.legacy_by_choice(m)   # 10-30 備援為主
     for _code, _severity, _detail in _fwg.findings(
-            _dig(m, "llm", "watch_due_at_start"), origin, digest=digest):
+            _dig(m, "llm", "watch_due_at_start"), origin, digest=digest or _choice):
         add(_code, _severity, _detail)
     # 失敗原因跟著**會發出的那一筆**走(2026-08-22 生產 + 外審 r1 P2):
     # 例外名先前只從 unknown_degradation 漏出來,該家族在第 11 條列為
@@ -325,7 +325,7 @@ def assess(manifest, *, mode: str = "watchdog",
     elif origin == _ao.EMERGENCY_FALLBACK:
         add("analysis_emergency", "degraded",
             "信裡沒有任何模型判斷,寄出的是 Python 組的備援文字" + _lsuffix)
-    elif origin != _ao.LUNA_SPECIALIZED:
+    elif origin != _ao.LUNA_SPECIALIZED and not _choice:   # 使用者選了備援為主就不是降級
         add("analysis_not_specialized", "degraded",
             f"主分析走的是「{_ao.describe(origin)}」—— "
             "特化路徑的事件卡、淨效果、橫向綜合今天都不在信裡" + _lsuffix)
@@ -511,7 +511,7 @@ def assess(manifest, *, mode: str = "watchdog",
     # 沒接住 —— telemetry 有了,還要有人讀它。
     _wd = _safe_int(_dig(m, "llm", "watch_dropped_capacity"))
     _expired_watch = _safe_int(_dig(m, "llm", "watch_expired_unreviewed"))
-    if _expired_watch > 0:
+    if _expired_watch > 0 and not _choice:
         add("watch_expired_unreviewed", "degraded",
             _wa.expiry_detail(_expired_watch, _dig(m, "llm", "watch_expired_unreviewed_cases")))
     if _wd > 0:
@@ -819,7 +819,7 @@ def assess(manifest, *, mode: str = "watchdog",
     # 專屬 finding 在下面 —— 它說得出停在哪一天,catch-all 只會說「沒見過」。
     _stale_recap = [str(s) for s in (m.get("degraded_steps") or [])
                     if str(s).startswith("recap:not_previous_session:")]
-    if _stale_recap:
+    if _stale_recap and not _choice:
         add("recap_not_previous_session", "degraded",
             "已驗證的昨日觀點不是上一個交易日,未進權威 EVIDENCE:"
             + "、".join(x.split(":", 2)[-1] for x in _stale_recap)

@@ -27,14 +27,16 @@ _BY_KEY: dict[str, str] = {}
 _ID = re.compile(r"\[(N\d{1,4})\]")
 _CITE = re.compile(r"(?:\[([^\[\]\n]{1,24})\])?((?:\s*\[N\d{1,4}\])+)")
 #: 數字 + 量級 + 單位。前面只排除數字本身(「大增50%」緊貼中文也要抓到;PR #34 外審)。
-_QUANT = re.compile(r"(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(兆|億|萬|千)?\s*(%|美元|元|倍|bp|個基點)?")
+_QUANT = re.compile(r"(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(兆|億|萬|千)?\s*(%|美元|元|倍|bp|個基點)?"
+                    r"\s*(人次|人|用戶|戶|名|張|股|件|台|輛|支|次|位|個|顆|片|噸|桶|架|艘)?")
 #: 英文來源的寫法:「$200」「US$38 billion」「3 percent」(中文轉述成「200美元」「380億美元」;PR #34 外審)。
 _EN = re.compile(r"(US\$|NT\$|\$)?\s?(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(trillion|billion|million|thousand|percent|bn|tn)?\b", re.I)
 _SCALE = {"兆": 1e12, "億": 1e8, "萬": 1e4, "千": 1e3,
           "trillion": 1e12, "tn": 1e12, "billion": 1e9, "bn": 1e9, "million": 1e6, "thousand": 1e3}
 _KIND = {"%": "pct", "美元": "usd", "元": "twd", "倍": "x", "bp": "bp", "個基點": "bp"}
 #: 單位要對得上才算有根據(「3,300 億元」不能替「3,300 兆元」背書;PR #34 外審)。
-_COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "twd": {"twd", "amt"},
+#: 「2億用戶」「200 million users」是數量不是金額,不能替「2億美元」背書(PR #34 外審第三輪)。
+_COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "count": {"count"}, "twd": {"twd", "amt"},
                "usd": {"usd", "amt"}, "amt": {"twd", "usd", "amt"}}
 _META = re.compile(r"\[[A-C] 級[^\]]*\]|\*\*\[[^\]]*\]\*\*|\]\(https?://[^)\s]+\)")
 
@@ -72,19 +74,20 @@ def _quantities(text, *, bare: bool = False) -> list[tuple[str, float, str, str,
     """(原文數字, 換算後的值, 種類, 量級, 單位), 例如「3,300 億元」→ ("3,300", 3.3e11, "twd", "億", "元")。
     `bare=False` 只回有量級或單位的(句子裡的「第3季」「10月」不算)。"""
     out = []
-    for raw, mag, unit in _QUANT.findall(unicodedata.normalize("NFKC", str(text or ""))):
+    for raw, mag, unit, noun in _QUANT.findall(unicodedata.normalize("NFKC", str(text or ""))):
         if not (mag or unit or bare):
             continue
         try:
             value = float(raw.replace(",", "")) * _SCALE.get(mag, 1.0)
         except ValueError:
             continue
-        out.append((raw, value, _KIND.get(unit, "amt" if mag else ""), mag, unit))
+        kind = _KIND.get(unit) or ("count" if noun else "amt" if mag else "")
+        out.append((raw, value, kind, mag, unit or noun))
     for cur, raw, mag in _EN.findall(unicodedata.normalize("NFKC", str(text or ""))):
         mag = mag.lower()
         if not (cur or mag):
             continue
-        kind = "pct" if mag == "percent" else {"US$": "usd", "$": "usd", "NT$": "twd"}.get(cur.upper(), "amt")
+        kind = "pct" if mag == "percent" else {"US$": "usd", "$": "usd", "NT$": "twd"}.get(cur.upper(), "count")   # 英文沒有幣別的 million 多半是數量
         mag = "" if mag == "percent" else mag
         try:
             value = float(raw.replace(",", "")) * _SCALE.get(mag, 1.0)

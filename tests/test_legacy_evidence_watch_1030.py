@@ -110,6 +110,16 @@ def test_english_sources_back_their_chinese_rendering():
     assert _failed("- 串流平台把方案月費調到 300 美元 [CNBC][N1]") == 1
 
 
+def test_counts_never_back_money_claims():
+    """PR #34 外審第三輪:「200 million users」「2億用戶」是數量,不是金額。"""
+    le.tag({"title": "App reaches 200 million users; revenue hits $500 million", "link": "https://news.example/a"})
+    le.tag({"title": "平台用戶突破2億用戶", "link": "https://news.example/b"})
+    assert _failed("- 平台營收衝上2億美元,成長強勁 [CNBC][N1]") == 1
+    assert _failed("- 平台營收衝上5億美元、用戶達2億人 [CNBC][N1]") == 0
+    assert _failed("- 平台營收已達2億元,市場驚艷 [經濟日報][N2]") == 1
+    assert _failed("- 平台用戶已經達到2億用戶 [經濟日報][N2]") == 0
+
+
 def test_only_the_legacy_path_is_audited_and_quality_alert_carries_it():
     _register()
     manifest = {}

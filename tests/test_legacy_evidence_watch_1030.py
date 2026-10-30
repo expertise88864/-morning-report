@@ -99,6 +99,17 @@ def test_review_findings_pr34_ids_units_and_adjacent_numbers():
     assert _failed("- 加權指數成交 23,000 億元,創新高 [鉅亨][N3]") == 1
 
 
+def test_english_sources_back_their_chinese_rendering():
+    """PR #34 外審第二輪:英文標題的「$200」「US$38 billion」「3 percent」轉述成中文也要對得上。"""
+    le.tag({"title": "Streaming service raises plan to $200 a month - CNBC", "link": "https://news.example/a"})
+    le.tag({"title": "SK Hynix to spend US$38 billion on new fabs, shares up 3 percent",
+            "link": "https://news.example/b"})
+    assert _failed("- 串流平台把方案月費調到200美元 [CNBC][N1]") == 0
+    assert _failed("- SK海力士砸380億美元建廠,股價漲3% [CNBC][N2]") == 0
+    assert _failed("- SK海力士砸380億元建廠,市場關注 [CNBC][N2]") == 1   # 美元不能替新台幣背書
+    assert _failed("- 串流平台把方案月費調到 300 美元 [CNBC][N1]") == 1
+
+
 def test_only_the_legacy_path_is_audited_and_quality_alert_carries_it():
     _register()
     manifest = {}

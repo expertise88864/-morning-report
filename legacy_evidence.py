@@ -28,7 +28,10 @@ _ID = re.compile(r"\[(N\d{1,4})\]")
 _CITE = re.compile(r"(?:\[([^\[\]\n]{1,24})\])?((?:\s*\[N\d{1,4}\])+)")
 #: 數字 + 量級 + 單位。前面只排除數字本身(「大增50%」緊貼中文也要抓到;PR #34 外審)。
 _QUANT = re.compile(r"(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(兆|億|萬|千)?\s*(%|美元|元|倍|bp|個基點)?")
-_SCALE = {"兆": 1e12, "億": 1e8, "萬": 1e4, "千": 1e3}
+#: 英文來源的寫法:「$200」「US$38 billion」「3 percent」(中文轉述成「200美元」「380億美元」;PR #34 外審)。
+_EN = re.compile(r"(US\$|NT\$|\$)?\s?(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(trillion|billion|million|thousand|percent|bn|tn)?\b", re.I)
+_SCALE = {"兆": 1e12, "億": 1e8, "萬": 1e4, "千": 1e3,
+          "trillion": 1e12, "tn": 1e12, "billion": 1e9, "bn": 1e9, "million": 1e6, "thousand": 1e3}
 _KIND = {"%": "pct", "美元": "usd", "元": "twd", "倍": "x", "bp": "bp", "個基點": "bp"}
 #: 單位要對得上才算有根據(「3,300 億元」不能替「3,300 兆元」背書;PR #34 外審)。
 _COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "twd": {"twd", "amt"},
@@ -77,6 +80,17 @@ def _quantities(text, *, bare: bool = False) -> list[tuple[str, float, str, str,
         except ValueError:
             continue
         out.append((raw, value, _KIND.get(unit, "amt" if mag else ""), mag, unit))
+    for cur, raw, mag in _EN.findall(unicodedata.normalize("NFKC", str(text or ""))):
+        mag = mag.lower()
+        if not (cur or mag):
+            continue
+        kind = "pct" if mag == "percent" else {"US$": "usd", "$": "usd", "NT$": "twd"}.get(cur.upper(), "amt")
+        mag = "" if mag == "percent" else mag
+        try:
+            value = float(raw.replace(",", "")) * _SCALE.get(mag, 1.0)
+        except ValueError:
+            continue
+        out.append((raw, value, kind, mag, cur))
     return out
 
 

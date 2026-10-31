@@ -911,6 +911,93 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2428998408",
+        "title": "2026/10/30(五)Alphabet狂瀉12% Marvell暴跌逾13% 英特爾暴跌20% 美股到底 跌完了沒有?【早晨財經速解讀】",
+        "published": "Fri, 30 Oct 2026 01:13:47 +0000",
+        "processed_at": "2026-10-31T14:12:36Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Alphabet（Google）重挫是機會：前瞻本益比僅14倍、為20年低點，且自研TPU占AI加速器78%、GPU僅22%，不受輝達售價綁架，比台積電便宜，值得留意買點。",
+            "主持人認為本輪巨頭財報下跌（Alphabet、亞馬遜、Intel）並非危機而是機會，因美股企業91%債務為固定利率、無立即流動性風險，重點是長期基本面是否上行，跌10%-20%後應反過來尋找機會。",
+            "主持人觀察羅素2000已連日反彈並站穩年線，資金可能從大型股流向中小型股，利率預期回檔給中小型股喘氣空間，值得留意。",
+            "主持人提醒財富效應風險：高盛估算AI股若跌40%、其他股票跌15%，財富效果可能拖累GDP 0.5個百分點，股市下跌可能反噬實體經濟。",
+            "主持人指出期中選舉後民主黨若勝選可能加強AI監管，資料中心周邊選民支持民主黨比例上升，供給可能放緩；但需求不減，算力反而不會過剩，是好壞參半。"
+          ],
+          "tickers": [
+            {
+              "name": "Alphabet（Google）",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Alphabet 重挫是機會，前瞻本益比14倍為20年低點，自研TPU使其不受輝達綁架，看好長期。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為亞馬遜電商收入不如預期、自由現金流轉負，股價遭受賣壓，成長幅度不如想像。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人指出Intel一天跌兩成，PC業務崩潰、以色列工廠停工、毛利率下滑，財報展望不佳。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人指出蘋果是七巨頭中唯一撐住，iPhone銷售佳。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "7巨頭大概也只剩下蘋果還撐著",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為本輪大型股財報重挫反映融資成本與非AI需求疲軟的疑慮，但不構成危機；長期基本面仍上行，應尋找機會而非恐慌。",
+          "action_view": "主持人建議不要把每日雜訊當操作依據，應建立中心邏輯；在巨頭重挫、估值便宜時留意買點，並注意資金從大型股輪動至中小型股的機會。",
+          "notable_quote": "行情本來就是在半信半疑中成長",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "行情本來就是在半信半疑中成長"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2428181679",
         "title": "2026/10/29(四)微軟噴谷歌崩 巨頭撐得住?聯準會攤牌 升息還沒完?【早晨財經速解讀】",
         "published": "Thu, 29 Oct 2026 01:08:35 +0000",
@@ -1625,29 +1712,61 @@
           }
         },
         "shown_at": "2026-10-16T00:08:04Z"
-      },
+      }
+    ]
+  },
+  "statementdog": {
+    "name": "財報狗",
+    "episodes": [
       {
-        "guid": "tag:soundcloud,2010:tracks/2418594690",
-        "title": "2026/10/14(三)外資狂砍1600億 股市怎麼又要崩了?韓股先倒破年線 台股撐得住?【早晨財經速解讀】",
-        "published": "Wed, 14 Oct 2026 01:11:18 +0000",
-        "processed_at": "2026-10-14T07:08:18Z",
+        "guid": "cmvtlfew903nz01074rwjf1jy",
+        "title": "573.【財經時事放大鏡】Anthropic & CSP 牽動 AIDC 供需",
+        "published": "Thu, 29 Oct 2026 23:02:00 GMT",
+        "processed_at": "2026-10-31T14:42:34Z",
         "digest": {
           "summary_points": [
-            "主持人認為費半連五跌跌破月線、季線、半年線，但十年債殖利率已從5.3%回到5.1%，不能把賣壓全歸咎於利率；本輪應是反彈後休息，不是泡沫破滅。",
-            "主持人判斷記憶體股重挫主因是漲多獲利了結，而非中國長鑫2028-29年擴產或合約價鬆動；合約價10月仍在創高，記憶體指標已極端超賣，若未波及QQQ，只是內部輪動可接受。",
-            "主持人指出大型銀行財報優於預期但股價已從高點回檔約兩成，壓力來自高利率下AI融資循環與長天期違約擔憂；摩根大通/高盛對新創雲端Volta的放款從50億縮至13億，AI新創6年到期殖利率開到11.21%，信用條件收縮。",
-            "主持人強調韓國股市已跌破年線，成為全球風險資產領頭羊；若再破低，台股恐跟著鬆動，但台股位階較健康，外資單日賣超1653億仍撐在48000點以上，千點內屬正常波動。",
-            "主持人認為美國家庭實質財富中位數僅增2%，前10%增31%，股市三年漲78%造成財富效應集中，內需消費靠資產增值支撐，因此股市現在不太能跌，否則零售會受衝擊。",
-            "主持人判斷美國AI資本支出年增幅可能在本季達116%高點，明年降至60%仍高；市場擔憂的是增速放緩而非轉負，預期調低後未來有上修空間，屬穩健牛市。",
-            "主持人指出科技巨頭推AI眼鏡/智慧家庭產品，難以上兆美元資本支出回收的擔憂，終究要靠財富效應支撐；AI經濟已形成全球資金被巨頭吸納的格局。"
+            "主持人認為 Anthropic S1 揭露的營收爆發、企業客戶一年從 950 家跳增至 1.2 萬家、NRR 極高，證明 Agentic AI / Code Worker 需求不是泡沫，而是算力可持續變現的領先指標；未來 Anthropic 財報將成為 AI 需求的直接溫度計，波動可能加劇。",
+            "針對 SemiAnalysis 報告，主持人強調原文是講 Data Center「設施/電力」可能多出約 10GW，不是 GPU 晶片過剩；他估算台積電產能換算僅約 20 多 GW，遠低於報告的 50GW，晶片缺貨仍卡在 CoWoS，短期供不應求難解。",
+            "主持人指出美國資料中心營建比台灣難很多：各州對電池、排煙、氣體偵測等安全規範不一，HVDC 提高電壓更放大差異，且發電機、模組化設計尚未成熟，因此實際開出產能可能不如計畫，光看 GPU 供給會高估。",
+            "TPCA 展後主持人實際調研發現 PCB/CCL 設備需求比預期火爆，交期從 12 個月拉長到 20-30 個月，外資也上調展望；玻璃基板進度可能提前，伺服器板重要性已取代消費性蘋果訂單。",
+            "光通訊方面，康寧光纖年增 44%、一邊擴產一邊賺，但主持人認為 scale-up 光通訊題材已被市場算得很清楚、有 price-in 風險；真正還沒反映的是 VCSEL 升級對穩懋、宏捷科等砷化鎵業者的潛在受惠，以及化學耗材、玻璃基板、PCB 設備/耗材等「趴在地上」的環節。",
+            "主持人認為目前 AI 族群評價偏高、對利空敏感，上沖下洗會是常態；操作上應區分利空是短期可解還是結構性，並優先關注尚未 price-in、估值低的耗材與材料股。"
           ],
           "tickers": [
             {
-              "name": "美光",
-              "code": "MU",
+              "name": "Anthropic",
+              "code": "",
               "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Agentic AI 與 Code Worker 帶動營收爆發、企業客戶大增，長期成長可期，但需留意市場預期過高。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得他最新這一季還真的是蠻厲害的啊。尤其是這兩季的或是說這三季吧。今年他就是給到第二季嘛。所以他如果給到第二季其實整個數字我覺得還蠻漂亮的。就是營收的成長是非常非常可觀的。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "康寧",
+              "code": "GLW",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為光通訊需求強勁，康寧光纖年增 44% 且一邊擴產一邊賺，但光通訊 scale-up 題材可能已部分 price-in。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那所以就以光的這個東西來看他其實年增是真的超強的啦那他也是真的一邊擴產一邊賺",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "穩懋",
+              "code": "3105",
+              "market": "TW",
               "direction": "unknown",
-              "reason": "主持人認為美光近期賣壓屬漲多回檔，記憶體合約價未鬆動且技術面極端超賣，具備率先反彈條件。",
+              "reason": "主持人認為若未來 VCSEL 升級成真，對穩懋等砷化鎵代工廠是很好的受惠，但目前規格尚未確定。",
               "stance_basis": "investment_view",
               "direction_evidence": {
                 "version": 1,
@@ -1657,26 +1776,12 @@
               }
             },
             {
-              "name": "摩根大通",
-              "code": "JPM",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為大型銀行本業財報不差，但股價已回檔約兩成，主要壓力是AI融資循環與長天期違約擔憂，放款轉趨保守。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "銀行業的壓力其實看起來更多也是反映在未來長天期的相關違約",
-                "direction": "bearish"
-              }
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
+              "name": "宏捷科",
+              "code": "8086",
+              "market": "TW",
               "direction": "unknown",
-              "reason": "主持人提到蘋果股價因新家庭裝置一度創高，但未表達明確多空，僅視為產品催化。",
-              "stance_basis": "unclear",
+              "reason": "主持人認為 VCSEL 升級對宏捷科等砷化鎵業者是潛在利多，但目前規格尚未確定。",
+              "stance_basis": "investment_view",
               "direction_evidence": {
                 "version": 1,
                 "status": "unverified",
@@ -1685,28 +1790,22 @@
               }
             }
           ],
-          "market_view": "主持人認為本輪全球股市回檔僅是中期回調，不是泡沫破滅；費半連跌反映漲多與AI融資擔憂，但記憶體合約價與企業獲利未惡化，台股位階相對健康。",
-          "action_view": "操作上，主持人傾向視為漲多休息；觀察重點是韓國股市是否再破低、QQQ是否受記憶體賣壓波及，以及AI資本支出年增幅是否僅放緩而非轉負，不必急於看空。",
-          "notable_quote": "",
+          "market_view": "主持人認為 AI 長線需求明確、成長無虞，但現階段評價偏高，市場對任何利空都容易上沖下洗；他建議用營收與算力數據分辨長短料與結構性問題，避免把短期地延當成趨勢反轉。",
+          "action_view": "操作上，主持人傾向避開已過度 price-in 的 scale-up 光通訊，轉向估值低、尚未反映台積電擴產的化學耗材、玻璃基板、PCB 設備/耗材，並留意 VCSEL 升級受惠股；對高評價 AI 硬體股不追高，等待利空消化。",
+          "notable_quote": "反面告訴大家評價是相對高。所以在這邊上沖下洗。隨便一個利空就是上沖下洗啊。",
           "quote_evidence": {
             "version": 1,
-            "status": "unverified",
-            "quote": ""
+            "status": "verbatim",
+            "quote": "反面告訴大家評價是相對高。所以在這邊上沖下洗。隨便一個利空就是上沖下洗啊。"
           },
           "direction_quality": {
-            "attributed": 1,
+            "attributed": 2,
             "non_investment": 0,
             "unverified": 2,
             "invalid": 0
           }
-        },
-        "shown_at": "2026-10-15T00:28:23Z"
-      }
-    ]
-  },
-  "statementdog": {
-    "name": "財報狗",
-    "episodes": [
+        }
+      },
       {
         "guid": "cmvqve4fi06hc01wb14smhi68",
         "title": "572.【達人聊產業】半導體先進製程跟 BBU 都指定的關鍵材料商 ft. 耐特陳勳森董事長 & 陳宇涵總經理",
@@ -2353,44 +2452,6 @@
           "notable_quote": "你只要有人交的出來，趕快交啊，給你錢快點做啊。"
         },
         "shown_at": "2026-09-04T23:26:31Z"
-      },
-      {
-        "guid": "cmtitb7m303e501vlcyo6eo1o",
-        "title": "560.【達人聊產業】相信潘董！USB、SSD 到 Edge AI 方案商 ft. 群聯潘健成執行長",
-        "published": "Tue, 01 Sep 2026 23:02:11 GMT",
-        "processed_at": "2026-09-02T07:52:06Z",
-        "digest": {
-          "summary_points": [
-            "潘建成三年前就依邏輯推理判斷 Flash 補 DRAM 不足、KV Cache 會成真，如今已有數十家銀行、中小企業採用其落地 AI，並強調這是「先準備、等需求發生」而非事後追熱點。",
-            "他用群聯自身結果驗證：6 台伺服器硬體約 2,000 萬台幣，單月省下約 114 名工程師、約 2,500 多萬薪資；7 月花 150 多萬雲端服務卻省下 5,000 多萬，因此敢大規模採購 B300 與 6000 Pro。",
-            "潘建成明確表示群聯不是要永遠賣伺服器，而是先用整機與服務教育市場，未來靠高毛利軟體、服務與 premium 支撐；海外採合資(JV)、只出技術與服務不出錢的模式快速複製。",
-            "他反駁「營收衝高、毛利率會掉」的質疑，認為那是三歲小孩也知道的事；群聯要做的是總獲利增加，並用軟體收入彌補硬體毛利率下滑，不迎合短期投機股東。",
-            "記憶體供需方面，他估算 AI 使用人數、使用次數與 token 量未來 2-3 年倍數成長，但 NAND 位元產出兩年成長不超過 1.6 倍，所以記憶體不可能滿足；DRAM 與 Flash 是互補而非替代。",
-            "他認為 CSP 資本支出不會消失，而是從算力轉向儲存與電力：訓練模型賠錢，要賺錢靠 inference，而 inference 產生大量 token 必須儲存，因此存儲是必要剛需。",
-            "對記憶體原廠，他判斷毛利率 80% 是常態、90% 不健康，漲價已放緩但 AI 資料中心需求停不下來；消費類需求已死，手機也少很多。",
-            "他給投資人的檢查點：看群聯要看研發支出是否連停兩季，營收是五年前種下的；庫存金額大增是反映 NAND 價格變化而非容量暴增，市場用簡單數學就可判斷。"
-          ],
-          "tickers": [
-            {
-              "name": "群聯",
-              "code": "8299",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "潘建成認為 AI 落地、KV Cache 與軟體服務的長期布局已開始回收，將支撐未來獲利與影響力。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "潘建成表示 AI 是真需求，雲端要轉向 inference 需要大量 GPU，群聯本身也大買 B300 與 6000 Pro。"
-            }
-          ],
-          "market_view": "潘建成認為 AI 是真需求，會持續帶動資料中心與記憶體；CSP 的資本支出會由算力轉向儲存與電力，token 只會變貴不會免費。記憶體原廠毛利率若高到 90% 不健康，但未來兩三年供不應求不易逆轉。",
-          "action_view": "長期投資者看群聯應緊盯研發支出是否連停兩季，不要被單季營收、毛利率或庫存金額等短期數字誤導；潘建成認為公司五年以上布局明確，相信的人就長期持有，短線投機者不要碰。",
-          "notable_quote": "當下一個事件發生之後，10個專家有20個講法，3天之後只有一個結果；誰看那個結果，把那個結果執行好，誰就獲利。"
-        },
-        "shown_at": "2026-09-02T23:33:57Z"
       }
     ]
   },

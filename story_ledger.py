@@ -36,6 +36,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections import Counter
+from itertools import chain
 
 # Codex r2(P1):否定判準**只有一份**,定義在 news_events(無第一方相依)。
 # 兩邊各維護一份會分歧——上一輪就是這樣讓同一句話在兩個訊號上結論相反。
@@ -845,6 +847,24 @@ def _subject_latin_tokens(text: str) -> set:
     return {w.upper() for w in _SUBJECT_LATIN.findall(str(text or ""))}         - _SUBJECT_LATIN_STOP
 
 
+def _overlap_passes(shared: int, len_a: int, len_b: int, threshold: float) -> bool:
+    """`_same_story_subject` 的 bigram 重疊條件(`_StoryMatchIndex` 共用同一份)。"""
+    if shared < STORY_MATCH_MIN_SHARED:
+        return False
+    # 分母取**較短**的一邊 —— 與批#64 的事件去重刻意相反。續報常常把內容
+    # 變長(「收購案成立」→「收購案完成交割 細節公布 金額300億」),
+    # 用較長的一邊當分母會被長度稀釋成 0.13,敘事就接不起來。
+    # 兩邊的取捨方向本來就不同:事件去重錯了會**消滅一則真事件**,
+    # 線索歸屬錯了只是把兩條敘事併在一起,後者可回復、前者不可。
+    return not shared / min(len_a, len_b) < threshold
+
+
+def _pair_threshold(ent: str, cand_ent: str) -> float:
+    """有一邊 entityless 時採較嚴的門檻(見 `_match_open_story` 批#71 說明)。"""
+    return (STORY_MATCH_THRESHOLD if (ent and cand_ent)
+            else STORY_MATCH_THRESHOLD_NO_ENTITY)
+
+
 def _same_story_subject(a: str, b: str, threshold: float) -> bool:
     """兩個主旨是否屬於**同一條敘事**。
 
@@ -872,21 +892,13 @@ def _same_story_subject(a: str, b: str, threshold: float) -> bool:
     「Business Insider Taiwan」就被判成同一條。
     """
     ga, gb = _content_bigrams(a), _content_bigrams(b)
-    shared = ga & gb
-    if len(shared) < STORY_MATCH_MIN_SHARED:
-        return False
-    # 分母取**較短**的一邊 —— 與批#64 的事件去重刻意相反。續報常常把內容
-    # 變長(「收購案成立」→「收購案完成交割 細節公布 金額300億」),
-    # 用較長的一邊當分母會被長度稀釋成 0.13,敘事就接不起來。
-    # 兩邊的取捨方向本來就不同:事件去重錯了會**消滅一則真事件**,
-    # 線索歸屬錯了只是把兩條敘事併在一起,後者可回復、前者不可。
-    if len(shared) / min(len(ga), len(gb)) < threshold:
+    if not _overlap_passes(len(ga & gb), len(ga), len(gb), threshold):
         return False
     la, lb = _subject_latin_tokens(a), _subject_latin_tokens(b)
     return not (la and lb and not (la & lb))
 
 
-def _resolve_story_key(ev: dict, by_key: dict) -> str:
+def _resolve_story_key(ev: dict, by_key: dict, index=None) -> str:
     """事件歸屬哪條線索。主動追蹤帶回來的 `followup_key` 只是**提示**。
 
     r2(Codex,P1):追蹤查詢直接帶著發起它的線索 key,否則 event_type 由標題推導
@@ -903,13 +915,13 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     """
     followed = str(ev.get("followup_key") or "").strip()
     if not followed.startswith(("e:", "h:", "cluster:")):
-        return _match_open_story(ev, by_key) or story_key_for_event(ev)
+        return _match_open_story(ev, by_key, index) or story_key_for_event(ev)
     target = by_key.get(followed)
     if not target:
-        return _match_open_story(ev, by_key) or story_key_for_event(ev)
+        return _match_open_story(ev, by_key, index) or story_key_for_event(ev)
     # 條件一:主體要對得上。
     if not _is_same_subject(target, ev):
-        return _match_open_story(ev, by_key) or story_key_for_event(ev)
+        return _match_open_story(ev, by_key, index) or story_key_for_event(ev)
     # 條件二(r3 Codex,P1):**_is_same_subject 一個人擋不住**。它的門檻
     # (SUBJECT_OVERLAP_MIN=0.10)是**刻意寬鬆**的——設計目的是「已經同 key 時
     # 要不要保留前情」,偏向保住連續性;拿它當歸屬閘門,等於用寬鬆的檢查做嚴格
@@ -929,7 +941,7 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     ev_type = str(ev.get("event_type") or "").strip() or "general"
     tgt_type = str(target.get("event_type") or "").strip() or "general"
     if ev_type != "general" and tgt_type != "general" and ev_type != tgt_type:
-        return _match_open_story(ev, by_key) or story_key_for_event(ev)
+        return _match_open_story(ev, by_key, index) or story_key_for_event(ev)
     # r6(Codex,P1):**升級不能在這裡做**。_resolve_story_key 只是「決定歸屬」,
     # 在它之後還有重播偵測、_is_real_progress、權威比較等關卡;在這裡改型別,
     # 等於讓一則**被拒收的低分級或重播事件**也悄悄把線索重新分類,
@@ -937,7 +949,7 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     return followed
 
 
-def _match_open_story(ev: dict, by_key: dict) -> str:
+def _match_open_story(ev: dict, by_key: dict, index=None) -> str:
     """在既有線索裡找出**同一條敘事**,找到回它的 key,否則回空字串。
 
     批#67(P1-3)。這是「敘事縱向連貫」真正的缺口:`story_key_for_event` 對
@@ -949,19 +961,27 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
     要求型別相同會把正確的後續報導擋在外面(這正是 r5 已經記載過的教訓)。
 
     多條命中時取相似度最高的那條;完全沒命中就讓它自己開一條(那是誠實的)。
+
+    `index`(`_StoryMatchIndex`)只是**預篩**:它回報「沒有任何候選能通過
+    `_same_story_subject`」的線索,那些線索在下面的迴圈裡分數必為 0、
+    本來就不會被選中,跳過它們不改變結果。沒給 index 時逐條全比(參考實作,
+    等價性測試拿它當對照組)。
     """
     ent = str(ev.get("entity") or "")
     subject = _story_subject(str(ev.get("title") or ev.get("headline") or ""),
                              ent, str(ev.get("entity_name") or ""))
     if not subject:
         return ""
-    threshold = (STORY_MATCH_THRESHOLD if ent
-                 else STORY_MATCH_THRESHOLD_NO_ENTITY)
     ev_period = _episodic_period(ev)
     subject_grams = _content_bigrams(subject)
     best_key, best_score = "", 0.0
     same_entities = {}  # Per invocation: alias changes and later calls cannot see stale results.
+    skip = (index.hopeless(subject_grams, ent, str(ev.get("entity_name") or ""))
+            if index is not None else ())
     for key, story in by_key.items():
+        # 迭代順序仍是 by_key 本身的順序 —— 同分時取先到者,與全比一致。
+        if skip and id(story) in skip:
+            continue
         cand_ent = str(story.get("entity") or "")
         # 批#71:**「有掛代號」與「沒掛代號」的同一則新聞必須互相比得到。**
         # 2026-07-30 實信的實害:同一篇〈聯電法說〉AI營收三年拚逾10億美元
@@ -980,8 +1000,7 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
                 same_entities[cand_ent] = _si.same_subject(cand_ent, ent)
             if not same_entities[cand_ent]:
                 continue
-        pair_threshold = (threshold if (ent and cand_ent)
-                          else STORY_MATCH_THRESHOLD_NO_ENTITY)
+        pair_threshold = _pair_threshold(ent, cand_ent)
         # r1(Codex,P1):**期別型事件跨期不得合併**。「公告本公司115年6月份
         # 自結合併營收」與「⋯115年7月份⋯」幾乎是同一個字串,分數遠超門檻,
         # 於是七月營收會在 `story_key_for_event` 建立新月份 key 之前就被掛回
@@ -1074,6 +1093,134 @@ def _story_match_candidates(story: dict) -> list:
     return [x for x in out if x]
 
 
+class _StoryMatchIndex:
+    """`_match_open_story` 的倒排索引預篩(2026-10-31)。
+
+    診斷:帳本長到 3.6 萬條線索、7.5 萬個候選標題之後,每則事件都要對每個
+    候選跑一次 `strip_outlet_suffix` 與兩次 regex bigram —— 2026-10-30 生產
+    `update_ledger` 約 845s(佔「事件/來源健康」886s 的絕大部分),state 閘的
+    轉載重播測試 572s。成本是 O(事件 × 候選),而且隨帳本每天線性長大。
+
+    **只跳過「必然 0 分」的線索,所以不改變任何歸屬**:
+    候選主旨 = `strip_outlet_suffix(候選)` 再剝兩個 token —— 代號槽
+    `線索代號 or 事件代號`、名稱槽 `線索名稱 or 事件名稱`(`_story_subject`)。
+    只用線索自己欄位的那部分與事件無關,建索引時先算好(`mid`)與它的 bigram;
+    事件那一側的 token 沒出現在 `t` / `mid` 裡時,實際主旨就是 `mid.strip()`,
+    倒排表數出來的共同 bigram 數與原本 `ga & gb` **完全相同**,再套同一個
+    `_overlap_passes` 與 `_pair_threshold`。事件 token 有出現的候選(剝除可能
+    拼出跨接 bigram)改用快取的 `t` 逐一精算同一組條件。
+    通過前兩道條件的線索交回原迴圈,英文互斥守衛、期別、主體與計分都照舊。
+
+    維護:索引以線索**物件**為單位。比對期間改了線索 headline / timeline /
+    entity / entity_name 的程式必須呼叫 `mark(story)`;不認得的物件(加進
+    by_key 卻沒 mark)不在跳過名單裡,一律交給原迴圈,寧可慢不可漏。
+    """
+
+    def __init__(self, by_key: dict):
+        # id(story) → (story, 候選 id 列表, 代號, 名稱);保留 story 參照,
+        # id 才不會在物件被回收後被別的物件重用。
+        self._stories: dict = {}
+        # 候選 id → (id(story), mid 的 bigram 數, t, mid)。bigram 集合本身不留
+        # (3.6 萬條線索時多佔數百 MB),refresh 時由 mid 重算。
+        self._cands: dict = {}
+        self._postings: dict = {}     # bigram → [候選 id]
+        # 槽 → {候選 id},只收線索自己沒有該欄位的候選 —— 線索有該欄位時
+        # 那個槽用的是線索的值,事件 token 不會被套用。
+        self._open_slots: dict = {"ent": set(), "name": set()}
+        self._token_hits: dict = {}   # (槽, 事件 token) → {候選 id}
+        self._dirty: dict = {}
+        self._next_cid = 0
+        for story in by_key.values():
+            self._add(story)
+
+    def _add(self, story: dict) -> None:
+        sid = id(story)
+        own_ent = str(story.get("entity") or "")
+        own_name = str(story.get("entity_name") or "")
+        cids = []
+        for cand in _story_match_candidates(story):
+            t = strip_outlet_suffix(cand)
+            mid = t
+            for x in (own_ent, own_name):       # 與 _story_subject 相同的剝除順序
+                if x and len(x) >= 2:
+                    mid = mid.replace(x, "")
+            grams = _content_bigrams(mid.strip())
+            cid = self._next_cid
+            self._next_cid += 1
+            self._cands[cid] = (sid, len(grams), t, mid)
+            for g in grams:
+                self._postings.setdefault(g, []).append(cid)
+            for slot, own in (("ent", own_ent), ("name", own_name)):
+                if not own:
+                    self._open_slots[slot].add(cid)
+            cids.append(cid)
+        self._stories[sid] = (story, cids, own_ent, own_name)
+        for (slot, tok), hits in self._token_hits.items():
+            hits.update(c for c in cids
+                        if c in self._open_slots[slot] and self._contains(c, tok))
+
+    def _contains(self, cid: int, tok: str) -> bool:
+        _, _, t, mid = self._cands[cid]
+        return tok in t or tok in mid
+
+    def mark(self, story: dict) -> None:
+        self._dirty[id(story)] = story
+
+    def _refresh(self) -> None:
+        for sid, story in self._dirty.items():
+            old = self._stories.pop(sid, None)
+            for cid in (old[1] if old else ()):
+                _, _, _, mid = self._cands.pop(cid)
+                for g in _content_bigrams(mid.strip()):
+                    self._postings[g].remove(cid)
+                for open_slot in self._open_slots.values():
+                    open_slot.discard(cid)
+                for hits in self._token_hits.values():
+                    hits.discard(cid)
+            self._add(story)
+        self._dirty.clear()
+
+    def hopeless(self, subject_grams: set, ent: str, ev_name: str):
+        """沒有任何候選能通過主旨重疊條件的線索 id 集合(可安全跳過)。"""
+        if self._dirty:
+            self._refresh()
+        hit_cids = set()
+        for slot, tok in (("ent", ent), ("name", ev_name)):
+            if not (tok and len(tok) >= 2):
+                continue
+            hits = self._token_hits.get((slot, tok))
+            if hits is None:
+                hits = self._token_hits[(slot, tok)] = {
+                    c for c in self._open_slots[slot] if self._contains(c, tok)}
+            hit_cids |= hits
+        n_subject = len(subject_grams)
+        live = set()
+        counts = Counter(chain.from_iterable(
+            self._postings.get(g, ()) for g in subject_grams))
+        for cid, shared in counts.items():
+            if shared < STORY_MATCH_MIN_SHARED or cid in hit_cids:
+                continue
+            sid, n_grams, _, _ = self._cands[cid]
+            if sid not in live and _overlap_passes(
+                    shared, n_subject, n_grams,
+                    _pair_threshold(ent, self._stories[sid][2])):
+                live.add(sid)
+        for cid in hit_cids:
+            sid, _, t, _ = self._cands[cid]
+            if sid in live:
+                continue
+            _, _, own_ent, own_name = self._stories[sid]
+            cs = t
+            for x in (own_ent or ent, own_name or ev_name):
+                if x and len(x) >= 2:
+                    cs = cs.replace(x, "")
+            grams = _content_bigrams(cs.strip())
+            if _overlap_passes(len(subject_grams & grams), n_subject, len(grams),
+                               _pair_threshold(ent, own_ent)):
+                live.add(sid)
+        return self._stories.keys() - live
+
+
 def _adopt_entity_from_event(story: dict, ev: dict, key: str, by_key: dict,
                              seen_sigs: dict, today_sigs: dict,
                              touched: set) -> str:
@@ -1153,6 +1300,9 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         if str(day.get("date") or "")[:10] == str(today)[:10]:
             today_sigs[k] = {str(x) for x in (day.get("sigs") or [])}
 
+    # 主旨比對的預篩索引(見 _StoryMatchIndex);迴圈裡每則事件只會改動它歸屬
+    # 的那一條(或新開的那一條)線索,兩處都 mark。
+    index = _StoryMatchIndex(by_key) if events else None
     for ev in events or []:
         if not isinstance(ev, dict):
             continue
@@ -1163,10 +1313,11 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         # 掛到任一提及的個股上會產生毫無意義的「軌跡」。
         if is_market_wrap(title, vocab):
             continue
-        key = _resolve_story_key(ev, by_key)
+        key = _resolve_story_key(ev, by_key, index)
         surprise = float(ev.get("surprise_score") or 0.0)
         story = by_key.get(key)
         if story is not None:
+            index.mark(story)
             # r2(Codex,P2):**代號升級必須在所有提前返回之前做。**
             # 上一版把它放在型別升級旁邊(事件通過全部驗收之後),而生產是
             # **一次**把整份 structured_events 傳進 update_ledger ——
@@ -1224,6 +1375,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
             seen_sigs[key] = [_event_signature(ev)]
             today_sigs[key] = {_event_signature(ev)}
             touched.add(key)
+            index.mark(by_key[key])
             continue
         sig = _event_signature(ev)
         replayed = (sig in seen_sigs.get(key, [])

@@ -419,7 +419,7 @@ MODULE_CEILINGS = {
     # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
     # 第三十一輪外審:identity 消費端補 summary
     # Batch A:lineage 端到端(match_lineage/簽章候選集合/世系接線)
-    "evidence_packet.py": 850,  # 2026-08-24 外審 P1:gazette 專用 resolver(標題撐不住政策解讀);現況 815  # 2026-08-24 外審 P1:切片要帶語意(tension 左右/容器攤平);現況 730  # 2026-08-22 外審 P1-1:修補輪的證據切片(ID→內容的對照歸 packet 模組);現況 635
+    "evidence_packet.py": 855,  # 2026-10-31 PR #37:公報修補切片帶 document_date;現況 851   # 2026-08-24 外審 P1:gazette 專用 resolver(標題撐不住政策解讀);現況 815  # 2026-08-24 外審 P1:切片要帶語意(tension 左右/容器攤平);現況 730  # 2026-08-22 外審 P1-1:修補輪的證據切片(ID→內容的對照歸 packet 模組);現況 635
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -627,7 +627,7 @@ MODULE_CEILINGS = {
     # 由使用者要求決定**,而組裝邏輯仍只有 `_bundle` 一個函式。
     # 第十八輪:實測 301 —— 三條新規則(逐標的、同向解讀、claim 回指)。
     # 2026-08-19 第四批:legacy 骨架各欄位的寫法說明。實測 472 行。
-    "prompt_profiles.py": 530,  # 2026-08-24:公報引用形狀寫進 prompt;現況 501
+    "prompt_profiles.py": 535,  # 2026-10-31 PR #37:舊院會紀錄時效規則;現況 532   # 2026-08-24:公報引用形狀寫進 prompt;現況 501
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。

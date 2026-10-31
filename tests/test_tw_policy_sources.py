@@ -274,3 +274,30 @@ def test_same_day_documents_get_no_extra_date_line():
     same = _meeting(content_date="中華民國115年10月30日")
     assert "文件日期" not in tps.format_gazette_block([same], lambda s, n: str(s)[:n])
     assert "文件日期" not in tps.format_gazette_block([_meeting(content_date="")], lambda s, n: str(s)[:n])
+
+
+def test_document_date_reaches_the_structured_prompt_and_repair_slices():
+    """PR #37 外審:預設的特化路徑吃 evidence packet,從不經過 format_gazette_block。"""
+    import json
+
+    import evidence_packet as ep
+    import fixtures_analysis as fx
+    import prompt_profiles as pp
+    rec = dict(_meeting(), category_raw="920(行政管理)", keywords=[], link="https://gazette.example/9")
+    rec["document_date"] = tps.older_document_date(rec)
+    assert rec["document_date"] == "中華民國115年10月22日"
+    pk = ep.build({"GAZETTE_RECORDS": [rec]}, {}, {}, fx.news(), [], {}, as_of="x",
+                  target_session_date="y", sanitize=str)
+    bundle = json.dumps(pp.build_luna_bundle(pk), ensure_ascii=False, default=str)
+    assert "中華民國115年10月22日" in bundle and "document_date" in bundle
+    assert "不得寫成今天正在發生" in bundle
+    snip = ep.evidence_snippets(pk, ["gazette:1"], budget_chars=10_000)
+    assert "中華民國115年10月22日" in json.dumps(snip, ensure_ascii=False)
+
+
+def test_parser_stores_the_older_document_date_on_the_record():
+    xml = _XML.replace("<HTMLContent>&lt;div class=\"c\"&gt;&lt;p&gt;第一點",
+                       "<HTMLContent>&lt;div class=\"c\"&gt;&lt;p&gt;中華民國115年7月20日 第一點", 1)
+    recs = tps.parse_gazette_xml(xml)
+    assert recs[0]["document_date"] == "中華民國115年7月20日"
+    assert all(r["document_date"] == "" for r in recs[1:])

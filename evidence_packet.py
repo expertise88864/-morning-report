@@ -759,6 +759,7 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
                 ("title", str(g.get("title") or "")[:120]),
                 ("publisher", str(g.get("publisher") or "")[:40]),
                 ("date_published", str(g.get("date_published") or "")[:20]),
+                ("document_date", str(g.get("document_date") or "")[:20]),   # 舊院會紀錄(PR #37)
                 # 草案預告 vs 已定案 —— 這一欄在不在,決定 impact 該不該
                 # 寫「尚未定案」。少了它模型會把草案寫成既成事實。
                 ("comment_deadline", str(g.get("comment_deadline") or "")[:20]),

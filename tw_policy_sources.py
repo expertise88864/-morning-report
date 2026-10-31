@@ -137,6 +137,8 @@ def parse_gazette_xml(raw: bytes | str) -> list[dict]:
             "content": _strip_tags(_text(rec, "HTMLContent")),
             "link": _text(rec, "PreviewStageURL") or _text(rec, "GazetteHTML"),
         })
+        # 寫進記錄本身:特化路徑的 evidence packet 直接帶整筆記錄,不經過 format_gazette_block(PR #37 外審)
+        out[-1]["document_date"] = older_document_date(out[-1])
     return out
 
 
@@ -169,6 +171,12 @@ def document_date(rec: dict) -> dt.date | None:
     發布日 10/30,模型就寫成颱風正在逼近。
     """
     return _roc_date(str(rec.get("content") or "")[:_DOC_DATE_HEAD])
+
+
+def older_document_date(rec: dict) -> str:
+    """文件日期早於出刊日時回「中華民國115年10月22日」(與 date_published 同寫法),否則空字串。"""
+    doc, pub = document_date(rec), _roc_date(str(rec.get("date_published") or ""))
+    return f"中華民國{doc.year - 1911}年{doc.month}月{doc.day}日" if doc and pub and doc < pub else ""
 
 
 def fetch_gazette(fetch) -> list[dict]:
@@ -248,7 +256,8 @@ def format_gazette_block(records: list[dict], sanitize, limit: int = 6,
             lines.append(f"  引用 id:gazette:{sanitize(rec.get('meta_id'), 40)}")
         if rec.get("date_published"):
             lines.append(f"  發布日:{sanitize(rec.get('date_published'), 30)}")
-        doc, pub = document_date(rec), _roc_date(str(rec.get("date_published") or ""))
+        doc = _roc_date(str(rec.get("document_date") or older_document_date(rec)))
+        pub = _roc_date(str(rec.get("date_published") or ""))
         if doc and pub and doc < pub:
             lines.append(f"  文件日期:中華民國{doc.year - 1911}年{doc.month}月{doc.day}日"
                          f"(比出刊早 {(pub - doc).days} 天;內文「明天」「下週」等從這天起算)")

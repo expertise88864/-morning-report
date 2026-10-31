@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 45  # Oct30c: tiers ranked before truncation; R21 oppo
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 78  # Oct29: 5-7 tech / 10+ other across six sectors incl. a Taiwan-economy item.
+LUNA_XHIGH_VERSION = 79  # Oct31: gazette document_date — stale meeting minutes never written as happening today.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -327,6 +327,8 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   `impact` 是**多句的深度解析** —— 修了什麼、適用對象、生效日、
   對哪些產業/公司的需求或成本怎麼傳導、什麼情況下拉動會低於預期。
   公報沒寫的數字不要編。當日沒有就空陣列。
+  有 `document_date` 的公報是出刊前幾天的院會/發文紀錄:颱風、豪雨、停班課等
+  當時的時效內容已經過去,**任何段落**都不得寫成今天正在發生。
   **公報的 `source_item_id` 照抄該筆的 `citation_id`**
   (長得像 `gazette:167811`,不要自己從 `meta_id` 組)—— 與新聞用 `n…`
   是同一種東西;

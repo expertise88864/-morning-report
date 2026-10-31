@@ -243,3 +243,34 @@ def test_gazette_is_declared_authoritative_over_media():
     assert "一手法令原文" in prompt
     assert "以公報為準" in prompt
 
+
+
+# 2026-10-31 實害:10/30 出刊的 10/22 院會紀錄裡「颱風預計明、後兩天影響北部」被寫成正在逼近。
+def _meeting(published="中華民國115年10月30日", content_date="中華民國115年10月22日"):
+    return {"meta_id": "1", "publisher": "行政院", "title": "行政院第4026次會議院長提示暨院會決定決議事項",
+            "date_published": published, "category_codes": ["920"],
+            "content": f"行政院第4026次會議院長提示暨院會決定決議事項\n{content_date}\n"
+                       "強烈颱風「薔琵」預計明、後兩天對臺灣北部造成顯著影響。"
+                       "\n本辦法自中華民國115年11月1日施行。"}
+
+
+def test_document_date_is_read_from_the_content_head_only():
+    assert tps.document_date(_meeting()) == tps.dt.date(2026, 10, 22)
+    # 開頭沒有日期時,不拿內文中段的「自中華民國…施行」充當文件日期
+    late = {"content": "公告事項" + "。" * 130 + "自中華民國115年11月1日施行"}
+    assert tps.document_date(late) is None
+    assert tps.document_date({"content": "中華民國115年2月30日"}) is None
+    assert tps.document_date({}) is None
+
+
+def test_older_meeting_minutes_carry_their_own_date_into_the_prompt():
+    block = mr._format_gazette_prompt_block([_meeting()])
+    assert "文件日期:中華民國115年10月22日(比出刊早 8 天;內文「明天」「下週」等從這天起算)" in block
+    # 規則在圍欄外才有效力
+    assert block.index("不得寫成今天正在發生") < block.index("<UNTRUSTED_SOURCE_DATA>")
+
+
+def test_same_day_documents_get_no_extra_date_line():
+    same = _meeting(content_date="中華民國115年10月30日")
+    assert "文件日期" not in tps.format_gazette_block([same], lambda s, n: str(s)[:n])
+    assert "文件日期" not in tps.format_gazette_block([_meeting(content_date="")], lambda s, n: str(s)[:n])

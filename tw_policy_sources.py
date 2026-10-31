@@ -32,6 +32,7 @@
 """
 from __future__ import annotations
 
+import datetime as dt
 import re
 import xml.etree.ElementTree as ET
 
@@ -69,6 +70,10 @@ _KEYWORD_STOPWORDS = {
     "罰則", "附則", "施行", "生效", "廢止", "修正", "訂定", "程序", "作業",
     "管理", "輔導", "獎勵", "補助", "資格", "文件", "表格", "期限",
 }
+
+_ROC_DATE_RE = re.compile(r"中華民國\s*(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
+#: 文件日期只認內文**開頭**(標題下一行);內文中段的「自中華民國…生效」不是文件日期。
+_DOC_DATE_HEAD = 120
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"[ \t　]+")
@@ -144,6 +149,26 @@ def focus_labels(rec: dict) -> list[str]:
     """命中的分類中文名(供顯示與 LLM 素材標註)。"""
     return [FOCUS_CATEGORY_CODES[c] for c in (rec.get("category_codes") or [])
             if c in FOCUS_CATEGORY_CODES]
+
+
+def _roc_date(text: str) -> dt.date | None:
+    m = _ROC_DATE_RE.search(text or "")
+    if not m:
+        return None
+    try:
+        return dt.date(int(m[1]) + 1911, int(m[2]), int(m[3]))
+    except ValueError:
+        return None
+
+
+def document_date(rec: dict) -> dt.date | None:
+    """文件本身寫成的日期(院會、發文日),不是出刊日。
+
+    2026-10-31 實害:10/30 出刊的「行政院第4026次會議」紀錄是 10/22 開的會,
+    裡面「強烈颱風薔琵預計明、後兩天影響北部」講的是 10/23–24;素材只標了
+    發布日 10/30,模型就寫成颱風正在逼近。
+    """
+    return _roc_date(str(rec.get("content") or "")[:_DOC_DATE_HEAD])
 
 
 def fetch_gazette(fetch) -> list[dict]:
@@ -223,6 +248,10 @@ def format_gazette_block(records: list[dict], sanitize, limit: int = 6,
             lines.append(f"  引用 id:gazette:{sanitize(rec.get('meta_id'), 40)}")
         if rec.get("date_published"):
             lines.append(f"  發布日:{sanitize(rec.get('date_published'), 30)}")
+        doc, pub = document_date(rec), _roc_date(str(rec.get("date_published") or ""))
+        if doc and pub and doc < pub:
+            lines.append(f"  文件日期:中華民國{doc.year - 1911}年{doc.month}月{doc.day}日"
+                         f"(比出刊早 {(pub - doc).days} 天;內文「明天」「下週」等從這天起算)")
         if rec.get("comment_deadline"):
             # 草案預告 = 政策領先指標,明確標出讓 LLM 知道這是「還沒定案」
             lines.append(f"  意見徵詢截止:{sanitize(rec.get('comment_deadline'), 30)}"

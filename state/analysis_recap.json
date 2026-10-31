@@ -301,7 +301,7 @@
    "watch_id": "w59",
    "status": "open",
    "created": "2026-10-07",
-   "last_reviewed": "2026-10-26",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-04"
   },
   {
@@ -313,7 +313,7 @@
    "watch_id": "w63",
    "status": "open",
    "created": "2026-10-19",
-   "last_reviewed": "2026-10-26",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-16"
   },
   {
@@ -325,7 +325,7 @@
    "watch_id": "w68",
    "status": "open",
    "created": "2026-10-20",
-   "last_reviewed": "2026-10-26",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-17"
   },
   {
@@ -377,102 +377,6 @@
    "deadline": "2026-11-20"
   },
   {
-   "trigger": "10 月 29 日凌晨的 Fed 聲明是否出現 12 月升息措辭，以及微軟、Alphabet 財報的資本支出指引。",
-   "trigger_full": "10 月 29 日凌晨的 Fed 聲明是否出現 12 月升息措辭，以及微軟、Alphabet 財報的資本支出指引。",
-   "trigger_key": "t20b25bf16c1a153a",
-   "why": "這是同時決定折現率與 AI 需求的唯一事件，也是本報偏空立場最可能被推翻的地方。",
-   "horizon": "1-5d",
-   "watch_id": "w78",
-   "status": "open",
-   "created": "2026-10-26",
-   "last_reviewed": "2026-10-30",
-   "deadline": "2026-10-31"
-  },
-  {
-   "trigger": "WTI 是否站穩 100 美元以上，以及 10 年期殖利率是否突破 5%。",
-   "trigger_full": "WTI 是否站穩 100 美元以上，以及 10 年期殖利率是否突破 5%。",
-   "trigger_key": "t5a304b00da82d606",
-   "why": "兩個數字一起突破，代表油價已經從商品價格變成折現率問題，偏空立場要升級。",
-   "horizon": "1-5d",
-   "watch_id": "w79",
-   "status": "open",
-   "created": "2026-10-26",
-   "last_reviewed": "2026-10-30",
-   "deadline": "2026-10-31"
-  },
-  {
-   "trigger": "外資台指期淨空是否從 87,297 口回補至 8 萬口以下。",
-   "trigger_full": "外資台指期淨空是否從 87,297 口回補至 8 萬口以下。",
-   "trigger_key": "t5879cc37be01d5df",
-   "why": "這是判斷賣壓是避險還是方向的唯一籌碼線索，回補就代表偏空理由少一半。",
-   "horizon": "1-5d",
-   "watch_id": "w81",
-   "status": "open",
-   "created": "2026-10-26",
-   "last_reviewed": "2026-10-30",
-   "deadline": "2026-10-31"
-  },
-  {
-   "trigger": "今天收盤上漲家數是否回到 500 檔以上（10/22 只有 248 檔）",
-   "trigger_full": "今天收盤上漲家數是否回到 500 檔以上（10/22 只有 248 檔）",
-   "trigger_key": "td3267e6a0e15cddb",
-   "why": "廣度沒修復就只是權值股撐盤，指數的漲勢不能延續",
-   "horizon": "1-5d",
-   "watch_id": "w83",
-   "status": "open",
-   "created": "2026-10-26",
-   "last_reviewed": "2026-10-30",
-   "deadline": "2026-10-31"
-  },
-  {
-   "trigger": "10 年期殖利率是否站上 5.0%、WTI 是否站上 105 美元",
-   "trigger_full": "10 年期殖利率是否站上 5.0%、WTI 是否站上 105 美元",
-   "trigger_key": "t02ea0130a6ba15ab",
-   "why": "兩個門檻同時突破，會把 1-4 週的評價壓力提前到本週",
-   "horizon": "1-5d",
-   "watch_id": "w85",
-   "status": "open",
-   "created": "2026-10-26",
-   "last_reviewed": "2026-10-30",
-   "deadline": "2026-10-31"
-  },
-  {
-   "trigger": "今天外資現貨買賣超與台指期未平倉是否同向：現貨賣超且淨空擴大，或現貨買超且淨空回補。",
-   "trigger_full": "今天外資現貨買賣超與台指期未平倉是否同向：現貨賣超且淨空擴大，或現貨買超且淨空回補。",
-   "trigger_key": "t3ba093d39ebafda4",
-   "why": "兩項資料目前方向相反，只有同向才能判斷本地籌碼壓力是否解除。",
-   "horizon": "1-5d",
-   "watch_id": "w88",
-   "status": "open",
-   "created": "2026-10-27",
-   "last_reviewed": "",
-   "deadline": "2026-11-01"
-  },
-  {
-   "trigger": "10 月 29 日決策聲明是否出現 12 月升息措辭，以及核心 PCE 是否高於月增 0.3%。",
-   "trigger_full": "10 月 29 日決策聲明是否出現 12 月升息措辭，以及核心 PCE 是否高於月增 0.3%。",
-   "trigger_key": "t090775d829dbf98e",
-   "why": "這是同時決定折現率與評價倍數的組合，也是本報中性立場最可能被推翻的地方。",
-   "horizon": "1-5d",
-   "watch_id": "w89",
-   "status": "open",
-   "created": "2026-10-27",
-   "last_reviewed": "",
-   "deadline": "2026-11-01"
-  },
-  {
-   "trigger": "微軟與 Alphabet 財報的資本支出指引與自由現金流是否同步惡化。",
-   "trigger_full": "微軟與 Alphabet 財報的資本支出指引與自由現金流是否同步惡化。",
-   "trigger_key": "t0b102c8c8dd28854",
-   "why": "訂單能見度與融資壓力哪一邊先被市場定價，決定 AI 供應鏈評價修正的幅度。",
-   "horizon": "1-5d",
-   "watch_id": "w90",
-   "status": "open",
-   "created": "2026-10-27",
-   "last_reviewed": "",
-   "deadline": "2026-11-01"
-  },
-  {
    "trigger": "外資台指期淨空是否連續第二日回補，並降到8萬口以下。",
    "trigger_full": "外資台指期淨空是否連續第二日回補，並降到8萬口以下。",
    "trigger_key": "tc543f8e4140f5ead",
@@ -481,7 +385,7 @@
    "watch_id": "w93",
    "status": "open",
    "created": "2026-10-28",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-02"
   },
   {
@@ -493,7 +397,7 @@
    "watch_id": "w95",
    "status": "open",
    "created": "2026-10-28",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-02"
   },
   {
@@ -567,7 +471,89 @@
    "created": "2026-10-30",
    "last_reviewed": "",
    "deadline": "2026-11-27"
+  },
+  {
+   "trigger": "外資台指期淨空是否連續第二日回補並降到 8 萬口以下；目前 -92,241 口、較前日零變化（觀察期：今日）",
+   "trigger_full": "外資台指期淨空是否連續第二日回補並降到 8 萬口以下；目前 -92,241 口、較前日零變化（觀察期：今日）",
+   "trigger_key": "t7bf5e1bbca93bd84",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w102",
+   "status": "open",
+   "created": "2026-11-02",
+   "last_reviewed": "",
+   "deadline": "2026-11-03"
+  },
+  {
+   "trigger": "外資現貨是否由賣轉買；上週五市值前十大合計賣超 61,130 張（觀察期：今日）",
+   "trigger_full": "外資現貨是否由賣轉買；上週五市值前十大合計賣超 61,130 張（觀察期：今日）",
+   "trigger_key": "t9f4db3c9a5cd586e",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w103",
+   "status": "open",
+   "created": "2026-11-02",
+   "last_reviewed": "",
+   "deadline": "2026-11-03"
+  },
+  {
+   "trigger": "10 年期美債殖利率是否站上 5.00%；目前 4.929%（觀察期：5 天內）",
+   "trigger_full": "10 年期美債殖利率是否站上 5.00%；目前 4.929%（觀察期：5 天內）",
+   "trigger_key": "t992ea532adda438f",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w104",
+   "status": "open",
+   "created": "2026-11-02",
+   "last_reviewed": "",
+   "deadline": "2026-11-07"
   }
  ],
- "watch_seq": 101
+ "watch_seq": 104,
+ "legacy_report": {
+  "date": "2026-11-02",
+  "analysis_origin": "legacy_primary",
+  "status": "unvalidated_model_opinion",
+  "items": [
+   {
+    "statement": "**全球半導體類股（費半成分）**：延續七段英特爾財測的衝擊，超微單日跌 11%、安謀跌約 12%、高通跌約 12%，艾司摩爾歐股跌逾 6% [鉅亨](https://news.cnyes.com/news/id/6642655)[原文](https://news.cnyes.com/news/id/6642740)。這波殺的是「AI 支出能否回收」的評價，不是產能利用率——費半單日 -7.20%，同日台積電台股僅跌近 2%，跌幅差距說明賣壓集中在評價最貴的 IC 設計而不是代工。量級：費半一天掉 7.20% 是今年少見，但目前沒有一家 2330 客戶宣布下修 N2 或 CoWoS 訂單。**[A 級・信心:中]**",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6642655",
+     "https://news.cnyes.com/news/id/6642740"
+    ]
+   },
+   {
+    "statement": "**Alphabet（GOOGL，Google 母公司）**：第三季扣除流量取得成本後營收 1,112 億美元、略低於預期，每股純益 2.12 美元遠低於預期的 2.99 美元；資本支出年增 114% 至 514 億美元，自由現金流連續兩季為負 [鉅亨](https://news.cnyes.com/news/id/6640260)。傳導要分兩層：資本支出還在擴張，對 AI 伺服器與先進封裝的需求是真的；但「AI 搜尋變現能力較低」打的是估值不是訂單，市場先砍本益比、後砍拉貨。同晚亞馬遜 AWS 營收年增 39%、成長快於華爾街預期 [鉅亨](https://news.cnyes.com/news/id/6642745)，說明雲端算力需求沒崩，問題出在個別公司的變現效率。**[A 級・信心:中]**",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6640260",
+     "https://news.cnyes.com/news/id/6642745"
+    ]
+   },
+   {
+    "statement": "**聯發科（2454，手機晶片與客製化 AI 晶片設計）**：法說會公布首顆 AI 加速器已於 9 月出貨，第四季雲端 ASIC 營收上修至 25 億美元，2027 年該專案看 160 億美元、約占 AI ASIC 市場兩成 [鉅亨](https://news.cnyes.com/news/id/6642405)。傳導機制是 ASIC 必須走台積電先進製程與先進封裝，聯發科自己點名基板是當前最緊的環節，代表瓶頸在封裝載板而非晶圓產能。量級：25 億美元是單季、160 億美元是 2027 全年，兩者時間尺度不同，短期能見度只到第四季，這與上一條 Alphabet 的資本支出是同一段需求的不同位置——一個出錢、一個接單。**[A 級・信心:中-高]**",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6642405"
+    ]
+   },
+   {
+    "statement": "**記憶體（南亞科 2408、華邦電 2344）**：延續七月以來 DRAM 供給吃緊的線索，中國長鑫科技第三季營收人民幣 1,187 億元、年增 613%，單季毛利率 89.53% 居全球 DRAM 同業之冠 [經濟日報](https://money.udn.com/money/story/5604/9848075)。漲價來自 AI 排擠傳統記憶體產能，對南亞科、華邦電的報價是順風；但彭博指出長鑫營收季增已放緩至 19.3%，漲價動能可能在降溫。量級：89.53% 是長鑫自己的數字，不等於台廠，實際受惠要看第四季合約價，今天算不出來。**[A 級・信心:中]**",
+    "source_urls": [
+     "https://money.udn.com/money/story/5604/9848075"
+    ]
+   },
+   {
+    "statement": "**鴻海（2317，全球最大電子代工）**：公司表示明年營運雙位數成長，與 OpenAI 的合作會更具體 [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTFBhVlRHRjl2bHlibmN6RHd4RE5EYlhHRDNjSXgzSE42SEhGQXJpNFg0V09VeE92b2piM05oa0wyMWtZQkxtS2JMRHFMeXBuenZOaG9fWVJLRXZrZ9IBX0FVX3lxTE5QSVBUTWFyU3d1R2JiaGE2NlBaYk0zalp6TUdiSi1FRUZxOGVNc3lGN3ZHMmZDME40dDlJUzhRNmJOY29ISmRPUmU3OTNDZV92TUtHTGNXOWk2M2tabjhN?oc=5)。傳導：AI 伺服器組裝與機櫃出貨增加，對 2330 的拉動是間接的，走的是 GPU 與交換器晶片需求。量級：公司只給「雙位數成長」、沒有絕對金額，判斷不出對獲利的實際貢獻。**[B 級・信心:中-低]**",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTFBhVlRHRjl2bHlibmN6RHd4RE5EYlhHRDNjSXgzSE42SEhGQXJpNFg0V09VeE92b2piM05oa0wyMWtZQkxtS2JMRHFMeXBuenZOaG9fWVJLRXZrZ9IBX0FVX3lxTE5QSVBUTWFyU3d1R2JiaGE2NlBaYk0zalp6TUdiSi1FRUZxOGVNc3lGN3ZHMmZDME40dDlJUzhRNmJOY29ISmRPUmU3OTNDZV92TUtHTGNXOWk2M2tabjhN?oc=5"
+    ]
+   },
+   {
+    "statement": "**【金融｜台灣】國泰金（2882，金控龍頭，人壽加銀行）**：總經理李長庚公開表示 AI 不會死、台灣供應鏈榮景不變，並談亞洲資產管理中心須兼顧普惠金融 [UDN](https://news.google.com/rss/articles/CBMiUEFVX3lxTE9WMW0xRE5IVzI2ZWJ5UFJPa0lLWTlWRXBUd1dCQUlNU1ZyVWFibkpDeUszY3NZbmJNTWpULWR1bC1kekp2S3hETUNZOXNYQmpL0gFWQVVfeXFMTi1HdzIxN252aS1GT0JQVGc3a1J5XzZFOWpSek16elk0cWNQdHVVNGN6NWpvSzJsWXRMNzU0V1lYLWZwR3RWRHVxY2Z1ekM2OWpEUVQ0Nmc?oc=5)[自由財經](https://news.google.com/rss/articles/CBMiVkFVX3lxTE5RTXFNQjBRbWJrZU9ScW41TGFTaTBZUU5wRUItRGJMYV9RVGRjMzdpV2lKeDk4TzB4OFRteWU0QTBJM1lqUzR0MUo3TnA4a3ZwaktkbHFB0gFbQVVfeXFMTnR2aUE3ZGdTUklhRjRVbDVzX0pDTWwtblhqOThYZGlLbXpkaDNJb2hsZVFVZzB3enI4djNNUXZPc2tjLUVuZVk0bUd3cDlLTHlWS0pDVThCdUdLOA?oc=5)。傳導機制：國泰人壽的海外股票與債券部位是獲利主引擎，若 AI 類股修正延續，十月投資收益會先承壓；經營層喊話屬信心面，不改變已實現的評價損益。量級：新聞未給具體部位或損益數字。**[B 級・信心:中-低]**",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE9WMW0xRE5IVzI2ZWJ5UFJPa0lLWTlWRXBUd1dCQUlNU1ZyVWFibkpDeUszY3NZbmJNTWpULWR1bC1kekp2S3hETUNZOXNYQmpL0gFWQVVfeXFMTi1HdzIxN252aS1GT0JQVGc3a1J5XzZFOWpSek16elk0cWNQdHVVNGN6NWpvSzJsWXRMNzU0V1lYLWZwR3RWRHVxY2Z1ekM2OWpEUVQ0Nmc?oc=5",
+     "https://news.google.com/rss/articles/CBMiVkFVX3lxTE5RTXFNQjBRbWJrZU9ScW41TGFTaTBZUU5wRUItRGJMYV9RVGRjMzdpV2lKeDk4TzB4OFRteWU0QTBJM1lqUzR0MUo3TnA4a3ZwaktkbHFB0gFbQVVfeXFMTnR2aUE3ZGdTUklhRjRVbDVzX0pDTWwtblhqOThYZGlLbXpkaDNJb2hsZVFVZzB3enI4djNNUXZPc2tjLUVuZVk0bUd3cDlLTHlWS0pDVThCdUdLOA?oc=5"
+    ]
+   }
+  ]
+ }
 }

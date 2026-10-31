@@ -313,6 +313,12 @@ def _unmerged_syndicated_pairs(cohort, ledger):
     因此用上限而非等式,並把它當**趨勢與退化偵測**,不當精確重現。
     """
     by_key = {str(r.get("key") or ""): r for r in ledger}
+    # 2026-10-31:帶上生產 `update_ledger` 用的同一個預篩索引。逐條全比是
+    # O(批 × 帳本),帳本長到 3.6 萬條時這一項單獨跑 366~572s,把 CI 的 test job
+    # 與生產 state 閘都推到逾時邊緣。索引只跳過必然 0 分的線索,與全比等價
+    # (tests/test_story_match_index_1031.py 在真實帳本上對照兩者)。
+    # 被 pop 的那條仍留在索引裡,但比對只走 by_key,所以照樣排除自己。
+    index = sl._StoryMatchIndex(by_key)
     both, mirror = [], []
     for story in cohort:
         key = str(story.get("key") or "")
@@ -324,7 +330,7 @@ def _unmerged_syndicated_pairs(cohort, ledger):
                  "entity_name": story.get("entity_name"),
                  "event_type": story.get("event_type"),
                  "published": story.get("last_published")},
-                by_key)
+                by_key, index)
         finally:
             if mine is not None:
                 by_key[key] = mine

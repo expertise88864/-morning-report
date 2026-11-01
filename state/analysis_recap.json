@@ -289,7 +289,7 @@
    "watch_id": "w57",
    "status": "open",
    "created": "2026-10-07",
-   "last_reviewed": "2026-10-30",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-04"
   },
   {
@@ -337,7 +337,7 @@
    "watch_id": "w72",
    "status": "open",
    "created": "2026-10-22",
-   "last_reviewed": "2026-10-26",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-19"
   },
   {
@@ -349,7 +349,7 @@
    "watch_id": "w73",
    "status": "open",
    "created": "2026-10-22",
-   "last_reviewed": "2026-10-26",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-19"
   },
   {
@@ -361,7 +361,7 @@
    "watch_id": "w76",
    "status": "open",
    "created": "2026-10-23",
-   "last_reviewed": "2026-10-26",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-20"
   },
   {
@@ -373,7 +373,7 @@
    "watch_id": "w77",
    "status": "open",
    "created": "2026-10-23",
-   "last_reviewed": "2026-10-26",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-20"
   },
   {
@@ -409,7 +409,7 @@
    "watch_id": "w96",
    "status": "open",
    "created": "2026-10-28",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-02",
    "deadline": "2026-11-02"
   },
   {
@@ -507,51 +507,78 @@
    "created": "2026-11-02",
    "last_reviewed": "",
    "deadline": "2026-11-07"
+  },
+  {
+   "trigger": "加權是否守住 45,000 點半年線，且融資餘額是否由 9,555,729 千元開始下降（觀察期：5 天內）",
+   "trigger_full": "加權是否守住 45,000 點半年線，且融資餘額是否由 9,555,729 千元開始下降（觀察期：5 天內）",
+   "trigger_key": "t634e420c25b22537",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w105",
+   "status": "open",
+   "created": "2026-11-02",
+   "last_reviewed": "",
+   "deadline": "2026-11-07"
+  },
+  {
+   "trigger": "外資台指期淨空是否從 -92,241 口回補至 8 萬口以下（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空是否從 -92,241 口回補至 8 萬口以下（觀察期：5 天內）",
+   "trigger_key": "t613c92b74a6505ac",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w106",
+   "status": "open",
+   "created": "2026-11-02",
+   "last_reviewed": "",
+   "deadline": "2026-11-07"
+  },
+  {
+   "trigger": "SOX 單日跌幅是否收斂至 -3% 以內，且 TSM ADR 溢價是否回穩（觀察期：今日）",
+   "trigger_full": "SOX 單日跌幅是否收斂至 -3% 以內，且 TSM ADR 溢價是否回穩（觀察期：今日）",
+   "trigger_key": "td30469d109cfbfca",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w107",
+   "status": "open",
+   "created": "2026-11-02",
+   "last_reviewed": "",
+   "deadline": "2026-11-03"
   }
  ],
- "watch_seq": 104,
+ "watch_seq": 107,
  "legacy_report": {
   "date": "2026-11-02",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**全球半導體類股（費半成分）**：延續七段英特爾財測的衝擊，超微單日跌 11%、安謀跌約 12%、高通跌約 12%，艾司摩爾歐股跌逾 6% [鉅亨](https://news.cnyes.com/news/id/6642655)[原文](https://news.cnyes.com/news/id/6642740)。這波殺的是「AI 支出能否回收」的評價，不是產能利用率——費半單日 -7.20%，同日台積電台股僅跌近 2%，跌幅差距說明賣壓集中在評價最貴的 IC 設計而不是代工。量級：費半一天掉 7.20% 是今年少見，但目前沒有一家 2330 客戶宣布下修 N2 或 CoWoS 訂單。**[A 級・信心:中]**",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：上週五 SOX -7.20%、TSM ADR -5.95%，創 8 月以來新低 [鉅亨](https://news.cnyes.com/news/id/6643193)。以 ADR 連動推估，今日合理參考約 2,312 元，區間 2,229 至 2,358 元。ADR 溢價收斂直接壓抑 2330 開盤，外資上週從台積電提走 625 億元，與台指期淨空 -92,241 口同向。以夜盤台指期 -1.91% 對照，加權預測開盤 44,344 點、隱含跌幅約 1.92%，2330 合理參考較昨收 2,370 元低約 2.4%，開盤跳空後須看本地承接量。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6642655",
-     "https://news.cnyes.com/news/id/6642740"
+     "https://news.cnyes.com/news/id/6643193"
     ]
    },
    {
-    "statement": "**Alphabet（GOOGL，Google 母公司）**：第三季扣除流量取得成本後營收 1,112 億美元、略低於預期，每股純益 2.12 美元遠低於預期的 2.99 美元；資本支出年增 114% 至 514 億美元，自由現金流連續兩季為負 [鉅亨](https://news.cnyes.com/news/id/6640260)。傳導要分兩層：資本支出還在擴張，對 AI 伺服器與先進封裝的需求是真的；但「AI 搜尋變現能力較低」打的是估值不是訂單，市場先砍本益比、後砍拉貨。同晚亞馬遜 AWS 營收年增 39%、成長快於華爾街預期 [鉅亨](https://news.cnyes.com/news/id/6642745)，說明雲端算力需求沒崩，問題出在個別公司的變現效率。**[A 級・信心:中]**",
+    "statement": "**聯發科（2454，IC 設計大廠）**：法說會將 Q4 雲端 ASIC 營收上修至 25 億美元，2027 年該專案營收可望達 160 億美元、約占 AI 加速器 ASIC 市場 20% [鉅亨](https://news.cnyes.com/news/id/6643408)。ASIC 出貨需台積電先進製程與 CoWoS 產能，對 2330 先進封裝稼動率是中期支撐；但聯發科本身高本益比，今日仍跟隨系統性賣壓。25 億美元是季度營收，公司未公布上修幅度百分比，無法換算對 2330 的營收貢獻，時間點落在 Q4 至 2027 年。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6640260",
-     "https://news.cnyes.com/news/id/6642745"
+     "https://news.cnyes.com/news/id/6643408"
     ]
    },
    {
-    "statement": "**聯發科（2454，手機晶片與客製化 AI 晶片設計）**：法說會公布首顆 AI 加速器已於 9 月出貨，第四季雲端 ASIC 營收上修至 25 億美元，2027 年該專案看 160 億美元、約占 AI ASIC 市場兩成 [鉅亨](https://news.cnyes.com/news/id/6642405)。傳導機制是 ASIC 必須走台積電先進製程與先進封裝，聯發科自己點名基板是當前最緊的環節，代表瓶頸在封裝載板而非晶圓產能。量級：25 億美元是單季、160 億美元是 2027 全年，兩者時間尺度不同，短期能見度只到第四季，這與上一條 Alphabet 的資本支出是同一段需求的不同位置——一個出錢、一個接單。**[A 級・信心:中-高]**",
+    "statement": "**鴻海（2317，全球最大電子代工廠）**：科技日宣布 AI 伺服器機架週產能從 1,000 架翻倍至 2,000 架 [鉅亨](https://news.cnyes.com/news/id/6643408)。機架組裝拉貨對應 AI 晶片與電源、散熱需求，是 2330 的 CoWoS 與 AI 伺服器鏈的下游驗證；但組裝環節毛利率低，對獲利貢獻要看單價。產能翻倍但沒有金額與時程，**這則新聞說不出對營收的量級**，只能當需求方向。**[A 級事實、B 級量級・信心:中-低]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6642405"
+     "https://news.cnyes.com/news/id/6643408"
     ]
    },
    {
-    "statement": "**記憶體（南亞科 2408、華邦電 2344）**：延續七月以來 DRAM 供給吃緊的線索，中國長鑫科技第三季營收人民幣 1,187 億元、年增 613%，單季毛利率 89.53% 居全球 DRAM 同業之冠 [經濟日報](https://money.udn.com/money/story/5604/9848075)。漲價來自 AI 排擠傳統記憶體產能，對南亞科、華邦電的報價是順風；但彭博指出長鑫營收季增已放緩至 19.3%，漲價動能可能在降溫。量級：89.53% 是長鑫自己的數字，不等於台廠，實際受惠要看第四季合約價，今天算不出來。**[A 級・信心:中]**",
+    "statement": "**PCB／CCL 材料升級（台光電、台燿、聯茂）**：AI 算力撞上傳輸天花板，CCL 跨入 M10 基材、導入石英布與玻璃核心載板 [鉅亨](https://news.cnyes.com/news/id/6641796)。高階 CCL 與載板升級會增加台光電、台燿、聯茂的高階產能需求，對 2330 是間接效果，透過先進封裝載板需求增加傳導。文章沒有給市場規模或滲透率時間表，**量級判斷不出來**；它與上一條聯發科 ASIC 同向，都指向先進封裝與高速傳輸需求，兩者不是互相排擠，而是同一條 AI 傳輸升級鏈的不同環節。**[B 級・信心:低-中]**",
     "source_urls": [
-     "https://money.udn.com/money/story/5604/9848075"
+     "https://news.cnyes.com/news/id/6641796"
     ]
    },
    {
-    "statement": "**鴻海（2317，全球最大電子代工）**：公司表示明年營運雙位數成長，與 OpenAI 的合作會更具體 [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTFBhVlRHRjl2bHlibmN6RHd4RE5EYlhHRDNjSXgzSE42SEhGQXJpNFg0V09VeE92b2piM05oa0wyMWtZQkxtS2JMRHFMeXBuenZOaG9fWVJLRXZrZ9IBX0FVX3lxTE5QSVBUTWFyU3d1R2JiaGE2NlBaYk0zalp6TUdiSi1FRUZxOGVNc3lGN3ZHMmZDME40dDlJUzhRNmJOY29ISmRPUmU3OTNDZV92TUtHTGNXOWk2M2tabjhN?oc=5)。傳導：AI 伺服器組裝與機櫃出貨增加，對 2330 的拉動是間接的，走的是 GPU 與交換器晶片需求。量級：公司只給「雙位數成長」、沒有絕對金額，判斷不出對獲利的實際貢獻。**[B 級・信心:中-低]**",
+    "statement": "**【金融｜台灣】金管會公布金融三業獲利**：前 3 季稅前獲利 1 兆 2,715 億元、年增 77.5%，創同期新高 [中央社](https://www.cna.com.tw/news/afe/202611010080.aspx)。銀行業前 9 月獲利 5,946.9 億元、年增近 21.9%，主要來自放款成長與財管手續費；壽險業 9 月因美債殖利率彈升，FVTPL 債券評價出現未實現損失、單月獲利月減 522 億元。傳導：利多銀行型金控如中信金、兆豐金的淨利息與手續費收入；壽險金控如國泰金、富邦金短期債券評價承壓。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTFBhVlRHRjl2bHlibmN6RHd4RE5EYlhHRDNjSXgzSE42SEhGQXJpNFg0V09VeE92b2piM05oa0wyMWtZQkxtS2JMRHFMeXBuenZOaG9fWVJLRXZrZ9IBX0FVX3lxTE5QSVBUTWFyU3d1R2JiaGE2NlBaYk0zalp6TUdiSi1FRUZxOGVNc3lGN3ZHMmZDME40dDlJUzhRNmJOY29ISmRPUmU3OTNDZV92TUtHTGNXOWk2M2tabjhN?oc=5"
-    ]
-   },
-   {
-    "statement": "**【金融｜台灣】國泰金（2882，金控龍頭，人壽加銀行）**：總經理李長庚公開表示 AI 不會死、台灣供應鏈榮景不變，並談亞洲資產管理中心須兼顧普惠金融 [UDN](https://news.google.com/rss/articles/CBMiUEFVX3lxTE9WMW0xRE5IVzI2ZWJ5UFJPa0lLWTlWRXBUd1dCQUlNU1ZyVWFibkpDeUszY3NZbmJNTWpULWR1bC1kekp2S3hETUNZOXNYQmpL0gFWQVVfeXFMTi1HdzIxN252aS1GT0JQVGc3a1J5XzZFOWpSek16elk0cWNQdHVVNGN6NWpvSzJsWXRMNzU0V1lYLWZwR3RWRHVxY2Z1ekM2OWpEUVQ0Nmc?oc=5)[自由財經](https://news.google.com/rss/articles/CBMiVkFVX3lxTE5RTXFNQjBRbWJrZU9ScW41TGFTaTBZUU5wRUItRGJMYV9RVGRjMzdpV2lKeDk4TzB4OFRteWU0QTBJM1lqUzR0MUo3TnA4a3ZwaktkbHFB0gFbQVVfeXFMTnR2aUE3ZGdTUklhRjRVbDVzX0pDTWwtblhqOThYZGlLbXpkaDNJb2hsZVFVZzB3enI4djNNUXZPc2tjLUVuZVk0bUd3cDlLTHlWS0pDVThCdUdLOA?oc=5)。傳導機制：國泰人壽的海外股票與債券部位是獲利主引擎，若 AI 類股修正延續，十月投資收益會先承壓；經營層喊話屬信心面，不改變已實現的評價損益。量級：新聞未給具體部位或損益數字。**[B 級・信心:中-低]**",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE9WMW0xRE5IVzI2ZWJ5UFJPa0lLWTlWRXBUd1dCQUlNU1ZyVWFibkpDeUszY3NZbmJNTWpULWR1bC1kekp2S3hETUNZOXNYQmpL0gFWQVVfeXFMTi1HdzIxN252aS1GT0JQVGc3a1J5XzZFOWpSek16elk0cWNQdHVVNGN6NWpvSzJsWXRMNzU0V1lYLWZwR3RWRHVxY2Z1ekM2OWpEUVQ0Nmc?oc=5",
-     "https://news.google.com/rss/articles/CBMiVkFVX3lxTE5RTXFNQjBRbWJrZU9ScW41TGFTaTBZUU5wRUItRGJMYV9RVGRjMzdpV2lKeDk4TzB4OFRteWU0QTBJM1lqUzR0MUo3TnA4a3ZwaktkbHFB0gFbQVVfeXFMTnR2aUE3ZGdTUklhRjRVbDVzX0pDTWwtblhqOThYZGlLbXpkaDNJb2hsZVFVZzB3enI4djNNUXZPc2tjLUVuZVk0bUd3cDlLTHlWS0pDVThCdUdLOA?oc=5"
+     "https://www.cna.com.tw/news/afe/202611010080.aspx"
     ]
    }
   ]

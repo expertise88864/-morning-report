@@ -3645,9 +3645,12 @@ def test_cwa_alerts_parse_and_filter(monkeypatch):
     fresh = eut.format_datetime(now - dtm.timedelta(hours=2))
     stale = eut.format_datetime(now - dtm.timedelta(hours=60))
     rss = f"""<rss><channel>
-      <item><title>08/23 16:21 發布陸上強風特報</title>
-        <description><![CDATA[ 今(23)日臺中市、彰化縣局部地區有平均風6級以上。 ]]></description>
+      <item><title>08/23 16:21 發布豪雨特報</title>
+        <description><![CDATA[ 今(23)日臺中市、彰化縣山區有局部豪雨。 ]]></description>
         <link>https://cwa/a</link><pubDate>{fresh}</pubDate></item>
+      <item><title>08/23 16:30 發布陸上強風特報</title>
+        <description><![CDATA[ 今(23)日臺中市、彰化縣局部地區有平均風6級以上。 ]]></description>
+        <link>https://cwa/w</link><pubDate>{fresh}</pubDate></item>
       <item><title>08/23 17:00 發布大雨特報</title>
         <description><![CDATA[ 基隆北海岸、屏東、宜蘭、臺東地區有局部大雨。 ]]></description>
         <link>https://cwa/z</link><pubDate>{fresh}</pubDate></item>
@@ -3660,6 +3663,7 @@ def test_cwa_alerts_parse_and_filter(monkeypatch):
     got = mr.fetch_cwa_alerts()
     # 2026-09-03 使用者:只要台中/彰化/南投/雲林 —— 沒點到的一般特報不收,
     # 颱風警報例外(它是週日寄信的觸發條件;海上警報寫的是海域不是縣市)。
+    # 2026-11-02 使用者:陸上強風這類常態特報不上信(只收颱風、豪雨以上、低溫)。
     assert [a["title"][:14] for a in got] == ["08/23 16:21 發布", "08/24 08:30 發布"]
     assert got[1]["typhoon"] is True and got[0]["typhoon"] is False
     assert got[0]["counties"] == ["台中", "彰化"]      # 官方寫「臺中」,顯示「台中」

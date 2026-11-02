@@ -724,14 +724,15 @@ def test_other_sectors_section_carries_the_tech_section_discipline():
 def test_sections_do_not_re_expand_what_belongs_elsewhere():
     """批#86:使用者回報「前後有一些重複的訊息」。
 
-    七段是標題層、十段只寫八/九沒寫過的 —— 兩條排除規則都要真的在 prompt 裡。
+    七段只寫方向不複述八/九的細節、十段只寫八/九沒寫過的 —— 兩條排除規則都要真的在 prompt 裡。
+    (2026-11-02 使用者要三大重點每條 2～3 句,「標題層一句話」改成「傳導只寫方向一句」。)
     """
     import morning_report as mr
 
     prompt = mr._build_prompt({}, {}, {}, [], [], "")
     seven = prompt[prompt.index("## 七、昨夜三大重點"):
                    prompt.index("## 七之二")]
-    assert "標題層" in seven and "不得展開傳導機制" in seven
+    assert "每條 2～3 句" in seven and "不複述那一段會寫的細節數字" in seven
     ten = prompt[prompt.index("## 十、台灣本地動態"):
                  prompt.index("## 十一、")]
     assert "整條不要出現" in ten and "八段" in ten and "九段" in ten

@@ -74,7 +74,7 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 # CR-02 2026-09-05:刻意修正未知模式,禁止 LLM 自算;有 Python 權威時抄錄規則不變。
 # 2026-10-30c 使用者(刻意變更):新增 R21「同主題正反並陳」。逐行 diff 過,只多這一條。
 LEGACY_PROMPT_SHA256 = (
-    "0977e5f2daf6fd3651a45a61c90d1f2a9574f3fd424b77457bd5c639cefc9bf4")  # 10/30c: R21 opposing signals (deliberate).
+    "7af0101563e7171ef5167a6e8adc823f747ba05f3d2d01f4e87aedf2c0733119")  # 11/02: top-3 2-3 sentences, world by severity, Taiwan big events, no Monday 七之五 (deliberate).
 #: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。

@@ -44,7 +44,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 45  # Oct30c: tiers ranked before truncation; R21 opposing signals side by side.
+DEEPSEEK_LEGACY_VERSION = 46  # Nov02: top-3 bullets 2-3 sentences; world events by severity; Taiwan policy/big movers first; no Monday 七之五.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 45  # Oct30c: tiers ranked before truncation; R21 oppo
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 79  # Oct31: gazette document_date — stale meeting minutes never written as happening today.
+LUNA_XHIGH_VERSION = 80  # Nov02: top-3 statements 2-3 sentences; world events by severity; Taiwan policy/big movers first.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -232,6 +232,8 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   同一天有多個總經發布時（`macro_release_cluster_ids`），主發布之外的
   也要被重點或 `dismissed_events` 涵蓋。
   行情數字仍然要用 —— 用來**說明那個事件的量級**，而不是當成事件本身。
+  每一條 `statement` 寫 **2～3 句**：事件與關鍵數字 → 為什麼重要 → 對台股開盤、2330
+  或哪個產業的傳導方向（使用者回饋：三大重點「文字都少少一段而已」）。
 - **傳導鏈可以沿宣告過的上下游走到具體標的。** 事件群帶
   `transmission_candidates` 時,那是本報宣告的供應鏈關係(誰是誰的
   設備商/客戶/同業)—— `mechanism_steps` 走到某一家公司時,優先用
@@ -312,7 +314,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   營建／重電／汽車／觀光）——信裡的「八、科技板塊脈動」與「九、其他類股」
   是兩個獨立段落，各自靠自己的條目撐起來，不是一段的附屬。
   同一族群或同一條主線（如記憶體、AI 資本支出與融資）寫兩則以上時**要是不同事件**（排序與先後由程式決定）；
-  科技之外那十則**至少橫跨六個產業**，其中至少一則台灣經濟或跨產業新聞（外銷訂單、景氣燈號、出口、房市、電價、內需、觀光；有當期新數據才寫）；多家媒體同時報導的大事優先於單一來源的小消息，優先類股熱度表與資金輪動裡有動靜的產業。真的不足時，在 `data_gaps` 說明為什麼（例如當日新聞面貧乏），
+  科技之外那十則**至少橫跨六個產業**，其中至少一則台灣經濟或跨產業新聞（外銷訂單、景氣燈號、出口、房市、電價、內需、觀光；有當期新數據才寫）；多家媒體同時報導的大事優先於單一來源的小消息，優先類股熱度表與資金輪動裡有動靜的產業。台灣當天的大事要優先寫進八、九段：政府對產業的政策動作（出口管制、金管會／央行／經濟部新措施），以及權值股大漲大跌 7% 以上（含漲跌停）且有原因新聞（法說、財報、訂單）者，不要被產品上架、評等調整這類小消息擠掉。真的不足時，在 `data_gaps` 說明為什麼（例如當日新聞面貧乏），
   不要硬湊重複的事件；而且要用**指定的缺口代號**，這樣才對得上是哪一段：
   科技那一段不足填 `gap:other:tech_coverage`，
   科技以外那一段不足填 `gap:other:sector_coverage`。
@@ -334,7 +336,10 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   是同一種東西;
   政策新聞則照樣寫那則新聞的 id。
 - **`world_events` 是股市之外的世界**（五條）:外交、戰爭、科技治理、
-  重大社會事件。美股漲跌、公司財報**不是**世界大事。每條寫發生了什麼
+  重大社會事件。美股漲跌、公司財報**不是**世界大事。依嚴重性與影響範圍取捨:
+  優先戰爭與軍事衝突、大國外交與制裁、能源與航道、貿易政策、大國選舉、重大金融事件、
+  重大傷亡的災難;地方治安或槍擊案、無災損的有感地震、地方示威不收(除非死傷數十人
+  或已有連鎖效應)。寧可少寫,不拿小事湊滿。每條寫發生了什麼
   (`what`)、它的戰略意涵(`why_it_matters`),以及**後續可能影響**
   (`what_next`)。
   後兩者是**不同的問題**:前者問「現在為什麼重要」,後者問「接下來會

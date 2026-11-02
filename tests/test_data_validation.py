@@ -1455,13 +1455,13 @@ def test_build_prompt_weekly_review_section_present_and_absent():
     stats = {"taiex": {"n": 3, "mae_pct": 1.17, "bias_pct": 0.5,
                        "hit_rate_pct": 100, "n_dir": 2},
              "tw2330": None, "critical_events": ["台積電法說"], "n_days": 3}
+    # 2026-11-02 使用者:七之五「近期預測檢討」從週一晨報移到週日信 ——
+    # 晨報 prompt 就算拿到統計也不再寫這段;統計改進週日本週回顧(見 test_report_tune_1102)。
     p = mr._build_prompt(_empty_quotes(WEEKLY_REVIEW=stats),
                          {"error": "x"}, {"error": "x"}, [], [], "")
-    # 2026-09-03:多空交鋒(舊七之五)刪掉之後,週報段補上七之五,編號連續
-    assert "七之五、近期預測檢討" in p and "平均絕對誤差 1.17%" in p and "台積電法說" in p
-    assert "本週要重點驗證" in p                        # 指引出現
-    p2 = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "七之五" not in p2 and "近期預測檢討" not in p2   # 平日無週報
+    assert "七之五、近期預測檢討" not in p and "平均絕對誤差 1.17%" not in p
+    block = mr._format_weekly_review(stats)
+    assert "平均絕對誤差 1.17%" in block and "台積電法說" in block
 
 
 def test_the_debate_section_is_gone():

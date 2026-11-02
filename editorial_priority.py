@@ -9,11 +9,12 @@ import re
 
 import content_overlap as overlap
 import event_score
+import world_severity
 
-VERSION = 2
+VERSION = 3
 _DEVELOPMENT = re.compile(
     r'簽署|得標|停產|擴產|量產|召回|裁定|起訴|制裁|禁令|下修財測|上修財測|'
-    r'財報|營收|升息|降息|地震|颱風|停火|開戰|併購|收購|'
+    r'財報|營收|法說|出口管制|擴大管制|升息|降息|地震|颱風|停火|開戰|併購|收購|'
     r'\b(?:earnings|recall|sanctions?|ceasefire|merger|production|rate cut|rate hike)\b', re.I)
 _PREVIEW = re.compile(r'一次看|懶人包|直播|倒數|預告|優惠|促銷|\b(?:preview|livestream|sale)\b', re.I)
 
@@ -49,7 +50,9 @@ def order(cards: list, packet: dict) -> list:
         title = str(source.get('title') or '')
         body = title + ' ' + str(source.get('summary') or '')
         development = bool(_DEVELOPMENT.search(title))
-        tier = -1 if event_score.is_price_move(title) else (
+        # 11-02 使用者:地方槍擊、震度 3 級地震不是「足夠嚴重的世界大事」,排到一般事件之後
+        minor = world_severity.rank(title) == 0
+        tier = -1 if event_score.is_price_move(title) or minor else (
             1 if development else -1 if _PREVIEW.search(title) else 0)
         repeated = any(overlap.duplicate(body, history[eid]['title'] + ' ' + history[eid]['excerpt'])
                        for eid in (contexts.get(sid) or {}).get('evidence_ids', []) if eid in history)

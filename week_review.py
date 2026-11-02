@@ -82,7 +82,8 @@ def memory_material(directory, now_tpe, *, sanitize) -> str:
 
 
 def build(now_tpe, *, load_history_state, EVENT_TIMELINE_FILE, _external_text,
-          _DEGRADED_STEPS, _register_state_corrupt, memory_dir=None) -> str:
+          _DEGRADED_STEPS, _register_state_corrupt, memory_dir=None,
+          forecast_review: str = "") -> str:
     """週日綜合的**本週回顧** prompt(2026-08-27 使用者:「做一個本週的
     完整新聞回顧(該週禮拜一到禮拜六)…消息出來後到目前為止的後續變化
     解析…與下週消息關注方向」)。
@@ -124,7 +125,7 @@ def build(now_tpe, *, load_history_state, EVENT_TIMELINE_FILE, _external_text,
         except Exception as exc:
             _DEGRADED_STEPS.append("news_memory")
             print(f"::warning::weekly_news_memory ({type(exc).__name__})", file=sys.stderr)
-    if not lines:
+    if not lines and not forecast_review:
         return ""                           # 整週沒素材(新部署)→ 段落省略
     # 延燒事件:同一件事燒了幾天,是「後續變化」最可靠的線索
     try:
@@ -183,8 +184,8 @@ related_sources.publication_relation 比較它與代表報導的台北發布日�
 {body}
 </UNTRUSTED_SOURCE_DATA>
 
-歷史來源包含 published_at（報導時間）與 observed_at（本報首次取得時間）。\n不得把今天才取得的舊報導說成本報當時已知；只可說當時的報導內容。\n每條主線連結提供的原始來源，區分事實、推論與未確認條件；不可用本報舊觀點自證。\n相關來源依發布日期作前情、同日或後續報導對照，不自動視為事件前因；不把上週舊事冒充本週新事件。\n請寫「本週回顧與下週展望」,分三段(全部用 Markdown):
-
+歷史來源包含 published_at（報導時間）與 observed_at（本報首次取得時間）。\n不得把今天才取得的舊報導說成本報當時已知；只可說當時的報導內容。\n每條主線連結提供的原始來源，區分事實、推論與未確認條件；不可用本報舊觀點自證。\n相關來源依發布日期作前情、同日或後續報導對照，不自動視為事件前因；不把上週舊事冒充本週新事件。\n{_forecast_part(forecast_review)}請寫「本週回顧與下週展望」,分{"四" if forecast_review else "三"}段(全部用 Markdown):
+{_FORECAST_SECTION if forecast_review else ""}
 ### 本週大事回顧
 挑本週**有足夠來源的重要主線，最多 3-5 條**(不是逐日流水帳):有可核對的跨日進展才寫
 「起始 → 新增或改變 → 目前狀態」。只有同日報導就對照其共同說法與分歧，
@@ -210,3 +211,20 @@ related_sources.publication_relation 比較它與代表報導的台北發布日�
 (b) 不寫投資建議、不喊價位;(c) 立場變化(偏多→中性)可以引用,那是本報
 自己的紀錄;(d) 只輸出內容,不加開場白或結語。
 """
+
+
+#: 2026-11-02 使用者:「近期預測檢討」原本在週一晨報的七之五,改放週日信、
+#: 緊接在本週預測回顧表格之後。規則沿用原七之五(數字只引用統計、事件只引用清單)。
+_FORECAST_SECTION = """
+### 近期預測檢討與下週假設
+依上方【最近 7 個已結算預測回顧】,用 **≤6 行**寫:
+1. 這批預測整體準不準——**引用平均絕對誤差與持續偏誤數字**,一句總評(偏樂觀高估/偏保守低估/大致準)。
+2. 這批預測期間哪些重點判斷/事件**成真**、哪些**落空**、哪些只是**一日噪音**——只引用該段事件清單與已知走勢,不杜撰。
+3. 下週要重點驗證的 **≤3 個假設**(可證偽、具體,如「若 CPI 低於預期則台股科技類股補漲」)。
+本段數字只能引用該段統計;事件只能引用該段清單;不得杜撰未發生的走勢或不存在的事件。
+"""
+
+
+def _forecast_part(block: str) -> str:
+    """預測統計(Python 算,事件標題已在呼叫端圍欄消毒);沒有就不出現。"""
+    return block + chr(10) * 2 if block else ""

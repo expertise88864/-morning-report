@@ -1922,26 +1922,25 @@ def fetch_twse_margin() -> dict:
             if not margin_table:
                 continue
 
-            # 通常第一列 = 整體市場合計
+            # 三列:融資(張)、融券(張)、融資金額(仟元);欄位末兩欄=前日/今日餘額。11-02 實信:舊版拿第一列
+            # **張數** 9,555,729 標成「千元」(實際 6,234.7 億元)。金額只認「融資金額」列,找不到寧可不給。
             rows = margin_table.get("data") or []
             if not rows:
                 continue
-            row = rows[0]
-            # 欄位順序通常為：項目 / 買進 / 賣出 / 現金償還 / 前日餘額 / 今日餘額 / 限額
             try:
-                # 嘗試找「今日餘額」對應欄位（在欄位 5 或 6）
-                # 不同年份格式略異，用試錯
-                margin_balance = None
-                for idx in (5, 6, 4):
-                    if idx < len(row):
-                        v = _to_int(row[idx])
-                        if v > 1_000_000:  # 融資餘額至少數十億張
-                            margin_balance = v
-                            break
+                def _row(label):
+                    return next((r for r in rows if r and label in str(r[0])), None)
+                amt, lots = _row("融資金額"), _row("融資(交易單位)")
+                cur = _to_int(amt[5]) if amt and len(amt) > 5 else 0
+                prev = _to_int(amt[4]) if amt and len(amt) > 4 else 0
                 return {
                     "date": d.strftime("%Y/%m/%d"),
-                    "margin_balance": margin_balance,
-                    "raw_row": row,  # 給除錯用
+                    "margin_balance": cur or None,                   # 千元
+                    "margin_balance_prev": prev or None,             # 千元(前一交易日)
+                    "margin_balance_100m_twd": round(cur / 1e5, 1) if cur else None,   # 億元,模型直接引用
+                    "margin_change_100m_twd": round((cur - prev) / 1e5, 1) if cur and prev else None,
+                    "margin_lots": (_to_int(lots[5]) or None) if lots and len(lots) > 5 else None,
+                    "raw_row": amt or rows[0],  # 給除錯用
                 }
             except Exception:
                 continue
@@ -11350,9 +11349,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 世界大事(非市場)新聞獨立成段:供「世界大事速覽」取材。以 world_cat 判定
     # (dedup 後仍保留;來源前綴僅為 fallback)。每類最多 4 則:保留跨類別多樣性
     # (國際/災難/科學/AI),同時控 prompt 長度(Codex 第二意見)。
+    # 11-02 使用者:「足夠嚴重的世界大事」—— 依嚴重性穩定排序(不刪),地方小事不再先佔名額
+    import world_severity
     world_lines: list[str] = []
     _world_per_cat: dict[str, int] = {}
-    for n in news:
+    for n in sorted(news, key=lambda x: -world_severity.rank(x.get("title"))):
         cat = _world_cat_of(n)
         if not cat or n.get("date_missing"):
             continue
@@ -11694,7 +11695,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # Opt 4: 融資融券 block
     margin = quotes.get("MARGIN", {}) or {}
     if margin.get("margin_balance"):
-        margin_block = f"  日期: {margin.get('date','—')}，融資餘額: {margin['margin_balance']:,} 千元（變動需與外資籌碼交叉判讀）"
+        _bal, _prev = margin["margin_balance"] / 1e5, (margin.get("margin_balance_prev") or 0) / 1e5   # 千元 → 億元
+        margin_block = (f"  日期: {margin.get('date','—')}，融資餘額: {_bal:,.1f} 億元" + (f"，較前一交易日 {_bal - _prev:+,.1f} 億元" if _prev else "") + "（變動需與外資籌碼交叉判讀）")
     else:
         margin_block = "（融資融券資料抓取失敗）"
 
@@ -12001,19 +12003,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 (c)若某政策資訊過少(只有標題、無任何細節,且公報亦無對應法令),誠實寫
 「目前僅見標題級報導,細節待官方公告」並只做方向性影響推論,**不可硬湊措施細節**。
 """ if policy_deepdive_block else "")
-    # G5:週一綜合報才有 WEEKLY_REVIEW(main 依 mode 存入);有才組「七之五、週報檢討」段。
-    # (2026-09-03 使用者刪掉多空交鋒之後,週報段補上七之五,平日/週一編號皆連續)
-    weekly_review_block = _format_weekly_review(quotes.get("WEEKLY_REVIEW"))
-    weekly_review_section = (f"""## 七之五、近期預測檢討與本週假設（**僅週一綜合報**;有已結算統計才寫）
-
-{weekly_review_block}
-
-依上方【最近 7 個已結算預測回顧】,用 **≤6 行**寫:
-1. 這批預測整體準不準——**引用平均絕對誤差與持續偏誤數字**,一句總評(偏樂觀高估/偏保守低估/大致準)。
-2. 這批預測期間哪些重點判斷/事件**成真**、哪些**落空**、哪些只是**一日噪音**——只引用上方事件清單與已知走勢,不杜撰。
-3. 本週要重點驗證的 **≤3 個假設**(可證偽、具體,如「若 CPI 低於預期則台股科技類股補漲」)。
-**鐵則**:數字只能引用上方統計;事件只能引用上方清單或歷史;不得杜撰未發生的走勢或不存在的事件。
-""" if weekly_review_block else "")
+    # 七之五「近期預測檢討」2026-11-02 移到週日信(week_review.py),週一晨報不再有。
 
     # 第十四輪:寫作鐵律 R1–R16b 搬到 `writing_rules.py`。**逐字相同**
     # (golden prompt SHA 與 contract 行為雜湊都沒變)。搬的理由是使用者
@@ -12208,11 +12198,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 每條變化都要說清楚**為什麼算強化或降溫**(新證據是什麼、它跟昨日的判斷怎麼對上),不可以只丟一個數字就當作理由(R6c)。
 上方整段是佔位字串「(無昨日紀錄可對照)」時,本段整段省略(不要寫「無昨日紀錄可對照」佔一行)。
 
-{weekly_review_section}
 ## 八、科技板塊脈動（**5–6 條,最多 7 條**;挑當天最大條的科技事件,不湊數)
 
 **重要**:寫 5-6 條;只有 A 級具體事實很多時才可到 7 條。R12 已放寬:B 級資訊也可寫但須明確標註信心降級。
 本段**只寫科技/半導體類股**(台積電供應鏈與台股科技類股);非科技類股一律寫在下方「九、其他類股資訊」,不要混在這裡;Fed／關稅／通膨等總經消息寫在「七之二」,不進八、九段;**同一條主線(如 AI 資本支出與融資)寫兩條以上時要是不同事件**。
+**台灣當天的大事優先**(2026-11-02 使用者:「有納入足夠代表性的台灣產業公司消息嗎?」):素材裡有(1)政府對產業的政策動作(出口管制、金管會/央行/經濟部新措施、補貼),或(2)類股熱度表、資金輪動裡的權值股大漲大跌 7% 以上(含漲跌停)且素材有原因新聞(法說、財報、訂單)時,要優先各寫一條交代原因,不要被產品上架、評等調整這類小消息擠掉。
 **台積電自家動態優先且可加深**:新聞素材中凡屬 2330 自家的**財報/月營收數字、
 法說會(展望/資本支出/毛利率指引)、先進製程(N2/A16)、CoWoS 先進封裝、海內外擴產、大客戶訂單**,
 一律優先入選,可寫 **2-3 條**深入分析(其他公司仍每家至多 1 條);法說/財報季時把「數字 vs 市場預期」
@@ -12269,7 +12259,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 ## 九、其他類股資訊（金融 / 航運 / 生技 / 汽車 / 傳產原物料 / 營建資產 / 重電綠能 / 觀光內需，含台灣與全球；**目標 8–10 條**）
 
-聚焦非科技類股的昨日重大動態。**依【類股熱度表】的今日成交熱度排序**：優先寫「今日成交熱、且【其他類股最新新聞】確有實質新聞事件」的類股——不限傳統四大類，若傳產/營建/重電/觀光今日有真新聞就寫進來。取材以上方【其他類股最新新聞】各類股分組標題為主;**金融條目另可取材【重點公司最新新聞】中 [2881]/[2882]/[2891] 的條目**。熱度表只當背景(判斷哪類在動、誰領漲),**不可**把熱度表的漲跌數字單獨當一條新聞。**本段至少涵蓋 6 個不同產業,並至少一條台灣經濟或跨產業新聞(外銷訂單、景氣燈號、出口、房市、電價、內需、觀光;有當期新數據才寫)**(熱度表與資金輪動有動靜的優先);每條的影響標的只寫有直接傳導的公司,**不要每條都接台積電,也不要寫「與某公司無關」**。
+聚焦非科技類股的昨日重大動態。**依【類股熱度表】的今日成交熱度排序**：優先寫「今日成交熱、且【其他類股最新新聞】確有實質新聞事件」的類股——不限傳統四大類，若傳產/營建/重電/觀光今日有真新聞就寫進來。取材以上方【其他類股最新新聞】各類股分組標題為主;**金融條目另可取材【重點公司最新新聞】中 [2881]/[2882]/[2891] 的條目**。熱度表只當背景(判斷哪類在動、誰領漲),**不可**把熱度表的漲跌數字單獨當一條新聞。**本段至少涵蓋 6 個不同產業,並至少一條台灣經濟或跨產業新聞(外銷訂單、景氣燈號、出口、房市、電價、內需、觀光;有當期新數據才寫)**(熱度表與資金輪動有動靜的優先);每條的影響標的只寫有直接傳導的公司,**不要每條都接台積電,也不要寫「與某公司無關」**。台灣當天的大事(政府產業政策、權值股大漲大跌的原因)比照八段優先。
 
 **本段與「八、科技板塊脈動」採用同一套深度紀律與寫法。**
 八段的敘事連貫寫法就是本段的標準:**開頭半句承接這條線的前情,再寫今日進展**
@@ -15553,6 +15543,8 @@ _CWA_WARNING_RSS = "https://www.cwa.gov.tw/rss/Data/cwa_warning.xml"
 #: 官方寫「臺中」,這裡統一顯示「台中」。
 _CWA_COUNTIES = (("臺中", "台中"), ("台中", "台中"), ("彰化", "彰化"),
                  ("南投", "南投"), ("雲林", "雲林"))
+#: 只收這幾類特報(11-02 使用者選「颱風+豪雨以上+低溫」;「豪雨」含大豪雨/超大豪雨,颱風警報另外一律收)
+_CWA_SEVERE = ("豪雨", "低溫")
 
 
 def _cwa_counties(desc: str) -> list:
@@ -15607,6 +15599,8 @@ def fetch_cwa_alerts(max_items: int = 3) -> list[dict]:
             counties = _cwa_counties(desc)
             if not typhoon and not counties:
                 continue            # 別的縣市的特報,對讀者沒有決策價值
+            if not typhoon and not any(k in title for k in _CWA_SEVERE):
+                continue            # 陸上強風、大雨、濃霧等常態特報不上信(2026-11-02 使用者)
             out.append({"title": title[:90],
                         "link": (lk.group(1).strip() if lk else ""),
                         "typhoon": typhoon, "counties": counties})
@@ -15697,10 +15691,15 @@ def _render_weather_html(locs: list[dict],
         f"{week_html}{alerts_html}{signal_html}{susp_html}</div>")
 
 
-def _render_weekly_recap_html(history: list[dict]) -> str:
-    """週末綜合報專屬:本週預測準確度回顧(加權/2330 預測 vs 實際開盤)。"""
+def _render_weekly_recap_html(history: list[dict], sunday: Optional[dt.date] = None) -> str:
+    """週日信:本週一~五預測 vs 實際開盤(11-02 使用者從週一移來;不給 `sunday` 則取最近 5 筆)。"""
     rows = []
-    for rec in (history or [])[-5:]:
+    recs = [r for r in (history or []) if isinstance(r, dict)]
+    if sunday is not None:
+        monday = sunday - dt.timedelta(days=sunday.weekday())
+        week = {(monday + dt.timedelta(days=k)).isoformat() for k in range(5)}
+        recs = [r for r in recs if str(r.get("target_session_date", ""))[:10] in week]
+    for rec in recs[-5:]:
         tgt = rec.get("target_session_date", "")
         pt, at = rec.get("pred_taiex"), rec.get("actual_open_taiex")
         p2, a2 = rec.get("weighted_final_2330"), rec.get("actual_open_2330")
@@ -21867,9 +21866,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     tw_calendar_html = ""  # Reader preference; collection and quality checks remain.
     journals_html = _safe_block("醫學文獻", _render_journals_html,
                                 quotes.get("MEDICAL_JOURNALS") or [], _htmllib)
-    weekly_recap_html = (_safe_block("週回顧", _render_weekly_recap_html,
-                                     quotes.get("HISTORY") or [])
-                         if "週末" in str(mode) else "")
+    weekly_recap_html = ""   # 2026-11-02 使用者:本週預測回顧改到週日信(見 run_weekend_digest)
     model_evidence_html = _safe_block("模型實證", _render_model_evidence_html, quotes)
 
     # ===== 1. 行情表格 =====
@@ -23977,11 +23974,18 @@ def _build_weekend_policy_prompt(gazette_records) -> str:
 def _build_week_review_prompt(now_tpe) -> str:
     """Keep the public seam; weekly material and source retrieval live in a leaf module."""
     import week_review
+    # 2026-11-02 使用者:「近期預測檢討」從週一七之五改到週日信(統計照舊由 Python 算)
+    try:
+        forecast = _format_weekly_review(_compute_weekly_review_stats(
+            load_history_state(), today=now_tpe.strftime("%Y-%m-%d")))
+    except Exception as e:                  # noqa: BLE001 - 少一段不擋回顧
+        print(f"[weekend] 預測檢討統計略過: {type(e).__name__}", file=sys.stderr)
+        forecast = ""
     return week_review.build(
         now_tpe, load_history_state=load_history_state,
         EVENT_TIMELINE_FILE=EVENT_TIMELINE_FILE, _external_text=_external_text,
         _DEGRADED_STEPS=_DEGRADED_STEPS, _register_state_corrupt=_register_state_corrupt,
-        memory_dir=NEWS_MEMORY_DIR)
+        memory_dir=NEWS_MEMORY_DIR, forecast_review=forecast)
 
 
 def analyze_week_in_review(now_tpe) -> str:
@@ -24324,8 +24328,10 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         policy_analysis_html = ""
     # 本週回顧(2026-08-27 使用者):素材全在 state,失敗整段省略
     try:
-        week_review_html = _render_week_review_html(
-            analyze_week_in_review(now_tpe), _htmllib)
+        # 11-02 使用者:預測回顧表(一~五)放回顧段前,回顧段第一小節即預測檢討
+        week_review_html = (_safe_block("週回顧", _render_weekly_recap_html,
+                                        load_history_state() or [], now_tpe.date())
+                            + _render_week_review_html(analyze_week_in_review(now_tpe), _htmllib))
     except Exception as e:
         print(f"[weekend] 本週回顧略過: {type(e).__name__}: {e}", file=sys.stderr)
         _DEGRADED_STEPS.append("weekend_week_review")
@@ -25106,7 +25112,7 @@ def _phase_events_and_models(ctx) -> None:
     """
     backtest_block, breadth, earnings_proximity, ex_div = ctx.backtest_block, ctx.breadth, ctx.earnings_proximity, ctx.ex_div
     fair, hist_2330, history, margin = ctx.fair, ctx.hist_2330, ctx.history, ctx.margin
-    mode, news, night_txf, now_tpe = ctx.mode, ctx.news, ctx.night_txf, ctx.now_tpe
+    news, night_txf, now_tpe = ctx.news, ctx.night_txf, ctx.now_tpe
     predictions, quotes, sec_filings, taiex_pred = ctx.predictions, ctx.quotes, ctx.sec_filings, ctx.taiex_pred
     taifex_large, taifex_oi, taifex_pcr, target_session_date = ctx.taifex_large, ctx.taifex_oi, ctx.taifex_pcr, ctx.target_session_date
     tw0050, tw0050_pred, tw_mops, weekly = ctx.tw0050, ctx.tw0050_pred, ctx.tw_mops, ctx.weekly
@@ -25395,10 +25401,6 @@ def _phase_events_and_models(ctx) -> None:
     quotes["WEEKLY"] = weekly
     quotes["EARNINGS_PROXIMITY"] = earnings_proximity
     quotes["HISTORY"] = history
-    # G5:僅週一綜合報加「上週檢討」確定性統計(供 LLM 週報檢討段引用;純統計、不動計分)。
-    if mode == "週末綜合":
-        quotes["WEEKLY_REVIEW"] = _compute_weekly_review_stats(
-            history, today=now_tpe.strftime("%Y-%m-%d"))
     quotes["NIGHT_TXF"] = night_txf
     quotes["TAIEX_PRED"] = taiex_pred
     quotes["TW0050_PRED"] = tw0050_pred

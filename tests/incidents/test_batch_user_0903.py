@@ -59,8 +59,8 @@ def test_the_debate_section_is_removed_everywhere():
     assert not hasattr(lp, "_sanitize_debate_section")
     assert "_sanitize_debate_section" not in _SRC
     assert "多空交鋒" not in wr.LEGACY_RULES
-    # 週報段補上七之五,編號連續(平日 七之四 → 八)
-    assert "## 七之五、近期預測檢討" in _SRC and "七之六" not in _SRC
+    # 週報段的七之五 2026-11-02 移到週日信(週一晨報 七之四 → 八,編號仍連續)
+    assert "## 七之五、近期預測檢討" not in _SRC and "七之六" not in _SRC
 
 
 # ------------------------------------------------------------------ ⑥
@@ -98,8 +98,8 @@ def test_cwa_alerts_show_counties_and_only_the_four_that_matter(monkeypatch):
       <item><title>09/03 07:05 發布大雨特報</title>
         <description><![CDATA[ 基隆北海岸、屏東、宜蘭、臺東地區有局部大雨。 ]]></description>
         <link>https://cwa/a</link><pubDate>{fresh}</pubDate></item>
-      <item><title>09/03 10:47 發布陸上強風特報</title>
-        <description><![CDATA[ 今(3)日雲林縣、南投縣局部地區有平均風6級以上。 ]]></description>
+      <item><title>09/03 10:47 發布豪雨特報</title>
+        <description><![CDATA[ 今(3)日雲林縣、南投縣山區有局部豪雨。 ]]></description>
         <link>https://cwa/b</link><pubDate>{fresh}</pubDate></item>
       <item><title>09/03 06:13 發布海上颱風警報</title>
         <description><![CDATA[ 臺灣海峽、巴士海峽。 ]]></description>
@@ -112,7 +112,7 @@ def test_cwa_alerts_show_counties_and_only_the_four_that_matter(monkeypatch):
     assert got[0]["counties"] == ["南投", "雲林"]            # 固定順序、去重
     assert got[1]["typhoon"] is True and got[1]["counties"] == []   # 颱風例外
     h = mr._render_weather_html([], [], got)
-    assert "陸上強風特報（南投、雲林）" in h, h
+    assert "豪雨特報（南投、雲林）" in h, h   # 11-02 起強風等常態特報不收,改用豪雨驗縣市
     assert "🌀 氣象署:09/03 06:13 發布海上颱風警報</a>" in h   # 沒縣市就不加括號
 
 

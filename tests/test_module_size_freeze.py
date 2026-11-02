@@ -217,6 +217,7 @@ MODULE_CEILINGS = {
     "scenario_window.py": 85,
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
+    "world_severity.py": 40,   # 世界大事嚴重性分級(2026-11-02)
     "sports_season.py": 468,   # 季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,
@@ -627,7 +628,7 @@ MODULE_CEILINGS = {
     # 由使用者要求決定**,而組裝邏輯仍只有 `_bundle` 一個函式。
     # 第十八輪:實測 301 —— 三條新規則(逐標的、同向解讀、claim 回指)。
     # 2026-08-19 第四批:legacy 骨架各欄位的寫法說明。實測 472 行。
-    "prompt_profiles.py": 535,  # 2026-10-31 PR #37:舊院會紀錄時效規則;現況 532   # 2026-08-24:公報引用形狀寫進 prompt;現況 501
+    "prompt_profiles.py": 540,  # 2026-11-02:三大重點 2~3 句、世界大事嚴重性、台灣大事優先;現況 537   # 2026-10-31 PR #37:舊院會紀錄時效規則;現況 532   # 2026-08-24:公報引用形狀寫進 prompt;現況 501
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。
@@ -640,7 +641,7 @@ MODULE_CEILINGS = {
     # `test_the_writing_rules_module_holds_no_logic` 保證這裡只有字串常數。
     # 上限仍然留著,當「有人把整個 prompt 系統搬進來」的最後一道背牆。
     # 2026-10-30 410 → 420:使用者要求的 R21「同主題正反並陳」(純 prompt 文字,見上段理由)。
-    "writing_rules.py": 420,  # Reader editorial rules extracted; ceiling reduced from 420.
+    "writing_rules.py": 425,  # 2026-11-02:三大重點 2~3 句、世界大事依嚴重性(現況 421). Reader editorial rules extracted.
     # 第十四輪 P1-4:**逐側**的成本與延遲(manifest 隔天被覆蓋,帳本是追加的)。
     # 兩件事:從 manifest 擷取一列、跨帳本彙總。**不做任何分攤** ——
     # 抽取器標 shared,按比例拆給兩側是編造。實測 151 行。

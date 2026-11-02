@@ -63,7 +63,7 @@ import podcast_comparison as _podcast
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 32  # Explicit evidence IDs for negative watch results.
+ANALYSIS_SCHEMA_VERSION = 33  # key_drivers.statement is 2-3 sentences (event → why → transmission).
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -149,7 +149,7 @@ def _evidence_ids(extra: str = "") -> dict:
 _EVIDENCE_IDS = _evidence_ids()
 
 _CLAIM = _obj({
-    "statement": _s("一句話的主張,不要重述整則新聞"),
+    "statement": _s("2～3 句:事件與關鍵數字 → 為什麼重要 → 對台股或產業的傳導方向;不要重述整則新聞"),
     "claim_type": _enum(CLAIM_TYPES, "fact=證據直接陳述;inference=由證據推得;"
                                      "scenario=條件成立才發生;unknown=資料不足"),
     "direction": _enum(DIRECTIONS),

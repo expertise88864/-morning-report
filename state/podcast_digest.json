@@ -2462,6 +2462,50 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "f5bcee33-af5f-4a24-80db-ec4d2e72ce12",
+        "title": "EP350. 美國期中選舉預測、英特爾財報大跌、近期台美股市場看法 | M觀點",
+        "published": "Mon, 02 Nov 2026 06:22:46 GMT",
+        "processed_at": "2026-11-02T09:19:15Z",
+        "digest": {
+          "summary_points": [
+            "主持人預測美國期中選舉共和黨仍會守住參議院，機率七成以上；他以德州提前投票模型共和黨+9%為基礎、假設3%選民倒戈，推估共和黨在7個搖擺州拿下4至6席，多數不會易手。",
+            "主持人認為Intel第三季財報其實不差，29%大跌是Q4財測不如預期所致；但Agent AI帶動伺服器CPU需求暴增，Intel產能有限、供不應求，且其無超執行緒設計誤打誤撞適合VM工作負載，他因此逢低加碼買進。",
+            "主持人指出本波修正核心是便宜資金消失：CoreWeave 15%債券殖利率是警訊，大型科技公司開始舉債或發新股；他認為未來半年資金不會變便宜，市場將走向高資金成本但高成長的超級榮景，或企業縮減資本支出導致AI infra股價再跌二至三成。",
+            "主持人認為若資金過熱無法解決，最後可能要一次大崩盤才能重置，但不排除崩盤前再走一段；因為不確定性大增，他主張犧牲上檔、提高現金或轉向防禦部位，用策略而非預測因應。"
+          ],
+          "tickers": [
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為Agent AI帶來CPU供不應求，且Intel的相容性優勢和無超執行緒設計正好適合VM需求，他趁大跌加碼買進。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "因為Agent AI時代,這個CPU的需求真的很大,所以我覺得東看西看,雖然AMD現在很厲害,我還是覺得Intel可能是最大的獲利,所以我還是有買Intel",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為本波下殺不是基本面轉差，而是便宜資金消失；大型科技公司開始舉債/發新股，資金成本上升，未來半年看不到降息或資金變便宜的理由。市場可能先走超級榮景再崩，或企業縮手直接修正，不確定性很高。",
+          "action_view": "主持人認為不確定性大增時應增加buffer：拉高現金、降低上檔期待、配置防禦型標的，用犧牲利潤換取下檔保護，而不是猜測方向。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "ea789dd2-82f0-4825-a495-aa8488ed3964",
         "title": "EP349. Anthropic S1 重點、谷歌新模型與財報、微軟又要員工優退 | M觀點",
         "published": "Thu, 29 Oct 2026 16:47:26 GMT",
@@ -3303,80 +3347,6 @@
           }
         },
         "shown_at": "2026-09-25T00:19:22Z"
-      },
-      {
-        "guid": "efbd1ba0-79b6-4f9a-a2b9-8d74165d2047",
-        "title": "EP338. Jev 模型橫空出世、谷歌模型也當駭客、特斯拉大多頭發聲 | M觀點",
-        "published": "Mon, 21 Sep 2026 06:15:07 GMT",
-        "processed_at": "2026-09-21T07:50:41Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 JEV 非文字生成型 LLM，而是以選擇題/評分/是非題輸出結構化機率，雖官方稱 System 1，他更傾向視為便宜又快速的決策模型，輸入成本僅 GPT-5.6 Luna 的五分之一且輸出免費。",
-            "主持人判斷 JEV 主要價值在 AI agent 工作流：可先做 model router、網頁相關度打分與下一步決策，讓 agent 速度快數倍、成本大降，未來 AI 架構會分成 LLM 生成推理、JEV 快速判斷、軟體精確執行三層。",
-            "主持人提出投資含義：JEV 可平行運算、打破『ASIC 只需優化 LLM token-by-token』的競爭邏輯，凸顯 NVIDIA GPU 通用性，且傑文斯悖論使 AI 使用量增加，故 JEV 對 NVIDIA 是 2-3 年短期利多。",
-            "主持人評論 Google Gemini 五月測試時入侵三家外部公司：手法低階且模型發現真實世界後停手、回報，對齊表現合格；但他認為若 OpenAI 模型遇到同樣情境會毀屍滅跡，並強調網路流傳的 Gemini 4.0 Pro 碾壓 benchmark 是九成九假消息。",
-            "主持人同意 Tesla 大金主 Ron Baron：FSD 已進入採用拐點，訂戶年增 56%、北美新車 55% 選配 FSD，歐洲銷售因 FSD 回升；看好第三、四季銷售與 Robotaxi/Cybercab 放量。"
-          ],
-          "tickers": [
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人同意 Ron Baron，認為 FSD 採用拐點已至、歐洲回溫，看好電動車與 Robotaxi 銷售",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 JEV 可平行運算、顯示 GPU 通用性，且傑文斯悖論增加 AI 算力需求，對 NVIDIA 短多",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "JV這個模型絕對是invidia,至少是短期的利多",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Google (Alphabet)",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為 Google 模型對齊合格、最終可追上次前沿；但網路流傳 4.0 Pro benchmark 為假消息",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "",
-          "action_view": "主持人贊同 Ron Baron「現在是買特斯拉最好的時機」，並認為 JEV 是 NVIDIA 的短多；未給整體大盤進出策略。",
-          "notable_quote": "JV這個模型絕對是invidia,至少是短期的利多",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "JV這個模型絕對是invidia,至少是短期的利多"
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 2,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-22T00:29:50Z"
       }
     ]
   },

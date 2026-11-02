@@ -289,7 +289,7 @@
    "watch_id": "w57",
    "status": "open",
    "created": "2026-10-07",
-   "last_reviewed": "2026-11-02",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-04"
   },
   {
@@ -301,7 +301,7 @@
    "watch_id": "w59",
    "status": "open",
    "created": "2026-10-07",
-   "last_reviewed": "2026-11-02",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-04"
   },
   {
@@ -377,42 +377,6 @@
    "deadline": "2026-11-20"
   },
   {
-   "trigger": "外資台指期淨空是否連續第二日回補，並降到8萬口以下。",
-   "trigger_full": "外資台指期淨空是否連續第二日回補，並降到8萬口以下。",
-   "trigger_key": "tc543f8e4140f5ead",
-   "why": "淨空回補是判斷今天的跳空是承接還是避險的唯一籌碼線索，回補就代表偏空理由少一半。",
-   "horizon": "1-5d",
-   "watch_id": "w93",
-   "status": "open",
-   "created": "2026-10-28",
-   "last_reviewed": "2026-11-02",
-   "deadline": "2026-11-02"
-  },
-  {
-   "trigger": "十年期美債殖利率是否站上5.00%。",
-   "trigger_full": "十年期美債殖利率是否站上5.00%。",
-   "trigger_key": "t0f102bb0c6222982",
-   "why": "只差0.007個百分點，站上就代表折現率因子接管主導權，高本益比成長股會先被打折。",
-   "horizon": "1-5d",
-   "watch_id": "w95",
-   "status": "open",
-   "created": "2026-10-28",
-   "last_reviewed": "2026-11-02",
-   "deadline": "2026-11-02"
-  },
-  {
-   "trigger": "FOMC會後聲明是否把12月升息寫成既定路徑。",
-   "trigger_full": "FOMC會後聲明是否把12月升息寫成既定路徑。",
-   "trigger_key": "tf1e858abf09d30f5",
-   "why": "市場已定價本週不動，真正的風險在措辭；寫進路徑就代表AI融資鏈的信用成本會跟著上升。",
-   "horizon": "1-5d",
-   "watch_id": "w96",
-   "status": "open",
-   "created": "2026-10-28",
-   "last_reviewed": "2026-11-02",
-   "deadline": "2026-11-02"
-  },
-  {
    "trigger": "10 年期美債殖利率是否站上 5.05%",
    "trigger_full": "10 年期美債殖利率是否站上 5.05%",
    "trigger_key": "t37c0f8bd472ba632",
@@ -421,7 +385,7 @@
    "watch_id": "w97",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-04"
   },
   {
@@ -433,7 +397,7 @@
    "watch_id": "w98",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-04"
   },
   {
@@ -445,7 +409,7 @@
    "watch_id": "w99",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-04"
   },
   {
@@ -481,7 +445,7 @@
    "watch_id": "w102",
    "status": "open",
    "created": "2026-11-02",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-03"
   },
   {
@@ -493,7 +457,7 @@
    "watch_id": "w103",
    "status": "open",
    "created": "2026-11-02",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-03"
   },
   {
@@ -541,44 +505,87 @@
    "watch_id": "w107",
    "status": "open",
    "created": "2026-11-02",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-03",
    "deadline": "2026-11-03"
+  },
+  {
+   "trigger": "夜盤台指期跌 2.03% 後，加權指數現貨開盤是否守住模型區間下緣 44,183 點（觀察期：今日）",
+   "trigger_full": "夜盤台指期跌 2.03% 後，加權指數現貨開盤是否守住模型區間下緣 44,183 點（觀察期：今日）",
+   "trigger_key": "t3094aad459c44fbd",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w108",
+   "status": "open",
+   "created": "2026-11-03",
+   "last_reviewed": "",
+   "deadline": "2026-11-04"
+  },
+  {
+   "trigger": "SOX 是否連續第二個交易日把跌幅收斂到 1.5% 以內，且 TSM ADR 溢價回穩（觀察期：5 天內）",
+   "trigger_full": "SOX 是否連續第二個交易日把跌幅收斂到 1.5% 以內，且 TSM ADR 溢價回穩（觀察期：5 天內）",
+   "trigger_key": "tabbd42b411bfff21",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w109",
+   "status": "open",
+   "created": "2026-11-03",
+   "last_reviewed": "",
+   "deadline": "2026-11-08"
+  },
+  {
+   "trigger": "外資台指期淨空是否由 89,379 口回補到 8 萬口以下（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空是否由 89,379 口回補到 8 萬口以下（觀察期：5 天內）",
+   "trigger_key": "t2a1293abb49ffe44",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w110",
+   "status": "open",
+   "created": "2026-11-03",
+   "last_reviewed": "",
+   "deadline": "2026-11-08"
   }
  ],
- "watch_seq": 107,
+ "watch_seq": 110,
  "legacy_report": {
-  "date": "2026-11-02",
+  "date": "2026-11-03",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠）**：上週五 SOX -7.20%、TSM ADR -5.95%，創 8 月以來新低 [鉅亨](https://news.cnyes.com/news/id/6643193)。以 ADR 連動推估，今日合理參考約 2,312 元，區間 2,229 至 2,358 元。ADR 溢價收斂直接壓抑 2330 開盤，外資上週從台積電提走 625 億元，與台指期淨空 -92,241 口同向。以夜盤台指期 -1.91% 對照，加權預測開盤 44,344 點、隱含跌幅約 1.92%，2330 合理參考較昨收 2,370 元低約 2.4%，開盤跳空後須看本地承接量。**[A 級・信心:中]**",
+    "statement": "**迅得（6438，台積電供應鏈的半導體與 PCB 設備廠）**：10 月營收 6.73 億元，月減 3.15%、年增 28.08%，改寫歷史單月次高與同期新高；前三季累計 61.86 億元、年增 10.93% [鉅亨](https://news.cnyes.com/news/id/6644200)。設備出貨在第 4 季步入高峰，直接對應台積電先進製程與封裝的擴產節奏，是 2330 資本支出落地與否的周邊驗證。**[A 級・信心：中]** 這則營收只覆蓋單一供應商，看不出整體設備鏈的量級，但年增近三成的斜率與台積電擴產方向一致。",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6643193"
+     "https://news.cnyes.com/news/id/6644200"
     ]
    },
    {
-    "statement": "**聯發科（2454，IC 設計大廠）**：法說會將 Q4 雲端 ASIC 營收上修至 25 億美元，2027 年該專案營收可望達 160 億美元、約占 AI 加速器 ASIC 市場 20% [鉅亨](https://news.cnyes.com/news/id/6643408)。ASIC 出貨需台積電先進製程與 CoWoS 產能，對 2330 先進封裝稼動率是中期支撐；但聯發科本身高本益比，今日仍跟隨系統性賣壓。25 億美元是季度營收，公司未公布上修幅度百分比，無法換算對 2330 的營收貢獻，時間點落在 Q4 至 2027 年。**[A 級・信心:中]**",
+    "statement": "**邁威爾（MRVL，客製化 AI 晶片與網通晶片廠）**：宣布以全股票交易收購光通訊元件廠 Lumentum，含債務的企業價值約 1,150 億美元，Lumentum 股東每股換 4.5 股邁威爾 [鉅亨](https://news.cnyes.com/news/id/6644286)。高速光連線是 AI 資料中心串接數千顆晶片的瓶頸環節，收購若成真，將推升 800G 與 1.6T 光模組的採用速度，對台股光通訊與先進封裝供應鏈是中期需求支撐。**[A 級・信心：中]** 交易要到 2028 年上半年才完成，今日無法反映在 2330 稼動率上；且兩檔股價當日分別跌逾 5% 與 10%，市場對出價的疑慮大於對需求的肯定。",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6643408"
+     "https://news.cnyes.com/news/id/6644286"
     ]
    },
    {
-    "statement": "**鴻海（2317，全球最大電子代工廠）**：科技日宣布 AI 伺服器機架週產能從 1,000 架翻倍至 2,000 架 [鉅亨](https://news.cnyes.com/news/id/6643408)。機架組裝拉貨對應 AI 晶片與電源、散熱需求，是 2330 的 CoWoS 與 AI 伺服器鏈的下游驗證；但組裝環節毛利率低，對獲利貢獻要看單價。產能翻倍但沒有金額與時程，**這則新聞說不出對營收的量級**，只能當需求方向。**[A 級事實、B 級量級・信心:中-低]**",
+    "statement": "**創意（3443，台積電旗下的 ASIC 設計服務商）**：FactSet 最新調查將 2026 年 EPS 預估中位數由 54.87 元上修至 56.51 元，預估目標價 8,000 元，18 位分析師中最高估值 63.94 元 [鉅亨](https://news.cnyes.com/news/id/6644346)。ASIC 開案量增加會直接排擠台積電的 CoWoS 與 N3/N2 產能，是 2330 先進封裝需求的前導指標。**[B 級・信心：低-中，資訊有限]** 這是賣方預估調整而非訂單公告，說不出實際出貨量級；昨日創意股價反而跌 4.6%，股價與評等方向背離，代表市場已在擔憂評價而非需求。",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6643408"
+     "https://news.cnyes.com/news/id/6644346"
     ]
    },
    {
-    "statement": "**PCB／CCL 材料升級（台光電、台燿、聯茂）**：AI 算力撞上傳輸天花板，CCL 跨入 M10 基材、導入石英布與玻璃核心載板 [鉅亨](https://news.cnyes.com/news/id/6641796)。高階 CCL 與載板升級會增加台光電、台燿、聯茂的高階產能需求，對 2330 是間接效果，透過先進封裝載板需求增加傳導。文章沒有給市場規模或滲透率時間表，**量級判斷不出來**；它與上一條聯發科 ASIC 同向，都指向先進封裝與高速傳輸需求，兩者不是互相排擠，而是同一條 AI 傳輸升級鏈的不同環節。**[B 級・信心:低-中]**",
+    "statement": "**記憶體族群（南亞科、華邦電、旺宏）**：鎧俠審慎財測拖累美光跌 5.78%、威騰跌 7.52% [鉅亨](https://news.cnyes.com/news/id/6644206)；但同一時間十銓法說指出，這波記憶體價格已連漲一年，第 4 季至明年 Q2 末將是供貨最吃緊階段，部分產品合約價季漲 30% 至 40% [鉅亨](https://news.cnyes.com/news/id/6644284)。這是典型的方向相反：現貨與合約報價仍在漲，股價卻先反映「原廠擴產後報價見頂」的預期。**[A 級・信心：中]** 對南亞科的實際傳導要看第 4 季合約價是否真的再漲，目前只有模組廠說法、缺獨立研調報價確認。",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6641796"
+     "https://news.cnyes.com/news/id/6644206",
+     "https://news.cnyes.com/news/id/6644284"
     ]
    },
    {
-    "statement": "**【金融｜台灣】金管會公布金融三業獲利**：前 3 季稅前獲利 1 兆 2,715 億元、年增 77.5%，創同期新高 [中央社](https://www.cna.com.tw/news/afe/202611010080.aspx)。銀行業前 9 月獲利 5,946.9 億元、年增近 21.9%，主要來自放款成長與財管手續費；壽險業 9 月因美債殖利率彈升，FVTPL 債券評價出現未實現損失、單月獲利月減 522 億元。傳導：利多銀行型金控如中信金、兆豐金的淨利息與手續費收入；壽險金控如國泰金、富邦金短期債券評價承壓。**[A 級・信心:中]**",
+    "statement": "**聯發科（2454，IC 設計大廠）**：法說會後八家外資出具正面報告，焦點在第二家雲端 ASIC 客戶的身分 [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTFBzVnVKTGEzNjB5WjF0cWliZmlhLW1vTEVISE5UWDh2UFA2aHEyNUtlcVpLR1A0dzRjeHliTENtSElrSGhERVFVZlVPdi0xamNPNXk4TGR1cXQtZ9IBX0FVX3lxTE95dVBTMzNGRE1pNHdIWk01eHlabFdQdW40Wkw0LXpnNnJWMkoyclJRUHU1VnVnclpXN0ZrNDY5QTRSUGlSTTZQS3hIWGZqVlZwVXBTNE1EY1Y0X1U2Zzd3?oc=5)。雲端 ASIC 出貨需台積電先進製程與 CoWoS 產能，對 2330 是先進封裝稼動率的中期支撐；這條與上一條創意的 ASIC 題材指向同一段產能，兩者不是相加而是互相排擠。**[B 級・信心：低-中，資訊有限]** 客戶身分未獲公司證實，沒有金額與時程，量級判斷不出來。",
     "source_urls": [
-     "https://www.cna.com.tw/news/afe/202611010080.aspx"
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTFBzVnVKTGEzNjB5WjF0cWliZmlhLW1vTEVISE5UWDh2UFA2aHEyNUtlcVpLR1A0dzRjeHliTENtSElrSGhERVFVZlVPdi0xamNPNXk4TGR1cXQtZ9IBX0FVX3lxTE95dVBTMzNGRE1pNHdIWk01eHlabFdQdW40Wkw0LXpnNnJWMkoyclJRUHU1VnVnclpXN0ZrNDY5QTRSUGlSTTZQS3hIWGZqVlZwVXBTNE1EY1Y0X1U2Zzd3?oc=5"
+    ]
+   },
+   {
+    "statement": "**【金融｜台灣】富邦金、國泰金（兩大金控，壽險為獲利主引擎）**：媒體報導兩家獲利表現亮眼 [工商時報](https://news.google.com/rss/articles/CBMiX0FVX3lxTE51NC1UbzdLUVhwM0FpR0l2WXVzRnJhMnQ4WVJfai1ldlpkVXZmcTljSWxTSFZ6MkNRVkhPT3RfNEZiM1VyQXpFRkdzUG9ZT05VMWE2RkQ0cWx3NDdJRU9N?oc=5)。壽險金控的獲利傳導鏈是「美債殖利率與股市 → 投資收益與債券評價 → 金控淨利」，10 年期美債殖利率昨日回落至 4.894%，對債券部位評價是順風。**[B 級・信心：低，資訊有限]** 報導未提供具體獲利數字與年增率，無法量化；且國泰金 9 月營收年減 47.4%，獲利與營收走勢分歧，需等正式財報。",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE51NC1UbzdLUVhwM0FpR0l2WXVzRnJhMnQ4WVJfai1ldlpkVXZmcTljSWxTSFZ6MkNRVkhPT3RfNEZiM1VyQXpFRkdzUG9ZT05VMWE2RkQ0cWx3NDdJRU9N?oc=5"
     ]
    }
   ]

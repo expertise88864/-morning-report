@@ -92,6 +92,8 @@ def test_world_severity_ranks_the_1102_headlines():
     assert ws.rank("美國阿拉巴馬州美式足球賽場外爆槍響　1死8傷") == 0
     assert ws.rank("東部海域地震規模5.6 最大震度宜蘭花蓮3級") == 0
     assert ws.rank("某國槍擊案 32人死亡") == 1                      # 大規模死傷不算地方小事
+    assert ws.rank("某國槍擊案造成1死50傷") == 1                    # 傷者數十人也算(外審 PR #38)
+    assert ws.rank("mall shooting leaves 2 dead, 31 injured") == 1
     assert ws.rank("德國生活成本抗議演變成暴力事件 商店遭洗劫") == 0
 
 
@@ -126,3 +128,28 @@ def test_prompts_carry_the_1102_rules():
     assert "台灣當天的大事優先" in src and "七之五、近期預測檢討" not in src
     luna = open(prompt_profiles.__file__, encoding="utf-8").read()
     assert "每一條 `statement` 寫 **2～3 句**" in luna and "台灣當天的大事要優先" in luna
+
+
+def test_severe_world_event_outranks_ordinary_news_in_specialized_order():
+    """外審 PR #38:只區分「小事」會讓重大事件與一般科學新聞同級,第六條重大事件被擠掉。"""
+    import editorial_priority as ep
+    pk = {"news": [{"source_item_id": "s", "title": "新型望遠鏡拍到遙遠星系影像"},
+                   {"source_item_id": "i", "title": "伊朗軍方宣稱　若與美國爆發新戰事恐比先前更漫長"}]}
+    order = [c["source_item_id"] for c in ep.order([{"source_item_id": "s"}, {"source_item_id": "i"}], pk)]
+    assert order == ["i", "s"]
+
+
+def test_world_depth_guard_does_not_count_minor_incidents_as_material():
+    """外審 PR #38:2 則重大 + 3 則地方小事,模型只寫 2 條時不應被催著用小事補滿五條。"""
+    import analysis_depth
+    titles = ["伊朗軍方警告新戰事", "OPEC+維持產量", "阿拉巴馬州球賽外槍響 1死8傷",
+              "東部海域地震規模5.6 最大震度3級", "德國生活成本抗議演變成暴力"]
+    pk = {"news": [{"source_item_id": f"w{i}", "title": t, "source": "中央社國際"}
+                   for i, t in enumerate(titles)]}
+    w = {"what": "x", "why_it_matters": "y", "what_next": "z"}
+    adv = analysis_depth.depth_advisories({"world_events": [w, w], "top_news_analysis": []}, pk)
+    assert not any("world_events" in a for a in adv)
+    pk["news"] += [{"source_item_id": f"x{i}", "title": f"美中峰會第{i}輪", "source": "中央社國際"}
+                   for i in range(3)]
+    adv = analysis_depth.depth_advisories({"world_events": [w, w], "top_news_analysis": []}, pk)
+    assert any("world_events" in a for a in adv)          # 重大素材真的夠五則時照催

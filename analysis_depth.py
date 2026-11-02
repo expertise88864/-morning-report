@@ -235,7 +235,11 @@ def depth_advisories(obj, packet=None) -> list:
                                                  for k in ("what", "why_it_matters", "what_next"))]
     # `packet` 也可能是 ID 集合(`deepen_is_an_improvement(evidence_ids=…)` 的
     # 舊呼叫形狀)—— 那時沒有素材可數,一律不催。
-    _src_world = (sum(1 for it in (packet.get("news") or []) if _world_cat_of(it))
+    # 11-02 使用者:地方小事(槍擊、震度 3 級)不算可用素材 —— 不然模型照規則捨棄後,
+    # 這裡又會催它用小事補滿五條(外審 PR #38)
+    import world_severity as _ws
+    _src_world = (sum(1 for it in (packet.get("news") or [])
+                      if _world_cat_of(it) and _ws.rank(it.get("title")) > 0)
                   if isinstance(packet, dict) else 0)
     if len(_world_out) < WORLD_EVENTS_TARGET and _src_world >= WORLD_EVENTS_TARGET:
         out.append(

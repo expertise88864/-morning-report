@@ -18,8 +18,9 @@ _SEVERE = re.compile(
 _MINOR = re.compile(
     r"槍擊|槍響|搶劫|車禍|示威|抗議|遊行|有感|震度[^0-9]{0,8}[1-4]\s*級|規模\s*[1-5]\.\d|"
     r"\b(?:shootings?|gun violence|protests?)\b", re.I)
-#: 死傷規模大到不再是地方小事(數十人以上)。
-_MASS = re.compile(r"(?:\d{2,}|數十|上百|數百)\s*人?\s*(?:死|罹難|喪生)|\b\d{2,} (?:dead|killed)\b", re.I)
+#: 死傷規模大到不再是地方小事(死或傷數十人以上;「1死50傷」也算)。
+_MASS = re.compile(r"(?:\d{2,}|數十|上百|數百)\s*人?\s*(?:死|傷|罹難|喪生|受傷)"
+                   r"|\b\d{2,} (?:dead|killed|injured|wounded)\b", re.I)
 
 
 def rank(title) -> int:

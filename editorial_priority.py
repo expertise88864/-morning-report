@@ -50,10 +50,11 @@ def order(cards: list, packet: dict) -> list:
         title = str(source.get('title') or '')
         body = title + ' ' + str(source.get('summary') or '')
         development = bool(_DEVELOPMENT.search(title))
-        # 11-02 使用者:地方槍擊、震度 3 級地震不是「足夠嚴重的世界大事」,排到一般事件之後
-        minor = world_severity.rank(title) == 0
-        tier = -1 if event_score.is_price_move(title) or minor else (
-            1 if development else -1 if _PREVIEW.search(title) else 0)
+        # 11-02 使用者:跨國重大事件(戰爭、制裁、能源、關稅)與具體進展同列前段;
+        # 地方槍擊、震度 3 級地震排到一般事件之後(外審 PR #38:完整保留三個等級)
+        severity = world_severity.rank(title)
+        tier = -1 if event_score.is_price_move(title) or severity == 0 else (
+            1 if development or severity == 2 else -1 if _PREVIEW.search(title) else 0)
         repeated = any(overlap.duplicate(body, history[eid]['title'] + ' ' + history[eid]['excerpt'])
                        for eid in (contexts.get(sid) or {}).get('evidence_ids', []) if eid in history)
         from analysis_render_depth import news_subject

@@ -11371,11 +11371,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     _ai = quotes.get("AI_MODELS") or {}
     _ai_lines = [f"- {_legacy_actor_guard.tag(n)}{_external_text(n.get('title'), 110)}"
                  for n in (_ai.get("news") or [])[:8]]
-    _ai_price = [f"- {_external_text(r, 110)}"
-                 for r in (_ai.get("pricing") or [])[:8]]
+    _ai_price = [f"- {_legacy_actor_guard.tag({'title': r, 'source_name': 'OpenRouter', 'link': 'https://openrouter.ai/models'})}"
+                 f"{_external_text(r, 110)}" for r in (_ai.get("pricing") or [])[:8]]   # 11-03:要能引用編號
     # 批#17:Polymarket 最佳 AI 模型盤——放進區塊條件(Codex r1:只有市場盤
     # 有料而新聞/定價全空時,market 行曾被外層條件擋住不進 prompt)
-    _ai_mkt = [f"- {_external_text(r, 130)}"
+    _ai_mkt = [f"- {_legacy_actor_guard.tag({'title': r, 'source_name': 'Polymarket'})}{_external_text(r, 130)}"
                for r in (_ai.get("market") or [])[:3]]
     if _ai_lines or _ai_price or _ai_mkt:
         news_block += ("\n\n【AI 前沿模型動態（標題末為來源媒體）】\n"   # 取材對應在圍欄外(LM-7)

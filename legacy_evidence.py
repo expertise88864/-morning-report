@@ -82,7 +82,7 @@ def known(evidence_id: str) -> bool:
 def _quantities(text, *, bare: bool = False) -> list[tuple[str, float, str, str, str]]:
     """(原文數字, 換算後的值, 種類, 量級, 單位), 例如「3,300 億元」→ ("3,300", 3.3e11, "twd", "億", "元")。
     `bare=False` 只回有量級或單位的(句子裡的「第3季」「10月」不算)。"""
-    out, text = [], unicodedata.normalize("NFKC", str(text or ""))
+    out, text = [], unicodedata.normalize("NFKC", str(text or "")).replace("仟", "千")   # 觀測站寫「仟元」
     for pre, raw, mag, unit, noun in _QUANT.findall(text):
         if not (pre or mag or unit or bare):
             continue

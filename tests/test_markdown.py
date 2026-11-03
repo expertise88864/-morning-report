@@ -1146,7 +1146,8 @@ def test_sector_rank_deltas_day_over_day(monkeypatch, tmp_path):
     assert deltas3["半導體"] == {"d": 1, "days": 3}   # 基準=07/17 快照
 
 
-def test_render_html_health_warning_line_and_heat_rank_arrows():
+def test_render_html_health_warning_line_and_heat_rank_arrows(monkeypatch):
+    monkeypatch.setattr(mr, "SHOW_SECTOR_HEAT_TABLE", True)   # 2026-11-03 起暫時隱藏;恢復時排法照舊
     q = {**_full_quotes(),
          "HEALTH_WARNINGS": ["模型歷史 143→130 日縮短", "來源連續失敗:TWSE"],
          "BREADTH": {"total_value_raw": 3.5e11, "total_value_yi": 3500,

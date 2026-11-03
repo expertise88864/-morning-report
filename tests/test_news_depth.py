@@ -721,13 +721,14 @@ def test_other_sectors_section_carries_the_tech_section_discipline():
     assert "三段式因果鏈" in eight
 
 
-def test_sections_do_not_re_expand_what_belongs_elsewhere():
+def test_sections_do_not_re_expand_what_belongs_elsewhere(monkeypatch):
     """批#86:使用者回報「前後有一些重複的訊息」。
 
     七段只寫方向不複述八/九的細節、十段只寫八/九沒寫過的 —— 兩條排除規則都要真的在 prompt 裡。
     (2026-11-02 使用者要三大重點每條 2～3 句,「標題層一句話」改成「傳導只寫方向一句」。)
     """
     import morning_report as mr
+    monkeypatch.setattr(mr, "SHOW_POLICY_DEEPDIVE", True)   # 2026-11-03 起十之二暫時隱藏;恢復時規則照舊
 
     prompt = mr._build_prompt({}, {}, {}, [], [], "")
     seven = prompt[prompt.index("## 七、昨夜三大重點"):

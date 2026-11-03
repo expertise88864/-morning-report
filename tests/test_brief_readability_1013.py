@@ -136,6 +136,7 @@ def test_sector_order_and_rotation_remains_trimmed_with_watchlist(monkeypatch):
     monkeypatch.setattr(mr, "_sector_rotation", lambda _: {"fixture": True})
     monkeypatch.setattr(mr, "_render_sector_rotation_table", lambda *_: "<p>ROTATION_FIXTURE</p>")
     monkeypatch.setattr(mr, "_RENDER_TOP5_CARD", True)
+    monkeypatch.setattr(mr, "SHOW_SECTOR_HEAT_TABLE", True)   # 2026-11-03 起暫時隱藏;恢復時順序照舊
     def render_email():
         return mr.render_html(quotes, {"error": "fixture"}, {"error": "fixture"},
                               "## 分析\n保留", "2026-10-13", "每日報")
@@ -152,3 +153,19 @@ def test_sector_order_and_rotation_remains_trimmed_with_watchlist(monkeypatch):
     assert "ROTATION_FIXTURE" not in trimmed
     assert "類股熱度表" in trimmed
     assert watchlist.get_text() not in trimmed, "名單被剪掉時段落標題不可留著"
+
+
+def test_sector_heat_table_hidden_by_default_rotation_kept(monkeypatch):
+    """2026-11-03 使用者:隱藏類股熱度表,保留近 5 日資金輪動。"""
+    quotes = _golden_quotes()
+    quotes["TW_UNIVERSE_SNAPSHOT"] = [{"code": "2330", "name": "台積電", "close": 2420,
+        "day_pct": 0, "ranking_score": 40, "smart_money": {"score": 55, "tags": []}}]
+    quotes["BREADTH"] = {"total": 100, "advance_ratio": 50}
+    quotes["SECTOR_HEAT"] = {"ranked": ["半導體業"], "sectors": {"半導體業": {}}}
+    monkeypatch.setattr(mr, "_sector_rotation", lambda _: {"fixture": True})
+    monkeypatch.setattr(mr, "_render_sector_rotation_table", lambda *_: "<p>ROTATION_FIXTURE</p>")
+    monkeypatch.setattr(mr, "_RENDER_TOP5_CARD", True)
+    out = mr.render_html(quotes, {"error": "fixture"}, {"error": "fixture"},
+                         "## 分析\n保留", "2026-10-13", "每日報")
+    i = out.find("類股熱度表")
+    assert i < 0 and "ROTATION_FIXTURE" in out, out[max(0, i - 200):i + 80]

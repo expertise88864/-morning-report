@@ -65,6 +65,7 @@ SECTION_DELTA = "七之四、敘事變化(昨日觀點 vs 今日新證據)"
 SECTION_MACRO = "十、總體經濟與政策環境"
 #: 政策深度解析從 v20 的「九、台灣政策與在地動態」改編號(內容同一個欄位)。
 SECTION_POLICY = "十之二、重大政策深度解析"
+SHOW_POLICY = False   # 2026-11-03 使用者:十之二先暫時隱藏(欄位照產;改 True 即恢復)
 SECTION_LOCAL = "十、台灣本地動態"  # 2026-10-19:比照備援,取代總經段的編號
 SECTION_STANCE = "我的明確立場"
 SECTION_SUMMARY = "一句話總結"
@@ -253,7 +254,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     world = [_world_line(w) for w in _reader.importance_order(obj.get("world_events") or [], packet or {})
              if isinstance(w, dict) and _s(w.get("what"))]
     if world:
-        parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world[:5]))
+        parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world[:7]))   # 11-03 使用者:最多 7 條
 
     # 未來 48 小時:每件事一個小段(基準/偏多/偏空/最受影響/失效)。
     from scenario_window import heading as scenario_heading
@@ -449,7 +450,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     pol_blocks = [f"**{_s(x.get('what'))}**" + chr(10) + chr(10) + _s(x.get("impact"))
                   for x in (obj.get("taiwan_policy") or [])
                   if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
-    if pol_blocks:
+    if pol_blocks and SHOW_POLICY:
         parts.append(f"## {SECTION_POLICY}" + chr(10) + (chr(10) * 2).join(pol_blocks))
 
     # **「九、今日市場關注與預測」整段拿掉**(2026-08-19 使用者:

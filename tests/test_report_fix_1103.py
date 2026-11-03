@@ -38,3 +38,47 @@ def test_finance_only_on_big_news_and_biotech_derm_ophth_first():
     for src in (legacy, luna):
         assert "**金融只在有大消息時寫**" in src and "皮膚科、眼科" in src
     assert "皮膚科" in mr.OTHER_SECTOR_QUERIES["生技-台股"] and "眼科" in mr.OTHER_SECTOR_QUERIES["生技-台股"]
+
+
+
+def test_policy_deep_dive_is_hidden_on_both_paths(monkeypatch):
+    """11-03 使用者:十之二先暫時隱藏。備援 prompt 不再要它,特化路徑不渲染。"""
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    import morning_report as mr
+    from test_deepseek_legacy_golden import legacy_prompt_inputs
+    args = legacy_prompt_inputs()
+    args[0]["GAZETTE_RECORDS"] = [{"title": "某部預告修正某辦法", "meta_id": "1", "date": "2026-11-02"}]
+    monkeypatch.setattr(mr, "_format_gazette_prompt_block", lambda recs: "【行政院公報】某部預告修正某辦法")
+    assert "十之二" not in mr._build_prompt(*args)
+    monkeypatch.setattr(mr, "SHOW_POLICY_DEEPDIVE", True)
+    assert "## 十之二、重大政策深度解析" in mr._build_prompt(*args)   # 改 True 即恢復
+    obj = fx.valid_analysis()
+    obj["taiwan_policy"] = [{"source_item_id": "n1", "what": "政院拍板普發現金", "impact": "內需短多"}]
+    assert ar.SECTION_POLICY not in ar.render(obj)
+
+
+def test_sector_heat_table_is_hidden_but_kept_for_the_prompt():
+    """11-03 使用者:隱藏「類股熱度表」,保留近 5 日資金輪動;資料照餵九段。"""
+    import morning_report as mr
+    assert mr.SHOW_SECTOR_HEAT_TABLE is False
+    src = open(mr.__file__, encoding="utf-8").read()
+    assert "if SHOW_SECTOR_HEAT_TABLE and _hsec and _hrank:" in src
+    import render_utils
+    assert "5 日中位" in open(render_utils.__file__, encoding="utf-8").read()   # 資金輪動另有渲染,不受影響
+
+
+def test_world_events_up_to_seven_longer_and_no_overlap_with_top3():
+    """11-03 使用者:七之二每條多一兩句、最多 7 條,不重複七段的市場影響。"""
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    import prompt_profiles
+    legacy = open(writing_rules.__file__, encoding="utf-8").read()
+    assert "最多 7 條" in legacy and "≤240 字" in legacy and "市場影響見七段" in legacy
+    assert "最多七條" in open(prompt_profiles.__file__, encoding="utf-8").read()
+    obj = fx.valid_analysis()
+    obj["world_events"] = [{"source_item_id": "n1", "what": f"事件{i}", "why_it_matters": "意涵",
+                            "what_next": "後續"} for i in range(9)]
+    out = ar.render(obj)
+    world = out.split("## " + ar.SECTION_WORLD, 1)[1].split("\n## ", 1)[0]
+    assert world.count("\n- ") == 7

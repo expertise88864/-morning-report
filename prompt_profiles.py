@@ -44,7 +44,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 47  # Nov03: AI-race pricing/market lines get evidence ids; no internal rule numbers to readers.
+DEEPSEEK_LEGACY_VERSION = 47  # Nov03: AI-race evidence ids; no rule numbers; finance/biotech rules; world up to 7; policy deep-dive hidden.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 47  # Nov03: AI-race pricing/market lines get evidence
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 81  # Nov03: finance only on big news; biotech dermatology/ophthalmology first.
+LUNA_XHIGH_VERSION = 81  # Nov03: finance only on big news; biotech derm/ophth first; world events up to 7, no overlap with key_drivers.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -336,11 +336,11 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   (長得像 `gazette:167811`,不要自己從 `meta_id` 組)—— 與新聞用 `n…`
   是同一種東西;
   政策新聞則照樣寫那則新聞的 id。
-- **`world_events` 是股市之外的世界**（五條）:外交、戰爭、科技治理、
+- **`world_events` 是股市之外的世界**（最多七條,重大事件多才寫滿）:外交、戰爭、科技治理、
   重大社會事件。美股漲跌、公司財報**不是**世界大事。依嚴重性與影響範圍取捨:
   優先戰爭與軍事衝突、大國外交與制裁、能源與航道、貿易政策、大國選舉、重大金融事件、
   重大傷亡的災難;地方治安或槍擊案、無災損的有感地震、地方示威不收(除非死傷數十人
-  或已有連鎖效應)。寧可少寫,不拿小事湊滿。每條寫發生了什麼
+  或已有連鎖效應)。寧可少寫,不拿小事湊滿。三欄合計每條約 3～4 句,多出的篇幅寫來龍去脈與接下來要看的訊號;已在 `key_drivers`(三大重點)寫過的事件只寫事件本身的發展,不重複市場影響。每條寫發生了什麼
   (`what`)、它的戰略意涵(`why_it_matters`),以及**後續可能影響**
   (`what_next`)。
   後兩者是**不同的問題**:前者問「現在為什麼重要」,後者問「接下來會

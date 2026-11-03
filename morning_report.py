@@ -11081,6 +11081,8 @@ def _mz_shadow_prediction(pred, base) -> dict:
 _SECTION_TECH = "八、科技板塊脈動"
 _SECTION_OTHER = "九、其他類股資訊"
 _SECTION_WORLD = "七之二、世界大事速覽"
+#: 2026-11-03 使用者:十之二政策深析與類股熱度表「先暫時隱藏」(資料照抓;改 True 即恢復)
+SHOW_POLICY_DEEPDIVE = SHOW_SECTOR_HEAT_TABLE = False
 _SECTION_TOP3 = "七、昨夜三大重點"
 
 
@@ -11954,7 +11956,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # → 該段整段省略(不留空標題)。
     # 2026-08-07:政策/醫界媒體情報卡(TW_DAILY_INTELLIGENCE)整組移除,
     # 深度解析素材只剩公報一手法令。
-    policy_deepdive_block = _format_gazette_prompt_block(quotes.get("GAZETTE_RECORDS"))
+    policy_deepdive_block = (_format_gazette_prompt_block(quotes.get("GAZETTE_RECORDS"))
+                             if SHOW_POLICY_DEEPDIVE else "")   # 11-03 使用者:十之二暫時隱藏
     # 十一段的「別重複展開」提示也必須同步條件化——無深度解析段時仍留這句,
     # 會讓 LLM 以為政策已在別處寫過而整個略過(Codex 風格自查)
     policy_deepdive_note = ("**注意**:重大政策(如新青安、未來帳戶等)已列入下方"
@@ -22417,7 +22420,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         _heat = quotes.get("SECTOR_HEAT") or {}
         _hsec, _hrank = _heat.get("sectors") or {}, _heat.get("ranked") or []
         _hdelta = quotes.get("SECTOR_RANK_DELTA") or {}
-        if _hsec and _hrank:
+        if SHOW_SECTOR_HEAT_TABLE and _hsec and _hrank:   # 11-03 使用者:暫時隱藏
             _hrows = []
             for _hn in _hrank[:5]:
                 _hs = _hsec.get(_hn) or {}

@@ -20,10 +20,11 @@ _ROOT = _Path(mr.__file__).resolve().parent
 
 # ---------------------------------------------------------------- 台灣政策段
 
-def test_the_policy_section_renders_from_the_schema_field():
+def test_the_policy_section_renders_from_the_schema_field(monkeypatch):
     """**legacy 的「台灣本地動態」在特化 schema 沒有對應欄位,那一段整個
     消失** —— 使用者連兩天反映(「原本台灣政策分析也都不見了」)。
     v20 的 `taiwan_policy` 是它的家:政策,不是行情。"""
+    monkeypatch.setattr(ar, "SHOW_POLICY", True)   # 2026-11-03 起暫時隱藏;這裡驗排法本身
     obj = fx.valid_analysis()
     obj["taiwan_policy"] = [
         {"source_item_id": "n1", "what": "政院拍板 2027 普發現金一萬元",
@@ -182,12 +183,13 @@ def _full(**over):
     return obj
 
 
-def test_the_legacy_skeleton_renders_in_order():
+def test_the_legacy_skeleton_renders_in_order(monkeypatch):
     """**七之二 → 七之三 → 七之四 → 十 → 十之二 → 十一。**(七之五已刪,2026-09-03)
 
     使用者貼了幾個禮拜前的完整實信要求照做 —— 這些段落在 legacy 信都
     存在、在特化 schema 先前沒有對應欄位,於是整段消失。
     """
+    monkeypatch.setattr(ar, "SHOW_POLICY", True)   # 2026-11-03 起十之二暫時隱藏;恢復時順序仍要對
     obj = _full()
     obj["taiwan_policy"] = [{"source_item_id": "n1", "what": "太陽光電標準第9條",
                              "impact": "需求透過模組與工程訂單傳導。"}]

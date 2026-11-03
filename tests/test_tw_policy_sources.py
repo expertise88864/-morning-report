@@ -208,11 +208,12 @@ def test_run_loader_returns_list_when_readable(tmp_path, monkeypatch):
     assert mr.load_policy_keywords_for_run() == ["新青安3.0"]
 
 
-def test_gazette_only_policy_still_activates_deepdive_section():
+def test_gazette_only_policy_still_activates_deepdive_section(monkeypatch):
     """r5(Codex):這批的核心目的是讓公報獨有的政策也能被深度解析。
     若段落規則仍寫「僅在有【台灣重大政策】清單時才寫」,公報獨有的政策會被略過,
     整個一手法令來源等於白接。"""
     from tests.test_data_validation import _empty_quotes
+    monkeypatch.setattr(mr, "SHOW_POLICY_DEEPDIVE", True)   # 2026-11-03 起暫時隱藏;恢復時要照舊
     recs = tps.parse_gazette_xml(_XML)
     # 媒體政策清單為空,只有公報素材
     q = _empty_quotes(GAZETTE_RECORDS=recs, TW_DAILY_INTELLIGENCE={"policy": []})
@@ -233,10 +234,11 @@ def test_gazette_absent_and_no_policy_omits_section():
     assert "十之二、重大政策深度解析" not in prompt
 
 
-def test_gazette_is_declared_authoritative_over_media():
+def test_gazette_is_declared_authoritative_over_media(monkeypatch):
     """公報是一手法令原文,細節權威性高於媒體轉述——prompt 必須明講,
     否則 LLM 遇到兩邊數字不一致時無所適從。"""
     from tests.test_data_validation import _empty_quotes
+    monkeypatch.setattr(mr, "SHOW_POLICY_DEEPDIVE", True)
     recs = tps.parse_gazette_xml(_XML)
     prompt = mr._build_prompt(_empty_quotes(GAZETTE_RECORDS=recs),
                               {"error": "x"}, {"error": "x"}, [], [], "")

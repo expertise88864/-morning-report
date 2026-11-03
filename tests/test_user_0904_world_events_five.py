@@ -22,11 +22,12 @@ import writing_rules as wr
 
 
 def test_both_prompts_ask_for_five_world_events():
+    # 2026-11-03 使用者:改「最多 7 條」(重大事件多才寫滿);守衛目標仍是 5
     src = open(pp.__file__, encoding="utf-8").read()
-    assert "**`world_events` 是股市之外的世界**（五條）" in src
+    assert "**`world_events` 是股市之外的世界**（最多七條" in src
     assert "（約三條）" not in src
     rules = open(wr.__file__, encoding="utf-8").read()
-    assert "## 七之二、世界大事速覽（5 條;" in rules and "（3-5 條;" not in rules
+    assert "## 七之二、世界大事速覽（最多 7 條;" in rules and "（3-5 條;" not in rules
     # legacy 過長重試:先前壓成「最多 3 條」,現在仍要 5 條
     msrc = open(mr.__file__, encoding="utf-8").read()
     assert "世界大事速覽仍要 5 條" in msrc and "世界大事速覽最多 3 條" not in msrc

@@ -27,3 +27,14 @@ def test_ai_race_pricing_and_market_lines_get_citable_ids():
 def test_internal_rule_numbers_stay_out_of_the_email():
     """實信:「SOX 單日跌幅逾 3% 是 Rule 2 的紅燈」—— 規則編號是寫給模型的。"""
     assert "不寫「規則 2」「Rule 2」這類內部編號" in open(writing_rules.__file__, encoding="utf-8").read()
+
+
+def test_finance_only_on_big_news_and_biotech_derm_ophth_first():
+    """11-03 使用者:近期金融條目都不是大消息;生技優先皮膚科/眼科。兩條產報路徑都要有。"""
+    import morning_report as mr
+    import prompt_profiles
+    legacy = open(mr.__file__, encoding="utf-8").read()
+    luna = open(prompt_profiles.__file__, encoding="utf-8").read()
+    for src in (legacy, luna):
+        assert "**金融只在有大消息時寫**" in src and "皮膚科、眼科" in src
+    assert "皮膚科" in mr.OTHER_SECTOR_QUERIES["生技-台股"] and "眼科" in mr.OTHER_SECTOR_QUERIES["生技-台股"]

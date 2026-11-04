@@ -109,16 +109,18 @@ _RESULT = re.compile(r"財報|營收|EPS|earnings|results", re.I)
 _COMPARED = re.compile(r"符合|超預期|超出|超越|優於|不如|低於|擊敗|\bbeats?\b|\bmiss(?:es)?\b|\btops?\b", re.I)
 _GROWTH = re.compile(r"年增|季增")
 _FORECAST = re.compile(r"預期|預估|看好|料將|estimate|expect|forecast", re.I)
+_PREDICT = re.compile(r"預估|看好|料將|estimate|expect|forecast", re.I)
 _WILL = re.compile(r"將|可望|有望|恐|或|能否|to\s*$", re.I)
 _FUTURE = re.compile(r"將公布|將於|今晚|今夜|明晚|明日|前瞻|即將|本週|下週|登場|預告|等待|ahead of|preview|before earnings|will report", re.I)
 
 
 def _has_result(title: str) -> bool:
-    """語序決定是實績或預測:「優於市場預估」是結果,「預估將優於市場預期」還沒公布。
-    只看比較詞所在的子句,前一項實績的「符合市場預期」不影響後一項(外審 PR #41)。"""
+    """標題看得出已公布才算。預測動詞管到後面整個標題;「預期」常只是比較基準,只看同一子句。
+    判斷不了就當沒公布:行事曆多留一筆舊事件,傷害小於漏掉還沒公布的財報(外審 PR #41)。"""
     for compared in _COMPARED.finditer(title):
-        clause = re.split(r"[,，;；:：、。!！?？]", title[:compared.start()])[-1]
-        if not _FORECAST.search(clause) and not _WILL.search(clause[-3:]):
+        before = title[:compared.start()]
+        clause = re.split(r"[,，;；:：、。!！?？]", before)[-1]
+        if not _PREDICT.search(before) and "預期" not in clause and not _WILL.search(clause[-3:]):
             return True
     return bool(_GROWTH.search(title)) and not _FORECAST.search(title)
 

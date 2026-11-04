@@ -227,5 +227,97 @@
   "event_type": "geopolitical",
   "action": "",
   "identity_schema": 14
+ },
+ "geopolitical:election:加拿大:2026-11": {
+  "first_seen": "2026-11-05",
+  "days": 1,
+  "last_seen": "2026-11-05",
+  "latest_title": "加拿大部長表示即使川普團隊期中選舉失利，仍將削減對美國經濟依賴",
+  "latest_summary": "",
+  "object": "加拿大",
+  "incident_tokens": [
+   "中選",
+   "仍將",
+   "使川",
+   "依賴",
+   "削減",
+   "即使",
+   "國經",
+   "團隊",
+   "失利",
+   "將削",
+   "對美",
+   "川普",
+   "普團",
+   "期中",
+   "減對",
+   "濟依",
+   "經濟",
+   "美國",
+   "舉失",
+   "選舉",
+   "部長",
+   "隊期"
+  ],
+  "entity": "加拿大",
+  "subject_basis": "alias",
+  "subjects": [
+   "加拿大"
+  ],
+  "event_type": "geopolitical",
+  "action": "election",
+  "identity_schema": 14
+ },
+ "litigation:鴻海:2026-11": {
+  "first_seen": "2026-11-05",
+  "days": 1,
+  "last_seen": "2026-11-05",
+  "latest_title": "美國對鴻海等台企啟動337調查",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "337",
+   "企啟",
+   "台企",
+   "啟動",
+   "國對",
+   "等台",
+   "美國",
+   "調查"
+  ],
+  "entity": "鴻海",
+  "subject_basis": "alias",
+  "subjects": [
+   "鴻海"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:台達電:2026-11": {
+  "first_seen": "2026-11-05",
+  "days": 1,
+  "last_seen": "2026-11-05",
+  "latest_title": "美國對台達電等台企啟動337調查",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "337",
+   "企啟",
+   "台企",
+   "啟動",
+   "國對",
+   "等台",
+   "美國",
+   "調查"
+  ],
+  "entity": "台達電",
+  "subject_basis": "literal",
+  "subjects": [
+   "台達電"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
  }
 }

@@ -281,42 +281,6 @@
  ],
  "watch": [
   {
-   "trigger": "DRAM 合約價上漲是否出現第二個獨立來源或研調機構報價確認",
-   "trigger_full": "DRAM 合約價上漲是否出現第二個獨立來源或研調機構報價確認",
-   "trigger_key": "t4c105347f9cf5811",
-   "why": "目前漲價只有單一媒體來源，若獲得第二來源確認，記憶體族群的獲利上修才有依據",
-   "horizon": "1-4w",
-   "watch_id": "w57",
-   "status": "open",
-   "created": "2026-10-07",
-   "last_reviewed": "2026-11-04",
-   "deadline": "2026-11-04"
-  },
-  {
-   "trigger": "歐盟貿易執委 10 月 8 至 9 日北京行是否達成協議或宣布加徵關稅",
-   "trigger_full": "歐盟貿易執委 10 月 8 至 9 日北京行是否達成協議或宣布加徵關稅",
-   "trigger_key": "tb1850d91a7f02c59",
-   "why": "這是未來一週唯一有明確日期的貿易風險事件，結果會影響全球供應鏈的成本預期",
-   "horizon": "1-4w",
-   "watch_id": "w59",
-   "status": "open",
-   "created": "2026-10-07",
-   "last_reviewed": "2026-11-04",
-   "deadline": "2026-11-04"
-  },
-  {
-   "trigger": "WTI 是否回落至 92 美元以下、以及台幣是否貶破 32.5",
-   "trigger_full": "WTI 是否回落至 92 美元以下、以及台幣是否貶破 32.5",
-   "trigger_key": "t0379d9f444f00ced",
-   "why": "油價與匯率是折現率與外資匯出的兩個入口，任一鬆動都會改變今天的偏空判斷",
-   "horizon": "1-4w",
-   "watch_id": "w63",
-   "status": "open",
-   "created": "2026-10-19",
-   "last_reviewed": "2026-11-02",
-   "deadline": "2026-11-16"
-  },
-  {
    "trigger": "10 年期美債是否站上 5.2%，以及 11 月西德州原油期貨是否站上 105 美元",
    "trigger_full": "10 年期美債是否站上 5.2%，以及 11 月西德州原油期貨是否站上 105 美元",
    "trigger_key": "t94aa89c050c60956",
@@ -325,7 +289,7 @@
    "watch_id": "w68",
    "status": "open",
    "created": "2026-10-20",
-   "last_reviewed": "2026-11-02",
+   "last_reviewed": "2026-11-05",
    "deadline": "2026-11-17"
   },
   {
@@ -337,7 +301,7 @@
    "watch_id": "w72",
    "status": "open",
    "created": "2026-10-22",
-   "last_reviewed": "2026-11-02",
+   "last_reviewed": "2026-11-05",
    "deadline": "2026-11-19"
   },
   {
@@ -349,7 +313,7 @@
    "watch_id": "w73",
    "status": "open",
    "created": "2026-10-22",
-   "last_reviewed": "2026-11-02",
+   "last_reviewed": "2026-11-05",
    "deadline": "2026-11-19"
   },
   {
@@ -375,42 +339,6 @@
    "created": "2026-10-23",
    "last_reviewed": "2026-11-02",
    "deadline": "2026-11-20"
-  },
-  {
-   "trigger": "10 年期美債殖利率是否站上 5.05%",
-   "trigger_full": "10 年期美債殖利率是否站上 5.05%",
-   "trigger_key": "t37c0f8bd472ba632",
-   "why": "突破這個水位代表評價壓力從 1 到 4 週提前到本週，偏空判斷要升級。",
-   "horizon": "1-5d",
-   "watch_id": "w97",
-   "status": "open",
-   "created": "2026-10-30",
-   "last_reviewed": "2026-11-04",
-   "deadline": "2026-11-04"
-  },
-  {
-   "trigger": "外資台指期淨空是否由 89,522 口回補到 8 萬口以下",
-   "trigger_full": "外資台指期淨空是否由 89,522 口回補到 8 萬口以下",
-   "trigger_key": "t1d78383defab4c56",
-   "why": "回補代表賣壓可能是避險而不是方向，偏空理由會少一半。",
-   "horizon": "1-5d",
-   "watch_id": "w98",
-   "status": "open",
-   "created": "2026-10-30",
-   "last_reviewed": "2026-11-04",
-   "deadline": "2026-11-04"
-  },
-  {
-   "trigger": "收盤上漲家數是否回到 500 檔以上",
-   "trigger_full": "收盤上漲家數是否回到 500 檔以上",
-   "trigger_key": "t3c8988a2e3d4e640",
-   "why": "廣度沒修復就只是權值股撐盤，指數的漲勢不能延續。",
-   "horizon": "1-5d",
-   "watch_id": "w99",
-   "status": "open",
-   "created": "2026-10-30",
-   "last_reviewed": "2026-11-04",
-   "deadline": "2026-11-04"
   },
   {
    "trigger": "微軟、亞馬遜或 Alphabet 是否在後續場合上調 2026 年資本支出",
@@ -445,7 +373,7 @@
    "watch_id": "w104",
    "status": "open",
    "created": "2026-11-02",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-05",
    "deadline": "2026-11-07"
   },
   {
@@ -457,7 +385,7 @@
    "watch_id": "w105",
    "status": "open",
    "created": "2026-11-02",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-05",
    "deadline": "2026-11-07"
   },
   {
@@ -469,7 +397,7 @@
    "watch_id": "w106",
    "status": "open",
    "created": "2026-11-02",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-05",
    "deadline": "2026-11-07"
   },
   {
@@ -505,7 +433,7 @@
    "watch_id": "w111",
    "status": "open",
    "created": "2026-11-04",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-05",
    "deadline": "2026-11-05"
   },
   {
@@ -531,44 +459,86 @@
    "created": "2026-11-04",
    "last_reviewed": "",
    "deadline": "2026-11-09"
+  },
+  {
+   "trigger": "台積電 ADR 能否守住 390 美元、2330 現貨能否守住 2,240 元中樞（觀察期：今日）",
+   "trigger_full": "台積電 ADR 能否守住 390 美元、2330 現貨能否守住 2,240 元中樞（觀察期：今日）",
+   "trigger_key": "tad1d95278ccbe279",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w114",
+   "status": "open",
+   "created": "2026-11-05",
+   "last_reviewed": "",
+   "deadline": "2026-11-06"
+  },
+  {
+   "trigger": "外資台指期淨空 -93,647 口是否縮回 8 萬口以內（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -93,647 口是否縮回 8 萬口以內（觀察期：5 天內）",
+   "trigger_key": "t0e65840fc93a8392",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w115",
+   "status": "open",
+   "created": "2026-11-05",
+   "last_reviewed": "",
+   "deadline": "2026-11-10"
+  },
+  {
+   "trigger": "加權能否守住 42,000 點整數關卡與昨日盤中低點 41,855.82 點（觀察期：今日）",
+   "trigger_full": "加權能否守住 42,000 點整數關卡與昨日盤中低點 41,855.82 點（觀察期：今日）",
+   "trigger_key": "t694deb3f1bbe2be9",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w116",
+   "status": "open",
+   "created": "2026-11-05",
+   "last_reviewed": "",
+   "deadline": "2026-11-06"
   }
  ],
- "watch_seq": 113,
+ "watch_seq": 116,
  "legacy_report": {
-  "date": "2026-11-04",
+  "date": "2026-11-05",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**華邦電（2344，利基型記憶體廠）**：董事會通過 731 億元資本支出擴建高雄廠 Module B，經營層說明明年記憶體供給比今年更緊、延續到 2028 年 [鉅亨](https://news.cnyes.com/news/id/6640350)。這與上一條南亞科指向同一個記憶體吃緊迴圈，但資本支出開下去也代表兩年後供給會回來。對設備與廠務工程鏈是實質訂單，對 DRAM 報價則是中期壓力。**[A 級・信心:中]**",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：延續外資連 19 賣的壓力，今日重點回到基本面——第三季自由現金流超越輝達，營收 1.494 兆元、年增 50.9%，毛利率 66.4%，2 奈米已貢獻晶圓營收 8%、3 奈米 33%、5 奈米 28% [鉅亨美股](https://news.cnyes.com/news/id/6647290)。先進製程合計占 79% 代表 AI 訂單集中在高毛利節點，第四季毛利率指引 65% 至 67% 也印證這個結構。目前沒有新增訂單或調漲代工價的消息，所以這是「已知的好」而非今日催化；2 奈米從 0 到 8% 的爬坡速度比市場原本預期快，對 2027 年前的產能利用率是實質支撐。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6640350"
+     "https://news.cnyes.com/news/id/6647290"
     ]
    },
    {
-    "statement": "**環球晶（6488，全球第三大矽晶圓廠）**：擬發 5 億美元 10 年期私募可轉債，由美光全數認購，搭配 10 年長期供應協議 [鉅亨](https://news.cnyes.com/news/id/6640350)[鉅亨網](https://news.google.com/rss/articles/CBMiT0FVX3lxTFBrajR1ZkZlOEVsNXhyQk94dTN5aEZIUGUzUEE1U1g5ZXVvYnBNRDRwYzd1Qk5HSGxUNVhOaVhyYXVUZjBZTWc3NU8wUEZJUGM?oc=5)。矽晶圓是晶圓製造的最上游材料，長約綁定讓環球晶美國在地製造布局有出海口；對 2330 是先進晶圓材料供應穩定的間接利多，但沒有直接訂單數字，量級判斷不出來。**[A 級・信心:中]**",
+    "statement": "**聯發科（2454，IC 設計大廠）**：宣布延攬前英特爾執行副總裁 Navid Shahriari 於 11 月 9 日加入，擔任資深副總經理，負責先進製程、良率平台、先進封裝與測試，核心任務之一是深化與台積電的合作 [鉅亨台股](https://news.cnyes.com/news/id/6647024)[科技新報](https://finance.technews.tw/2026/11/05/mediatek-invites-former-intel-executive-navid-shahriari-to-join-the-company/)。這是把資料中心 ASIC 與先進封裝的執行層補起來，對台積電的意義是先進封裝客戶又多一個、且是本地客戶。目前沒有開案金額與時程，還看不出影響多大，只能確認方向是先進封裝產能需求再增加一條。值得注意的是，這與上一條台積電的自由現金流指向同一件事：先進製程需求旺，供給端能否跟上才是關鍵。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6640350",
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBrajR1ZkZlOEVsNXhyQk94dTN5aEZIUGUzUEE1U1g5ZXVvYnBNRDRwYzd1Qk5HSGxUNVhOaVhyYXVUZjBZTWc3NU8wUEZJUGM?oc=5"
+     "https://news.cnyes.com/news/id/6647024",
+     "https://finance.technews.tw/2026/11/05/mediatek-invites-former-intel-executive-navid-shahriari-to-join-the-company/"
     ]
    },
    {
-    "statement": "**聯發科（2454，IC 設計大廠）**：執行長蔡力行說今年營收將衝破 210 億美元、「請大家多買我們家股票」[鉅亨](https://news.google.com/rss/articles/CBMiT0FVX3lxTFBiMU14RUFCYlEwbUttRGZqdkNjeWNnZ0JvT0JYWW5oRWZ5eUd4V25obS0wYWRVdTNwR1dKQXphQXZ0WUJydXVUcG9kODZlMm8?oc=5)。這是經營層樂觀展望，不是具體承諾或已實現獲利，**這則新聞說不出量級**——沒有季度拆分、沒有 ASIC 客戶金額。ASIC 開案增加會排擠 2330 的 CoWoS 與 N3 產能，方向偏多但只能當背景。**[B 級・信心:低-中，資訊有限]**",
+    "statement": "**GlobalFoundries（GFS，全球第四大晶圓代工廠）**：第三季營收 18.99 億美元、年增 13%，調整後每股盈餘 0.53 美元優於預期，通訊基礎設施與資料中心業務年增 81%，光通訊產能已售罄至 2027 年 [鉅亨美股](https://news.cnyes.com/news/id/6647308)。但市場擔心明年資本支出提高到約 40 億美元，股價仍跌近 6%。這對台股的意義是成熟製程與矽光子需求確實強，但「擴產等於稀釋現金流」的邏輯開始主導評價。與台積電不同的是，台積電的擴產是用自由現金流支應，GlobalFoundries 要靠提高資本支出追趕。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBiMU14RUFCYlEwbUttRGZqdkNjeWNnZ0JvT0JYWW5oRWZ5eUd4V25obS0wYWRVdTNwR1dKQXphQXZ0WUJydXVUcG9kODZlMm8?oc=5"
+     "https://news.cnyes.com/news/id/6647308"
     ]
    },
    {
-    "statement": "**創意（3443，台積電旗下 ASIC 設計服務商）**：FactSet 最新調查將 2026 年 EPS 中位數由 54.87 元上修至 56.51 元，預估目標價 8,000 元 [鉅亨](https://news.google.com/rss/articles/CBMiX0FVX3lxTE5qdzJidk54QmZjZHNRRktadkdjZWJ5VUYwa3g1cldhNl92QVFVQ0VKcldWTDBuWnI2cjJmYUxFRWhoVnpfVS00djhzcTQ0Vl9oMUd6bU5IMjJGb01UamFj0gFkQVVfeXFMT2NoNkNPbnNkcnVYWDlzTlZ6LU15VmtYcnBEN3dNcUVfQTIzQUQ0LXhQQTRzVVlwZ2dGWTVuYXhJcWtpU3ZGdE1FM0RaZXBtTm9tOHd1TzYwRFBhcnRZMjNkZ0lPaA?oc=5)。這是賣方預估調整而非訂單公告，ASIC 開案量增加會排擠 2330 的先進封裝產能，但看不出實際出貨量。與聯發科那條指向同一段 CoWoS 產能，兩者是互相排擠、不是相加。**[B 級・信心:低-中，資訊有限]**",
+    "statement": "**研華（2395，工業電腦全球龍頭）與矽格（6257，IC 封測廠）**：研華法說會表示第四季營收可望超越第三季創新高、明年營收高雙位數成長；矽格 10 月營收 21 億元創單月歷史新高、連 4 個月站上 20 億元，AI 相關產品比重將突破 30% [鉅亨台股](https://news.cnyes.com/news/id/6647057)。工業電腦與封測分別是 AI 邊緣應用與先進封裝的兩端，兩家都指向「AI 需求從雲端擴散到邊緣」的同一條線。矽格的 21 億元是歷史新高，但標題沒有年增率；研華的「高雙位數」是公司展望不是訂單，都還需要月營收與法說問答驗證。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5qdzJidk54QmZjZHNRRktadkdjZWJ5VUYwa3g1cldhNl92QVFVQ0VKcldWTDBuWnI2cjJmYUxFRWhoVnpfVS00djhzcTQ0Vl9oMUd6bU5IMjJGb01UamFj0gFkQVVfeXFMT2NoNkNPbnNkcnVYWDlzTlZ6LU15VmtYcnBEN3dNcUVfQTIzQUQ0LXhQQTRzVVlwZ2dGWTVuYXhJcWtpU3ZGdE1FM0RaZXBtTm9tOHd1TzYwRFBhcnRZMjNkZ0lPaA?oc=5"
+     "https://news.cnyes.com/news/id/6647057"
     ]
    },
    {
-    "statement": "**【金融｜台灣】金管會 VASP 與穩定幣門檻**：金管會預告虛擬資產服務商草案，交換商、移轉商、承銷商最低實收資本額 5,000 萬元，經營全業務須 5 億元，11 家已登記業者都要增資 [中央社](https://www.cna.com.tw/news/afe/202611030330.aspx)。穩定幣發行機構的金控及銀行大股東占比至少 50% [UDN](https://news.google.com/rss/articles/CBMiUEFVX3lxTE1VMWlmR2pBcFRQbW1PQ1kxN1h1b1JialNxcVd5bVRCRFU3a19xbGtWU3R5WHRONy0zdktZaHFZZ2JpSnRZMHByRXA3T1YyQVV30gFWQVVfeXFMTWtaSzI4b1dBSE4yWGk5Q1ZKenpOdWhHOXlvQS0tLWxtQmRRVWxsTURWUWF4TXFTU1h2NUhfOWpIOExTc3J0V1FxT25iTU5oRW9ydjBtQ0E?oc=5)。門檻拉高形成護城河，對銀行兼營虛擬資產保管是利多，對小型 VASP 是壓力。**[A 級・信心:中]**",
+    "statement": "**【金融｜台灣】永豐銀行（2887 永豐金旗下）**：網銀交易系統遭外部駭客利用供應商安全設定漏洞入侵，3 日發生異常轉帳，董事長曹為實與總經理莊銘福親上火線鞠躬致歉，系統已全面下架並準備向國外軟體供應商求償 [鉅亨台股](https://news.cnyes.com/news/id/6647057)。這拖累永豐金股價跌 3%、台新新光金挫逾 4% [ETtoday 財經雲](https://news.google.com/rss/articles/CBMiUkFVX3lxTE90OHR4ZzU2NTJXU09NMnZXQXhUcEpiNVJTME5YZHJzaEJkMDd3blM5cmgxMjItTXZBT1pGU1RJZDNWQmwzLVlteld3aF94T1NzTkHSAVBBVV95cUxNLVY4amhwOTJib3NYRmRFT2VDdFBLVVJpTUtzb0lHM3pvX21xWXY4YXZLcEZqVHk1MWNhaElQVk5wVmpzNmdKZklZdUhKSDhXZw?oc=5)。資安事件直接衝擊的是商譽與客戶流失風險，而非當期獲利；但金融業的網銀系統供應商集中度高，若金管會後續全面金檢，其他金控的 IT 資本支出可能提前。目前沒有客戶流失數字與裁罰金額，量級還看不出來。**[A 級・信心:中]**",
     "source_urls": [
-     "https://www.cna.com.tw/news/afe/202611030330.aspx",
-     "https://news.google.com/rss/articles/CBMiUEFVX3lxTE1VMWlmR2pBcFRQbW1PQ1kxN1h1b1JialNxcVd5bVRCRFU3a19xbGtWU3R5WHRONy0zdktZaHFZZ2JpSnRZMHByRXA3T1YyQVV30gFWQVVfeXFMTWtaSzI4b1dBSE4yWGk5Q1ZKenpOdWhHOXlvQS0tLWxtQmRRVWxsTURWUWF4TXFTU1h2NUhfOWpIOExTc3J0V1FxT25iTU5oRW9ydjBtQ0E?oc=5"
+     "https://news.cnyes.com/news/id/6647057",
+     "https://news.google.com/rss/articles/CBMiUkFVX3lxTE90OHR4ZzU2NTJXU09NMnZXQXhUcEpiNVJTME5YZHJzaEJkMDd3blM5cmgxMjItTXZBT1pGU1RJZDNWQmwzLVlteld3aF94T1NzTkHSAVBBVV95cUxNLVY4amhwOTJib3NYRmRFT2VDdFBLVVJpTUtzb0lHM3pvX21xWXY4YXZLcEZqVHk1MWNhaElQVk5wVmpzNmdKZklZdUhKSDhXZw?oc=5"
+    ]
+   },
+   {
+    "statement": "**【金融｜台灣】13 家金控股東**：金控存股族大撤退，13 家金控股東人數單月減少 5.7 萬人，只有一檔逆勢增加 [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTE5aeHI0aVZ4U3FSZDNfYTRoNWpzbG8tUTBKa2ROVllORmJVaEh0UFlyQmFfWGVUVm82U3N0d0pFeURtaG9VbFNPYUEwcDVJVUp1MGZuVDhDYllKUQ?oc=5)。這是籌碼面訊號：股價回檔後散戶停損離場，籌碼從散戶流向法人，對金融股指數的下檔支撐反而可能是好事。但要看到外資與投信同步承接才算數，昨日金融保險業法人合計仍是淨買超 21.5 億元；若下週法人轉賣，這個判讀就要推翻。**[B 級・信心:低-中，資訊有限]**",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5aeHI0aVZ4U3FSZDNfYTRoNWpzbG8tUTBKa2ROVllORmJVaEh0UFlyQmFfWGVUVm82U3N0d0pFeURtaG9VbFNPYUEwcDVJVUp1MGZuVDhDYllKUQ?oc=5"
     ]
    }
   ]

@@ -121,3 +121,14 @@ def test_heat_table_name_stays_out_while_hidden_and_ai_race_must_cite():
     assert "全信不得出現「類股熱度表」這個名稱" in block
     assert "`[OpenRouter][N12]`" in open(mr.__file__, encoding="utf-8").read()
     assert "每條 3～4 句、合計 150～240 字" in open(writing_rules.__file__, encoding="utf-8").read()
+
+
+def test_full_prompt_has_no_conflicting_heat_table_citation_rule(monkeypatch):
+    """外審 PR #40:九段行情觀察還要求「來源就寫類股熱度表、信件內有刊出」,與隱藏時的禁令矛盾。"""
+    import morning_report as mr
+    from test_deepseek_legacy_golden import legacy_prompt_inputs
+    hidden = mr._build_prompt(*legacy_prompt_inputs())
+    assert "這張表信件內有刊出" not in hidden and "來源寫「本報類股統計」" in hidden
+    monkeypatch.setattr(mr, "SHOW_SECTOR_HEAT_TABLE", True)
+    shown = mr._build_prompt(*legacy_prompt_inputs())
+    assert "這張表信件內有刊出" in shown and "全信不得出現" not in shown

@@ -82,7 +82,11 @@ def relevant(label: str, title: str) -> bool:
     }
     if label in required and not re.search(required[label], title):
         return False
-    if label == "建設" and re.search(r"選戰|造勢|競選|後援會", title):
+    if label == "建設" and re.search(r"選戰|造勢|競選|後援會|參香|輔選|力挺", title):
+        return False
+    # 11-03、11-04 實信:毒駕爭議、政治人物行程混進「建設」—— 要真的講到工程或建設案
+    if label == "建設" and not re.search(
+            r"建設|工程|開工|動工|完工|通車|捷運|巨蛋|高鐵|國道|台74|道路|橋|重劃|都更|園區|綠園|車站|機場", title):
         return False
     if label == "產業/科技" and not re.search(
             r"產業|科技|半導體|晶圓|園區|中科|工業|企業|廠|投資|招商|製造|研發|供應鏈|產線|(?<![A-Za-z])AI(?![A-Za-z])",

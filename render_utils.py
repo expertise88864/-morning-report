@@ -1507,7 +1507,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for g in nba_fixtures)
         _mark("NBA")
         _add(
-            "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 未來一週賽程（台北時間）</b>"
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 近期賽程（台北時間）</b>"
             + rows + "</div>")
     if (poly.get("nba_champ") or poly.get("nba_east") or poly.get("nba_west"))             and not _nba_champ_shown:
         # 冠軍賽/休賽季說明都缺席(如 ESPN 掛掉)→ 各盤獨立渲染(Codex review 批#9)
@@ -1615,6 +1615,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 if fin is None:
                     live_lines.extend(rs[-4:])          # 未見決賽:列最近 4 場
                     continue
+                if tour == "WTA" and not fin.get("tier"):   # 11-04 使用者:低級別 WTA 冠軍不列
+                    continue
                 tier = (f"<span style='color:#b45309;'>[{htmllib.escape(fin['tier'])}]</span> "
                         if fin.get("tier") else "")
                 shown_event = str(fin.get("event") or event)   # 顯示用截斷名;比對用未截斷 key
@@ -1663,7 +1665,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 + (f"<span style='color:#94a3b8;'>（{htmllib.escape(t['status'])}）</span>"
                    if t.get("status") else "")
                 + "</div>"
-                for t in tennis["tournaments"][:5])
+                for t in ([x for x in tennis["tournaments"] if x.get("tier")] or tennis["tournaments"][:2])[:5])
             t_inner.append(
                 f"<div style='font-size:12px;color:#475569;line-height:1.7;margin-top:4px;'>"
                 f"<b>進行中/即將</b>{seg}</div>")

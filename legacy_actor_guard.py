@@ -61,4 +61,5 @@ def correct_reader_claims(text: str, news: list[dict], *,
         text = legacy_evidence.audit(text, quotes, manifest)   # 編號 → 原文連結;下面的守衛靠連結
     corrected = correct_investment_target_headings(
         text, news, origin=origin, manifest=manifest)
-    return neutralize(corrected, manifest)
+    import report_polish   # 用語統一與段落順序(2026-11-04 使用者)
+    return neutralize(report_polish.order_sections(report_polish.normalize_terms(corrected)), manifest)

@@ -74,7 +74,7 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 # CR-02 2026-09-05:刻意修正未知模式,禁止 LLM 自算;有 Python 權威時抄錄規則不變。
 # 2026-10-30c 使用者(刻意變更):新增 R21「同主題正反並陳」。逐行 diff 過,只多這一條。
 LEGACY_PROMPT_SHA256 = (
-    "2a9e62d54e1ae6c6bd15e8bd3cc1ae3fd00c091c631f08b9f922469af3b1e26c")  # 11/04: world 3-4 sentences; AI-race cites ids; heat-table name out; overseas finance out (deliberate).
+    "340bf0dea309394dd71357c4ad21c8653d70d37b8c4e199cac7746ce6d136ba5")  # 11/04b: labels, airlines, plain scale wording, grades, big-move rule (deliberate).
 #: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。
@@ -203,7 +203,7 @@ def test_the_legacy_prompt_demands_the_same_three_readability_rules():
         # 範例自己在示範那個毛病。改完的東西同樣要有語意判準,不能只靠 SHA。
         ("八段 要量級不要方向詞", "**量級＋時間＋信心**"),
         ("八段 禁方向詞收尾", "同樣禁止**用方向形容詞當結論收尾"),
-        ("八段 判斷不出要明講", "這則新聞說不出量級"),
+        ("八段 判斷不出要明講", "目前沒有金額或數量,還看不出影響多大"),
         ("八段 至少兩條跨條連結", "橫向連結(至少 2 條)"),
         ("八段 句式不得雷同", "句式不得雷同"),
         ("八段 格式含量級", "[量級與時間,或明說量級判斷不出來]"),

@@ -26,10 +26,12 @@ def sector_rotation(snapshot: list, min_members: int = 3, top_n: int = 4) -> dic
     if len(ranked) < 3:
         return {}
     ranked.sort(key=lambda r: r[1], reverse=True)
-    weak = [r for r in ranked[::-1][:2] if r not in ranked[:top_n]]
+    # 11-04 實信:相對大盤 -0.8 也標「▲ 強勢」。強弱要看相對大盤的正負,不只是名次。
+    strong = [r for r in ranked[:top_n] if r[2] > 0]
+    weak = [r for r in ranked[::-1][:2] if r not in strong and r[2] < 0]
     # Preserve every sector for the reader's complete rotation table.
     table = [{"industry": ind, "median_5d": med, "relative": rel, "members": n,
               "up_5d": sum(1 for p in by_ind[ind] if p > 0)}
              for ind, med, rel, n in ranked]
-    return {"market_median": round(mkt, 2), "strong": ranked[:top_n], "weak": weak,
+    return {"market_median": round(mkt, 2), "strong": strong, "weak": weak,
             "table": table}

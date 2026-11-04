@@ -46,10 +46,27 @@ _TECH_H = re.compile(r"(<h[1-6]\b[^>]*>\s*六、科技板塊脈動[^<]*</h[1-6]>
 
 
 def display_pass(html: str) -> str:
-    """寄出前最後一道:段落重新編號、寫稿用語換成白話、補 A/B 級說明。"""
-    out = _DISPLAY_RE.sub(lambda m: m[1] + _DISPLAY[m[2]], str(html or ""))
-    out = out.replace("新聞清單", "新聞")
-    return _TECH_H.sub(lambda m: m[1] + _GRADE_NOTE, out, count=1)
+    """只用在寄出去的那份(存檔與跨日回顧靠內部段落名,外審 PR #41):重新編號、換掉寫稿用語、
+    補 A/B 級說明。失敗就寄原信。"""
+    try:
+        out = _DISPLAY_RE.sub(lambda m: m[1] + _DISPLAY[m[2]], str(html or ""))
+        out = out.replace("新聞清單", "新聞")
+        return _TECH_H.sub(lambda m: m[1] + _GRADE_NOTE, out, count=1)
+    except Exception as exc:  # noqa: BLE001 - 晨報不可斷
+        print(f"::warning::display_pass_failed:{type(exc).__name__}", flush=True)
+        return html
+
+
+_TENNIS_500 = ("brisbane", "abu dhabi", "adelaide", "linz", "charleston", "stuttgart", "queen's", "berlin",
+               "bad homburg", "eastbourne", "washington", "dc open", "seoul", "ningbo", "tokyo", "pan pacific",
+               "strasbourg", "monterrey", "merida", "mérida")
+
+
+def tennis_extra_tier(low_name: str) -> tuple | None:
+    """年終賽與 500 級也要認得:級別空白才會被當低級別不列(外審 PR #41)。"""
+    if "wta finals" in low_name or "atp finals" in low_name:
+        return (1, "年終賽")
+    return (2, "500 級") if any(k in low_name for k in _TENNIS_500) else None
 
 
 def session_pct(closes: list) -> float | None:
@@ -89,8 +106,8 @@ _EARNINGS_NAMES = {"NVDA": "NVDA|輝達|NVIDIA", "AAPL": "AAPL|蘋果|Apple", "M
                    "AVGO": "AVGO|博通|Broadcom", "TSLA": "TSLA|特斯拉|Tesla", "AMD": "AMD|超微",
                    "GOOGL": "GOOGL|Alphabet|谷歌|Google", "META": "Meta", "MU": "美光|Micron", "QCOM": "QCOM|高通|Qualcomm"}
 _RESULT = re.compile(r"財報|營收|EPS|earnings|results", re.I)
-_OUT = re.compile(r"超預期|優於|不如預期|低於預期|年增|季增|盤後|財測|beats?\b|miss(?:es)?\b|tops?\b", re.I)
-_PREVIEW = re.compile(r"將公布|將於|前瞻|即將|本週|下週|登場|預告|等待|ahead of|preview|before earnings|will report", re.I)
+_OUT = re.compile(r"超預期|優於|不如預期|低於預期|年增|季增|beats?\b|miss(?:es)?\b|tops?\b", re.I)
+_PREVIEW = re.compile(r"將公布|將於|今晚|今夜|明晚|明日|前瞻|即將|本週|下週|登場|預告|等待|市場預期|分析師預期|預估|料將|ahead of|preview|before earnings|will report", re.I)
 
 
 def drop_reported_earnings(events: list, news: list, today: dt.date) -> list:
@@ -110,6 +127,10 @@ def drop_reported_earnings(events: list, news: list, today: dt.date) -> list:
     return out
 
 
+#: 分析段落之後的區塊(排名標題依分數有兩種;排名可能整段缺席):之後是行情、體育,不能拿來比對。
+_ANALYSIS_ENDS = ("台股波段觀察", "台股客觀關注", "近 5 日資金輪動", "個股排名", "Podcast 重點", "體育快訊", "在地快訊")
+
+
 def load_previous(directory, today: dt.date, lookback_days: int = 4) -> dict:
     """前一封信寫過什麼:連結 + 分析段落(不含行情表與個股卡,那些數字每天都會再出現)。"""
     for back in range(1, lookback_days + 1):
@@ -120,8 +141,8 @@ def load_previous(directory, today: dt.date, lookback_days: int = 4) -> dict:
         links = [htmllib.unescape(u) for u in re.findall(r'href="([^"]+)"', raw)]
         text = htmllib.unescape(re.sub(r"<[^>]+>", "", re.sub(r"</(?:p|li|div|tr|h\d)>", "\n", raw)))
         start = text.find("昨夜三大重點")
-        end = text.find("波段觀察", start)
-        body = text[start:end if end > 0 else None] if start >= 0 else ""
+        ends = [i for i in (text.find(m, start) for m in _ANALYSIS_ENDS) if i > 0]
+        body = text[start:min(ends) if ends else 0] if start >= 0 else ""   # 找不到終點就不比,寧可少擋
         return {"links": links, "paragraphs": [p.strip() for p in body.split("\n") if len(p.strip()) >= 40]}
     return {}
 

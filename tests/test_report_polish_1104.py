@@ -20,6 +20,8 @@ def test_reported_earnings_leave_the_calendar_previews_do_not():
     assert rp.drop_reported_earnings([amd, qcom, nfp], news, today) == [qcom, nfp]
     far = {"date": dtm.date(2026, 11, 9), "time": "盤後(美東)", "title": "AMD 財報"}
     assert rp.drop_reported_earnings([far], news, today) == [far]      # 下一季的日期不是這一筆
+    for preview in ("AMD 今晚盤後公布財報", "AMD 財報前瞻:市場預期營收年增 40%", "AMD earnings preview: revenue tops"):
+        assert rp.drop_reported_earnings([amd], [{"title": preview}], today) == [amd], preview   # 外審 PR #41
 
 
 def test_rotation_arrows_follow_the_sign_of_relative_strength():
@@ -83,6 +85,7 @@ def test_previous_mail_filters_repeated_news_but_not_new_developments(tmp_path):
             {"title": "某股 PER 14.4、殖利率 3.1", "link": "https://e"}]
     assert [n["link"] for n in rp.fresh_news(news, prev)] == ["https://c", "https://d", "https://e"]
     assert rp.fresh_news(news, {}) == news
+    assert not any("PER" in x for x in prev["paragraphs"])
     rows = ["11-02 上架 z-ai/glm-5.3-flashx-legal:輸入 $0.37/M", "11-03 上架 x/new-model:輸入 $1/M"]
     assert rp.fresh_model_rows(rows, prev) == rows[1:]
 
@@ -132,3 +135,34 @@ def test_low_tier_wta_finals_and_minor_tournaments_stay_out():
     out = ru._render_sports_html(sports, htmllib)
     assert "Queretaro" not in out and "Cali" not in out and "Paris" in out
     assert "Erste Bank" in out and "Wuhan" in out
+
+
+def test_previous_mail_stops_at_every_ranking_title_and_needs_an_end(tmp_path):
+    """外審 PR #41:高分時標題是「台股客觀關注排名」;排名缺席時也不可讀到體育。"""
+    para = "<p>這一段是分析內容,裡面有 12.5 與 33.75 兩個數字,要留下來比對隔天的新聞是否重複。</p>"
+    tail = "<p>美聯 坦帕灣光芒 98-64 勝率 0.605,洋基 0.578,這是體育戰績,不應該被當成分析段落拿來比對。</p>"
+    for marker in ("台股客觀關注排名 Top 3", "Podcast 重點", "體育快訊"):
+        _write_mail(tmp_path, "2026-11-03", f"<h2>七、昨夜三大重點</h2>{para}<h2>{marker}</h2>{tail}")
+        got = rp.load_previous(tmp_path, dtm.date(2026, 11, 4))["paragraphs"]
+        assert any("12.5" in p for p in got) and not any("0.605" in p for p in got), marker
+    _write_mail(tmp_path, "2026-11-03", f"<h2>七、昨夜三大重點</h2>{para}{tail}")     # 沒有終點:不比
+    assert rp.load_previous(tmp_path, dtm.date(2026, 11, 4))["paragraphs"] == []
+
+
+def test_sent_mail_is_renumbered_but_archive_and_recap_keep_internal_names(monkeypatch):
+    """外審 PR #41:寄後擷取只認「八、科技板塊脈動」,改標題要限於寄出去的那份。"""
+    import inspect
+    import morning_report as mr
+    src = inspect.getsource(mr.deliver_report)
+    assert "send_email(_polish.display_pass(html), subject)" in src
+    assert "_fallback_recap.delivered(html," in src and "archive_report_html(html," in src
+    assert rp.display_pass(None) in ("", None)
+
+
+def test_real_tier_path_keeps_major_wta_events():
+    """外審 PR #41:級別由 _tennis_tier 判,武漢、年終賽不可因空白被當低級別。"""
+    import morning_report as mr
+    assert mr._tennis_tier("Wuhan Open")[1] == "1000 級"
+    assert mr._tennis_tier("WTA Finals")[1] == "年終賽"
+    assert mr._tennis_tier("Ningbo Open")[1] == "500 級"
+    assert mr._tennis_tier("Queretaro Open")[1] == "" and mr._tennis_tier("Reto Win Tennis Cali Open")[1] == ""

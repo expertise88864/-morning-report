@@ -20270,7 +20270,7 @@ _TENNIS_SLAM_KEYS = ("australian open", "roland garros", "french open", "wimbled
 _TENNIS_M1000_KEYS = ("indian wells", "miami open", "monte", "madrid open", "italian open",
                       "rome", "national bank", "canadian open", "cincinnati",
                       "western & southern", "shanghai", "paris masters", "rolex paris",
-                      "masters 1000", "1000")
+                      "masters 1000", "1000", "wuhan", "beijing", "china open", "dubai", "doha", "qatar")
 
 
 def _tennis_tier(name: str) -> tuple:
@@ -20280,6 +20280,8 @@ def _tennis_tier(name: str) -> tuple:
         return (0, "大滿貫")
     if any(k in low for k in _TENNIS_M1000_KEYS):
         return (1, "1000 級")
+    if _polish.tennis_extra_tier(low):
+        return _polish.tennis_extra_tier(low)
     return (2, "")
 
 
@@ -23577,7 +23579,7 @@ def deliver_report(html: str, subject: str, state_entry: Optional[dict],
     from traditional_guard import simplified_free   # 寄送與存檔同一份:不得有簡體字(10/19)
     html, subject = simplified_free(html), simplified_free(subject)
     try:
-        send_email(html, subject)
+        send_email(_polish.display_pass(html), subject)
     except Exception as e:
         # 「有嘗試、沒成功」與「沒跑起來」要分得開(DL-8);痕跡留完照拋 ——
         # 本函式的契約仍然是 at-least-once:同日備援與看門狗會補寄。
@@ -25910,10 +25912,6 @@ def _phase_deliver(ctx) -> int:
     ctx.mark_phase("完成", time.monotonic())
     _write_run_manifest(now_tpe, report_kind=_rq.MORNING_REPORT)
 
-    try:
-        html = _polish.display_pass(html)   # 段落編號與寫稿用語,只動顯示
-    except Exception as e:
-        print(f"[main] 顯示整理失敗(原信照寄): {e}", file=sys.stderr)
     # 10. 寄信
     subject = f"📈 美股晨報 {report_date} | QQQ {_us_session.subject_change(quotes['QQQ'])} / TSM {_us_session.subject_change(quotes['TSM'])}"
     # SMTP 成功後才把本次 Podcast 標成已顯示並 push 所有 state。

@@ -3,6 +3,80 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "1eea6dc8-17a1-43a4-b3ef-1a2d20ff65b9",
+        "title": "EP711 | 🕊️🐦🦚🦜🦉🦅🐦🐧",
+        "published": "Wed, 04 Nov 2026 06:56:11 GMT",
+        "processed_at": "2026-11-04T08:45:51Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為今天盤中急殺後收下影線、出量，是比上週三四更好的進攻訊號；他這波心態較穩，先以指數部位為主，等融資明顯斷頭後再切入個股，即使後續再重殺也不需強制出場。",
+            "Palantir Q3 營收年增96%、季增20%、首度突破20億美元，主持人認為它最大問題是太貴，但高成長可支撐；法說揭露 300 億參數小模型在特定任務贏過 3 兆參數 GPT-5.6 SO、成本降 95%，開啟邊緣裝置與系統整合的新賽道，預期半年到一年內其他公司會跟進。",
+            "主持人從 Palantir 法說延伸：企業要的是資料自主與有人負責，不會自己養牛部署地端模型；系統整合（SI）業者將因此吃到肉，顛覆過去「vibe coding 自己來」的論述，這是新的投資方向。",
+            "AMD Q3 營收年增45%、EPS 2.09 擊敗預期，Data Center 季增27%、年增97%，MI450 開始出貨、EPYC 創紀錄；主持人維持 CPU 偏多，認為消費 PC 下季可能掉的20%不是重點，盤後沒特別反應不必過度解讀，他會等修正後找機會。",
+            "主持人回應台積電價值陷阱疑問：他認為太扯；台積電屬長期成長股，價值陷阱通常用於景氣循環股。以明年 EPS 約145元、2022年股災12倍估算，下方約1800元是看過的劇本，但不代表一定跌到。",
+            "主持人認為近期利空（伊朗、美國選舉）可能已部分反應，若壞消息出來後不跌甚至漲，就是利空出盡；這波融資殺出與恐慌感比上週健康，他會觀察融資指標再動作。"
+          ],
+          "tickers": [
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Palantir 法說開啟邊緣裝置與 SI 新賽道，營收高速成長，太貴但有成長支撐。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以SI業者,在Pentir這一次的電話會議裡面,我覺得當然前面已經講過很多次一樣的東西,只是這一次我覺得更加確定的這個趨勢,就是這些SI他們是會有辦法在裡面吃到肉的",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人維持 AMD CPU 偏多，認為 Data Center 強勁，消費 PC 疲軟不必擔心，等修正找機會。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人駁斥台積電價值陷阱擔憂，認為屬長期成長股，但以2022年股災估值看下方仍有空間，未明示買賣點。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "先以指數部位為主，等融資明顯斷頭後再切入個股；即使後續再重殺也不急於出場，並以基本面與估值維持信心。",
+          "notable_quote": "所以SI業者,在Pentir這一次的電話會議裡面,我覺得當然前面已經講過很多次一樣的東西,只是這一次我覺得更加確定的這個趨勢,就是這些SI他們是會有辦法在裡面吃到肉的",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "所以SI業者,在Pentir這一次的電話會議裡面,我覺得當然前面已經講過很多次一樣的東西,只是這一次我覺得更加確定的這個趨勢,就是這些SI他們是會有辦法在裡面吃到肉的"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "0cee70ae-6178-47d5-8ef1-12225a833dc0",
         "title": "EP710 | 🍒",
         "published": "Sat, 31 Oct 2026 07:10:44 GMT",
@@ -859,28 +933,63 @@
           }
         },
         "shown_at": "2026-09-26T23:32:33Z"
-      },
+      }
+    ]
+  },
+  "haojiao": {
+    "name": "游庭皓的財經皓角",
+    "episodes": [
       {
-        "guid": "07a93403-e26a-4a8b-a53a-497aa4e9ca20",
-        "title": "EP699 | 🪻",
-        "published": "Wed, 23 Sep 2026 07:47:36 GMT",
-        "processed_at": "2026-09-23T13:24:10Z",
+        "guid": "tag:soundcloud,2010:tracks/2431834893",
+        "title": "2026/11/4(三)這波融資 殺夠了嗎?晶片股反攻 現在該停損 還是加碼?【早晨財經速解讀】",
+        "published": "Wed, 04 Nov 2026 01:06:49 +0000",
+        "processed_at": "2026-11-04T09:16:50Z",
         "digest": {
           "summary_points": [
-            "主持人認為大盤並未轉空：加權指數與NQ已創高，盤面結構持續改善、弱勢族群（如功率元件）回神，他維持八九成持股，判斷台灣人因連假觀望才讓指數較扭，連假後資金與FOMO有機會回籠。",
-            "主持人把Meta Muse視為Agentic AI的第二波CPU催化，而非全新題材；他反駁市場流傳的CPU對GPU 40:1誇張比例，指無機構支持，合理共識應在1:4至1:2，1:1已是最樂觀情境，短線FOMO噴出後要留意回檔。",
-            "主持人反駁宏碁陳俊勝「AI元件不缺」的說法，認為宏碁在AI時代明顯落隊、產品線與股價均未跟上，短期AI元件供需改善沒那麼簡單，過早預測（如CCL降規）即使喊中意義也不大。",
-            "主持人認為DSP漲價15-20%合理，反映400G/800G升級階段的缺貨現實；他提醒CPO/LPO取代DSP是未來的零和思維，現階段DSP仍有表現空間，美系Marvell、MaxLinear及台系DSP廠後續說法值得留意。",
-            "主持人以自身創投視角指出AI正在改變遊戲開發（如加速修bug、小團隊槓桿），他們偏好小成本、有財務紀律與說故事能力的indie game，單筆投資約50萬至100萬美元並持續尋找標的。"
+            "主持人認為本波美股下跌屬估值修正而非基本面反轉：S&P 500預估本益比已降至18.1倍、科技巨頭降至21.8倍、S&P 500 PEG僅0.74（本世紀新低），若獲利不衰退，股價不漲反而是價值投資利多。",
+            "主持人指出AI資料中心建置延後主因是電網跟不上，不是缺GPU或記憶體，因此民主黨是否奪回眾院不會改變此趨勢；重點反而是AI監管與環境成本會否壓縮獲利。",
+            "主持人從避險基金10月平均虧損3.49%、QQQ放空股數增至1.6億股、增幅23%且接近2022年高點研判，目前只是第一波空單回補，11月後波動可能加大，上方加空量是關鍵。",
+            "主持人觀察台股大盤跌幅13%但融資僅減8%、整戶維持率約142（尚未到7月低點131），且00631L、00685L等槓桿ETF融資逆勢大增，認為籌碼未徹底洗淨、下行風險仍在。",
+            "主持人認為台灣第三季經濟成長率14.36%與新台幣貶至32.8的背離，反映外資賣壓與台商美元未匯回（前9月出口外匯收入年增38%、結售比例僅2%），央行已傳放寬出口商賣匯上限，後續恐影響內需消費。",
+            "主持人對AMD財報表示業績確認無鬆動、數據中心處理器成長並挑戰輝達，但股價關鍵在估值是否吸引人，不是基本面轉差；盤後漲8%後仍需由價格決定。",
+            "主持人以部分權值股自高點回檔五成至三成提醒個股痛感遠大於指數，但年初持有者今年報酬仍可觀，強調問題在買進時間而非趨勢反轉，應分批投入而非 all in。"
           ],
           "tickers": [
             {
-              "name": "宏碁",
-              "code": "2353",
+              "name": "超微(AMD)",
+              "code": "AMD",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為AMD財報確認成長無鬆動、挑戰輝達，但股價是否進場取決於估值吸引力，不對價格背書。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "從業績面來看的話,這是確認的,我們差別就在於,從價格面到底這個價位,吸不吸引你而已",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "元大台灣50正2",
+              "code": "00631L",
               "market": "TW",
               "direction": "unknown",
-              "reason": "主持人認為宏碁在AI時代明顯落隊，產品線與股價均未跟上，其AI元件不缺的評論可信度低。",
-              "stance_basis": "investment_view",
+              "reason": "主持人示警融資餘額從24萬張增至30萬張、越跌越加碼，呼籲不要用融資買槓桿ETF以避免追繳風險。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "群益台灣加權正2",
+              "code": "00685L",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人示警融資餘額一個月從15.7萬張增至29.4萬張、增幅87%，越跌越加碼，提醒槓桿加融資的追繳風險。",
+              "stance_basis": "unclear",
               "direction_evidence": {
                 "version": 1,
                 "status": "unverified",
@@ -889,28 +998,22 @@
               }
             }
           ],
-          "market_view": "主持人認為大盤尚未轉空，指數創高與結構改善支持維持高持股；短線連假觀望造成扭捏，他預期連假後資金與FOMO回籠。",
-          "action_view": "主持人自己維持八九成以上持股，不因短線難做或連假觀望而空手；眼見為憑等真正破底才考慮轉空，並等待連假後類股輪動與FOMO回籠。",
-          "notable_quote": "",
+          "market_view": "主持人認為目前美股與台股是估值回調而非基本面反轉，但籌碼尚未徹底洗淨、波動可能加大；長期仍看好AI帶動台灣經濟，但短期不宜追低或一次 all in。",
+          "action_view": "主持人建議投資人不要因下跌就融資加碼槓桿ETF，應分批投入、保留現金、控制槓桿；槓桿是超車工具而非飆車工具，避免追繳風險。",
+          "notable_quote": "槓桿是拿來超車用的,不是拿來飆車",
           "quote_evidence": {
             "version": 1,
-            "status": "unverified",
-            "quote": ""
+            "status": "verbatim",
+            "quote": "槓桿是拿來超車用的,不是拿來飆車"
           },
           "direction_quality": {
-            "attributed": 0,
+            "attributed": 1,
             "non_investment": 0,
-            "unverified": 1,
+            "unverified": 2,
             "invalid": 0
           }
-        },
-        "shown_at": "2026-09-23T23:54:14Z"
-      }
-    ]
-  },
-  "haojiao": {
-    "name": "游庭皓的財經皓角",
-    "episodes": [
+        }
+      },
       {
         "guid": "tag:soundcloud,2010:tracks/2431190226",
         "title": "2026/11/3(二)蘋果重奪市值第一 AI生產力革命是真是假 美股跌出買點了嗎?【早晨財經速解讀】",
@@ -1711,66 +1814,6 @@
           }
         },
         "shown_at": "2026-10-19T22:28:44Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2420852640",
-        "title": "【完整版專訪】賴清德總統談台灣經濟",
-        "published": "Sat, 17 Oct 2026 10:26:13 +0000",
-        "processed_at": "2026-10-17T12:15:17Z",
-        "digest": {
-          "summary_points": [
-            "總統將 AI 定位為負責任的推動者，提出 AI 基本法七原則，並設定 2040 年培養 50 萬 AI 應用人才、百萬家中小微企業導入 AI、一兆元軟體平台產值等目標；他個人以歷史角度認為 AI 如同蒸汽機工業革命「才剛開始」，屬科技樂觀論，但強調政府非全然樂觀、有預做因應金融風險。",
-            "總統認為台灣對美貿易順差過大是關稅壓力來源，但關稅談判已爭取到 15% 不疊加、條件與日韓拉平，他視此為台灣與美國產業結構進一步結合的機會，並表示聯邦法院撤銷法律基礎後仍會竭力爭取原談判條件。",
-            "產業政策上，總統提出五大信賴產業、矽光子/量子運算/機器人三大關鍵核心及五產業合計 13 項國家戰略產業，並強調大企業帶小企業、避免大者恆大；他指出台積電與日月光在高雄白埔成立封裝測試產業鏈，讓中小企業融入，中小微企業有 171 萬家、900 萬勞工。",
-            "能源與算力方面，總統表示 AI 算力與經濟成長需求已盤點，2035 年穩定供電沒問題；再生能源目標 2035 年達 30%，核電在安全無虞、核廢有解、社會有共識三條件下可重啟，台電已啟動程序；國家目標 2040 年自建 1GW 算力（每 GW 價值約 400 億美元）。",
-            "金融與股市：總統尊重央行不升息及油電凍漲補貼的決策，認為能穩定物價、利大於弊；他強調不預測指數，但會建議幕僚買進股票，並認為經濟做好股市自然水漲船高。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "unknown",
-              "reason": "總統肯定台積電投資成功並感謝其願意帶動中小企業，政府曾投資台積電且受惠。",
-              "stance_basis": "non_investment",
-              "direction_evidence": {
-                "version": 1,
-                "status": "non_investment",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "日月光投控",
-              "code": "3711",
-              "market": "TW",
-              "direction": "unknown",
-              "reason": "總統提及台積電與日月光在高雄白埔成立封裝測試產業鏈，協助中小企業融入科技鏈。",
-              "stance_basis": "non_investment",
-              "direction_evidence": {
-                "version": 1,
-                "status": "non_investment",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "總統對 AI 帶動的經濟與股市長期正面，認為經濟做好股市自然水漲船高，但同時強調政府有預做因應、非全然樂觀。",
-          "action_view": "總統表示會建議幕僚買進股票、不要因指數高點而等待，但強調點位由市場決定，政府的責任是把經濟做好。",
-          "notable_quote": "所以我的責任就是把經濟做好。股市自然會水漲船高。",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "所以我的責任就是把經濟做好。股市自然會水漲船高。"
-          },
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 2,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-17T22:09:38Z"
       }
     ]
   },

@@ -23055,6 +23055,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
 
 def send_email(html: str, subject: str) -> None:
+    html = _polish.display_pass(html)   # 只動寄出去的那份;存檔與跨日回顧靠內部段落名
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
         raise RuntimeError(
             "缺 GMAIL_USER / GMAIL_APP_PASSWORD 環境變數，無法寄信。"
@@ -23579,7 +23580,7 @@ def deliver_report(html: str, subject: str, state_entry: Optional[dict],
     from traditional_guard import simplified_free   # 寄送與存檔同一份:不得有簡體字(10/19)
     html, subject = simplified_free(html), simplified_free(subject)
     try:
-        send_email(_polish.display_pass(html), subject)
+        send_email(html, subject)
     except Exception as e:
         # 「有嘗試、沒成功」與「沒跑起來」要分得開(DL-8);痕跡留完照拋 ——
         # 本函式的契約仍然是 at-least-once:同日備援與看門狗會補寄。

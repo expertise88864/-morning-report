@@ -154,8 +154,8 @@ def test_sent_mail_is_renumbered_but_archive_and_recap_keep_internal_names(monke
     import inspect
     import morning_report as mr
     src = inspect.getsource(mr.deliver_report)
-    assert "send_email(_polish.display_pass(html), subject)" in src
     assert "_fallback_recap.delivered(html," in src and "archive_report_html(html," in src
+    assert "html = _polish.display_pass(html)" in inspect.getsource(mr.send_email)   # 函式內的區域變數,不影響呼叫端
     assert rp.display_pass(None) in ("", None)
 
 

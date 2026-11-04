@@ -44,7 +44,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 47  # Nov03: AI-race evidence ids; no rule numbers; finance/biotech rules; world up to 7; policy deep-dive hidden.
+DEEPSEEK_LEGACY_VERSION = 48  # Nov04: world events 3-4 sentences; AI-race must cite ids; hidden heat-table name stays out; overseas finance earnings out.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -81,7 +81,7 @@ DEEPSEEK_LEGACY_VERSION = 47  # Nov03: AI-race evidence ids; no rule numbers; fi
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 81  # Nov03: finance only on big news; biotech derm/ophth first; world events up to 7, no overlap with key_drivers.
+LUNA_XHIGH_VERSION = 82  # Nov04: overseas finance earnings out.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -324,7 +324,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   生技看藥華藥/保瑞/合一、傳產看中鋼/台塑/台泥、重電看華城/士電/中興電、
   能源看台塑化/元晶,汽車看和泰車/裕隆、營建看興富發/潤泰新、
   觀光看晶華/鳳凰。龍頭沒事的日子才輪到二線題材。
-  **金融只在有大消息時寫**(金控獲利大幅變動且有具體數字、重大併購、金管會或央行新規、大額裁罰、股利政策);會計政策補充公告、沒附數字的「獲利亮眼」報導不寫,沒有大消息就整類從缺。**生技優先皮膚科、眼科相關**的新藥、臨床、藥證、授權,其他生技只寫解盲、藥證、大額授權或併購。
+  **金融只在有大消息時寫**(金控獲利大幅變動且有具體數字、重大併購、金管會或央行新規、大額裁罰、股利政策);會計政策補充公告、沒附數字的「獲利亮眼」報導、海外金融業者的一般財報不寫,沒有大消息就整類從缺。**生技優先皮膚科、眼科相關**的新藥、臨床、藥證、授權,其他生技只寫解盲、藥證、大額授權或併購。
 - **`taiwan_policy` 是重大政策深度解析**:行政院公報（EVIDENCE 的
   GAZETTE_RECORDS）與政策新聞。每一項:`what` 是政策名（客觀），
   `impact` 是**多句的深度解析** —— 修了什麼、適用對象、生效日、

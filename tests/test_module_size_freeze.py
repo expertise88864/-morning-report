@@ -218,7 +218,7 @@ MODULE_CEILINGS = {
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
     "world_severity.py": 40,   # 世界大事嚴重性分級(2026-11-02)
-    "sports_season.py": 468,   # 季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
+    "sports_season.py": 476,   # 2026-11-04 休賽季收戰績;季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,
     "journal_selection.py": 55,

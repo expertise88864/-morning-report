@@ -74,7 +74,7 @@ def test_world_events_up_to_seven_longer_and_no_overlap_with_top3():
     import fixtures_analysis as fx
     import prompt_profiles
     legacy = open(writing_rules.__file__, encoding="utf-8").read()
-    assert "最多 7 條" in legacy and "≤240 字" in legacy and "市場影響見七段" in legacy
+    assert "最多 7 條" in legacy and "150～240 字" in legacy and "市場影響見七段" in legacy
     assert "最多七條" in open(prompt_profiles.__file__, encoding="utf-8").read()
     obj = fx.valid_analysis()
     obj["world_events"] = [{"source_item_id": "n1", "what": f"事件{i}", "why_it_matters": "意涵",
@@ -82,3 +82,42 @@ def test_world_events_up_to_seven_longer_and_no_overlap_with_top3():
     out = ar.render(obj)
     world = out.split("## " + ar.SECTION_WORLD, 1)[1].split("\n## ", 1)[0]
     assert world.count("\n- ") == 7
+
+
+def test_offseason_hides_mlb_and_cpbl_standings_only():
+    """11-04 使用者:MLB/中職打完了就先隱藏戰績。季後賽還在打的不收,其他項目不動。"""
+    import datetime as dtm
+    import sports_season as ss
+    data = {"standings": {"美聯": []}, "cpbl": [1], "cpbl_full_year": [2], "nba": [3], "news": {"MLB": [4]}}
+    off = ss.drop_offseason_standings(data, dtm.datetime(2026, 11, 4))
+    assert off == {"nba": [3], "news": {"MLB": [4]}}
+    assert ss.drop_offseason_standings(data, dtm.datetime(2027, 3, 24)) == off
+    assert ss.drop_offseason_standings(data, dtm.datetime(2027, 3, 25)) == data
+    assert ss.drop_offseason_standings(data, dtm.datetime(2026, 10, 31)) == data
+    mid = ss.drop_offseason_standings({**data, "mlb_post": {"x": 1}, "cpbl_post": {"y": 1}}, dtm.datetime(2026, 11, 1))
+    assert mid["standings"] and mid["cpbl"] and mid["cpbl_full_year"]
+
+
+def test_news_and_awards_still_render_without_standings():
+    """戰績收掉後,MVP/賽揚盤與體育新聞仍要出現,標題也不可出現沒有內容的項目。"""
+    import datetime as dtm
+    import html as htmllib
+    import render_utils as ru
+    import sports_season as ss
+    sports = ss.drop_offseason_standings(
+        {"standings": {"美聯": [{"team": "Tampa Bay Rays", "record": "98-64", "pct": 0.605}]},
+         "cpbl": [{"team": "中信兄弟", "record": "36-0-24", "pct": "0.600", "gb": "-"}],
+         "news": {"MLB": [{"title": "MVP決選名單出爐", "link": "https://x/1", "published": ""}]}},
+        dtm.datetime(2026, 11, 4))
+    out = ru._render_sports_html(sports, htmllib)
+    assert "戰績" not in out and "MVP決選名單出爐" in out and "MLB" in out
+
+
+def test_heat_table_name_stays_out_while_hidden_and_ai_race_must_cite():
+    """11-04 實信:熱度表隱藏後,結論與八段仍寫「類股熱度表」當出處;AI 模型競賽仍未附編號。"""
+    import morning_report as mr
+    block = mr._format_sector_heat_block({"ranked": ["半導體業"], "total_value_yi": 1,
+                                          "sectors": {"半導體業": {"value_yi": 1, "median_pct": 0}}})
+    assert "全信不得出現「類股熱度表」這個名稱" in block
+    assert "`[OpenRouter][N12]`" in open(mr.__file__, encoding="utf-8").read()
+    assert "每條 3～4 句、合計 150～240 字" in open(writing_rules.__file__, encoding="utf-8").read()

@@ -342,6 +342,15 @@ def fresh(timestamp: Any, now: dt.datetime, hours: int = 72) -> bool:
     return stamp is not None and stamp >= now - dt.timedelta(hours=hours)
 
 
+def drop_offseason_standings(sports: dict, now: dt.datetime) -> dict:
+    """11/01～03/24 收起 MLB 與中職戰績(2026-11-04 使用者:打完了就先隱藏);季後賽還在打的不收。"""
+    if (3, 24) < (now.month, now.day) < (11, 1):
+        return sports
+    drop = () if sports.get("mlb_post") else ("standings",)
+    drop += () if sports.get("cpbl_post") else ("cpbl", "cpbl_full_year")
+    return {k: v for k, v in sports.items() if k not in drop}
+
+
 def priority(sports: dict) -> dict[str, int]:
     """各項目的賽季重要性:0 季後賽/世足進行中、1 例行賽/網球、2 季前賽或休賽季。數字越小越前面。"""
     nba = sports.get("nba") or []

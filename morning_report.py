@@ -4448,7 +4448,9 @@ def _format_sector_heat_block(sector_heat: dict, top_n: int = 12) -> str:
             f"漲 {s.get('up', 0)}/跌 {s.get('down', 0)}{_inst_txt} | 領先:{leaders or '-'}")
     total = (sector_heat or {}).get("total_value_yi") or 0
     return ("\n\n【類股熱度表(今日 TWSE 全市場,依成交值排序;純行情數據非新聞,"
-            f"供「九、其他類股」判斷哪些類股在動、誰領漲。全市場成交約 {total:,.0f} 億)】\n"
+            f"供「九、其他類股」判斷哪些類股在動、誰領漲。全市場成交約 {total:,.0f} 億"
+            + ("" if SHOW_SECTOR_HEAT_TABLE else ";這張表信裡不顯示:數字可用,但全信不得出現「類股熱度表」這個名稱或把它當出處")
+            + ")】\n"
             + "\n".join(lines))
 
 
@@ -12218,7 +12220,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 清單可直接引用);(2) 必須寫出對**算力需求 → 台積電先進製程/CoWoS/AI 供應鏈**的
 傳導方向;(3) 開源低成本模型衝擊(如 Kimi K3 嚇跌半導體)要分清「情緒/估值修正」
 與「實際訂單/產能」兩個層次,不可混為一談;(4) 格式與本段其他條目一致
-(事件+數字+來源 → 傳導機制 → 方向+信心)。
+(事件+數字+來源 → 傳導機制 → 方向+信心);(5) OpenRouter、Polymarket 也是來源,照 R10b 寫 `[OpenRouter][N12]`、`[Polymarket][N13]`,不可只寫（OpenRouter）。
 
 **深度鐵則（每條必須三段式因果鏈，否則就是填充垃圾）**：
 1. **事件**：發生什麼——具體產品 / 合約 / 財報數字 / 法說發言 / SEC 表單 / MOPS 公告 ＋ 來源。**發債、增資、小額投資、取得設備或廠房、法說行程這類例行公告不寫**(2026-10-30 使用者)。
@@ -12270,7 +12272,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 本段每一條都要寫成這樣,而不是各自獨立的公告。
 
 **深度鐵則(每條必須三段式因果鏈,否則就是填充垃圾——與八段同一條規矩)**:
-1. **事件**:發生什麼——政策/財報/合約/併購/運價/新藥進度/車市數據/報價/標案 ＋ 具體數字 ＋ 來源媒體。**生技優先皮膚科、眼科相關的新藥、臨床、藥證、授權;其他生技只寫解盲、藥證、大額授權或併購這類大消息,一般營收與公告不寫;發債、增資、小額投資公告也不寫**(2026-10-30、11-03 使用者)。**金融只在有大消息時寫**(金控獲利大幅變動且有具體數字、重大併購、金管會或央行新規、大額裁罰、股利政策);會計政策變更的補充公告、沒附數字的「獲利亮眼」報導不寫,沒有大消息的日子金融整類從缺(2026-11-03 使用者)。
+1. **事件**:發生什麼——政策/財報/合約/併購/運價/新藥進度/車市數據/報價/標案 ＋ 具體數字 ＋ 來源媒體。**生技優先皮膚科、眼科相關的新藥、臨床、藥證、授權;其他生技只寫解盲、藥證、大額授權或併購這類大消息,一般營收與公告不寫;發債、增資、小額投資公告也不寫**(2026-10-30、11-03 使用者)。**金融只在有大消息時寫**(金控獲利大幅變動且有具體數字、重大併購、金管會或央行新規、大額裁罰、股利政策);會計政策變更的補充公告、沒附數字的「獲利亮眼」報導不寫,海外金融業者的一般財報也不寫;沒有大消息的日子金融整類從缺(2026-11-03 使用者)。
 2. **傳導機制**:為何牽動哪一檔或哪一類——必須點名**具體機制**
    (壽險投資收益 / 銀行淨息差 / 運價與艙位 / 專利獨佔期 / 鋼價利差 / 去化率 / 電網標案金額),
    不是只說「有正面影響」。
@@ -21189,7 +21191,7 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     except Exception as e:
         print(f"[sports] MLB 戰績抓取失敗: {e}", file=sys.stderr)
     # 季後賽:系列戰況 + 昨日比分 + 下一場(使用者 2026-10-14;見 sports_season)
-    from sports_season import fetch_posts
+    from sports_season import drop_offseason_standings, fetch_posts
     out.update(fetch_posts(_http_get, now_tpe, print, _DEGRADED_STEPS.append))   # ::warning:: 走 stdout
     # MLB 未來一週焦點賽程(強隊對戰;台北時間)——使用者要求 MLB 也要有賽程
     try:
@@ -21272,7 +21274,7 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             print(f"[sports] {label} selection={selection}", file=sys.stderr)
         except Exception as e:
             print(f"[sports] {label} 新聞抓取失敗: {e}", file=sys.stderr)
-    return out
+    return drop_offseason_standings(out, now_tpe)
 
 
 PODCAST_DIGEST_FILE = STATE_ROOT / "podcast_digest.json"

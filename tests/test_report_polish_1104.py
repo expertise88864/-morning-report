@@ -174,7 +174,8 @@ def test_results_that_beat_expectations_are_not_previews():
     amd = {"date": today, "time": "盤後(美東)", "title": "AMD 財報"}
     for done in ("AMD 財報營收年增40%,優於市場預期", "AMD 財報超出分析師預期", "超微財報不如市場預期 年增僅 5%",
                  "AMD 財報營收年增40%,超越市場預期", "AMD 財報優於市場預估", "AMD earnings beat estimates",
-                 "AMD 第三季財報營收年增 45%"):
+                 "AMD 第三季財報營收年增 45%", "AMD 財報營收符合市場預期,EPS優於預期",
+                 "AMD 財報符合預期", "AMD 財報 市場預期偏低,實際營收優於預期"):
         assert rp.drop_reported_earnings([amd], [{"title": done}], today) == [], done
     for pending in ("AMD 財報 市場預期營收年增 40%", "AMD 財報 分析師預估年增 40%", "AMD 今晚財報 能否優於市場預期",
                     "分析師預估 AMD 財報將優於市場預期", "AMD 財報有望優於市場預期", "analysts expect AMD earnings to beat"):

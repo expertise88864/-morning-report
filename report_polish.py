@@ -106,7 +106,7 @@ _EARNINGS_NAMES = {"NVDA": "NVDA|輝達|NVIDIA", "AAPL": "AAPL|蘋果|Apple", "M
                    "GOOGL": "GOOGL|Alphabet|谷歌|Google", "META": "Meta", "MU": "美光|Micron", "QCOM": "QCOM|高通|Qualcomm"}
 _RESULT = re.compile(r"財報|營收|EPS|earnings|results", re.I)
 #: 和預期比較的說法本身就是結果;單純的年增、季增還要排除「預期」「預估」(那可能是預估值)。外審 PR #41
-_COMPARED = re.compile(r"超預期|超出|超越|優於|不如|低於|擊敗|\bbeats?\b|\bmiss(?:es)?\b|\btops?\b", re.I)
+_COMPARED = re.compile(r"符合|超預期|超出|超越|優於|不如|低於|擊敗|\bbeats?\b|\bmiss(?:es)?\b|\btops?\b", re.I)
 _GROWTH = re.compile(r"年增|季增")
 _FORECAST = re.compile(r"預期|預估|看好|料將|estimate|expect|forecast", re.I)
 _WILL = re.compile(r"將|可望|有望|恐|或|能否|to\s*$", re.I)
@@ -114,11 +114,12 @@ _FUTURE = re.compile(r"將公布|將於|今晚|今夜|明晚|明日|前瞻|即�
 
 
 def _has_result(title: str) -> bool:
-    """語序決定是實績或預測:「優於市場預估」是結果,「預估將優於市場預期」還沒公布(外審 PR #41)。"""
-    compared = _COMPARED.search(title)
-    if compared:
-        before = title[:compared.start()]
-        return not _FORECAST.search(before) and not _WILL.search(before[-3:])
+    """語序決定是實績或預測:「優於市場預估」是結果,「預估將優於市場預期」還沒公布。
+    只看比較詞所在的子句,前一項實績的「符合市場預期」不影響後一項(外審 PR #41)。"""
+    for compared in _COMPARED.finditer(title):
+        clause = re.split(r"[,，;；:：、。!！?？]", title[:compared.start()])[-1]
+        if not _FORECAST.search(clause) and not _WILL.search(clause[-3:]):
+            return True
     return bool(_GROWTH.search(title)) and not _FORECAST.search(title)
 
 

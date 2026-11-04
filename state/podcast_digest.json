@@ -9622,6 +9622,80 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "a9ae4836-d7f4-11f1-a4ce-aff0b3913dc1",
+        "title": "Is The AI Selloff A Buying Opportunity? | Warren Pies",
+        "published": "Wed, 04 Nov 2026 11:00:00 -0000",
+        "processed_at": "2026-11-04T15:48:06Z",
+        "digest": {
+          "summary_points": [
+            "來賓 Warren Pies(314 Research)上週初把股票部位降至中性：標普進入約 63 天、6~7% 的盤整區間而失去動能，金融股相對必需消費類股轉弱(必需消費 10 月大漲 14%)，加上超大規模雲端業者的信用利差已突破 7 月低點時的寬度；他認為這三個訊號合起來，預設情境應從「持續上升趨勢」改為「可能向下突破」。",
+            "他強調 AI 基本面沒有轉壞：B200 等 GPU 可用率掉到零、租金持續走高，遠期租金報價也出現正價差；他認為這在 GPU 市場是「容量溢價」，不是石油市場那種需求疲弱的訊號。他自行建立的資料中心模型原本假設租金每年下滑 25%，實際上完全沒發生。",
+            "他追蹤標普 500 約 50 個產業群的漲跌日報酬，半導體是差距最大的一組：半導體上漲日與下跌日之間，標普報酬差距超過 105 個百分點，而且半導體已占標普市值約 20%；但他說 SMH 線圖近日再度破線，半導體必須重新轉強，大盤才有續攻條件。",
+            "他把當前最大的中期風險放在宏觀：伊朗戰爭讓聯準會由降息週期翻轉為升息週期，10 年期殖利率的驅動因素也從油價轉為與納斯達克高度連動；他擔心聯準會要一路升到「弄壞」AI 融資市場才停手，並估計創投新創約占 AI 實驗室 ARR 的 25%，一旦升息掐死創投融資，這塊營收會直接流失。",
+            "他用衛星資料追蹤每座興建中資料中心從動土到通電的進度，與半導體營收預估比對後認為供給沒有落後，並估計 2027 年前還有 27 GW 以上新增上線；因此他判斷目前是「去槓桿式的全面拋售」——GPU 租金在上漲、超大規模與半導體卻同步下跌，只有在流動性緊縮的情境下才說得通，若真出現供給緊縮，反而更該持有超大規模雲端業者。",
+            "能源方面，他認為對伊朗的封鎖正在奏效(伊朗浮動儲油下降、全球 VLCC 逾 60% 被佔用)，但新加坡柴油裂解價差一度超過每桶 70 美元、中間餾分油市場嚴重失衡；他判斷接下來 45 天內必須有結果，選後達成協議的機率比選前高，並主張投資組合應維持能源超配來對沖這個風險。"
+          ],
+          "tickers": [
+            {
+              "name": "半導體 ETF(SMH)",
+              "code": "SMH",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "半導體是標普漲跌的唯一主軸，但線圖再度破線，須等技術面重新轉強再談進攻。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "But our key key point is that semis have to get into gear. And so we were worried coming through June that they were topping. And then our hope was that July was the bottom, you know, and that we were that the market was ready to get back into gear. And the charts kind of broken down again.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "超大規模雲端業者(Hyperscalers)",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "他認為在供給緊縮情境下更該持有；若聯準會真的掐住資金、壓低資本支出，對這群業者反而更有利。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "So like you need to own hyperscalers in that scenario, I could definitely see that being bearish for simis but not for both. So to me, this price action is panicky. And doesn't it doesn't make sense with that supply crunch scenario, I'd be wanting to own the hyperscalers. I already want to own hyperscalers when this thing's done. But it would become even more attractive.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "煉油股(Refiners)",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "裂解價差終將因煉廠調整產出與需求破壞而收斂，煉油是全球最循環的生意之一，不宜長期持有。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "So don't get married to it. They're going to work themselves out. We're not going to be stuck with $100 crack spreads indefinitely. You're going to see, I think you're going to see oil prices stay sticky and go higher. You're going to see demand destruction and you're ultimately going to see all these refineries point their capabilities at the middle of the barrel to solve the problem. So it's a temporary phenomenon.",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "他認為大盤已進入盤整待變，宏觀(利率)是當前中期最大風險；但赤字仍寬、且 AI 降溫本身會壓低利率、讓被排擠的利率敏感族群喘口氣，因此他難以推導出真正的衰退情境。",
+          "action_view": "不追突破也不接刀：要嘛等盤整區向上突破再買，要嘛等投機與反向 ETF 成交量、內部情緒模型、波動率目標基金部位出現真正的清洗再承接——目前都還沒到極端，在那之前維持中性並以能源超配對沖地緣風險。",
+          "notable_quote": "I build conviction on fundamentals but manage risk with technicals.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I build conviction on fundamentals but manage risk with technicals."
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "ec837b56-d4b4-11f1-adcd-1f4a9d216a43",
         "title": "The Fed Is A Sideshow While The AI Trade Implodes | Weekly Roundup",
         "published": "Sat, 31 Oct 2026 10:00:00 -0000",
@@ -10232,44 +10306,6 @@
           "notable_quote": "when you need it to act as a deep debasement hedge, Bitcoin in fact does that. It is in fact digital gold, but it's not exactly gold."
         },
         "shown_at": "2026-09-02T23:33:57Z"
-      },
-      {
-        "guid": "3655ef36-a18c-11f1-aeca-cbd655fc898d",
-        "title": "Druck Calls Out Bessent & Will Jackson Hole Derail The Debasement Trade? | Weekly Roundup",
-        "published": "Thu, 27 Aug 2026 10:00:00 -0000",
-        "processed_at": "2026-08-27T12:38:29Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為，財政部透過買回公債與動用 TGA 干預債市，短期壓低殖利率，但無法解決赤字與債務結構問題，最終將導致通膨與貶值交易持續。",
-            "針對 Druckenmiller 批評 Bessent 的買回公債政策，主持人解讀這是精心安排的輿論操作，將責任導向國會，並非真的反對 Bessent，且雙方私下可能已協調。",
-            "主持人預期 Jackson Hole 會議中，Fed 主席 Warsh 不太可能發表強硬鷹派言論，因為這與政府壓低殖利率的方向衝突，會議結果可能是「nothing burger」。",
-            "主持人持續看多黃金與比特幣等「無法印刷」的資產，認為在政府持續干預與法幣貶值環境下，這些資產將繼續上漲。",
-            "主持人質疑 Anthropic 的 IPO，認為其宣稱營收可能超過 30 兆美元荒謬至極，AI 前沿模型護城河不穩，面臨開源與中國模型的激烈競爭，泡沫跡象與 2021 年加密幣高點相似。",
-            "主持人指出，中國模型的使用量直線上升，美國可能在 AI 競賽中落後；價值累積將流向應用層而非基礎設施，目前基礎設施估值本末倒置。",
-            "主持人警告，AI 泡沫可能演變為系統性風險，若民主黨贏得國會，政府救助案可能受阻，債務上限危機與 AI 危機可能同時爆發，政治不確定性高。",
-            "操作層面，主持人建議持有抗貶值資產，不要做空債券，且在勞工節前不宜做出激進配置，因為短線流動性低且政策干預強烈。"
-          ],
-          "tickers": [
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為其 IPO 估值荒謬，AI 護城河不穩，將面臨開源模型與中國模型競爭，泡沫可能破裂。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人提到 SpaceX 上市後未回到發行價，顯示大規模 IPO 後表現差，Anthropic 可能重蹈覆轍。"
-            }
-          ],
-          "market_view": "主持人認為短期市場受政策強力干預，債市與油市風險被壓制，整體風險偏向下檔有撐，但長期債務與赤字問題未解，通膨與貶值壓力將持續，市場結構脆弱。",
-          "action_view": "操作上，主持人偏向持有黃金、比特幣等無法印刷的資產，避免做空債券；短期內（勞工節前）不宜積極交易，等待更多催化劑。",
-          "notable_quote": "they're debasing fiat and they're telling you what they're going to do. So until then, like I think you can rest on it."
-        },
-        "shown_at": "2026-08-30T00:18:35Z"
       }
     ]
   }

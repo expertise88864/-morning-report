@@ -115,6 +115,7 @@ def test_local_build_section_needs_a_real_project():
     assert not q.relevant("建設", "賴清德南投4廟參香力挺溫世政 喊話中央挹注逾300億助地方建設")
     assert not q.relevant("建設", "彰化毒駕事件遭點名 陳素月「零容忍」:勿將不幸當政治消費工具")
     assert q.relevant("建設", "台中捷運藍線動工 預計 2032 年通車")
+    assert q.relevant("建設", "斗六長照大樓爭取9億經費")      # 真的地方建設不能被擋
 
 
 def test_low_tier_wta_finals_and_minor_tournaments_stay_out():

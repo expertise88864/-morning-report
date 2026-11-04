@@ -429,7 +429,8 @@ def test_sector_rotation_ranks_and_filters():
     assert r["market_median"] == 1.5
     # 強勢由高到低、相對 = 中位 − 大盤中位(1.5)
     strong = r["strong"]
-    assert [s[0] for s in strong] == ["半導體業", "航運業", "金融保險業", "生技醫療業"]
+    # 2026-11-04 使用者:只有真的強於大盤才算強勢,前 4 名裡相對 ≤0 的不列
+    assert all(x[2] > 0 for x in strong) and [x[0] for x in strong] == ['半導體業', '航運業']
     assert strong[0] == ("半導體業", 6.5, 5.0, 4)
     # 轉弱:最弱類股(玻璃陶瓷),且不與強勢前 4 名重疊
     assert any(w[0] == "玻璃陶瓷" for w in r["weak"])

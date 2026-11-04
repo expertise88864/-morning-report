@@ -1858,7 +1858,7 @@ def test_render_mlb_standings_and_fixtures():
 def test_render_nba_week_fixtures():
     html = mr._render_sports_html(
         {"nba_fixtures": [{"text": "LAL @ BOS", "when": "10/22 08:00"}]}, htmllib)
-    assert "NBA 未來一週賽程" in html
+    assert "NBA 近期賽程" in html
     assert "洛杉磯湖人 @ 波士頓塞爾提克" in html   # 縮寫轉繁中(2026-07-16)
 
 

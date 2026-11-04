@@ -105,8 +105,11 @@ _EARNINGS_NAMES = {"NVDA": "NVDA|輝達|NVIDIA", "AAPL": "AAPL|蘋果|Apple", "M
                    "AVGO": "AVGO|博通|Broadcom", "TSLA": "TSLA|特斯拉|Tesla", "AMD": "AMD|超微",
                    "GOOGL": "GOOGL|Alphabet|谷歌|Google", "META": "Meta", "MU": "美光|Micron", "QCOM": "QCOM|高通|Qualcomm"}
 _RESULT = re.compile(r"財報|營收|EPS|earnings|results", re.I)
-_OUT = re.compile(r"超預期|超出|超越|優於|不如|低於預期|年增|季增|beats?\b|miss(?:es)?\b|tops?\b", re.I)
-_PREVIEW = re.compile(r"將公布|將於|今晚|今夜|明晚|明日|前瞻|即將|本週|下週|登場|預告|等待|(?<!優於)(?<!低於)(?<!不如)(?<!超)(?<!超出)(?:市場|分析師)預期|預估|料將|ahead of|preview|before earnings|will report", re.I)
+#: 和預期比較的說法本身就是結果;單純的年增、季增還要排除「預期」「預估」(那可能是預估值)。外審 PR #41
+_COMPARED = re.compile(r"超預期|超出|超越|優於|不如|低於|擊敗|\bbeats?\b|\bmiss(?:es)?\b|\btops?\b", re.I)
+_GROWTH = re.compile(r"年增|季增")
+_FORECAST = re.compile(r"預期|預估|料將|estimate", re.I)
+_FUTURE = re.compile(r"將公布|將於|今晚|今夜|明晚|明日|前瞻|即將|本週|下週|登場|預告|等待|ahead of|preview|before earnings|will report", re.I)
 
 
 def drop_reported_earnings(events: list, news: list, today: dt.date) -> list:
@@ -119,7 +122,8 @@ def drop_reported_earnings(events: list, news: list, today: dt.date) -> list:
         near = isinstance(ev.get("date"), dt.date) and ev["date"] <= today + dt.timedelta(days=1)
         if names and near and any(
                 re.search(rf"(?<![A-Za-z])(?:{names})(?![A-Za-z])", t) and _RESULT.search(t)
-                and _OUT.search(t) and not _PREVIEW.search(t)
+                and not _FUTURE.search(t)
+                and (_COMPARED.search(t) or (_GROWTH.search(t) and not _FORECAST.search(t)))
                 for t in (str(n.get("title") or "") for n in news or [])):
             continue
         out.append(ev)

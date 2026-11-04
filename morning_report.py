@@ -20270,7 +20270,7 @@ _TENNIS_SLAM_KEYS = ("australian open", "roland garros", "french open", "wimbled
 _TENNIS_M1000_KEYS = ("indian wells", "miami open", "monte", "madrid open", "italian open",
                       "rome", "national bank", "canadian open", "cincinnati",
                       "western & southern", "shanghai", "paris masters", "rolex paris",
-                      "masters 1000", "1000", "wuhan", "beijing", "china open", "dubai", "doha", "qatar")
+                      "masters 1000", "1000")
 
 
 def _tennis_tier(name: str) -> tuple:
@@ -20280,8 +20280,6 @@ def _tennis_tier(name: str) -> tuple:
         return (0, "大滿貫")
     if any(k in low for k in _TENNIS_M1000_KEYS):
         return (1, "1000 級")
-    if _polish.tennis_extra_tier(low):
-        return _polish.tennis_extra_tier(low)
     return (2, "")
 
 

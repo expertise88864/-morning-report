@@ -1615,7 +1615,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 if fin is None:
                     live_lines.extend(rs[-4:])          # 未見決賽:列最近 4 場
                     continue
-                if tour == "WTA" and not fin.get("tier"):   # 11-04 使用者:低級別 WTA 冠軍不列
+                from report_polish import notable_tennis
+                if tour == "WTA" and not fin.get("tier") and not notable_tennis(fin.get("event") or event):   # 11-04 使用者:低級別 WTA 冠軍不列
                     continue
                 tier = (f"<span style='color:#b45309;'>[{htmllib.escape(fin['tier'])}]</span> "
                         if fin.get("tier") else "")
@@ -1658,6 +1659,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             live_seg = "".join(live_parts)
             t_inner.append("".join(done_lines) + live_seg)
         if tennis.get("tournaments"):
+            from report_polish import notable_tennis as _notable_tennis
             # 進行中/即將開打的賽事:逐行列(原「|」串接一長行難讀,2026-07-16)
             seg = "".join(
                 f"<div style='font-size:12px;color:#475569;line-height:1.7;'>"
@@ -1665,7 +1667,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 + (f"<span style='color:#94a3b8;'>（{htmllib.escape(t['status'])}）</span>"
                    if t.get("status") else "")
                 + "</div>"
-                for t in ([x for x in tennis["tournaments"] if x.get("tier")] or tennis["tournaments"][:2])[:5])
+                for t in ([x for x in tennis["tournaments"] if x.get("tier") or _notable_tennis(x.get("name"))] or tennis["tournaments"][:2])[:5])
             t_inner.append(
                 f"<div style='font-size:12px;color:#475569;line-height:1.7;margin-top:4px;'>"
                 f"<b>進行中/即將</b>{seg}</div>")

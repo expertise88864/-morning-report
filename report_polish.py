@@ -57,16 +57,15 @@ def display_pass(html: str) -> str:
         return html
 
 
-_TENNIS_500 = ("brisbane", "abu dhabi", "adelaide", "linz", "charleston", "stuttgart", "queen's", "berlin",
-               "bad homburg", "eastbourne", "washington", "dc open", "seoul", "ningbo", "tokyo", "pan pacific",
-               "strasbourg", "monterrey", "merida", "mérida")
+#: 值得列出的賽事(WTA 1000、500 與年終賽)。不改 _tennis_tier 的級別標籤:同城市 ATP 級別常不同(外審 PR #41)。
+_TENNIS_NOTABLE = ("finals", "wuhan", "beijing", "china open", "dubai", "doha", "qatar", "brisbane", "abu dhabi", "adelaide",
+                   "linz", "charleston", "stuttgart", "queen's", "berlin", "bad homburg", "eastbourne", "washington",
+                   "dc open", "seoul", "ningbo", "tokyo", "pan pacific", "strasbourg", "monterrey", "merida", "mérida")
 
 
-def tennis_extra_tier(low_name: str) -> tuple | None:
-    """年終賽與 500 級也要認得:級別空白才會被當低級別不列(外審 PR #41)。"""
-    if "wta finals" in low_name or "atp finals" in low_name:
-        return (1, "年終賽")
-    return (2, "500 級") if any(k in low_name for k in _TENNIS_500) else None
+def notable_tennis(name) -> bool:
+    low = str(name or "").lower()
+    return any(k in low for k in _TENNIS_NOTABLE)
 
 
 def session_pct(closes: list) -> float | None:
@@ -106,8 +105,8 @@ _EARNINGS_NAMES = {"NVDA": "NVDA|輝達|NVIDIA", "AAPL": "AAPL|蘋果|Apple", "M
                    "AVGO": "AVGO|博通|Broadcom", "TSLA": "TSLA|特斯拉|Tesla", "AMD": "AMD|超微",
                    "GOOGL": "GOOGL|Alphabet|谷歌|Google", "META": "Meta", "MU": "美光|Micron", "QCOM": "QCOM|高通|Qualcomm"}
 _RESULT = re.compile(r"財報|營收|EPS|earnings|results", re.I)
-_OUT = re.compile(r"超預期|優於|不如預期|低於預期|年增|季增|beats?\b|miss(?:es)?\b|tops?\b", re.I)
-_PREVIEW = re.compile(r"將公布|將於|今晚|今夜|明晚|明日|前瞻|即將|本週|下週|登場|預告|等待|市場預期|分析師預期|預估|料將|ahead of|preview|before earnings|will report", re.I)
+_OUT = re.compile(r"超預期|超出|超越|優於|不如|低於預期|年增|季增|beats?\b|miss(?:es)?\b|tops?\b", re.I)
+_PREVIEW = re.compile(r"將公布|將於|今晚|今夜|明晚|明日|前瞻|即將|本週|下週|登場|預告|等待|(?<!優於)(?<!低於)(?<!不如)(?<!超)(?<!超出)(?:市場|分析師)預期|預估|料將|ahead of|preview|before earnings|will report", re.I)
 
 
 def drop_reported_earnings(events: list, news: list, today: dt.date) -> list:

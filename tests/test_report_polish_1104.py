@@ -128,7 +128,7 @@ def test_low_tier_wta_finals_and_minor_tournaments_stay_out():
     sports = {"tennis": {
         "results": [{**final, "event": "Queretaro Open", "tour": "WTA", "tier": ""},
                     {**final, "event": "Erste Bank Open", "tour": "ATP", "tier": ""},
-                    {**final, "event": "Wuhan Open", "tour": "WTA", "tier": "1000 級"}],
+                    {**final, "event": "Wuhan Open", "tour": "WTA", "tier": ""}],
         "tournaments": [{"name": "Rolex Paris Masters", "status": "進行中", "tier": "1000 級"},
                         {"name": "Reto Win Tennis Cali Open", "status": "進行中", "tier": ""}]},
         "nba_fixtures": [{"when": "11/05 08:00", "text": "A @ B"}]}
@@ -159,10 +159,18 @@ def test_sent_mail_is_renumbered_but_archive_and_recap_keep_internal_names(monke
     assert rp.display_pass(None) in ("", None)
 
 
-def test_real_tier_path_keeps_major_wta_events():
-    """外審 PR #41:級別由 _tennis_tier 判,武漢、年終賽不可因空白被當低級別。"""
+def test_notable_list_keeps_major_wta_without_touching_tier_labels():
+    """外審 PR #41:武漢、年終賽級別是空白,不可被當低級別;但同城市 ATP 的級別標籤不能動。"""
     import morning_report as mr
-    assert mr._tennis_tier("Wuhan Open")[1] == "1000 級"
-    assert mr._tennis_tier("WTA Finals")[1] == "年終賽"
-    assert mr._tennis_tier("Ningbo Open")[1] == "500 級"
-    assert mr._tennis_tier("Queretaro Open")[1] == "" and mr._tennis_tier("Reto Win Tennis Cali Open")[1] == ""
+    for name in ("Wuhan Open", "WTA Finals", "Nitto ATP Finals", "Ningbo Open"):
+        assert rp.notable_tennis(name), name
+    assert not rp.notable_tennis("Queretaro Open") and not rp.notable_tennis("Reto Win Tennis Cali Open")
+    assert mr._tennis_tier("Stuttgart Open") == (2, "") and mr._tennis_tier("Wuhan Open") == (2, "")
+
+
+def test_results_that_beat_expectations_are_not_previews():
+    """外審 PR #41:「優於市場預期」是結果,不是預告。"""
+    today = dtm.date(2026, 11, 4)
+    amd = {"date": today, "time": "盤後(美東)", "title": "AMD 財報"}
+    for done in ("AMD 財報營收年增40%,優於市場預期", "AMD 財報超出分析師預期", "超微財報不如市場預期 年增僅 5%"):
+        assert rp.drop_reported_earnings([amd], [{"title": done}], today) == [], done

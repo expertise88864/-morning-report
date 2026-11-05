@@ -64,6 +64,7 @@ import run_manifest as _rm
 import analysis_origin as _ao
 import legacy_actor_guard as _legacy_actor_guard
 import report_polish as _polish
+import market_fresh as _fresh
 import fallback_watch_gap as _fwg
 import run_quality as _rq
 import analysis_validate as _av
@@ -2647,7 +2648,8 @@ def fetch_macro_indicators() -> dict:
     out: dict[str, dict] = {}
     for name, sym in tickers.items():
         try:
-            d = yf.Ticker(sym).history(period="1y", auto_adjust=False)
+            _tk = yf.Ticker(sym)
+            d = _tk.history(period="1y", auto_adjust=False)
             d = d.dropna(subset=["Close"])
             d = d[d["Close"] > 0]
             if len(d) < 2:
@@ -2655,6 +2657,7 @@ def fetch_macro_indicators() -> dict:
                 continue
             close = safe_float(d.iloc[-1]["Close"])
             prev  = safe_float(d.iloc[-2]["Close"])
+            close, prev = _fresh.latest_close(name, _tk, d, close, prev) if name in _fresh.ASIA else (close, prev)
             pct = ((close - prev) / prev * 100) if prev else None
 
             # 歷史百分位 (252 日)
@@ -2698,7 +2701,7 @@ def fetch_macro_indicators() -> dict:
     except Exception as e:
         print(f"[macro] VIX 期限結構計算失敗: {e}", file=sys.stderr)
 
-    return out
+    return _fresh.with_official_fx(out, _http_get)
 
 
 def _world_evidence_signals(macro: dict, spy: Optional[dict] = None) -> list:
@@ -22402,7 +22405,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {_polish.taiex_card_text(taiex_pred, quotes.get('TAIEX_SESSION_PCT'))}成交金額 <b>{breadth.get('total_value_yi',0):,.0f} 億</b>　｜
             上漲 <b style="color:#dc2626;">{adv}</b> 檔・下跌 <b style="color:#16a34a;">{dec}</b> 檔・平盤 {unch} 檔　|
             上漲佔比 <b style="color:{b_color};">{adv_ratio:.1f}%</b>
-            <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>
+            <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>{_fresh.margin_card_text(quotes.get("MARGIN"))}
           </div>
         </div>
         """

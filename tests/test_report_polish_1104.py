@@ -235,3 +235,14 @@ def test_nba_results_and_fixtures_are_capped_at_eight():
     out = ru._render_sports_html(sports, htmllib)
     assert "R14A" in out and "R07A" in out and "R06A" not in out
     assert "F00A" in out and "F07A" in out and "F08A" not in out
+
+
+def test_minor_only_tennis_week_does_not_fall_back_to_listing_them():
+    """外審 PR #42:只有小型賽事時,不可由 fallback 放回「進行中」。"""
+    import html as htmllib
+    import render_utils as ru
+    out = ru._render_sports_html({"tennis": {"results": [], "tournaments": [
+        {"name": "Reto Win Tennis Cali Open", "status": "進行中", "tier": ""}]},
+        "nba_offseason": "休賽季"}, htmllib)
+    assert "Cali" not in out and "進行中/即將" not in out
+    assert "網球" not in out      # 不留空標題

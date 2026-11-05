@@ -1658,8 +1658,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                     + ev_note + "</div>")
             live_seg = "".join(live_parts)
             t_inner.append("".join(done_lines) + live_seg)
-        if tennis.get("tournaments"):
-            from report_polish import notable_tennis as _notable_tennis
+        from report_polish import notable_tennis as _notable_tennis
+        # 11-05 外審 PR #42:沒有值得列的賽事就整行不顯示,不退回小型賽事
+        _shown_events = [x for x in tennis.get("tournaments") or [] if x.get("tier") or _notable_tennis(x.get("name"))][:5]
+        if _shown_events:
             # 進行中/即將開打的賽事:逐行列(原「|」串接一長行難讀,2026-07-16)
             seg = "".join(
                 f"<div style='font-size:12px;color:#475569;line-height:1.7;'>"
@@ -1667,16 +1669,17 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 + (f"<span style='color:#94a3b8;'>（{htmllib.escape(t['status'])}）</span>"
                    if t.get("status") else "")
                 + "</div>"
-                for t in ([x for x in tennis["tournaments"] if x.get("tier") or _notable_tennis(x.get("name"))] or tennis["tournaments"][:2])[:5])
+                for t in _shown_events)
             t_inner.append(
                 f"<div style='font-size:12px;color:#475569;line-height:1.7;margin-top:4px;'>"
                 f"<b>進行中/即將</b>{seg}</div>")
         if poly.get("tennis_m") or poly.get("tennis_w"):
             t_inner.append(_tennis_poly_div(poly, _poly_line))
-        _mark("網球")
-        _add(
-            "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
-            + "".join(t_inner) + "</div>")
+        if any(t_inner):   # 全被濾掉時不留空標題
+            _mark("網球")
+            _add(
+                "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
+                + "".join(t_inner) + "</div>")
     elif poly.get("tennis_m") or poly.get("tennis_w"):
         # ESPN 網球資料掛掉但 Polymarket 活著 → 冠軍盤獨立渲染(Codex review 批#9)
         _mark("網球")

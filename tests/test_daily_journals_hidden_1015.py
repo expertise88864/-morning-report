@@ -9,14 +9,14 @@ import inspect
 import morning_report as mr
 
 
-def test_daily_report_neither_fetches_nor_translates_journals():
-    assert mr.DAILY_MEDICAL_JOURNALS is False
+def test_daily_journal_fetch_stays_behind_the_switch():
+    # 2026-11-05 使用者恢復平日顯示;開關留著,關閉時仍不抓也不付費翻譯。
     src = inspect.getsource(mr)
     call = 'quotes["MEDICAL_JOURNALS"] = (translate_journal_titles('
     assert src.count(call) == 1
     i = src.index(call)
     # The fetch is evaluated only when the flag is on; otherwise an empty list.
-    assert "fetch_medical_journal_articles()) if DAILY_MEDICAL_JOURNALS else [])" in src[i:i + 200]
+    assert "fetch_medical_journal_articles(per_journal=2)) if DAILY_MEDICAL_JOURNALS else [])" in src[i:i + 200]
 
 
 def test_empty_journals_render_no_section():

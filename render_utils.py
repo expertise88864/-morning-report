@@ -1610,13 +1610,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             done_lines, live_lines = [], []
             for (event, tour), rs in by_event.items():
                 rs.sort(key=lambda r: str(r.get("date", "")))
+                from report_polish import notable_tennis
+                if tour == "WTA" and not rs[-1].get("tier") and not notable_tennis(rs[-1].get("event") or event):
+                    continue   # 11-04 使用者:低級別 WTA(決賽或進行中)不列
                 fin = next((r for r in reversed(rs)
                             if str(r.get("round") or "") == "Final"), None)
                 if fin is None:
                     live_lines.extend(rs[-4:])          # 未見決賽:列最近 4 場
-                    continue
-                from report_polish import notable_tennis
-                if tour == "WTA" and not fin.get("tier") and not notable_tennis(fin.get("event") or event):   # 11-04 使用者:低級別 WTA 冠軍不列
                     continue
                 tier = (f"<span style='color:#b45309;'>[{htmllib.escape(fin['tier'])}]</span> "
                         if fin.get("tier") else "")

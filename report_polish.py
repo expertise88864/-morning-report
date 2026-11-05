@@ -68,28 +68,38 @@ def notable_tennis(name) -> bool:
     return any(k in low for k in _TENNIS_NOTABLE)
 
 
-def session_pct(closes: list) -> float | None:
-    """最近兩個收盤算漲跌幅;台股單日上限 10%,超出視為資料有誤。"""
+def twse_session_pct(get, expected_close=None) -> float | None:
+    """上一交易日加權漲跌,用證交所官方的漲跌點數。不能拿 Yahoo 歷史的最後兩筆算:Yahoo 少一天時
+    最後一筆會被改成證交所收盤,前一筆就差了兩天(11-05 實信:-0.83% 寫成 -4.39%)。
+    查不到或收盤對不上就回 None,廣度卡不顯示。"""
     try:
-        prev, last = float(closes[-2]), float(closes[-1])
-        pct = (last - prev) / prev * 100
-    except (IndexError, TypeError, ValueError, ZeroDivisionError):
+        response = get("https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK", timeout=15,
+                       headers={"User-Agent": "Mozilla/5.0"})
+        response.raise_for_status()
+        row = response.json()[-1]
+        close = float(str(row["TAIEX"]).replace(",", ""))
+        change = float(str(row["Change"]).replace(",", "").replace("+", ""))
+        if expected_close and abs(close - float(expected_close)) / close > 0.005:
+            return None
+        pct = change / (close - change) * 100
+    except Exception as exc:  # noqa: BLE001 - 少一個數字不可讓晨報斷
+        print(f"[report-polish] 加權漲跌查詢失敗: {type(exc).__name__}", flush=True)
         return None
     return round(pct, 2) if abs(pct) <= 11 else None
 
 
-def taiex_card_text(pred: dict | None) -> str:
+def taiex_card_text(pred: dict | None, pct: float | None) -> str:
     """廣度卡第一句:昨日加權收盤與漲跌(實信:跌 3.6% 的隔天,信裡找不到這個數字)。"""
-    pct, close = (pred or {}).get("last_session_pct"), (pred or {}).get("last_close")
+    close = (pred or {}).get("last_close")
     if pct is None or not close:
         return ""
     color = "#dc2626" if pct > 0 else "#16a34a" if pct < 0 else "#64748b"
     return f'加權指數 <b>{close:,.0f}</b> <b style="color:{color};">{pct:+.2f}%</b>　｜ '
 
 
-def big_move_rule(pred: dict | None, breadth: dict | None) -> str:
+def big_move_rule(pct: float | None, breadth: dict | None) -> str:
     """大波動日才加的寫稿規則:結論要交代,不可淡化。門檻由 Python 判,不交給模型。"""
-    pct, ratio = (pred or {}).get("last_session_pct"), (breadth or {}).get("advance_ratio")
+    ratio = (breadth or {}).get("advance_ratio")
     big = (pct is not None and abs(pct) >= 2) or (ratio is not None and (ratio <= 20 or ratio >= 80))
     if not big:
         return ""

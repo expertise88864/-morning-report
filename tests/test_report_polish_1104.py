@@ -55,16 +55,39 @@ def test_display_pass_renumbers_scrubs_and_adds_the_grade_note():
     assert out.index("六、科技") < out.index("A 級＝") < out.index("<p>x</p>")
 
 
+class _Twse:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self.rows
+
+
+def test_session_change_comes_from_twse_not_from_yahoo_rows():
+    """11-05 實信:跌 358.63 點(-0.83%)被寫成 -4.39%,因為 Yahoo 少了 11/03 那一筆。"""
+    rows = [{"TAIEX": "43307.54", "Change": "-1612.60"}, {"TAIEX": "42948.91", "Change": "-358.63"}]
+    get = lambda *a, **k: _Twse(rows)   # noqa: E731
+    assert rp.twse_session_pct(get) == -0.83
+    assert rp.twse_session_pct(get, 42948.91) == -0.83
+    assert rp.twse_session_pct(get, 43307.54) is None           # 收盤對不上:寧可不顯示
+    assert rp.twse_session_pct(lambda *a, **k: _Twse([])) is None
+    assert rp.twse_session_pct(lambda *a, **k: 1 / 0) is None
+    up = [{"TAIEX": "43,000.00", "Change": "+430.00"}]
+    assert rp.twse_session_pct(lambda *a, **k: _Twse(up)) == 1.01
+
+
 def test_big_move_is_on_the_card_and_in_the_prompt_only_when_big():
-    assert rp.session_pct([44920.14, 43307.54]) == -3.59
-    assert rp.session_pct([100, 200]) is None and rp.session_pct([1]) is None
-    pred = {"last_close": 43307.54, "last_session_pct": -3.59}
-    assert "-3.59%" in rp.taiex_card_text(pred) and rp.taiex_card_text({}) == ""
-    rule = rp.big_move_rule(pred, {"advance_ratio": 5.5})
+    pred = {"last_close": 43307.54}
+    assert "-3.59%" in rp.taiex_card_text(pred, -3.59) and rp.taiex_card_text({}, -3.59) == ""
+    assert rp.taiex_card_text(pred, None) == ""
+    rule = rp.big_move_rule(-3.59, {"advance_ratio": 5.5})
     assert "加權 -3.59%" in rule and "上漲佔比 5.5%" in rule and "不是全面崩潰" in rule
-    assert rp.big_move_rule({"last_session_pct": -0.5}, {"advance_ratio": 47}) == ""
-    assert "上漲佔比 15.0%" in rp.big_move_rule({}, {"advance_ratio": 15})
-    assert "加權 +2.10%" in rp.big_move_rule({"last_session_pct": 2.1}, {})
+    assert rp.big_move_rule(-0.83, {"advance_ratio": 39.9}) == ""     # 11-05 那天不該觸發
+    assert "上漲佔比 15.0%" in rp.big_move_rule(None, {"advance_ratio": 15})
+    assert "加權 +2.10%" in rp.big_move_rule(2.1, {})
 
 
 def test_previous_mail_filters_repeated_news_but_not_new_developments(tmp_path):
@@ -128,7 +151,9 @@ def test_low_tier_wta_finals_and_minor_tournaments_stay_out():
     sports = {"tennis": {
         "results": [{**final, "event": "Queretaro Open", "tour": "WTA", "tier": ""},
                     {**final, "event": "Erste Bank Open", "tour": "ATP", "tier": ""},
-                    {**final, "event": "Wuhan Open", "tour": "WTA", "tier": ""}],
+                    {**final, "event": "Wuhan Open", "tour": "WTA", "tier": ""},
+                    {"round": "2nd Round", "date": "11/05", "winner": "C", "loser": "D", "score": "6-1",
+                     "event": "Reto Win Tennis Cali Open", "tour": "WTA", "tier": ""}],
         "tournaments": [{"name": "Rolex Paris Masters", "status": "進行中", "tier": "1000 級"},
                         {"name": "Reto Win Tennis Cali Open", "status": "進行中", "tier": ""}]},
         "nba_fixtures": [{"when": "11/05 08:00", "text": "A @ B"}]}
@@ -181,3 +206,21 @@ def test_results_that_beat_expectations_are_not_previews():
                     "分析師預估 AMD 財報將優於市場預期", "AMD 財報有望優於市場預期", "analysts expect AMD earnings to beat",
                     "分析師預估 AMD 財報營收符合預期,EPS優於市場預期", "分析師預估:AMD 財報優於市場預期"):
         assert rp.drop_reported_earnings([amd], [{"title": pending}], today) == [amd], pending
+
+
+def test_daily_journals_are_back_and_compact_weekend_stays_full():
+    """11-05 使用者:加回皮膚科/眼科期刊。平日每本 2 篇、只留中文,放得下才看得到;週日信維持完整。"""
+    import html
+    import inspect
+    import morning_report as mr
+    assert mr.DAILY_MEDICAL_JOURNALS is True
+    arts = [{"journal": "JAAD", "pmid": "1", "title": "Ruxolitinib cream in children", "zh": "兒童使用 ruxolitinib 乳膏"},
+            {"journal": "AJO", "pmid": "2", "title": "Myopia control", "zh": "近視控制"}]
+    compact = mr._render_journals_html(arts, html, True)
+    full = mr._render_journals_html(arts, html)
+    assert "兒童使用" in compact and "近視控制" in compact and "Ruxolitinib" not in compact
+    assert "Ruxolitinib" in full and "pubmed.ncbi.nlm.nih.gov/1/" in compact
+    src = inspect.getsource(mr)
+    assert "fetch_medical_journal_articles(per_journal=2)" in src
+    assert "journals = translate_journal_titles(fetch_medical_journal_articles())" in src   # 週日信照舊
+    assert 'quotes.get("MEDICAL_JOURNALS") or [], _htmllib, True)' in src

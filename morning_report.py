@@ -5326,7 +5326,6 @@ def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
 
     return {
         "last_close": round(last_close, 2),
-        "last_session_pct": _polish.session_pct(taiex_hist["Close"].tail(2).tolist()),
         "signals": [{"name": n, "value": round(v, 2), "weight": w} for n, v, w in signals],
         "raw_weighted_pct": round(raw_weighted_pct, 2),
         "weighted_pct": round(weighted_pct, 2),
@@ -11605,7 +11604,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             f"  上漲家數佔比: {breadth.get('advance_ratio',0):.1f}%"
             f"（{breadth.get('breadth_state','neutral')}）\n"
             f"  ※ ≥ 60% 普漲、≤ 40% 普跌;若指數漲但廣度低 = 少數權值股撐盤,健康度差。"
-            + _polish.big_move_rule(quotes.get("TAIEX_PRED"), breadth)
+            + _polish.big_move_rule(quotes.get("TAIEX_SESSION_PCT"), breadth)
         )
     else:
         breadth_block = "（大盤廣度資料抓取失敗）"
@@ -16095,7 +16094,7 @@ MEDICAL_JOURNALS = [
     ("NEJM", "N Engl J Med"),
     ("AJO", "Am J Ophthalmol"),
 ]
-DAILY_MEDICAL_JOURNALS = False  # 使用者 10/15:平日晨報先隱藏(Gmail 剪信);週末信照舊
+DAILY_MEDICAL_JOURNALS = True  # 使用者 11-05 恢復(10/15 曾為 Gmail 剪信隱藏):平日精簡版,週末信完整版
 
 
 def fetch_medical_journal_articles(per_journal: int = 3) -> list[dict]:
@@ -16161,7 +16160,7 @@ def translate_journal_titles(articles: list[dict]) -> list[dict]:
     return articles
 
 
-def _render_journals_html(articles: list[dict], htmllib) -> str:
+def _render_journals_html(articles: list[dict], htmllib, compact: bool = False) -> str:
     if not articles:
         return ""
     by_journal: dict[str, list] = {}
@@ -16178,7 +16177,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
             f"style='color:#0f172a;text-decoration:none;'>"
             f"{htmllib.escape(a.get('zh') or a['title'])}</a>"
             + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(a['title'])}</div>"
-               if a.get("zh") else "")
+               if a.get("zh") and not compact else "")   # 平日精簡:只留中文標題,英文點連結看
             + "</li>"
             for a in arts)
         blocks.append(f"<div style='margin:8px 0;'><b style='color:#7c2d12;'>{short}</b>"
@@ -21863,7 +21862,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     event_timeline_html = ""  # Hide display only; cross-day tracking remains active.
     tw_calendar_html = ""  # Reader preference; collection and quality checks remain.
     journals_html = _safe_block("醫學文獻", _render_journals_html,
-                                quotes.get("MEDICAL_JOURNALS") or [], _htmllib)
+                                quotes.get("MEDICAL_JOURNALS") or [], _htmllib, True)
     weekly_recap_html = ""   # 2026-11-02 使用者:本週預測回顧改到週日信(見 run_weekend_digest)
     model_evidence_html = _safe_block("模型實證", _render_model_evidence_html, quotes)
 
@@ -22400,7 +22399,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <div style="background:#f1f5f9;border-radius:10px;padding:14px 18px;margin:12px 0;">
           <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:6px;">大盤成交額與市場廣度{_lts_label}</div>
           <div style="font-size:14px;color:#0f172a;line-height:1.7;">
-            {_polish.taiex_card_text(taiex_pred)}成交金額 <b>{breadth.get('total_value_yi',0):,.0f} 億</b>　｜
+            {_polish.taiex_card_text(taiex_pred, quotes.get('TAIEX_SESSION_PCT'))}成交金額 <b>{breadth.get('total_value_yi',0):,.0f} 億</b>　｜
             上漲 <b style="color:#dc2626;">{adv}</b> 檔・下跌 <b style="color:#16a34a;">{dec}</b> 檔・平盤 {unch} 檔　|
             上漲佔比 <b style="color:{b_color};">{adv_ratio:.1f}%</b>
             <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>
@@ -24681,9 +24680,9 @@ def _phase_news_policy_sports(ctx) -> None:
     except Exception as e:
         print(f"[main] 台股行事曆失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["TW_CALENDAR"] = {}
-    try:  # 隱藏時不抓也不付費翻譯(見 DAILY_MEDICAL_JOURNALS)
+    try:  # 關閉時不抓也不付費翻譯(見 DAILY_MEDICAL_JOURNALS)
         quotes["MEDICAL_JOURNALS"] = (translate_journal_titles(
-            fetch_medical_journal_articles()) if DAILY_MEDICAL_JOURNALS else [])
+            fetch_medical_journal_articles(per_journal=2)) if DAILY_MEDICAL_JOURNALS else [])
     except Exception as e:
         print(f"[main] 醫學文獻抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["MEDICAL_JOURNALS"] = []
@@ -24786,6 +24785,7 @@ def _phase_taifex_and_chips(ctx) -> None:
     try:
         taiex_hist = fetch_taiex_history()
         twse_taiex_close = fetch_twse_taiex_close()
+        quotes["TAIEX_SESSION_PCT"] = _polish.twse_session_pct(_http_get, twse_taiex_close)
         if twse_taiex_close and taiex_hist is not None and not taiex_hist.empty:
             yahoo_last = safe_float(taiex_hist.iloc[-1]["Close"]) or 0
             if yahoo_last and abs(twse_taiex_close - yahoo_last) / twse_taiex_close > 0.003:

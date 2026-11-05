@@ -224,3 +224,14 @@ def test_daily_journals_are_back_and_compact_weekend_stays_full():
     assert "fetch_medical_journal_articles(per_journal=2)" in src
     assert "journals = translate_journal_titles(fetch_medical_journal_articles())" in src   # 週日信照舊
     assert 'quotes.get("MEDICAL_JOURNALS") or [], _htmllib, True)' in src
+
+
+def test_nba_results_and_fixtures_are_capped_at_eight():
+    """11-05 使用者:賽果留最新 8 場、賽程留最近 8 場。"""
+    import html as htmllib
+    import render_utils as ru
+    sports = {"nba": [{"date": f"11/03 {i:02d}:00", "text": f"R{i:02d}A 1:2 R{i:02d}B", "note": "例行賽"} for i in range(15)],
+              "nba_fixtures": [{"when": f"11/05 {i:02d}:00", "text": f"F{i:02d}A @ F{i:02d}B"} for i in range(10)]}
+    out = ru._render_sports_html(sports, htmllib)
+    assert "R14A" in out and "R07A" in out and "R06A" not in out
+    assert "F00A" in out and "F07A" in out and "F08A" not in out

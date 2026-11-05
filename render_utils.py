@@ -1470,7 +1470,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(g['note'])}</div>"
                if g.get("note") else "")
             + "</div>"
-            for g in nba)
+            for g in nba[-8:])   # 11-05 使用者:賽果最多 8 場,留最新的
         _mark("NBA")
         _add(
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 最新賽況（台北時間）</b>{rows}"
@@ -1504,7 +1504,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
                f"{htmllib.escape(_nba_zh(str(g.get('odds', ''))))}</div>" if g.get("odds") else "")
             + "</div>"
-            for g in nba_fixtures)
+            for g in nba_fixtures[:8])   # 11-05 使用者:賽程最多 8 場,留最近的
         _mark("NBA")
         _add(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 近期賽程（台北時間）</b>"

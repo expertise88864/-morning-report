@@ -12030,7 +12030,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 - QQQ：{_qqq_s}
 - TSM (台積電 ADR，**美元計價，1 ADR≈5 股台積電；這不是 2330 的新台幣股價**)：{_tsm_s}
 - SPY：{_spy_s}
-- USD/TWD：今 {quotes.get('USDTWD')} / 昨 {quotes.get('USDTWD_prev')}
+- USD/TWD：今 {_fresh.fx_for_prompt(quotes)[0]} / 昨 {_fresh.fx_for_prompt(quotes)[1]}
 
 【總經指標（昨日收盤值、變動%、252 日歷史百分位）】
 {macro_block}
@@ -22405,7 +22405,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {_polish.taiex_card_text(taiex_pred, quotes.get('TAIEX_SESSION_PCT'))}成交金額 <b>{breadth.get('total_value_yi',0):,.0f} 億</b>　｜
             上漲 <b style="color:#dc2626;">{adv}</b> 檔・下跌 <b style="color:#16a34a;">{dec}</b> 檔・平盤 {unch} 檔　|
             上漲佔比 <b style="color:{b_color};">{adv_ratio:.1f}%</b>
-            <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>{_fresh.margin_card_text(quotes.get("MARGIN"))}
+            <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>{_fresh.margin_card_text(quotes.get("MARGIN"), quotes.get("LAST_TRADING_SESSION"))}
           </div>
         </div>
         """

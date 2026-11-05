@@ -78,7 +78,11 @@ def test_stale_broken_or_absurd_fx_keeps_yahoo():
     today = dtm.date(2026, 11, 5)
     stale = [{"Date": "20261020", "USD/NTD": "32.1"}, {"Date": "20261021", "USD/NTD": "32.2"}]
     absurd = [{"Date": "20261103", "USD/NTD": "32.76"}, {"Date": "20261104", "USD/NTD": "3.28"}]
-    for get in (lambda *a, **k: _Resp(stale), lambda *a, **k: _Resp(absurd), lambda *a, **k: _Resp(_FX[:1]),
+    nan = [{"Date": "20261103", "USD/NTD": "32.76"}, {"Date": "20261104", "USD/NTD": "NaN"}]      # 外審 PR #43
+    nan_prev = [{"Date": "20261103", "USD/NTD": "NaN"}, {"Date": "20261104", "USD/NTD": "32.82"}]
+    zero = [{"Date": "20261103", "USD/NTD": "0"}, {"Date": "20261104", "USD/NTD": "32.82"}]
+    for get in (lambda *a, **k: _Resp(nan), lambda *a, **k: _Resp(nan_prev), lambda *a, **k: _Resp(zero),
+                lambda *a, **k: _Resp(stale), lambda *a, **k: _Resp(absurd), lambda *a, **k: _Resp(_FX[:1]),
                 lambda *a, **k: _Resp([]), lambda *a, **k: 1 / 0):
         assert mf.with_official_fx(_macro(), get, today)["USDTWD"]["close"] == 32.85
 
@@ -92,6 +96,9 @@ def test_margin_is_on_the_breadth_card():
     text = mf.margin_card_text({"margin_balance_100m_twd": 6234.7, "margin_change_100m_twd": -104.4})
     assert "6,234.7 億" in text and "-104.4 億" in text
     assert mf.margin_card_text({"margin_balance_100m_twd": 6234.7}).endswith("億</b>")
+    same = {"margin_balance_100m_twd": 6234.7, "date": "2026/10/30"}
+    assert "資料）" not in mf.margin_card_text(same, "2026-10-30")
+    assert "（10/30 資料）" in mf.margin_card_text(same, "2026-11-03")    # 外審 PR #43:退回舊資料要標日期
     assert mf.margin_card_text({}) == "" and mf.margin_card_text(None) == ""
 
 
@@ -125,3 +132,17 @@ def test_breadth_card_shows_margin_when_rendered():
     quotes["MARGIN"] = {"margin_balance_100m_twd": 6234.7, "margin_change_100m_twd": -104.4}
     out = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "## 分析\n保留", "2026-11-05", "每日報")
     assert "融資餘額" in out and "6,234.7 億" in out and "-104.4 億" in out
+
+
+def test_prompt_quotes_official_fx_but_forecast_input_is_untouched():
+    """外審 PR #43:信上顯示官方匯率,分析卻還在引用 Yahoo。預測用的 quotes["USDTWD"] 不能動。"""
+    from test_deepseek_legacy_golden import legacy_prompt_inputs
+    args = list(legacy_prompt_inputs())
+    quotes = {**args[0], "USDTWD": 32.85, "USDTWD_prev": 32.585,
+              "MACRO": {**(args[0].get("MACRO") or {}),
+                        "USDTWD": {"close": 32.821, "prev_close": 32.76, "source": "TAIFEX"}}}
+    args[0] = quotes
+    assert "USD/TWD：今 32.821 / 昨 32.76" in mr._build_prompt(*args)
+    assert quotes["USDTWD"] == 32.85 and quotes["USDTWD_prev"] == 32.585
+    assert mf.fx_for_prompt({"USDTWD": 32.85, "USDTWD_prev": 32.585, "MACRO": {"USDTWD": {"close": 32.9}}}) == (32.85, 32.585)
+    assert mf.fx_for_prompt({"USDTWD": 32.85, "USDTWD_prev": None}) == (32.85, None)

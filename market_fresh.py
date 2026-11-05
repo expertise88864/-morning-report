@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 from zoneinfo import ZoneInfo
 
 #: 美股收盤後才跑,只有亞股會遇到日線少一天。
@@ -43,6 +44,9 @@ def with_official_fx(macro: dict, get, today: dt.date | None = None) -> dict:
         last, before = rows[-1], rows[-2]
         close, prev = float(last["USD/NTD"]), float(before["USD/NTD"])
         day = dt.datetime.strptime(last["Date"], "%Y%m%d").date()
+        if not (math.isfinite(close) and math.isfinite(prev) and close > 0 and prev > 0):
+            print(f"[macro-fresh] 期交所匯率不合理: {day} {close}/{prev}", flush=True)
+            return macro
         pct = (close - prev) / prev * 100
         if (today - day).days > _FX_MAX_AGE_DAYS or day > today or abs(pct) > 5:
             print(f"[macro-fresh] 期交所匯率不採用: {day} {close}", flush=True)
@@ -57,10 +61,20 @@ def with_official_fx(macro: dict, get, today: dt.date | None = None) -> dict:
     return macro
 
 
-def margin_card_text(margin: dict | None) -> str:
-    """廣度卡固定顯示大盤融資餘額(先前只給模型,沒提到信裡就看不到)。"""
+def fx_for_prompt(quotes: dict) -> tuple:
+    """分析要引用的 USD/TWD:總經列採用官方時用官方,否則維持原值。預測與公允價不經過這裡。"""
+    row = (quotes.get("MACRO") or {}).get("USDTWD") or {}
+    if row.get("source") == "TAIFEX":
+        return row.get("close"), row.get("prev_close")
+    return quotes.get("USDTWD"), quotes.get("USDTWD_prev")
+
+
+def margin_card_text(margin: dict | None, session: str = "") -> str:
+    """廣度卡固定顯示大盤融資餘額(先前只給模型,沒提到信裡就看不到)。
+    融資資料查不到會往前退:日期和卡片的上一交易日不同時要標出來(外審 PR #43)。"""
     balance = (margin or {}).get("margin_balance_100m_twd")
     if not balance:
         return ""
-    change = (margin or {}).get("margin_change_100m_twd")
-    return f"　｜ 融資餘額 <b>{balance:,.1f} 億</b>" + (f"（{change:+,.1f} 億）" if change is not None else "")
+    change, day = margin.get("margin_change_100m_twd"), str(margin.get("date") or "").replace("/", "-")
+    label = f"（{day[5:].replace('-', '/')} 資料）" if day and day != str(session or "") else ""
+    return f"　｜ 融資餘額{label} <b>{balance:,.1f} 億</b>" + (f"（{change:+,.1f} 億）" if change is not None else "")

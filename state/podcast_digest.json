@@ -941,6 +941,93 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2432375685",
+        "title": "2026/11/5(四)川普大潰敗 藍潮反撲!為什麼選完 費半還在跌?現在該停損 還是加碼?【早晨財經速解讀】",
+        "published": "Thu, 05 Nov 2026 01:09:03 +0000",
+        "processed_at": "2026-11-05T09:01:53Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為民主黨橫掃國會後，AI 仍會發展但速度可能放慢，硬體股下跌屬估值回調而非 AI 受創，無需過度擔心。",
+            "主持人指出德州變天可能使當地資料中心建置放緩，因民主黨州長要求配套措施，但只是時間拉長，訂單仍緊繃不致供過於求。",
+            "主持人解讀分裂國會歷史：過去13次分裂國會未來一年標普從未負報酬，平均近17%，認為分裂國會反而是政策穩定性利多。",
+            "主持人認為川普減稅不會被取消（有否決權），但雙方各取所需下財政支出仍可能增長，美債赤字長期惡化，不宜幻想殖利率大幅下滑。",
+            "主持人從出口民調指出65%選民認為關稅傷害美國經濟，只有22%認為有幫助，關稅政策可能受制，但台美貿易仍待觀察。"
+          ],
+          "tickers": [
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人解讀選後監管可能放緩科技巨頭 AI 資本支出惡化，自由現金流優化，帶動亞馬遜等大型科技股上漲。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人觀察記憶體股因市場擔憂德州資料中心放緩而大跌，但他認為是估值回調而非 AI 受創，訂單仍緊繃。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "威騰電子",
+              "code": "WDC",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人提到威騰隨記憶體股同步下跌，同樣視為市場反映資料中心建置放緩疑慮的估值回調。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為馬斯克政治押注失利使德州監管風險上升，可能影響 FSD 與 SpaceX 發展，但衝擊不至於太離譜。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為分裂國會歷史上對股市穩定有利，平均未來一年標普漲近17%；此次硬體股修正屬估值回調而非 AI 重創，大盤反彈不需過度擔心。",
+          "action_view": "操作上宜以估值回調看待硬體股與記憶體，不需恐慌；留意德州資料中心放緩是否只是時間拉長，而非訂單消失。",
+          "notable_quote": "如果是,那就不用特別擔心了,那就是單純的估值回調,那只是見得慢一點,而並不是AI受到了重創。",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "如果是,那就不用特別擔心了,那就是單純的估值回調,那只是見得慢一點,而並不是AI受到了重創。"
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 4,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2431834893",
         "title": "2026/11/4(三)這波融資 殺夠了嗎?晶片股反攻 現在該停損 還是加碼?【早晨財經速解讀】",
         "published": "Wed, 04 Nov 2026 01:06:49 +0000",
@@ -1713,109 +1800,6 @@
           }
         },
         "shown_at": "2026-10-20T22:40:29Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2421633024",
-        "title": "2026/10/19(一)費半又入熊市!買點到了嗎?AI行情結束了?還是Q4最大買點?【早晨財經速解讀】",
-        "published": "Mon, 19 Oct 2026 01:03:45 +0000",
-        "processed_at": "2026-10-19T07:01:24Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為本波不是系統性危機而是估值修正：標普/納指相對抗跌、費半自高點回檔約兩成進入技術熊市但年初仍是牛市；股市急跌使Polymarket對聯準會10月升息機率從原本升息預期降至僅14%，他認為用股價回調換利率平穩『划算』。",
-            "主持人指出賣壓集中在費半與小型股，羅素2000跌破年線，高收益債信用利差創六個月新高，小型股因依賴外部融資跌幅更危險；費半雖自高點回檔約兩成，但本業仍有獲利支撐，不全然相同。",
-            "主持人以記憶體/儲存股為例：美光單週跌14.6%、SK海力士ADR跌16%，三星P/B 1.2倍、SK海力士P/B 0.9倍估值並不高；他認為從2月看只是漲多休息，提醒不要因短期波動被洗出場。",
-            "主持人比較台韓股市：韓股單週暴跌約兩成，外資連8日賣超韓科技股116億美元，且三星/SK海力士回購力道減半是接盤轉弱關鍵；台股內資買盤較強、外資賣超但台股跌幅僅3%，他認為台股相對健康。",
-            "主持人警示通膨與債市信用壓力：9月PPI月增1.3%為2022年3月來最大，能源外溢使企業利潤遭壓縮；CoreWeave垃圾債殖利率飆至約15%、CDS隱含5年違約機率63%，Oracle 10-12年債殖利率8.5%，他認為股市下跌只能短期緩解，長期需靠AI生產力提升與債市擔憂解除。",
-            "主持人操作定調為『危機是機會』：他認為台股週一可能開低走高，財富在下跌時佈局；多數人看對趨勢卻死在波動，勿追高、勿用槓桿飆車，長期AI趨勢未變。"
-          ],
-          "tickers": [
-            {
-              "name": "Micron",
-              "code": "MU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為美光單週跌14.6%是漲多回檔，從2月看只是休息，非基本面轉差。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "Western Digital",
-              "code": "WDC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "同屬記憶體/儲存類股，主持人認為高檔回落但從2月看只是休息。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "Seagate",
-              "code": "STX",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "同屬記憶體/儲存類股，主持人認為高檔回落但從2月看只是休息。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "SanDisk",
-              "code": "SNDK",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "同屬記憶體/儲存類股，主持人認為高檔回落但從2月看只是休息。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "從2月看到現在,你不覺得好像就是休息一下嗎?",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "iShares MSCI South Korea ETF",
-              "code": "EWY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人指出韓國股市回購力道減半、外資賣超，接盤力道弱於台股，ETF測試年線。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "韓國股市先前有三星和SK海力士的高強度的企業的積極回購,可是上禮拜它的回購幅度只有一半喔",
-                "direction": "bearish"
-              }
-            }
-          ],
-          "market_view": "主持人認為本波是估值修正而非全面系統性危機，賣壓集中在費半、小型股與韓國記憶體股；股市急跌使10月升息機率下滑，他視為以股價回調換取利率空間，中長期仍看AI趨勢。",
-          "action_view": "操作上定調『危機是機會』：不要因短期波動被洗出場，下跌時佈局；台股週一可能開低走高，勿追高，槓桿僅用於超車而非飆車。",
-          "notable_quote": "下跌的時候沒有小麥,上漲的時候你也不會有小麥,市場不會因為我們害怕就停止下跌,也不會因為我們猶豫就等著我們上車",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "下跌的時候沒有小麥,上漲的時候你也不會有小麥,市場不會因為我們害怕就停止下跌,也不會因為我們猶豫就等著我們上車"
-          },
-          "direction_quality": {
-            "attributed": 5,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-19T22:28:44Z"
       }
     ]
   },

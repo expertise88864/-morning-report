@@ -7017,6 +7017,11 @@
     "void": true,
     "reason": "corpact_coverage_gap",
     "session": "2026-10-13"
+   },
+   "20": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-11-05"
    }
   },
   "entry": {
@@ -8787,7 +8792,13 @@
   ],
   "excluded": [],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-11-05"
+   }
+  },
   "entry": {
    "4938": 108.0,
    "2059": 10250.0,
@@ -9274,8 +9285,16 @@
    "1802"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "3443": 7000.0,
+   "2618": 44.1,
+   "2609": 62.4,
+   "2317": 247.5,
+   "1802": 69.2
+  },
+  "taiex_entry": 43449.45
  },
  {
   "question": "2330_open_up",
@@ -9414,7 +9433,12 @@
    "ledger_schema": 2,
    "git_sha": "e7e3ceaee724"
   },
-  "git_sha": "e7e3ceaee724"
+  "git_sha": "e7e3ceaee724",
+  "resolved": "2026-11-06",
+  "outcome": false,
+  "actual": 2250.0,
+  "brier_model": 0.0045,
+  "brier_base": 0.1989
  },
  {
   "question": "taiex_open_up",
@@ -9439,7 +9463,12 @@
    "ledger_schema": 2,
    "git_sha": "e7e3ceaee724"
   },
-  "git_sha": "e7e3ceaee724"
+  "git_sha": "e7e3ceaee724",
+  "resolved": "2026-11-06",
+  "outcome": false,
+  "actual": 42666.13,
+  "brier_model": 0.0471,
+  "brier_base": 0.36
  },
  {
   "type": "mz_shadow",
@@ -9464,6 +9493,135 @@
    "ledger_schema": 2,
    "git_sha": "e7e3ceaee724"
   },
-  "git_sha": "e7e3ceaee724"
+  "git_sha": "e7e3ceaee724",
+  "resolved": "2026-11-06",
+  "actual": 2250.0,
+  "err_raw": 9.33,
+  "err_shadow": 3.65
+ },
+ {
+  "type": "top5",
+  "created": "2026-11-06",
+  "ledger_schema_version": 2,
+  "created_at": "2026-11-06T06:06:10.575057+08:00",
+  "target_session": "2026-11-06",
+  "base_session": "2026-11-05",
+  "codes": [
+   "2356",
+   "6770",
+   "2618",
+   "2610",
+   "2395"
+  ],
+  "raw_codes": [
+   "3443",
+   "2344",
+   "2408",
+   "2356",
+   "2383"
+  ],
+  "excluded": [
+   [
+    "3443",
+    "跌停"
+   ],
+   [
+    "2344",
+    "跌停"
+   ],
+   [
+    "2408",
+    "跌停"
+   ],
+   [
+    "2383",
+    "跌停"
+   ],
+   [
+    "3037",
+    "跌停"
+   ],
+   [
+    "8996",
+    "跌停"
+   ]
+  ],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-11-06",
+  "created_at": "2026-11-06T06:06:10.575057+08:00",
+  "target": "2026-11-06",
+  "threshold": 2240.0,
+  "pred_pct": -3.84,
+  "prob": 0.02,
+  "sigma": 0.807,
+  "sigma_n": 60,
+  "base_rate": 0.44,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "867e19a31388"
+  },
+  "git_sha": "867e19a31388"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-11-06",
+  "created_at": "2026-11-06T06:06:10.575057+08:00",
+  "target": "2026-11-06",
+  "threshold": 41574.72,
+  "pred_pct": -4.406,
+  "prob": 0.02,
+  "sigma": 0.452,
+  "sigma_n": 60,
+  "base_rate": 0.592,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "867e19a31388"
+  },
+  "git_sha": "867e19a31388"
+ },
+ {
+  "type": "mz_shadow",
+  "created": "2026-11-06",
+  "created_at": "2026-11-06T06:06:10.575057+08:00",
+  "target": "2026-11-06",
+  "raw": 2153.98,
+  "shadow": 2179.76,
+  "base": 2240.0,
+  "a": 0.06,
+  "b": 0.701,
+  "n_train": 114,
+  "forecast_version": "prob-v2",
+  "mz_rule": "delta-mz-hac-v1",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "867e19a31388"
+  },
+  "git_sha": "867e19a31388"
  }
 ]

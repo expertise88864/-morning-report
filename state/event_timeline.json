@@ -1,82 +1,4 @@
 {
- "geopolitical:hormuz_passage:2026-11": {
-  "first_seen": "2026-11-02",
-  "days": 1,
-  "last_seen": "2026-11-02",
-  "latest_title": "Iran bans Sinokor fleet from transiting Strait of Hormuz",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "bans",
-   "fleet",
-   "from",
-   "hormuz",
-   "iran",
-   "of",
-   "strait",
-   "transiting"
-  ],
-  "entity": "Sinokor",
-  "subject_basis": "literal",
-  "subjects": [
-   "Sinokor"
-  ],
-  "event_type": "geopolitical",
-  "action": "hormuz_passage",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-11": {
-  "first_seen": "2026-11-02",
-  "days": 1,
-  "last_seen": "2026-11-02",
-  "latest_title": "Iran orders military preparations for potential renewed conflict with U.S. and Israel",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "and",
-   "conflict",
-   "israel",
-   "military",
-   "orders",
-   "potential",
-   "preparations",
-   "renewed",
-   "with"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:summit_talks:伊朗:2026-11": {
-  "first_seen": "2026-11-02",
-  "days": 1,
-  "last_seen": "2026-11-02",
-  "latest_title": "Iran reviewing U.S. negotiation proposal while demanding permanent ceasefire",
-  "latest_summary": "",
-  "object": "伊朗",
-  "incident_tokens": [
-   "ceasefire",
-   "demanding",
-   "negotiation",
-   "permanent",
-   "proposal",
-   "reviewing",
-   "while"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "summit_talks",
-  "identity_schema": 14
- },
  "geopolitical:伊朗:2026-11#927a27": {
   "first_seen": "2026-11-03",
   "days": 1,
@@ -318,6 +240,44 @@
   ],
   "event_type": "litigation",
   "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:月之暗面:2026-11": {
+  "first_seen": "2026-11-06",
+  "days": 1,
+  "last_seen": "2026-11-06",
+  "latest_title": "月之暗面據傳洽租歐洲資料中心輝達GPU算力以避開美國出口管制",
+  "latest_summary": "",
+  "object": "月之暗面",
+  "incident_tokens": [
+   "gpu",
+   "中心",
+   "以避",
+   "出口",
+   "力以",
+   "口管",
+   "國出",
+   "心輝",
+   "料中",
+   "歐洲",
+   "洲資",
+   "洽租",
+   "租歐",
+   "算力",
+   "管制",
+   "美國",
+   "資料",
+   "輝達",
+   "避開",
+   "開美"
+  ],
+  "entity": "月之暗面",
+  "subject_basis": "literal",
+  "subjects": [
+   "月之暗面"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
   "identity_schema": 14
  }
 }

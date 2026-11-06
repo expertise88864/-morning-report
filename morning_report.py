@@ -2830,7 +2830,7 @@ def fetch_twse_institutional() -> dict[str, dict]:
 
     if not rows:
         print("[twse] 所有端點皆無資料", file=sys.stderr)
-        return fetch_twse_institutional() if _polish.wait_once_for_t86() else {}
+        return fetch_twse_institutional() if _polish.wait_once_for_t86(_HTTP_HOST_STATS) else {}
 
     print(f"[twse] 使用端點={used_endpoint} 日期={used_date} 取得 {len(rows)} 筆原始資料")
 

@@ -100,7 +100,7 @@ def big_move_line(pct: float | None, breadth: dict | None) -> str:
 _T86_RETRIED: list = []
 
 
-def wait_once_for_t86(seconds: int = 180) -> bool:
+def wait_once_for_t86(host_stats: dict | None = None, seconds: int = 180) -> bool:
     """法人資料全端點失敗時整班只等一次(11-06 實信:06:08 異常、之後恢復)。測試環境不等。"""
     import os
     import time
@@ -109,6 +109,10 @@ def wait_once_for_t86(seconds: int = 180) -> bool:
     _T86_RETRIED.append(True)
     print(f"[twse] T86 全端點失敗,{seconds} 秒後重試一次", flush=True)
     time.sleep(seconds)
+    # 同主機連續失敗 4 次會熔斷,不重設的話等完也連不到伺服器(外審 PR #44)。整班只重設這一次。
+    for host in ("www.twse.com.tw", "openapi.twse.com.tw"):
+        if host in (host_stats or {}):
+            host_stats[host]["streak"] = 0
     return True
 
 

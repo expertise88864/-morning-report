@@ -128,3 +128,62 @@ def test_own_prediction_is_not_flagged_as_unsourced():
     assert le._check(block, le._market_values({"EVIDENCE_PREDICTIONS": {"weighted_final": 2153.98}})) == []
     assert le._check(block, le._market_values({})) != []
     assert 'quotes["EVIDENCE_PREDICTIONS"] = predictions' in open(mr.__file__, encoding="utf-8").read()
+
+
+def test_market_first_needs_a_real_index_move():
+    """外審 PR #44:「重點關注台股資金外流」不是指數漲跌。"""
+    mail = ("## 十、台灣本地動態\n央行發布金融穩定報告,重點關注台股資金外流 [鉅亨][N1]。\n\n"
+            "台股昨日跌 1,374 點、融資減少 [中央社][N2]。\n")
+    assert rt.tidy(mail, big_move=True).split("動態\n")[1].strip().startswith("台股昨日跌")
+    for ok in ("昨日台股盤中一度跌破 42,000 點", "加權指數收 41,574 點", "大盤重挫 3.2%"):
+        assert rt._INDEX_MOVE.search(ok), ok
+    none = "## 十、台灣本地動態\n央行報告關注台股資金外流。\n\n主計總處公布 CPI。\n"
+    assert rt.tidy(none, big_move=True).split("動態\n")[1].strip().startswith("央行")
+
+
+def test_t86_retry_reaches_a_recovered_host_through_the_circuit_breaker(monkeypatch):
+    """外審 PR #44:走 HTTP 層驗證,連續失敗 4 次熔斷後,等完要真的連得到伺服器。"""
+    import time
+    import requests
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr(rp, "_T86_RETRIED", [])
+    monkeypatch.setattr(mr, "_HTTP_HOST_STATS", {})
+    state = {"recovered": False}
+
+    def sleep(seconds):
+        if seconds == 180:
+            state["recovered"] = True
+
+    monkeypatch.setattr(time, "sleep", sleep)
+
+    class Ok:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"stat": "OK", "fields": ["證券代號", "外陸資買賣超股數(不含外資自營商)", "投信買賣超股數",
+                                             "自營商買賣超股數", "三大法人買賣超股數"],
+                    "data": [["2330", "1,000", "0", "0", "1,000"]]}
+
+    def fake_get(url, **_):
+        if state["recovered"] and "www.twse.com.tw" in url:
+            return Ok()
+        raise requests.exceptions.ConnectionError("down")
+
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    assert "2330" in mr.fetch_twse_institutional()
+    assert state["recovered"]
+
+
+def test_circuit_breaker_is_only_reset_once(monkeypatch):
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr(rp, "_T86_RETRIED", [True])
+    stats = {"www.twse.com.tw": {"fail": 9, "streak": 9}, "other.example": {"fail": 9, "streak": 9}}
+    assert rp.wait_once_for_t86(stats) is False and stats["www.twse.com.tw"]["streak"] == 9
+    import time
+    monkeypatch.setattr(time, "sleep", lambda *_: None)
+    monkeypatch.setattr(rp, "_T86_RETRIED", [])
+    assert rp.wait_once_for_t86(stats) is True
+    assert stats["www.twse.com.tw"]["streak"] == 0 and stats["other.example"]["streak"] == 9

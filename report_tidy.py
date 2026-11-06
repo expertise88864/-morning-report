@@ -12,8 +12,8 @@ _FIN_BIO = re.compile(r"^\s*(?:[-*]\s+)?\**【(?:金融|生技)[｜|]")
 _WEAK = re.compile(r"\[B 級|信心[:：]\s*低(?![-－~～])")
 _SKIN_EYE = re.compile(r"皮膚|眼科|異位性|乾癬|痤瘡|圓禿|白斑|黃斑|青光眼|近視|乾眼|白內障")
 _ITEM = re.compile(r"^\s*(?:[-*]\s+)?\*\*|\[N\d{1,4}\]|\[[AB] 級")
-_MARKET = re.compile(r"台股|加權|大盤")
-_MOVE = re.compile(r"跌|漲|點")
+#: 要真的講指數漲跌與幅度:「重點關注台股資金外流」的「點」不算(外審 PR #44)。
+_INDEX_MOVE = re.compile(r"(?:台股|加權|大盤)[^。\n]{0,40}?(?:跌|漲|挫|收|回落|反彈)[^。\n]{0,12}?\d[\d,.]*\s*(?:點|%)")
 
 
 def _paragraphs(body: str) -> list[str]:
@@ -42,7 +42,7 @@ def _drop_minor(paragraphs: list[str]) -> list[str]:
 
 def _market_first(paragraphs: list[str]) -> list[str]:
     for i, para in enumerate(paragraphs):
-        if _MARKET.search(para) and _MOVE.search(para):
+        if _INDEX_MOVE.search(para):
             return [para] + paragraphs[:i] + paragraphs[i + 1:]
     return paragraphs
 

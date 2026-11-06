@@ -8920,7 +8920,13 @@
   ],
   "excluded": [],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-11-06"
+   }
+  },
   "entry": {
    "4938": 101.0,
    "7750": 2050.0,
@@ -9407,8 +9413,16 @@
    "6669"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "2609": 62.2,
+   "4938": 100.5,
+   "2603": 269.5,
+   "6805": 2000.0,
+   "6669": 1735.0
+  },
+  "taiex_entry": 42666.13
  },
  {
   "question": "2330_open_up",
@@ -9572,7 +9586,12 @@
    "ledger_schema": 2,
    "git_sha": "867e19a31388"
   },
-  "git_sha": "867e19a31388"
+  "git_sha": "867e19a31388",
+  "resolved": "2026-11-07",
+  "outcome": false,
+  "actual": 2020.0,
+  "brier_model": 0.0004,
+  "brier_base": 0.1936
  },
  {
   "question": "taiex_open_up",
@@ -9597,7 +9616,12 @@
    "ledger_schema": 2,
    "git_sha": "867e19a31388"
   },
-  "git_sha": "867e19a31388"
+  "git_sha": "867e19a31388",
+  "resolved": "2026-11-07",
+  "outcome": false,
+  "actual": 38915.76,
+  "brier_model": 0.0004,
+  "brier_base": 0.3505
  },
  {
   "type": "mz_shadow",
@@ -9622,6 +9646,119 @@
    "ledger_schema": 2,
    "git_sha": "867e19a31388"
   },
-  "git_sha": "867e19a31388"
+  "git_sha": "867e19a31388",
+  "resolved": "2026-11-07",
+  "actual": 2020.0,
+  "err_raw": 133.98,
+  "err_shadow": 159.76
+ },
+ {
+  "type": "top5",
+  "created": "2026-11-07",
+  "ledger_schema_version": 2,
+  "created_at": "2026-11-07T06:06:19.014510+08:00",
+  "target_session": "2026-11-09",
+  "base_session": "2026-11-06",
+  "codes": [
+   "2618",
+   "2376",
+   "2412",
+   "2610",
+   "6415"
+  ],
+  "raw_codes": [
+   "6805",
+   "2618",
+   "2360",
+   "2376",
+   "2412"
+  ],
+  "excluded": [
+   [
+    "6805",
+    "跌停"
+   ],
+   [
+    "2360",
+    "跌停"
+   ]
+  ],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-11-07",
+  "created_at": "2026-11-07T06:06:19.014510+08:00",
+  "target": "2026-11-09",
+  "threshold": 2135.0,
+  "pred_pct": 2.094,
+  "prob": 0.98,
+  "sigma": 1.086,
+  "sigma_n": 60,
+  "base_rate": 0.434,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "47c736d82312"
+  },
+  "git_sha": "47c736d82312"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-11-07",
+  "created_at": "2026-11-07T06:06:19.014510+08:00",
+  "target": "2026-11-09",
+  "threshold": 39701.64,
+  "pred_pct": 0.439,
+  "prob": 0.883,
+  "sigma": 0.521,
+  "sigma_n": 60,
+  "base_rate": 0.584,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "47c736d82312"
+  },
+  "git_sha": "47c736d82312"
+ },
+ {
+  "type": "mz_shadow",
+  "created": "2026-11-07",
+  "created_at": "2026-11-07T06:06:19.014510+08:00",
+  "target": "2026-11-09",
+  "raw": 2179.7,
+  "shadow": 2166.41,
+  "base": 2135.0,
+  "a": 0.091,
+  "b": 0.7005,
+  "n_train": 115,
+  "forecast_version": "prob-v2",
+  "mz_rule": "delta-mz-hac-v1",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "47c736d82312"
+  },
+  "git_sha": "47c736d82312"
  }
 ]

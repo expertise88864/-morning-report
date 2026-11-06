@@ -178,9 +178,20 @@ def _marks(text) -> set:
     return {n for n in found if not re.fullmatch(r"20\d\d", n)}
 
 
+_DOME = re.compile(r"超巨蛋|台中大巨蛋|台中巨蛋")
+_DOME_BIG = re.compile(r"動工|開工|完工|啟用|開幕|停工|解約|流標|追加|變更|延宕")
+
+
+def _minor_dome_news(item: dict) -> bool:
+    """11-06 使用者:超巨蛋沒有其他大消息不用寫(實信連兩天寫簽約)。有實質進展才留。"""
+    title = str(item.get("title") or "")
+    return bool(_DOME.search(title)) and not _DOME_BIG.search(title)
+
+
 def fresh_news(news: list, previous: dict | None) -> list:
     """實信:創意 EPS 上修、BDI 2,648 點連兩天都寫。同一則連結,或同一段裡有兩個相同數字
     (至少一個帶小數,排除股票代號)就算昨天寫過;後續有新數字的報導不受影響。"""
+    news = [n for n in news or [] if not _minor_dome_news(n)]
     if not previous:
         return news
     links = set(previous.get("links") or [])

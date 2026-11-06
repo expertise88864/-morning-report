@@ -246,3 +246,20 @@ def test_minor_only_tennis_week_does_not_fall_back_to_listing_them():
         "nba_offseason": "休賽季"}, htmllib)
     assert "Cali" not in out and "進行中/即將" not in out
     assert "網球" not in out      # 不留空標題
+
+
+def test_dome_news_needs_a_real_milestone():
+    """11-06 使用者:超巨蛋沒有其他大消息不用寫。"""
+    news = [{"title": "600億台灣超巨蛋完成簽約 成中台灣房市風向球"},
+            {"title": "台中超巨蛋 BOT 案簽約 打造全台最大室內棒球場"},
+            {"title": "台灣超巨蛋今動工 預計 2030 年完工"},
+            {"title": "台積電法說"}]
+    assert [n["title"] for n in rp.fresh_news(news, None)] == [news[2]["title"], "台積電法說"]
+    assert [n["title"] for n in rp.fresh_news(news, {"links": [], "paragraphs": []})] == [news[2]["title"], "台積電法說"]
+
+
+def test_prompt_limits_local_project_news():
+    import morning_report as mr
+    import prompt_profiles
+    assert "簽約、規劃、炒周邊房市不寫" in open(mr.__file__, encoding="utf-8").read()
+    assert "地方建設題材(超巨蛋" in open(prompt_profiles.__file__, encoding="utf-8").read()

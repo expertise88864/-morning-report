@@ -146,3 +146,11 @@ def test_prompt_quotes_official_fx_but_forecast_input_is_untouched():
     assert quotes["USDTWD"] == 32.85 and quotes["USDTWD_prev"] == 32.585
     assert mf.fx_for_prompt({"USDTWD": 32.85, "USDTWD_prev": 32.585, "MACRO": {"USDTWD": {"close": 32.9}}}) == (32.85, 32.585)
     assert mf.fx_for_prompt({"USDTWD": 32.85, "USDTWD_prev": None}) == (32.85, None)
+
+
+def test_fx_row_and_prompt_say_which_day_the_official_rate_is():
+    """11-06 實信:06:15 期交所還沒有 11/05,信裡的 32.82 是 11/04 的值,卻看不出來。"""
+    macro = {"USDTWD": {"close": 32.821, "prev_close": 32.76, "source": "TAIFEX", "observed_on": "2026-11-04"}}
+    assert mf.fx_label(macro) == "台幣匯率 USD/TWD（11/04 官方）"
+    assert mf.fx_label({"USDTWD": {"close": 32.85}}) == "台幣匯率 USD/TWD" and mf.fx_label({}) == "台幣匯率 USD/TWD"
+    assert "2026-11-04" in mf.fx_prompt_note({"MACRO": macro}) and mf.fx_prompt_note({}) == ""

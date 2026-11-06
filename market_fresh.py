@@ -69,6 +69,18 @@ def fx_for_prompt(quotes: dict) -> tuple:
     return quotes.get("USDTWD"), quotes.get("USDTWD_prev")
 
 
+def fx_label(macro: dict | None) -> str:
+    """期交所在 06:15 常常還沒公布前一天的匯率:標出資料日,不讓舊值看起來像昨天收盤(11-06 實信)。"""
+    row = (macro or {}).get("USDTWD") or {}
+    day = str(row.get("observed_on") or "")
+    return "台幣匯率 USD/TWD" + (f"（{day[5:].replace('-', '/')} 官方）" if row.get("source") == "TAIFEX" and day else "")
+
+
+def fx_prompt_note(quotes: dict) -> str:
+    row = (quotes.get("MACRO") or {}).get("USDTWD") or {}
+    return f"(期交所 {row.get('observed_on')} 官方值,不一定是昨日)" if row.get("source") == "TAIFEX" else ""
+
+
 def margin_card_text(margin: dict | None, session: str = "") -> str:
     """廣度卡固定顯示大盤融資餘額(先前只給模型,沒提到信裡就看不到)。
     融資資料查不到會往前退:日期和卡片的上一交易日不同時要標出來(外審 PR #43)。"""

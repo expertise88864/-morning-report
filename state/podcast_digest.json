@@ -1808,6 +1808,107 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmw3stv1m089s01y1gwvm7dpx",
+        "title": "576.【財經時事放大鏡】期中選舉 x AIDC & Marvell 併購 Lumentum",
+        "published": "Thu, 05 Nov 2026 23:02:08 GMT",
+        "processed_at": "2026-11-06T00:55:27Z",
+        "digest": {
+          "summary_points": [
+            "主持人 SKY 認為本週股市波動主因美國期中選舉被市場解讀為 AI 資料中心信任投票，共和黨三處失利引發 AI 監管與資料中心遞延擔憂，但選後政策通常會妥協，長期需求無虞，短期波動加大。",
+            "主持人以 Anthropic S1 十倍速成長與 Palantir 主權 AI 商業營收超過政府營收為例，說明企業採用 AI 需求強勁，他完全不懷疑需求，只懷疑需求成長性是否讓市場覺得「不夠刺激」而修正估值。",
+            "主持人 SKY 認為美國資料中心供給受限會造成短期算力緊缺、既有算力漲價，並促使資金轉向非美市場（台灣、馬來西亞、日本等）建資料中心，台灣國網中心已有多期標案，可關注電力、非美受惠與地端 AI 加速方向。",
+            "主持人分析 Marvell 併購 Lumentum 是長線布局 AI 光互連、OIO 等光通訊架構，市場短期不買單是因溢價與純度疑慮，但他認為三到五年市場巨大，布局合理。",
+            "主持人提醒操作上不要過度加大槓桿買正二，AI 資料中心短期雖有遞延與估值獲利雙殺，但不必太悲觀，可關注電力受限晶片、非美市場受惠者與地端 AI 等方向。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為台積電評價便宜，股價退到像衰退的水準，顯示投資價值浮現。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "台積電有貴嗎很便宜好不好它退到這個有點像是我說便宜是跟大家比啦有點像是衰退的感覺",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人以評價面看 NVIDIA 遠期本益比尚可，跌勢屬利率上升引發的估值修正，非基本面轉差。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那你說NVIDIA貴嗎FourP來看好像還好",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "華邦電",
+              "code": "2344",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "主持人討論華邦電法說，認為 DRAM 價格難再漲也難跌，股價可能跌到一定程度後反彈，後續需關注公司新事業發展。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "但你說這件事情跟股價的連動性我覺得已經變很小了現在看起來就是他會疊到一定程度然後大家覺得很便宜又衝回去對啊 但這些公司已經跟以前不一樣了啦你要關注他們拿這些錢要搞什麼飛機喔他搞新的飛機可能會有新的就搞新的business可能會有意思喔對 我個人的看法是這樣",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Marvell",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Marvell 併購 Lumentum 雖短期市場不買單，但長線布局 AI 光互連、OIO 等光通訊架構，三到五年市場巨大，併購合理。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我自己看啦我自己看我就是覺得還是蠻算一個長遠來看還蠻不錯的大家就是看這個底層架構往光學走的這個巨大的市場啦對啊 大家隨便算一算也都知道這個真的很可怕",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人以 Palantir 主權 AI 商業營收超過政府營收為例，說明企業採用 AI 服務需求強勁，但未直接評論其股價前景。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人 SKY 認為本週波動主要來自美國期中選舉對 AI 監管的擔憂，短期需求遞延與高利率導致估值、獲利雙殺，但選後政策通常會妥協，AI 需求長期難消失。",
+          "action_view": "",
+          "notable_quote": "我完全不懷疑需求會有問題啊我懷疑的只有需求的成長性讓大家覺得不夠刺激所以要修正",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我完全不懷疑需求會有問題啊我懷疑的只有需求的成長性讓大家覺得不夠刺激所以要修正"
+          },
+          "direction_quality": {
+            "attributed": 4,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "cmw0vdrlz04jq01vhaovcfah4",
         "title": "575.【台股美股提款機】晶圓代工產業：消費性市場疲軟無礙需求上修，2027 持續供不應求",
         "published": "Tue, 03 Nov 2026 23:02:04 GMT",
@@ -2517,83 +2618,6 @@
           }
         },
         "shown_at": "2026-09-18T23:56:29Z"
-      },
-      {
-        "guid": "cmtvwc9hn0ak601qad26100bg",
-        "title": "563.【財經時事放大鏡】SEMCON 細看：材料、設備、對位平台與FOPLP",
-        "published": "Thu, 10 Sep 2026 23:02:14 GMT",
-        "processed_at": "2026-09-11T17:23:14Z",
-        "digest": {
-          "summary_points": [
-            "主持人觀察 SEMICON 展會後認為，OSAT 廠（日月光、力成、矽品等）在先進封裝資本支出擴張「好到不行」，訂單年增幅度超過一倍，成為台廠設備商今年主要成長動能。",
-            "散熱材料出現鑽石散熱板與碳化矽散熱方案，雖然鑽石仍處 RD 階段，但主持人認為碳化矽在散熱領域找到新出口，且 Coherent 展出 12 吋碳化矽晶圓，暗示量產準備與需求普及化。",
-            "FOPLP 的時機已到，尤其在電源 IC（PMIC）與 800V 平台需求帶動下，設備商看到更多設計導入；主持人指出力成等廠商技術布局完整，舊式 FOPLP 受惠電力元件整合趨勢。",
-            "台積電宣布採用 ASML High-NA EUV，主持人解讀為「越晚用成本效益越高」，代表台積電技術領先可等到成熟再導入，對其成本競爭力是正面訊號。",
-            "光通訊/CPO 相關的檢測對位設備成為展會焦點，因缺乏標準化，台灣機械廠商有機會；主持人特別提到已有台廠展出 data center 用 CW laser 晶片，代表高端光通訊零組件國產化有所突破。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "延後採用 High-NA EUV 顯示技術領先與成本優勢，可等到成熟再導入。"
-            },
-            {
-              "name": "力成",
-              "code": "6239",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "FOPLP 技術布局完整，受惠先進封裝與電力元件整合需求。"
-            },
-            {
-              "name": "日月光投控",
-              "code": "3711",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "WLP 漲價且股價已反映，封裝需求強勁。"
-            },
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "手機需求疲弱，消費性電子受 AI 排擠，股價停滯。"
-            },
-            {
-              "name": "Coherent",
-              "code": "COHR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "展出 12 吋碳化矽晶圓，顯示碳化矽散熱應用將普及。"
-            },
-            {
-              "name": "STMicroelectronics",
-              "code": "STM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "投資 FOPLP 廠用於 GaN IC + BCD Driver，看好整合趨勢。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "率先採用 High-NA EUV，承擔早期成本與學習曲線風險。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與台積電策略類似，撐到最後才採用新設備，成本效益較高。"
-            }
-          ],
-          "market_view": "半導體先進封裝與設備供應鏈景氣熱絡，OSAT 廠資本支出大幅擴張，成為台廠設備商成長主軸。",
-          "action_view": "可留意 FOPLP 設備商與先進封裝檢測對位等新興需求；碳化矽散熱材料仍在早期但具潛力。",
-          "notable_quote": "越晚用,一定是越好。"
-        },
-        "shown_at": "2026-09-11T23:50:49Z"
       }
     ]
   },

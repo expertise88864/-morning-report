@@ -941,6 +941,65 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2433099774",
+        "title": "2026/11/6(五)AI監管風暴 費半血崩12% 煞車壞了?台股斷頭潮 槓桿大清洗!【早晨財經速解讀】",
+        "published": "Fri, 06 Nov 2026 01:08:52 +0000",
+        "processed_at": "2026-11-06T08:56:23Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為民主黨 AI 監管造成的半導體重挫更像是政治表態而非全面停建，AI 需求仍強、美國不建海外也能建，此刻是長期投資 AI 的買點，不相信 AI 才不敢買。",
+            "主持人以 VIX 單日暴漲歷史與期中選舉年統計（高峰到谷底平均跌17.5%、隔年反彈31%起跳）判斷恐慌後風險報酬轉佳，但未保證立即落底。",
+            "主持人估算費半本益比昨天16.18倍、今天可能剩約14倍，半導體類股較標普折價約25%，認為這不是景氣反轉，而是 AI 生產力爆發期的難得低點。",
+            "主持人對槓桿提出明確警告：SOXL 自300美元跌至45美元、回本需漲500%；台股 00631L 融資6天內增26.2%，融資維持率逼近斷頭，應以現貨或 ETF 分散，不宜槓桿搶反彈。",
+            "主持人認為台股急跌乖離過大不適合離場，個股停損應等反彈；考量財富效應，台灣官方可能積極護盤，可觀察整數關卡、年限（三年線）與國安基金動向。"
+          ],
+          "tickers": [
+            {
+              "name": "SOXL",
+              "code": "SOXL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為三倍槓桿半導體 ETF 從高點重挫後耗損與回本難度極高，提醒投資人避開槓桿型產品。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "你跌80%,你要上漲500%才能夠回到原本的高點,這個就是槓桿ETF最大的陷阱",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "元大台灣50正2",
+              "code": "00631L",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人警告台股正2融資張數在急跌中不減反增，融資維持率逼近警戒，不宜用融資或槓桿搶反彈。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人判斷當前是費半主導的單一板塊熊市，但長線美國股市仍向上；急跌恐慌提供長期投資機會，不等於立刻落底。",
+          "action_view": "主持人建議不要在急跌乖離過大時離場，個股停損等反彈；避免融資與槓桿，以現貨或 AI 科技型 ETF 分批布局，並控制部位確保能撐過恐慌。",
+          "notable_quote": "我們一直講說槓桿是拿來超車的,不是拿來飆車的",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我們一直講說槓桿是拿來超車的,不是拿來飆車的"
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2432375685",
         "title": "2026/11/5(四)川普大潰敗 藍潮反撲!為什麼選完 費半還在跌?現在該停損 還是加碼?【早晨財經速解讀】",
         "published": "Thu, 05 Nov 2026 01:09:03 +0000",
@@ -1741,66 +1800,6 @@
           }
         },
         "shown_at": "2026-10-21T22:39:59Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2422403028",
-        "title": "2026/10/20(二)美股跌完了嗎?年底反攻行情啟動?大賣空貝瑞卻警告:真正熊市剛開始？早晨財經速解讀】",
-        "published": "Tue, 20 Oct 2026 01:16:13 +0000",
-        "processed_at": "2026-10-20T06:56:24Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為標普500第三季盈餘成長預估27%（2010年以來第三高），但成長高度集中在半導體，輝達與美光貢獻其中36%，且資本支出年增115%本季可能見到絕對高點，暗示市場上半年對AI/半導體估值投射過高，半導體漲速難再複製。",
-            "主持人提醒10月賣壓與共同基金會計年度結束（759檔、資產4兆美元）及稅務賣股有關，但財報後股票回購限制解除，10月底48%標普500企業恢復回購資格，11月為第二大回購月份；他認為FOMC過後公司派買盤有機會回流。",
-            "主持人判斷美股目前不是全面看空，而是期中選舉不確定性造成「先蹲後跳」：Polymarket賭盤顯示民主黨拿下參眾兩院機率偏高、川普可能跛腳，但投票後不確定性消除，歷史平均美股至隔年2-3月累計漲5-7%。",
-            "主持人指出AI資料中心地方反對導致供給放緩：2026年美國地方暫停令達20.9GW，扣除已取得許可後約11%原規劃停止，但多數仍會推進；他認為供給跟不上反而可避免泡沫，AI企業應自行承擔外部成本。",
-            "主持人分析Michael Burry的看空邏輯：標普500已有55%成分股從高點下跌逾兩成、高於8月的47%；Burry放空納斯達克100與半導體ETF賣權，擔憂大型科技股1.2兆美元租賃承諾與AI設備更新週期錯配，但主持人解讀他並非賭系統性風險，只是對擁擠交易謹慎。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "unknown",
-              "reason": "主持人認為這幾年沒買到台積電會跑輸大盤，且大型權值股極化現象可能持續，台積電相對強勢。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "納斯達克100指數ETF",
-              "code": "QQQ",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人轉述 Michael Burry 仍放空納斯達克100指數，並認為大型科技股交易擁擠、租賃承諾與設備更新週期有錯配風險。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為美股仍在正常波動區間，10月賣壓可接受、市場仍抱持看多意願（財報、回購與年底旺季），但川普選情與期中選舉不確定性是主要壓力；跌幅集中在費半而非大型股，尚未全面走空。",
-          "action_view": "",
-          "notable_quote": "",
-          "quote_evidence": {
-            "version": 1,
-            "status": "unverified",
-            "quote": ""
-          },
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 0,
-            "unverified": 2,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-20T22:40:29Z"
       }
     ]
   },

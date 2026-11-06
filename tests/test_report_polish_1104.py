@@ -253,9 +253,12 @@ def test_dome_news_needs_a_real_milestone():
     news = [{"title": "600億台灣超巨蛋完成簽約 成中台灣房市風向球"},
             {"title": "台中超巨蛋 BOT 案簽約 打造全台最大室內棒球場"},
             {"title": "台灣超巨蛋今動工 預計 2030 年完工"},
+            {"title": "台灣超巨蛋預算從600億上修至1200億"},     # 外審 PR #44
+            {"title": "超巨蛋工期延後兩年"},
             {"title": "台積電法說"}]
-    assert [n["title"] for n in rp.fresh_news(news, None)] == [news[2]["title"], "台積電法說"]
-    assert [n["title"] for n in rp.fresh_news(news, {"links": [], "paragraphs": []})] == [news[2]["title"], "台積電法說"]
+    want = [news[2]["title"], news[3]["title"], news[4]["title"], "台積電法說"]
+    assert [n["title"] for n in rp.fresh_news(news, None)] == want
+    assert [n["title"] for n in rp.fresh_news(news, {"links": [], "paragraphs": []})] == want
 
 
 def test_prompt_limits_local_project_news():

@@ -58,6 +58,8 @@ def correct_reader_claims(text: str, news: list[dict], *,
     if origin == analysis_origin.EMERGENCY_FALLBACK:
         return text  # This path is a verbatim source-title list, not model prose.
     if origin in (analysis_origin.LEGACY_PRIMARY, analysis_origin.LEGACY_AFTER_LUNA_FAILURE):
+        import report_tidy   # 要在核對前:孤立短句併回去才不會被算成沒有來源
+        text = report_tidy.safe(text, quotes)
         text = legacy_evidence.audit(text, quotes, manifest)   # 編號 → 原文連結;下面的守衛靠連結
     corrected = correct_investment_target_headings(
         text, news, origin=origin, manifest=manifest)

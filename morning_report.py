@@ -2830,7 +2830,7 @@ def fetch_twse_institutional() -> dict[str, dict]:
 
     if not rows:
         print("[twse] 所有端點皆無資料", file=sys.stderr)
-        return {}
+        return fetch_twse_institutional() if _polish.wait_once_for_t86() else {}
 
     print(f"[twse] 使用端點={used_endpoint} 日期={used_date} 取得 {len(rows)} 筆原始資料")
 
@@ -4557,13 +4557,7 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
 
     inst = fetch_twse_institutional()
     if not inst:
-        # **空結果要留痕**(全案審查 2026-09-03 FR-1):`fetch_twse_institutional`
-        # 端點耗盡時自己吸收、回 `{}`,於是 universe 100 檔的
-        # foreign/invest/dealer/total_lot 全部變 0.0 —— 進 LLM prompt 當事實、
-        # 進 `calc_smart_money_score` 排 Top5、寫進 model_history 不可逆,
-        # 而 `_DEGRADED_STEPS` 與 manifest 都沒有任何記錄。同一個 fetcher 在
-        # sector 路徑早就有 `sector:institutional_missing`,這裡是漏掉的另一半。
-        # 品質閘另有「法人欄全 0」的檢查(見 `_fill_specs` 那段)。
+        # 空結果要留痕(FR-1):法人欄全 0 不是資料,會進 prompt、Top5 與 model_history。
         _DEGRADED_STEPS.append("universe:institutional_missing")
         print("[universe] 三大法人全市場資料缺席(T86 無資料)—— "
               "本班 universe 的法人欄全部是 0,已記降級", file=sys.stderr)
@@ -22163,7 +22157,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 if is_:
                     streak_bits.append(f"投信連{abs(is_)}{'買' if is_ > 0 else '賣'}")
                 metrics_line = (
-                    f"{' ・ '.join(streak_bits) if streak_bits else '法人無連續動向'}"
+                    f"{' ・ '.join(streak_bits) if streak_bits else ('法人資料缺席' if 'universe:institutional_missing' in _DEGRADED_STEPS else '法人無連續動向')}"
                     f" ・ 大戶ΔWoW {wow_str} ・ 量比20d {vr20_str}")
                 _ranking_line = (
                     f"客觀排名 #{rank} ・ 結構 {ranking_components.get('structure', 0):+.1f}"
@@ -22251,7 +22245,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     chip2_bits.append(f"大戶持股 {mh:.0f}%")
                 if fhp is not None:
                     chip2_bits.append(f"外資持股 {fhp:.0f}%")
-                if f30 is not None:
+                if f30:   # 0 張多半是資料缺席,不是真的沒買賣(11-06 實信)
                     chip2_bits.append(f"外資30日 {int(f30):+,}張")
                 if mbl:
                     chip2_bits.append(f"融資餘額 {int(mbl):,}張")
@@ -22341,7 +22335,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f'color:#991b1b;">今日市場普跌(上漲佔比 {_adv:.1f}%)——'
                     f'動能類訊號在普跌日可靠度顯著下降,本名單參考價值打折,'
                     f'不宜逆勢接刀</div>')
-            # 批#20 #3:排除透明化
+            if 'universe:institutional_missing' in _DEGRADED_STEPS:
+                regime_note += ('<div style="background:#fef2f2;border-left:4px solid #dc2626;border-radius:6px;padding:8px 12px;'
+                                'margin:8px 0;font-size:12px;color:#991b1b;">今日三大法人資料缺席,本名單未含法人籌碼</div>')
             excluded_note = ""
             if _t5_excluded:
                 _ex_txt = "、".join(f"{c}({r})" for c, r in _t5_excluded[:4])
@@ -22732,6 +22728,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
+    stance_detail = _polish.big_move_line(quotes.get("TAIEX_SESSION_PCT"), quotes.get("BREADTH")) + stance_detail
     summary_bar = _render_summary_bar(summary_text, stance_detail, _htmllib)
     # Decision Attribution 卡:批#26 使用者要求自信件移除顯示——歸因仍在後台
     # 計算(STANCE_ATTRIB 供 log/prompt),要恢復顯示改 True 即可。
@@ -25602,6 +25599,7 @@ def _phase_llm_analysis(ctx) -> None:
     try:   # 11-04 使用者:已公布的財報不留在行事曆、昨天寫過的新聞不重複;失敗照舊出信
         quotes["EVENT_CALENDAR"] = _polish.drop_reported_earnings(quotes.get("EVENT_CALENDAR"), news, now_tpe.date())
         quotes["NEWS_REPORTED"] = _polish.load_previous(EMAIL_ARCHIVE_DIR, now_tpe.date())
+        quotes["EVIDENCE_PREDICTIONS"] = predictions   # 自家預測值也是資料,不算查無來源
     except Exception as e:
         print(f"[main] 舊聞比對失敗(不影響晨報): {e}", file=sys.stderr)
     # 批#92(第九輪 P1-5):**設定本身要先被驗。** 模型可由 GitHub Variables

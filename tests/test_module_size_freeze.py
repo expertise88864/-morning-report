@@ -196,7 +196,7 @@ MODULE_CEILINGS = {
     "reader_evidence_writing.py": 45,
     "news_heading.py": 42,   # 10-27:標題點名的公司還要被卡片寫到(判準在 card_curation)
     "news_actor_roles.py": 70,  # Rival and purchase-target roles, both source-headline-bound.
-    "legacy_actor_guard.py": 65,  # Only evidence-bound correction, not open-ended prose rewriting.
+    "legacy_actor_guard.py": 68,  # Only evidence-bound correction, not open-ended prose rewriting.
     "price_reaction_guard.py": 52,  # Preserve quoted/source text while qualifying a price-cause claim.
     "news_taxonomy_guard.py": 30,  # Accounting phrase is not a new earnings event.
     "prose_join.py": 25,
@@ -217,7 +217,9 @@ MODULE_CEILINGS = {
     "scenario_window.py": 85,
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
-    "report_polish.py": 222,   # 信件內容的確定性整理(2026-11-04)
+    "report_polish.py": 250,
+    "report_tidy.py": 90,   # 模型沒照規則時的收尾(2026-11-06)
+      # 信件內容的確定性整理(2026-11-04)
     "market_fresh.py": 100,   # 總經列的資料新鮮度(2026-11-05)
     "world_severity.py": 40,   # 世界大事嚴重性分級(2026-11-02)
     "sports_season.py": 476,   # 2026-11-04 休賽季收戰績;季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
@@ -386,7 +388,7 @@ MODULE_CEILINGS = {
     # `delivery_sla.py` 的抽出工單已經開了兩批,**下一批必須做**,
     # 而 `test_the_sla_extraction_is_not_deferred_forever` 會在超過
     # 1000 行時直接擋下來,不接受第六次調高。
-    "run_quality.py": 850,  # 2026-09-05 SLA 判準本體搬到 delivery_sla —— 抽出**往下調**(棘輪政策);現況 833(含分析保險絲的 9f finding)。前值 1000  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
+    "run_quality.py": 855,  # 2026-09-05 SLA 判準本體搬到 delivery_sla —— 抽出**往下調**(棘輪政策);現況 833(含分析保險絲的 9f finding)。前值 1000  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。

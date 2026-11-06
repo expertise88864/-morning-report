@@ -88,6 +88,30 @@ def twse_session_pct(get, expected_close=None) -> float | None:
     return round(pct, 2) if abs(pct) <= 11 else None
 
 
+def big_move_line(pct: float | None, breadth: dict | None) -> str:
+    """大波動日今日結論的第一句由程式寫,模型漏寫也看得到(11-06 實信:跌 3.20% 結論沒寫)。"""
+    if not big_move_rule(pct, breadth):
+        return ""
+    ratio = (breadth or {}).get("advance_ratio")
+    parts = ([f"加權 {pct:+.2f}%"] if pct is not None else []) + ([f"上漲家數僅佔 {ratio:.1f}%"] if ratio is not None else [])
+    return "昨日台股大幅波動:" + "、".join(parts) + "。"
+
+
+_T86_RETRIED: list = []
+
+
+def wait_once_for_t86(seconds: int = 180) -> bool:
+    """法人資料全端點失敗時整班只等一次(11-06 實信:06:08 異常、之後恢復)。測試環境不等。"""
+    import os
+    import time
+    if _T86_RETRIED or os.environ.get("PYTEST_CURRENT_TEST"):
+        return False
+    _T86_RETRIED.append(True)
+    print(f"[twse] T86 全端點失敗,{seconds} 秒後重試一次", flush=True)
+    time.sleep(seconds)
+    return True
+
+
 def taiex_card_text(pred: dict | None, pct: float | None) -> str:
     """廣度卡第一句:昨日加權收盤與漲跌(實信:跌 3.6% 的隔天,信裡找不到這個數字)。"""
     close = (pred or {}).get("last_close")
@@ -179,7 +203,7 @@ def _marks(text) -> set:
 
 
 _DOME = re.compile(r"超巨蛋|台中大巨蛋|台中巨蛋")
-_DOME_BIG = re.compile(r"動工|開工|完工|啟用|開幕|停工|解約|流標|追加|變更|延宕")
+_DOME_BIG = re.compile(r"動工|開工|完工|啟用|開幕|停工|解約|流標|追加|變更|延宕|延期|延後|提前|上修|下修|超支|縮減|暫停|取消")
 
 
 def _minor_dome_news(item: dict) -> bool:

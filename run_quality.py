@@ -782,6 +782,8 @@ def assess(manifest, *, mode: str = "watchdog",
         # 全案審查 2026-09-03 TC-2(AST 掃描器解出的):兩個 LLM 設定標籤先前沒有
         # 任何消費端,每次都是「沒見過的降級步驟」。fatal 是 defect ——
         # 主分析走了確定性緊急備援,而且重跑不會好,設定要修。
+        "universe:institutional_missing": (
+            "degraded", "三大法人資料(T86)重試後仍缺席 —— 當天 Top 名單與計分未含法人籌碼,信裡有標示"),
         "llm:config_invalid": (
             "defect", "LLM 設定不合法(fatal:provider 打錯 / 缺金鑰…),主分析走了"
             "確定性緊急備援 —— 明細在 manifest `llm.config_invalid`;重跑不會好"),

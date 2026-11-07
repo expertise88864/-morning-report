@@ -7950,6 +7950,80 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "53093a95-1b90-4228-aaf2-2d8ee77fd504",
+        "title": "Midterm Blood Bath, $4T AI Sell Off, Data Center Freeze, What's Next for Trump",
+        "published": "Sat, 07 Nov 2026 18:27:00 +0000",
+        "processed_at": "2026-11-07T23:07:36Z",
+        "digest": {
+          "summary_points": [
+            "Sacks 把期中選舉慘敗歸因於伊朗戰爭帶來的油價與通膨衝擊（通膨由 2.4% 升到 3.7%、房貸利率約 7.5%），並預測：只要結束戰爭，布蘭特原油可從約 110 美元回落到 70 美元，食品與柴油價格跟著下滑，通膨回落後 Fed 才有降息空間、Trump 民調可回到四成以上；他並以 2006 年布希在期中選後加碼增兵、結果 2008 再敗為反例，警告不要對伊朗加倍下注。",
+            "Chamath 說自己先前判斷錯誤，並提出新框架：自 COVID 以來美國政治已從意識形態轉為「經濟斷裂」，資產所有者（包括他自己）在各種利率與政策環境下都能累積資產，薪資階級卻被結構性拋下；因此他預測，誰能提出經濟民粹方案（例如 15 萬美元以下聯邦稅歸零、停止聯邦擔保學貸）誰就能拿下 2028，而執政者若不處理，選民會持續用選票把兩黨輪流換掉。",
+            "AI 交易明顯鬆動：單日市值蒸發近 4 兆美元，市場對 Anthropic 上市的機率從 95% 降到 71%。Chamath 認為資料中心審批與供給一旦放慢，贏家是握有既有電力與容量的大型超大規模雲端業者（Amazon、Meta、Microsoft、Google、SpaceX）、也就是「造王者」，最不利的是租算力的 neocloud 以及極缺算力的前沿模型公司。",
+            "Chamath 的賽局推演：SpaceX 與 Anthropic 的算力合約是雙方各自可 90 天終止，若 SpaceX 選擇終止、改以現貨價重簽（可能翻倍甚至三倍），將迫使其他超大規模業者重新評估「自用還是外賣算力」，並逼 neocloud 不计代價搶算力，這是整個 AI 交易最關鍵的一張骨牌。",
+            "Sacks 預測：已完全取得許可的資料中心專案 2027 年仍會完成，但 2028 年新增案源恐怕大幅萎縮；理由是兩黨在選戰中都對批准資料中心的政治人物打負面廣告，政治人物與公務員毫無誘因再批新案，這將造成明顯的經濟衝擊，而民主黨也可能順勢把責任推給 Trump。",
+            "Jason 提出需求端的獨家觀察：他自家創投每年花約 4 至 5 萬美元訂閱 AI（主要為 Grok、Claude），估算換到約 200 萬美元價值，但企業界每天固定使用的人只有 10% 到 20%，未來算力需求還有 500 到 1,000 倍；他預測未來兩年是「離岸資料中心＋桌機跑本地模型」的時代，並表示若美國把資料中心擋掉，這些設施會移到加拿大、墨西哥、中東、馬來西亞，美國反而變成 token 淨進口國。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Chamath 認為 SpaceX 是算力稀缺下的造王者，握有可重新定價的關鍵合約；Jason 也說自己在這波動盪中持續買進。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I've been buying shares through this whole insanity.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet（Google）",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Chamath 認為資料中心供給受限時，超大規模雲端商可把新增算力留给自家產品，Google 手上的容量可用来強化 Gemini。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "You could decide to take all of the incremental compute and advantage your own products. So Google has a ton of capacity coming online. They could say, I'm going to give it to Gemini.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "Chamath 認為前沿模型公司是算力租客、最受供給緊縮所苦，其與 SpaceX 的合約可被 90 天終止並重新議價，上市機率也已從 95% 降至 71%。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為 AI 交易最大的風險不在需求，而在資料中心的許可與政治環境：Sacks 預測 2027 年仍有意義的資本支出，但 2028 年新建管線恐明顯縮減，並對經濟造成衝擊。",
+          "action_view": "Chamath 的操作思路是：算力供給受限時偏好像 Amazon、Meta、Google、Microsoft、SpaceX 這類自有算力的超大規模業者，避開租算力的 neocloud 與受制於算力供應的前沿模型公司；Jason 則表示自己在市場動盪中持續買進 SpaceX 股票。",
+          "notable_quote": "Just get out of the war. OK. And the war. That's my number one, my number two, and my number three.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "Just get out of the war. OK. And the war. That's my number one, my number two, and my number three."
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "e23cdf18-6528-458c-adff-dea4d619dcb3",
         "title": "Elon Musk & Gwynne Shotwell on AI Risks and Peer Review, Starship, Terafab, SpaceX/Tesla Merger",
         "published": "Tue, 15 Sep 2026 03:42:00 +0000",
@@ -8440,72 +8514,6 @@
           "notable_quote": "We're going to have to actually deal with the revenue side as well as the spending side."
         },
         "shown_at": "2026-08-13T22:52:15Z"
-      },
-      {
-        "guid": "bf461c11-8e10-4124-8c40-f24dab393cf9",
-        "title": "Google's AI Brain Drain, SpaceX's Huge Quarter, Airtable's 90% Collapse, US Data Fuels China AI",
-        "published": "Sat, 08 Aug 2026 00:32:00 +0000",
-        "processed_at": "2026-08-08T03:24:19Z",
-        "digest": {
-          "summary_points": [
-            "大衛·弗里德伯格認為Google人事變動反映其資本配置從模型開發轉向AI基礎設施：模型開發是高beta高風險，基礎設施是高alpha低風險，因此頂尖科學家出走，Google將走向模型無關的基礎設施公司。",
-            "薩克斯認為前沿模型市場已成Anthropic與OpenAI雙寡頭，可對最先進智能收取溢價；非前沿模型商品化，只能按算力收費。Anthropic年化營收已超80億美元且加速，證明雙寡頭的獲利能力。",
-            "傑森認為開源模型與前沿模型的差距已可忽略，對多數工作開源已足夠，因此看好Google憑藉Android、Search等30億用戶產品及Gemini成為AI第一公司；但馬斯克與黃仁勳反駁稱前沿模型仍大幅領先，且成本優勢被高估。",
-            "布萊德與薩克斯分析SpaceX財報後認為，Starlink業務本身價值巨大，按目前增速18個月內可達1兆美元市值，支撐整體估值；但提醒IPO時2兆美元買點過高，當前1.4兆美元較合理，進場價格是關鍵。",
-            "薩克斯計算SpaceX的AI算力租賃每吉瓦可產生300至500億美元年收入，支持年底100億美元ARR目標；但擔憂算力租賃價格（每瓦30至50美元）的持續性，以及擴增至6吉瓦需3,000億美元資本的融資問題。",
-            "布萊德分析Airtable被Bending Spoons收購：因銷售團隊僅30%達標，創投與私募股權模式衝突；Bending Spoons可削減80至90%成本，AI加速程式碼維護，預期產生高EBITDA，是有效率的收購。",
-            "薩克斯認為Airtable案例不能代表整體SaaS，合規性強的軟體（如微軟、Salesforce）不會被AI替換，但no-code工具受AI衝擊最大；布萊德指出IGV ETF近六個月上漲20%，Snowflake等表現強勁，軟體股並非整體崩盤。",
-            "薩克斯對限制美國數據標註公司向中國銷售數據持保留態度，認為數據是商品，中國可自行生產，限制可能引發貿易戰；傑森則擔心這幫助中國追趕，侵蝕美國AI戰略優勢。"
-          ],
-          "tickers": [
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "傑森認為Google憑藉30億用戶產品矩陣與Gemini普及將成AI第一公司；大衛認為其轉向基礎設施模式也是好生意。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "布萊德與薩克斯認為Starlink業務價值巨大，AI算力需求強勁，當前1.4兆美元估值合理，長期可翻倍。"
-            },
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "薩克斯認為Anthropic是前沿智能雙寡頭之一，年營收超80億美元且加速，可對前沿模型收取溢價。"
-            },
-            {
-              "name": "OpenAI",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "薩克斯認為OpenAI同為前沿雙寡頭，營收加速成長，市場願意為最先進智能支付溢價。"
-            },
-            {
-              "name": "Salesforce",
-              "code": "CRM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "薩克斯指出Salesforce等合規性強的軟體被政府機構採用，不會被AI取代。"
-            },
-            {
-              "name": "Snowflake",
-              "code": "SNOW",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "布萊德提到Snowflake近六個月漲90%，業績強勁，屬於高成長軟體股而非受AI衝擊的no-code。"
-            }
-          ],
-          "market_view": "主持人認為市場已從7月回調中恢復，AI基礎設施投資與SpaceX等IPO帶來活力，整體偏多，但需警惕算力需求波動；強調選擇進場價格。",
-          "action_view": "布萊德提醒避免在IPO首日追高，應等待估值消化；薩克斯建議長期持有SpaceX等核心資產；對SaaS需區分護城河，不盲目看空。",
-          "notable_quote": "The market for frontier intelligence has become a duopoly."
-        },
-        "shown_at": "2026-08-08T22:17:24Z"
       }
     ]
   },

@@ -68,7 +68,7 @@ def select(games: list[dict], now: dt.datetime) -> dict:
     placed = any(ours(g) for g in games if g["stage"] in _FINALS)
     rows, record = [], [0, 0, 0]
     for g in sorted(games, key=lambda g: g["start"]):
-        tbd = g["stage"] in _FINALS and not (g["away"] or g["home"]) and not placed
+        tbd = g["stage"] in _FINALS and not (g["away"] and g["home"]) and not placed   # 只填一隊也算未定
         if not (ours(g) or tbd):
             continue
         done = (g["away_score"] is not None and g["home_score"] is not None
@@ -95,6 +95,8 @@ def fetch(get, now: dt.datetime, log, degrade) -> dict:
         body = r.json()
         if (body.get("error") or {}).get("code") == "missingtitle":
             return {}   # 今年沒有亞冠賽
+        if body.get("error") or "parse" not in body:   # 200 卻是 API 錯誤 ≠ 沒資料
+            raise ValueError(f"Wikipedia API 錯誤: {str(body.get('error'))[:80]}")
         found = select(parse((body.get("parse") or {}).get("wikitext") or ""), now)
         return {"apbc": found} if found else {}
     except Exception as exc:

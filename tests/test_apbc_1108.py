@@ -59,6 +59,12 @@ def test_score_typed_in_during_the_game_is_not_a_result():
     assert out["rows"][0]["score"] is None and out["record"] == [0, 0, 0]
 
 
+def test_final_with_only_one_team_known_is_still_pending():
+    out = apbc.select(apbc.parse(_page(finals=(("KOR", ""), ("JPN", "")))), _at("11/15 06:00"))
+    assert [(r["stage"], r["away"], r["home"]) for r in out["rows"]][-2:] == [
+        ("季軍賽", "韓國", "待定"), ("冠軍賽", "日本", "待定")]
+
+
 def test_once_taiwan_is_placed_only_its_final_is_listed():
     out = apbc.select(apbc.parse(_page(finals=(("KOR", "AUS"), ("JPN", "TPE")))), _at("11/15 06:00"))
     assert [(r["stage"], r["away"], r["home"]) for r in out["rows"]][-1:] == [("冠軍賽", "日本", "中華隊")]
@@ -80,6 +86,10 @@ def test_fetch_missing_page_is_silent_and_bad_page_degrades():
     now, logs, degraded = _at("11/13 06:00"), [], []
     missing = lambda *a, **k: _Resp({"error": {"code": "missingtitle"}})   # noqa: E731
     assert apbc.fetch(missing, now, logs.append, degraded.append) == {} and not logs and not degraded
+    api_err = lambda *a, **k: _Resp({"error": {"code": "internal_api_error_DBQueryError"}})   # noqa: E731
+    assert apbc.fetch(api_err, now, logs.append, degraded.append) == {}
+    assert degraded == ["sports:apbc_failed"]
+    degraded.clear()
     bad = lambda *a, **k: _Resp({"parse": {"wikitext": "{{linescore\n|Date= 待定\n}}"}})   # noqa: E731
     assert apbc.fetch(bad, now, logs.append, degraded.append) == {}
     assert logs[0].startswith("::warning::") and degraded == ["sports:apbc_failed"]

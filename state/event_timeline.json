@@ -1,96 +1,4 @@
 {
- "geopolitical:election:加拿大:2026-11": {
-  "first_seen": "2026-11-05",
-  "days": 1,
-  "last_seen": "2026-11-05",
-  "latest_title": "加拿大部長表示即使川普團隊期中選舉失利，仍將削減對美國經濟依賴",
-  "latest_summary": "",
-  "object": "加拿大",
-  "incident_tokens": [
-   "中選",
-   "仍將",
-   "使川",
-   "依賴",
-   "削減",
-   "即使",
-   "國經",
-   "團隊",
-   "失利",
-   "將削",
-   "對美",
-   "川普",
-   "普團",
-   "期中",
-   "減對",
-   "濟依",
-   "經濟",
-   "美國",
-   "舉失",
-   "選舉",
-   "部長",
-   "隊期"
-  ],
-  "entity": "加拿大",
-  "subject_basis": "alias",
-  "subjects": [
-   "加拿大"
-  ],
-  "event_type": "geopolitical",
-  "action": "election",
-  "identity_schema": 14
- },
- "litigation:鴻海:2026-11": {
-  "first_seen": "2026-11-05",
-  "days": 1,
-  "last_seen": "2026-11-05",
-  "latest_title": "美國對鴻海等台企啟動337調查",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "337",
-   "企啟",
-   "台企",
-   "啟動",
-   "國對",
-   "等台",
-   "美國",
-   "調查"
-  ],
-  "entity": "鴻海",
-  "subject_basis": "alias",
-  "subjects": [
-   "鴻海"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
- "litigation:台達電:2026-11": {
-  "first_seen": "2026-11-05",
-  "days": 1,
-  "last_seen": "2026-11-05",
-  "latest_title": "美國對台達電等台企啟動337調查",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "337",
-   "企啟",
-   "台企",
-   "啟動",
-   "國對",
-   "等台",
-   "美國",
-   "調查"
-  ],
-  "entity": "台達電",
-  "subject_basis": "literal",
-  "subjects": [
-   "台達電"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
  "export_controls:export_control:月之暗面:2026-11": {
   "first_seen": "2026-11-06",
   "days": 1,
@@ -260,6 +168,112 @@
   ],
   "event_type": "geopolitical",
   "action": "election",
+  "identity_schema": 14
+ },
+ "geopolitical:3037:2026-11": {
+  "first_seen": "2026-11-09",
+  "days": 1,
+  "last_seen": "2026-11-09",
+  "latest_title": "3037 欣興 - 美伊戰爭，油價大漲，美國國債40兆美元，美國9月cpi 3.... - 股市爆料同學會 - CMoney",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "40",
+   "cpi",
+   "伊戰",
+   "價大",
+   "兆美",
+   "同學",
+   "國債",
+   "國國",
+   "大漲",
+   "學會",
+   "市爆",
+   "戰爭",
+   "料同",
+   "欣興",
+   "油價",
+   "爆料",
+   "美伊",
+   "美元",
+   "美國",
+   "股市"
+  ],
+  "entity": "3037",
+  "subject_basis": "alias",
+  "subjects": [
+   "3037"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "cybersecurity:輝達:2026-11": {
+  "first_seen": "2026-11-09",
+  "days": 1,
+  "last_seen": "2026-11-09",
+  "latest_title": "NVIDIA board launches independent investigation into alleged intelligence and security ris",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "alleged",
+   "and",
+   "board",
+   "independent",
+   "intelligence",
+   "into",
+   "investigation",
+   "launches",
+   "risks",
+   "security"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "cybersecurity",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:微軟:2026-11": {
+  "first_seen": "2026-11-09",
+  "days": 1,
+  "last_seen": "2026-11-09",
+  "latest_title": "AI 代理 ARTEX 盯上 GitHub 公開憑證，微軟示警攻擊鏈已壓縮到五分鐘 - https://cyberq.tw/",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "ai",
+   "artex",
+   "cyberq",
+   "github",
+   "https",
+   "tw",
+   "五分",
+   "代理",
+   "公開",
+   "分鐘",
+   "到五",
+   "壓縮",
+   "已壓",
+   "憑證",
+   "擊鏈",
+   "攻擊",
+   "盯上",
+   "示警",
+   "縮到",
+   "警攻",
+   "鏈已",
+   "開憑"
+  ],
+  "entity": "微軟",
+  "subject_basis": "alias",
+  "subjects": [
+   "微軟"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
   "identity_schema": 14
  }
 }

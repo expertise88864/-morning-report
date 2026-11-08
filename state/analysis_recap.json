@@ -444,42 +444,38 @@
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球晶圓代工龍頭，先進製程市占逾九成）**：外媒報導台積電應 NVIDIA 要求，已著手研擬 3D DRAM 生產計畫，評估新建晶圓廠或收購既有廠房改造，由先進封裝副總徐國晉主導，公司與 NVIDIA 均未回應 [中央社財經](https://www.cna.com.tw/news/ait/202611070002.aspx)[鉅亨台股](https://news.cnyes.com/news/id/6651567)。3D DRAM 是把記憶體單元垂直堆疊以提高容量，若成真，2330 的角色會從邏輯代工加先進封裝，延伸到記憶體本身。投產時程與產能規模都未揭露，短期對營收零貢獻，先當評價題材而非獲利數字。**[B 級・信心:中-低，公司未證實]**",
+    "statement": "**台積電（2330，全球最大晶圓代工，先進製程與 CoWoS 主力）**：延續法說前外資押寶這條線，市場傳出台積電評估跨足記憶體，公司回應後業界多認為是誤會一場 [經濟日報](https://news.google.com/rss/articles/CBMiVkFVX3lxTE56X19lbW9tR3JDMmNDMTBiRUZodDJkak05a2JsS3NHVlRaX0RpaVl4VDZwM2ZUQVdVclBWQWRSaDFjdTA5U2ZCUEN4bTYxQUFvTEYxSkV3?oc=5)[工商時報](https://news.google.com/rss/articles/CBMiX0FVX3lxTE8yWjVrYk5YR2lXbFdRUjJ2V3o3b09VRjlxNzM5YUlLLXBlMlhfYU04b3RHbWNaZGJSamRQVGdWTzdBTkFDUzNLSXdGTGJpaDJna1p1cjhsSW13LVg4M3NV?oc=5)。同時擴廠規模創紀錄、工安管理同步升級 [經濟日報](https://news.google.com/rss/articles/CBMiW0FVX3lxTE5iRFFxeVAxa1NabzhxQVNtUkhqV3dMX05uMFYtUlBYZkdlTWgyUi05bUxUVGtXVlFCc2NmSDZ1UzNUTG95ZHZERFcxa21GNzBnWDVFNUNvVHBMY3M?oc=5)。跨足記憶體的想像若成真會牽動 HBM 與先進封裝的垂直整合，但目前公司沒有改變路線，對 2330 的實質貢獻是零——這條只能當題材，不能當基本面。",
     "source_urls": [
-     "https://www.cna.com.tw/news/ait/202611070002.aspx",
-     "https://news.cnyes.com/news/id/6651567"
+     "https://news.google.com/rss/articles/CBMiVkFVX3lxTE56X19lbW9tR3JDMmNDMTBiRUZodDJkak05a2JsS3NHVlRaX0RpaVl4VDZwM2ZUQVdVclBWQWRSaDFjdTA5U2ZCUEN4bTYxQUFvTEYxSkV3?oc=5",
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE8yWjVrYk5YR2lXbFdRUjJ2V3o3b09VRjlxNzM5YUlLLXBlMlhfYU04b3RHbWNaZGJSamRQVGdWTzdBTkFDUzNLSXdGTGJpaDJna1p1cjhsSW13LVg4M3NV?oc=5",
+     "https://news.google.com/rss/articles/CBMiW0FVX3lxTE5iRFFxeVAxa1NabzhxQVNtUkhqV3dMX05uMFYtUlBYZkdlTWgyUi05bUxUVGtXVlFCc2NmSDZ1UzNUTG95ZHZERFcxa21GNzBnWDVFNUNvVHBMY3M?oc=5"
     ]
    },
    {
-    "statement": "**美光（MU，美國記憶體大廠，HBM 與 DRAM 供應商）**：延續記憶體供給緊繃這條線，彭博報導桃園工廠計畫因勞資爭議未解而暫停 [TechNews 科技新報](https://news.google.com/rss/articles/CBMimwFBVV95cUxNa194QTg5dVhyUmhVb1J5Q3EzVHN5cFo0QVlpUGp3a01GWnFocno0Q2ZqenZRQ1pERHVUS2JramRBek8xVG11b1FBLW5rMzhBRWNROFRQcjRKUWhVOUFPSzZQNGUxY0hFUURsQnB0Vllhd0dHd04tb3ZWSkpWd2lZTDd2dHhobl9uOXdHVDNwRVhmMC1FMzM2a3hIVQ?oc=5)。台灣占美光 DRAM 產量比重高，新廠暫緩讓供給更緊，反過來強化上一條台積電跨入 3D DRAM 的動機；兩條指向同一件事，記憶體短缺已經從報價問題變成產能配置問題。這是單一新廠、非主力產線，真正影響供給落在 2028 年前後。**[B 級・信心:中-低]**",
+    "statement": "**志聖（2467，台積電供應鏈設備商，先進封裝與高階 PCB 設備）**：10 月營收 10.13 億元、年增 80.68%，創同期新高，前三季每股純益已達 10.67 元 [鉅亨](https://news.cnyes.com/news/id/6652337)。設備出貨對應客戶擴產節奏，年增八成意味先進封裝與載板設備拉貨還在加速。這與 ABF 載板三雄創高、缺口一路看到 2028 的說法同向 [聚財網](https://news.google.com/rss/articles/CBMiTEFVX3lxTE40MVNBQ1JZQXA0NU1xZG5xQ1JpUVlCMHN2ZV9XMHhwUXJmb1JRNFBvRDJqWkNBTkxCMzlCQ0VQd3RKM29ycGQxX1puVGw?oc=5)，兩條都指向同一件事：載板與封裝產能吃緊還沒緩解。就量級而言，單月 10 億元對比台積電全年資本支出仍屬小額，要等第四季裝機才反映在 2330 稼動率上。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMimwFBVV95cUxNa194QTg5dVhyUmhVb1J5Q3EzVHN5cFo0QVlpUGp3a01GWnFocno0Q2ZqenZRQ1pERHVUS2JramRBek8xVG11b1FBLW5rMzhBRWNROFRQcjRKUWhVOUFPSzZQNGUxY0hFUURsQnB0Vllhd0dHd04tb3ZWSkpWd2lZTDd2dHhobl9uOXdHVDNwRVhmMC1FMzM2a3hIVQ?oc=5"
+     "https://news.cnyes.com/news/id/6652337",
+     "https://news.google.com/rss/articles/CBMiTEFVX3lxTE40MVNBQ1JZQXA0NU1xZG5xQ1JpUVlCMHN2ZV9XMHhwUXJmb1JRNFBvRDJqWkNBTkxCMzlCQ0VQd3RKM29ycGQxX1puVGw?oc=5"
     ]
    },
    {
-    "statement": "**台積電（2330）**：與英特爾第三季財報對照，兩家營收差 2.83 倍、營業利益差 10.8 倍 [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTE1ZMXdYZUhoQXhqZU5QclB1Vk1udERVTTVIYUZmdlJuaENKWGlRV2V3QkczSFQyUmtwMWcwaWtlWkd6LVRqWUdPTXRfTkJHZmJqSVlZcGJIcl9zd9IBX0FVX3lxTE55YkQzRXBrZFBWSzlsSm9iSU94U0FRSDFGTzdsTTBjTzJhaEN2NW96d2J3UjBCRXZlVDZTaUZVOExHanY4R1ZWelk2R2M5WVBrRjRzRGtZVV9qaWhQWU0w?oc=5)。這是先進製程與現金流差距的量化版本，也是產能與訂單持續往台積電集中的底層原因。這是相對差距、不是絕對訂單，還看不出對第四季營收的邊際貢獻有多大。**[A 級・信心:中]**",
+    "statement": "**記憶體族群（南亞科、華邦電等）**：高盛估鎧俠 2028 財年本益比僅約 2.1 倍，BNS、野村、摩根大通同週跟進分析，但股價沒有立即反映 [鉅亨](https://news.cnyes.com/news/id/6652072)。壓抑評價的是中國長江存儲、長鑫擴產以及出口管制走向[原文](https://news.cnyes.com/news/id/6652072)；同一時間南亞科 DRAM 報價續強 [工商時報](https://news.google.com/rss/articles/CBMiX0FVX3lxTE9qb2JpeGk2blJFLWtjYWFBT1IyQ0dKeGFPWE0tcXNpTTJPVDc0NjNXd1pIUnpqSkQzTWh5cGZGVUtEajRsOGdwUDIwbFBDTlREZ0lSVDNKZDdYeGhRVG9J?oc=5)。基本面轉強與估值折價並存，問題出在市場不敢把現在的高獲利當常態，這是評價問題不是訂單問題，對 2330 的記憶體客戶拉貨沒有反向證據。**[B 級・信心:中-低]**",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1ZMXdYZUhoQXhqZU5QclB1Vk1udERVTTVIYUZmdlJuaENKWGlRV2V3QkczSFQyUmtwMWcwaWtlWkd6LVRqWUdPTXRfTkJHZmJqSVlZcGJIcl9zd9IBX0FVX3lxTE55YkQzRXBrZFBWSzlsSm9iSU94U0FRSDFGTzdsTTBjTzJhaEN2NW96d2J3UjBCRXZlVDZTaUZVOExHanY4R1ZWelk2R2M5WVBrRjRzRGtZVV9qaWhQWU0w?oc=5"
+     "https://news.cnyes.com/news/id/6652072",
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE9qb2JpeGk2blJFLWtjYWFBT1IyQ0dKeGFPWE0tcXNpTTJPVDc0NjNXd1pIUnpqSkQzTWh5cGZGVUtEajRsOGdwUDIwbFBDTlREZ0lSVDNKZDdYeGhRVG9J?oc=5"
     ]
    },
    {
-    "statement": "**世芯-KY（3661，ASIC 設計服務商，替雲端業者客製 AI 晶片）**：法說會宣布拿下美系全新客戶設計案，合約已簽、預估貢獻約 10 億美元營收，明年第 2 季起逐季放量，2027 年成為第二大營收來源 [鉅亨台股](https://news.cnyes.com/news/id/6651749)。ASIC 量產同樣吃台積電 N3 與 CoWoS 產能，新案放量等於先進封裝需求再排一列。10 億美元是生產營收、2027 年才完整反映，對 2330 是明年下半年的能見度，不是本季數字。**[B 級・信心:中-低，來源為授權轉載]**",
+    "statement": "**Marvell（MRVL，AI ASIC 與光通訊晶片廠）與台股光通訊族群**：延續 11 月初併購 Lumentum 這條線，TD Cowen 與美銀雙雙降評，目標價由 350 美元砍到 175 美元，理由是股權稀釋與收購時點接近光通訊景氣高峰 [鉅亨](https://news.cnyes.com/news/id/6648372)。台股同步承壓，穩懋跌停領跌光通訊族群 [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTE91QmdFSUNEWU1sU0xzTXQ2dFlwOU5OQ0NfdDFvQnI3b1NYcHRoc1cxdDBRNUxKb1RQUmtDRG9UbGZEajdLVktjaEc5QjBnNHlDOG5kNm5teFVfQdIBX0FVX3lxTFB3MkJob3hMWWxrcW5RRHBERndaUVk2Q3lZenhESFpHZ1BValQ1NkgwRnp6VkQ2U2ZnU0k2OFZ0SkpTMUlwanUyZUs3OVVyNFhDMnVhcmY4RlVKQmxaT0hz?oc=5)。這條與 2330 沒有直接關聯，但光模組報價若鬆動，會反向壓縮 AI 伺服器整機報價的漲價空間。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6651749"
+     "https://news.cnyes.com/news/id/6648372",
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE91QmdFSUNEWU1sU0xzTXQ2dFlwOU5OQ0NfdDFvQnI3b1NYcHRoc1cxdDBRNUxKb1RQUmtDRG9UbGZEajdLVktjaEc5QjBnNHlDOG5kNm5teFVfQdIBX0FVX3lxTFB3MkJob3hMWWxrcW5RRHBERndaUVk2Q3lZenhESFpHZ1BValQ1NkgwRnp6VkQ2U2ZnU0k2OFZ0SkpTMUlwanUyZUs3OVVyNFhDMnVhcmY4RlVKQmxaT0hz?oc=5"
     ]
    },
    {
-    "statement": "**微軟（MSFT，全球最大雲端業者之一）**：決定不再續約、近幾個月逐步停用向甲骨文租用的 AI 算力，因對方伺服器採較舊世代 NVIDIA 晶片 [鉅亨頭條](https://news.cnyes.com/news/id/6651736)。這不是 AI 需求消失，是算力規格升級與成本重估：舊 GPU 外租退場、新世代自建進場。對 2330 的 CoWoS 需求方向不變，但節奏更挑規格；合約金額未揭露，無法量化。**[A 級・信心:中]**",
+    "statement": "**【航運｜全球】貨櫃三雄（長榮、陽明、萬海）**：全球塞港未解，國際運價高檔有撐，貨櫃三雄營運吃補 [經濟日報](https://news.google.com/rss/articles/CBMiYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZNIBYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZA?oc=5)。運價維持高檔直接反映在艙位收入與長約換約價，但 WTI 90.83 美元讓燃油成本同步墊高，真正決定毛利的是運價與油價的價差，不是單看運價。**[B 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6651736"
-    ]
-   },
-   {
-    "statement": "**【金融｜台灣｜行情觀察】** 金融保險類股昨日成交 424 億元、31 檔全數收跌、中位數 -2.5%，富邦金 -4.8%、國泰金 -5.4%，盤中多檔殺至跌停後拉回 [太報](https://news.google.com/rss/articles/CBMiXEFVX3lxTE1mcXB1ODRCajRwZUVnUFBmU045OWhaYkZxYTdRMncwYXRKa09SSVFLZ1hUWjdCYUQ0N3ZldF9tNHByRmhCQnA5Q3BjbmJwOG04SjJIMGtTUzFPelUt?oc=5)[今周刊](https://news.google.com/rss/articles/CBMigAFBVV95cUxOOTY4OWRjTVhfMmNyc0k0SlhTa25YQ2FFSnpkd3p2VWVRZFN4dUJkY3lNN1RreWJxb2lEdzAzaVp3SzJjbmgybzVTX3ZvZ2tuV3JlZDh4d0JuNmlBSjNtbmRkak1pdFJmRlFwU3JvRVl1WkxnRUpzdFlQaEowYzNLag?oc=5)。推論這是 ETF 贖回造成的被動賣壓與流動性擠壓，不是信用事件；同一天投信逆勢買超七大金控 [鉅亨網](https://news.google.com/rss/articles/CBMiT0FVX3lxTE1qcXBDckdkanc5cHdyZFpNY1lDUnVnb213bllzOWNub0tKb3lTeWg4SElEZE5JSDhsaTBVclRJd2JaQ0pET2QweVFkWGRtVlE?oc=5)。上述因果屬推論，缺投信與外資的逐檔對帳資料。**【行情觀察・信心:低-中】**",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMiXEFVX3lxTE1mcXB1ODRCajRwZUVnUFBmU045OWhaYkZxYTdRMncwYXRKa09SSVFLZ1hUWjdCYUQ0N3ZldF9tNHByRmhCQnA5Q3BjbmJwOG04SjJIMGtTUzFPelUt?oc=5",
-     "https://news.google.com/rss/articles/CBMigAFBVV95cUxOOTY4OWRjTVhfMmNyc0k0SlhTa25YQ2FFSnpkd3p2VWVRZFN4dUJkY3lNN1RreWJxb2lEdzAzaVp3SzJjbmgybzVTX3ZvZ2tuV3JlZDh4d0JuNmlBSjNtbmRkak1pdFJmRlFwU3JvRVl1WkxnRUpzdFlQaEowYzNLag?oc=5",
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1qcXBDckdkanc5cHdyZFpNY1lDUnVnb213bllzOWNub0tKb3lTeWg4SElEZE5JSDhsaTBVclRJd2JaQ0pET2QweVFkWGRtVlE?oc=5"
+     "https://news.google.com/rss/articles/CBMiYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZNIBYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZA?oc=5"
     ]
    }
   ]

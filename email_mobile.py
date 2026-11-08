@@ -26,6 +26,7 @@ _CSS = """<style id="morning-mobile">
 }
 @media screen and (max-width:360px){
 .mail-container,.mail-kpi{table-layout:fixed!important;}
+.mail-sunday{min-width:0!important;}
 .mail-kpi td{padding-left:3px!important;padding-right:3px!important;overflow-wrap:anywhere!important;}
 .mail-ma200,.mail-ma200 tbody,.mail-ma200 tr,.mail-ma200 td{display:block!important;width:auto!important;}
 .mail-ma200 tr{padding:6px 0!important;border-bottom:1px solid #e2e8f0;}

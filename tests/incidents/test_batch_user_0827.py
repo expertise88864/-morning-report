@@ -292,4 +292,7 @@ def test_sunday_mail_has_the_daily_minimum_width():
     """11-08 使用者:iPhone 上週日信字比平日大。平日信的指標卡讓信至少 367px 寬,郵件 App 會等比縮小;
     週日信設同樣的最小寬度,兩封縮放一致。"""
     html = mr.render_weekend_digest_html("2026-11-08 (Sun)", "", "", "", "", "")
-    assert "min-width:367px" in html
+    assert "min-width:367px" in html and "mail-sunday" in html
+    import email_mobile   # 平日信在 ≤360px 會縮窄,週日也要跟著放掉最小寬度(PR #46 外審)
+    narrow = email_mobile._CSS.split("max-width:360px")[1]
+    assert ".mail-sunday{min-width:0!important;}" in narrow

@@ -24171,7 +24171,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
   <table role="presentation" style="width:100%;border-collapse:collapse;background:#f1f5f9;">
     <tr>
       <td align="center" style="padding:12px 4px;">
-        <table role="presentation" style="max-width:680px;width:100%;min-width:367px;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
+        <table role="presentation" class="mail-sunday" style="max-width:680px;width:100%;min-width:367px;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
           <tr>
             <td style="background:#065f46;background:linear-gradient(135deg,#065f46,#16a34a);padding:26px 28px 20px;color:#ffffff;">
               <div style="font-size:13px;letter-spacing:2px;opacity:0.85;margin-bottom:6px;">WEEKEND DIGEST</div>

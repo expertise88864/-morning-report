@@ -10,8 +10,9 @@ import re
 
 _TPE = dt.timezone(dt.timedelta(hours=8))
 _WEEKDAY = "一二三四五六日"
-#: 只改講「開盤、盤勢」的今日;「今日結論」「今日改中性」(報告本身)與「今日宣布」(新聞)不動。
-_TODAY_MARKET = re.compile(r"(今日|今天)(?=[^。，,；\n]{0,6}?(?:開盤|開高|開低|開出|開平|映射|盤中|早盤|盤勢))")
+#: 只改緊接著講「開盤、盤勢」的今日:中間只容空白、英數(代號、ADR)與「的」。
+#: 「今日結論」「今日改中性」(報告本身)、「今日宣布開放盤中零股」(新聞日期)都不動(PR #45 外審)。
+_TODAY_MARKET = re.compile(r"(今日|今天)(?=[\sA-Za-z0-9的]{0,8}(?:開盤|開高|開低|開出|開平|映射|盤中|早盤|盤勢))")
 
 
 def _days(quotes, today: str | None) -> tuple[dt.date, dt.date] | None:

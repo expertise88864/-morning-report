@@ -14,6 +14,8 @@ def test_saturday_today_market_wording_becomes_next_session():
     assert "週一開盤方向偏多" in out and "週一 2330 映射" in out and "週一開高後" in out
     assert "週一的 ADR 映射" in out
     assert "今日改中性" in out and "金管會今日宣布" in out   # 報告本身與新聞的「今日」不動
+    news = "金管會今日宣布開放盤中零股交易。外資今日買超後盤中翻空。"   # PR #45 外審
+    assert sw.rewrite(news, SAT, today="2026-11-07") == news
 
 
 def test_trading_day_and_long_holiday():

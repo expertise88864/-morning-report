@@ -1196,7 +1196,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             or standings or wc_results or wc_groups or wc_fixtures or wc_knockout
             or mlb_tw or tennis.get("tournaments") or tennis.get("results")
             or (sports or {}).get("mlb_fixtures") or (sports or {}).get("nba_fixtures")
-            or mlb_post or cpbl_post or _poly_renderable or any(news.values())):
+            or mlb_post or cpbl_post or (sports or {}).get("apbc") or _poly_renderable or any(news.values())):
         return ""
     # 區塊身分:在 append 的當下記下,標題再由它推出。
     # 掃 HTML 找關鍵字永遠會有假陽性(中職新聞標題提到 NBA → 標題冒出 NBA)。
@@ -1369,6 +1369,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 台灣旅外球員（近期出賽）</b>"
             + "<div style='font-size:12px;color:#64748b;'>MLB Stats API 單場紀錄；日期為來源比賽日，非台北新聞發布日。下方消息可能為不同場次。</div>"
             + rows + "</div>")
+    if (sports or {}).get("apbc"):   # 亞冠賽中華隊(2026-11-08)
+        from apbc import render as _apbc_render
+        _mark("亞冠賽")
+        _add(_apbc_render(sports["apbc"], htmllib.escape))
     if cpbl_post:
         _mark("中職")
         posts = cpbl_post.get("series") or []
@@ -1756,7 +1760,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
 #: 於是「中職新聞的標題裡剛好提到 NBA」就會讓 NBA 出現在標題裡,而根本沒有
 #: NBA 區塊。掃內容永遠會有這種假陽性——正解是**在 append 的當下記下身分**,
 #: 標題與區塊因此不可能再分歧。我兩次都選了比較省事的做法,這次照做。
-_SPORTS_SECTION_ORDER = ("世足", "MLB", "NBA", "中職", "網球")
+_SPORTS_SECTION_ORDER = ("世足", "亞冠賽", "MLB", "NBA", "中職", "網球")
 #: 新聞區塊用的字典鍵 → 標題顯示名
 _NEWS_LABEL_TO_SECTION = {"世足": "世足", "中華職棒": "中職", "網球": "網球",
                           "MLB": "MLB", "NBA": "NBA"}

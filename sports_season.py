@@ -356,7 +356,7 @@ def priority(sports: dict) -> dict[str, int]:
     nba = sports.get("nba") or []
     nba_post = any("季後賽" in str(g.get("note", "")) for g in nba)
     nba_pre = bool(nba) and all("季前賽" in str(g.get("note", "")) for g in nba)
-    return {"世足": 0, "MLB": 0 if sports.get("mlb_post") else 1,
+    return {"世足": 0, "亞冠賽": 0, "MLB": 0 if sports.get("mlb_post") else 1,
             "中職": 0 if sports.get("cpbl_post") else 1,
             "NBA": 0 if nba_post else (2 if nba_pre or sports.get("nba_offseason") else 1),
             "網球": 1}

@@ -21183,6 +21183,8 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     # 季後賽:系列戰況 + 昨日比分 + 下一場(使用者 2026-10-14;見 sports_season)
     from sports_season import drop_offseason_standings, fetch_posts
     out.update(fetch_posts(_http_get, now_tpe, print, _DEGRADED_STEPS.append))   # ::warning:: 走 stdout
+    from apbc import fetch as _apbc_fetch   # 亞冠賽中華隊(2026-11-08;中職資料源沒有國家隊賽事)
+    out.update(_apbc_fetch(_http_get, now_tpe, print, _DEGRADED_STEPS.append))
     # MLB 未來一週焦點賽程(強隊對戰;台北時間)——使用者要求 MLB 也要有賽程
     try:
         # 季後賽:晉級隊不一定是例行賽前段班,不篩(單場賭盤要掛在這份賽程上)

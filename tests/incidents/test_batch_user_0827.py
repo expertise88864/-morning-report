@@ -280,3 +280,16 @@ def test_the_date_first_header_debris_is_stripped_too():
     for ln in ("晨報今天提到 2026/08/27 的行情",
                "2026-08-28 晨報的重點是輝達財報"):
         assert not re.search(lp._HEADER_DEBRIS_RE, ln), ln
+
+
+def test_week_review_uses_the_daily_section_layout():
+    """11-08 使用者:週日回顧段包在卡片裡,iPhone 上一行比平日少約 6 字,改成平日的段落版式。"""
+    html = mr._render_week_review_html("### 本週大事回顧\n- 測試", None)
+    assert html.startswith("<h2 style=") and "border:1px solid #c7d2fe" not in html
+
+
+def test_sunday_mail_has_the_daily_minimum_width():
+    """11-08 使用者:iPhone 上週日信字比平日大。平日信的指標卡讓信至少 367px 寬,郵件 App 會等比縮小;
+    週日信設同樣的最小寬度,兩封縮放一致。"""
+    html = mr.render_weekend_digest_html("2026-11-08 (Sun)", "", "", "", "", "")
+    assert "min-width:367px" in html

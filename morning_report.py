@@ -24027,13 +24027,8 @@ def _render_week_review_html(analysis_md: str, htmllib) -> str:
         ln for ln in str(analysis_md).splitlines()
         if ln.strip() not in ("---", "***", "___"))
     from render_utils import _md_to_html as _md, _style_analysis_html
-    body = _style_analysis_html(_md(analysis_md))
-    return (
-        '<div style="border:1px solid #c7d2fe;border-radius:10px;overflow:hidden;margin:14px 0;">'
-        '<div style="background:#eef2ff;color:#3730a3;padding:8px 14px;font-weight:700;font-size:14px;">'
-        '本週回顧與下週展望</div>'
-        f'<div style="padding:10px 14px;font-size:13px;color:#334155;line-height:1.8;">{body}</div>'
-        "</div>")
+    # 與平日段落同一版式:不再包卡片(11-08 使用者:iPhone 上卡片內距吃掉寬度,一行少 6 字)
+    return _style_analysis_html("<h2>本週回顧與下週展望</h2>" + _md(analysis_md))
 
 
 def analyze_weekend_policy(gazette_records) -> str:
@@ -24176,7 +24171,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
   <table role="presentation" style="width:100%;border-collapse:collapse;background:#f1f5f9;">
     <tr>
       <td align="center" style="padding:12px 4px;">
-        <table role="presentation" style="max-width:680px;width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
+        <table role="presentation" style="max-width:680px;width:100%;min-width:367px;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
           <tr>
             <td style="background:#065f46;background:linear-gradient(135deg,#065f46,#16a34a);padding:26px 28px 20px;color:#ffffff;">
               <div style="font-size:13px;letter-spacing:2px;opacity:0.85;margin-bottom:6px;">WEEKEND DIGEST</div>

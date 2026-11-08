@@ -65,6 +65,7 @@ import analysis_origin as _ao
 import legacy_actor_guard as _legacy_actor_guard
 import report_polish as _polish
 import market_fresh as _fresh
+import session_wording as _session_wording
 import fallback_watch_gap as _fwg
 import run_quality as _rq
 import analysis_validate as _av
@@ -12012,7 +12013,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         stance_line1_rule=stance_line1_rule,
         stance_line2_rule=stance_line2_rule)
     return f"""你是嚴謹但敢於下判斷的財經分析師。為一位**以台股為核心**的台灣投資人寫晨報(持有 2330、0050 等台股,兼看 00662/NASDAQ)。晨報的主體是台灣經濟與台股:每一條傳導鏈的終點是「台股/加權/2330/相關類股」,不要以 00662 為主詞來講。
-
+{_session_wording.prompt_note(quotes)}
 【資料品質（最優先閱讀）】
 {dq_block}
 ※ status=OK：資料正常，可正常引用。
@@ -24316,8 +24317,8 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # _md_to_html 純 stdlib、LLM 呼叫本身已被包住),但一旦逸出就是**整封信不寄**
     # ——與同函式其餘步驟保持一致比賭它不會炸划算。
     try:
-        policy_analysis_html = _render_weekend_policy_html(
-            analyze_weekend_policy(gazette_records), _htmllib)
+        policy_analysis_html = (_render_weekend_policy_html(   # 11-08 使用者:週日也隱藏(與平日同一開關)
+            analyze_weekend_policy(gazette_records), _htmllib) if SHOW_POLICY_DEEPDIVE else "")
     except Exception as e:
         print(f"[weekend] 政策解析略過: {type(e).__name__}: {e}", file=sys.stderr)
         _DEGRADED_STEPS.append("weekend_policy_analysis")

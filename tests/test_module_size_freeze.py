@@ -218,7 +218,8 @@ MODULE_CEILINGS = {
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
     "report_polish.py": 250,
-    "report_tidy.py": 90,   # 模型沒照規則時的收尾(2026-11-06)
+    "report_tidy.py": 90,
+    "session_wording.py": 60,   # 週六、連假的「今日開盤」(2026-11-07)   # 模型沒照規則時的收尾(2026-11-06)
       # 信件內容的確定性整理(2026-11-04)
     "market_fresh.py": 100,   # 總經列的資料新鮮度(2026-11-05)
     "world_severity.py": 40,   # 世界大事嚴重性分級(2026-11-02)

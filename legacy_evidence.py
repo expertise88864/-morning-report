@@ -111,17 +111,22 @@ def _item_text(item: dict) -> str:
     return " ".join(str(item.get(k) or "") for k in ("title", "summary", "excerpt", "fulltext"))
 
 
+class _Yi(float):
+    """欄位名以 `_yi` 結尾的行情數字(單位是億元,例如類股成交 value_yi)。"""
+
+
 def _market_values(quotes, budget: int = 20000) -> list[float]:
     """行情資料裡的數字(漲跌幅寫成「跌 3.2%」時資料是 -3.2,取絕對值)。"""
     out, stack = [], [quotes]
     while stack and len(out) < budget:
         node = stack.pop()
         if isinstance(node, dict):
-            stack.extend(v for k, v in node.items() if not str(k).startswith("NEWS"))
+            stack.extend(_Yi(abs(v)) if str(k).endswith("_yi") and isinstance(v, (int, float)) and not isinstance(v, bool)
+                         else v for k, v in node.items() if not str(k).startswith("NEWS"))
         elif isinstance(node, (list, tuple)):
             stack.extend(node[:200])
         elif isinstance(node, (int, float)) and not isinstance(node, bool):
-            out.append(abs(float(node)))
+            out.append(node if isinstance(node, _Yi) else abs(float(node)))
     return out
 
 
@@ -133,6 +138,8 @@ def _supported(claim: tuple, pool: list[tuple], market: list[float] = ()) -> boo
     tol = max(0.5 * 10 ** -decimals * _SCALE.get(mag, 1.0) + 1e-9, abs(value) * 0.005)
     if any(k in _COMPATIBLE.get(kind, ()) and abs(v - value) <= tol for _, v, k, *_ in pool):
         return True
+    if kind in ("twd", "amt") and mag == "億":   # 只認以億為單位的欄位;指數點數不能替成交額背書(11-07 實信 424 億元)
+        return any(isinstance(v, _Yi) and abs(v - value / 1e8) <= tol / 1e8 for v in market)
     return (kind == "pct" or (kind in ("twd", "usd") and not mag)) and any(abs(v - value) <= tol for v in market)
 
 

@@ -64,4 +64,5 @@ def correct_reader_claims(text: str, news: list[dict], *,
     corrected = correct_investment_target_headings(
         text, news, origin=origin, manifest=manifest)
     import report_polish   # 用語統一與段落順序(2026-11-04 使用者)
-    return neutralize(report_polish.order_sections(report_polish.normalize_terms(corrected)), manifest)
+    import session_wording   # 週六、連假的「今日開盤」改成下一交易日(2026-11-07 實信)
+    return neutralize(report_polish.order_sections(session_wording.rewrite(report_polish.normalize_terms(corrected), quotes)), manifest)

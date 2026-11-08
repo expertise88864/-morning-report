@@ -26,6 +26,13 @@ from email.message import EmailMessage
 TPE = dt.timezone(dt.timedelta(hours=8))
 
 
+def _observe_only(detail: str) -> bool:
+    """只有觀察期的證據核對時,信其實是完整的(11-07 告警信寫「有段落沒跑成」,但什麼都沒刪)。"""
+    import re
+    keys = re.findall(r"\[(?:defect|degraded)\]\s+(\S+)", detail or "")
+    return bool(keys) and set(keys) == {"legacy_evidence_unverified"} and "未刪除" in (detail or "")
+
+
 def build_message(detail: str, run_url: str, now: dt.datetime,
                   *, assessor_failed: bool = False) -> EmailMessage:
     """告警信本體(純函式,好測)。
@@ -56,11 +63,17 @@ def build_message(detail: str, run_url: str, now: dt.datetime,
         ]))
         return msg
     msg = EmailMessage()
+    observe = _observe_only(detail)
     msg["Subject"] = (f"[晨報品質] {now:%Y-%m-%d %H:%M} "
-                      "信寄出了,但有段落沒跑成")
+                      + ("證據核對有疑點,內容未刪除" if observe else "信寄出了,但有段落沒跑成"))
     body = [
+        "晨報寄出去了,內容完整。證據核對在觀察期,下面幾條只記錄、沒有刪除,",
+        "請看是數字真的有問題,還是核對誤判。判準見 `run_quality.assess()`。",
+    ] if observe else [
         "晨報跑起來也寄出去了,但**有段落沒跑成** —— 收件人今天",
         "拿到的比它該有的樣子少。判準見 `run_quality.assess()`。",
+    ]
+    body += [
         "",
         (detail or "").strip(),
         "",

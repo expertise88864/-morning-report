@@ -16,7 +16,7 @@ _HEADING = re.compile(r"(?m)^(?=#{1,3}\s*[一二三四五六七八九十]+(?:之
 
 def normalize_terms(text: str) -> str:
     """同一個地名全信一種寫法(實信:同一條裡「荷姆茲」「荷莫茲」並存)。"""
-    return _TERMS.sub("荷姆茲", str(text or ""))
+    return _TERMS.sub("荷姆茲", str(text or "")).replace("自行了斷", "自行了結")   # 11-07 實信
 
 
 def order_sections(text: str) -> str:

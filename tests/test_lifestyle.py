@@ -2497,7 +2497,8 @@ def test_weather_card_shows_signal_and_suspension():
     locs = [{"name": "彰化市", "t_min": 25, "t_max": 30, "rain_prob": 90,
              "label": "雷雨", "wind": 55, "gust": 95, "rain_sum": 200}]
     susp = [{"title": "彰化縣停止上班上課", "link": "https://x/chc"}]
-    h = mr._render_weather_html(locs, susp)
+    typhoon = [{"title": "陸上颱風警報", "link": "https://www.cwa.gov.tw/", "typhoon": True}]   # 11-09:颱風時才算
+    h = mr._render_weather_html(locs, susp, typhoon)
     assert "已達停班停課參考標準" in h and "#b91c1c" in h    # 紅字警示
     assert "彰化縣停止上班上課" in h and "https://x/chc" in h  # 公告連結
     # 平常日:無警示無公告

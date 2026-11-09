@@ -26,24 +26,28 @@ def _days(quotes, today: str | None) -> tuple[dt.date, dt.date] | None:
     return (day, session) if session > day else None
 
 
-#: 週一講「昨日」的市場數字(台股、法人、美股收盤)與「半導體端昨夜」;「昨夜三大重點」段名與週末新聞的昨夜不動
-_YESTERDAY_MARKET = re.compile(r"昨日(?=台股|美股|加權|大盤|收盤|成交|法人|外資|投信|融資)|"
-                               r"(?:(?<=半導體端)|(?<=半導體)|(?<=美股)|(?<=費半))昨夜|"
-                               r"昨夜(?=美股|收盤|費半|SOX|TSM|ADR|美國科技股|半導體)")
+#: 休市後講「昨日」的台股數字;美股另算(台美休市日不同,PR #48 外審)。「昨夜三大重點」段名與週末新聞的昨夜不動
+_TW_YESTERDAY = re.compile(r"昨日(?=台股|加權|大盤|收盤|成交|法人|外資|投信|融資)")
+_US_YESTERDAY = re.compile(r"昨日(?=美股)|(?:(?<=半導體端)|(?<=半導體)|(?<=美股)|(?<=費半))昨夜|"
+                           r"昨夜(?=美股|費半|SOX|TSM|ADR|美國科技股|半導體)")
 
 
-def _gap(quotes, today: str | None) -> str:
-    """休市後第一個交易日 → 上一交易日的稱呼(上週五、週二、11/28);其餘日子回空。"""
+def _since(quotes, key: str, today: str | None) -> tuple[str, str]:
+    """上一次收盤離目標交易日超過一天 → (稱呼, M/D),例「上週五」「週二」「2/11」;其餘回空。"""
+    quotes = quotes or {}
+    raw = quotes.get(key)
+    raw = raw.get("date") if isinstance(raw, dict) else raw   # 美股看 QQQ 報價本身的日期
     try:
-        session = dt.date.fromisoformat(str((quotes or {}).get("TARGET_SESSION") or "")[:10])
-        last = dt.date.fromisoformat(str((quotes or {}).get("LAST_TRADING_SESSION") or "")[:10])
+        session = dt.date.fromisoformat(str(quotes.get("TARGET_SESSION") or "")[:10])
+        last = dt.date.fromisoformat(str(raw or "")[:10])
     except (TypeError, ValueError):
-        return ""
-    if _days(quotes, today) or (session - last).days <= 1:
-        return ""
+        return "", ""
+    if _days(quotes, today) or not 1 < (session - last).days:
+        return "", ""
+    when = f"{last.month}/{last.day}"
     if (session - last).days >= 7:
-        return f"{last.month}/{last.day}"
-    return ("上" if last.weekday() >= session.weekday() else "") + f"週{_WEEKDAY[last.weekday()]}"
+        return when, when
+    return ("上" if last.weekday() >= session.weekday() else "") + f"週{_WEEKDAY[last.weekday()]}", when
 
 
 def _label(day: dt.date, session: dt.date) -> str:
@@ -51,12 +55,12 @@ def _label(day: dt.date, session: dt.date) -> str:
 
 
 def prompt_note(quotes, today: str | None = None) -> str:
-    days, prev = _days(quotes, today), _gap(quotes, today)
-    if prev:
-        last = str(quotes["LAST_TRADING_SESSION"])[5:10].replace("-", "/")
-        return (f"\n【時間定位】上一交易日是{prev}({last}),台股與美股最近一次收盤都是{prev}:"
-                f"寫「{prev}台股」「{prev}美股」,不可寫「昨日台股」「昨夜美股」「昨夜」"
-                "(週末發生的新聞照實際日期寫)。\n")
+    days = _days(quotes, today)
+    (tw, tw_day), (us, us_day) = _since(quotes, "LAST_TRADING_SESSION", today), _since(quotes, "QQQ", today)
+    if tw or us:
+        parts = ([f"台股上一交易日是{tw}({tw_day}),寫「{tw}台股」,不可寫「昨日台股」"] if tw else []) + (
+            [f"美股最近一次收盤是{us}({us_day}),寫「{us}美股」,不可寫「昨夜美股」「昨夜」"] if us else [])
+        return "\n【時間定位】" + ";".join(parts) + "(週末發生的新聞照實際日期寫)。\n"
     if not days:
         return ""
     day, session = days
@@ -66,14 +70,16 @@ def prompt_note(quotes, today: str | None = None) -> str:
 
 
 def rewrite(text: str, quotes, today: str | None = None) -> str:
-    days, prev = _days(quotes, today), _gap(quotes, today)
+    days = _days(quotes, today)
     if not isinstance(text, str):
         return text
-    if prev:
-        return _YESTERDAY_MARKET.sub(prev, text)
-    return _TODAY_MARKET.sub(_label(*days), text) if days else text
+    if days:
+        return _TODAY_MARKET.sub(_label(*days), text)
+    tw, us = _since(quotes, "LAST_TRADING_SESSION", today)[0], _since(quotes, "QQQ", today)[0]
+    text = _TW_YESTERDAY.sub(tw, text) if tw else text
+    return _US_YESTERDAY.sub(us, text) if us else text
 
 
 def yesterday(quotes, today: str | None = None) -> str:
-    """程式自己寫的句子用:「昨日」或上一交易日的稱呼。"""
-    return _gap(quotes, today) or "昨日"
+    """程式自己寫的台股句子用:「昨日」或上一交易日的稱呼。"""
+    return _since(quotes, "LAST_TRADING_SESSION", today)[0] or "昨日"

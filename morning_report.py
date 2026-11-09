@@ -15671,7 +15671,8 @@ def _render_weather_html(locs: list[dict],
     import weather_dedupe
     # 只在颱風警報或停班停課公告時才算(11-09 實信:東北季風陣風 76km/h 也印「接近停班停課」)
     signal = (_typhoon_signal(weather_dedupe.without_announced(locs, suspension))
-              if suspension or any((a or {}).get("typhoon") for a in alerts or []) else "")
+              if weather_dedupe.announced(suspension) or any((a or {}).get("typhoon") for a in alerts or [])
+              else "")   # 待定列與新聞備援不算(PR #48 外審)
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
                    if signal else "")
     # 停班停課公告新聞(縣市公告即時,黑字可點;無公告日自動消失)

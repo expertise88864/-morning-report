@@ -289,7 +289,7 @@
    "watch_id": "w68",
    "status": "open",
    "created": "2026-10-20",
-   "last_reviewed": "2026-11-09",
+   "last_reviewed": "2026-11-10",
    "deadline": "2026-11-17"
   },
   {
@@ -301,7 +301,7 @@
    "watch_id": "w72",
    "status": "open",
    "created": "2026-10-22",
-   "last_reviewed": "2026-11-09",
+   "last_reviewed": "2026-11-10",
    "deadline": "2026-11-19"
   },
   {
@@ -325,7 +325,7 @@
    "watch_id": "w77",
    "status": "open",
    "created": "2026-10-23",
-   "last_reviewed": "2026-11-06",
+   "last_reviewed": "2026-11-10",
    "deadline": "2026-11-20"
   },
   {
@@ -353,30 +353,6 @@
    "deadline": "2026-11-27"
   },
   {
-   "trigger": "外資台指期淨空能否由 91,812 口回補到 8 萬口以下（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空能否由 91,812 口回補到 8 萬口以下（觀察期：5 天內）",
-   "trigger_key": "td33325e236769d22",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w112",
-   "status": "open",
-   "created": "2026-11-04",
-   "last_reviewed": "2026-11-09",
-   "deadline": "2026-11-09"
-  },
-  {
-   "trigger": "大盤成交金額能否維持 8,000 億以上、上漲家數回到 500 檔（觀察期：5 天內）",
-   "trigger_full": "大盤成交金額能否維持 8,000 億以上、上漲家數回到 500 檔（觀察期：5 天內）",
-   "trigger_key": "t97e57a5e710b6eb2",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w113",
-   "status": "open",
-   "created": "2026-11-04",
-   "last_reviewed": "2026-11-09",
-   "deadline": "2026-11-09"
-  },
-  {
    "trigger": "外資台指期淨空 -93,647 口是否縮回 8 萬口以內（觀察期：5 天內）",
    "trigger_full": "外資台指期淨空 -93,647 口是否縮回 8 萬口以內（觀察期：5 天內）",
    "trigger_key": "t0e65840fc93a8392",
@@ -385,7 +361,7 @@
    "watch_id": "w115",
    "status": "open",
    "created": "2026-11-05",
-   "last_reviewed": "2026-11-09",
+   "last_reviewed": "2026-11-10",
    "deadline": "2026-11-10"
   },
   {
@@ -397,20 +373,8 @@
    "watch_id": "w119",
    "status": "open",
    "created": "2026-11-06",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-10",
    "deadline": "2026-11-11"
-  },
-  {
-   "trigger": "夜盤台指期收 40,298 點，觀察今日現貨能否開在加權預測區間 39,509 至 40,243 點的上半緣並守住，且上漲家數回到 500 檔以上（觀察期：今日）",
-   "trigger_full": "夜盤台指期收 40,298 點，觀察今日現貨能否開在加權預測區間 39,509 至 40,243 點的上半緣並守住，且上漲家數回到 500 檔以上（觀察期：今日）",
-   "trigger_key": "t6efeb7693cfd57c2",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w120",
-   "status": "open",
-   "created": "2026-11-09",
-   "last_reviewed": "",
-   "deadline": "2026-11-10"
   },
   {
    "trigger": "外資台指期淨空 -99,930 口，觀察 5 天內是否縮回 8 萬口以內（觀察期：5 天內）",
@@ -421,7 +385,7 @@
    "watch_id": "w121",
    "status": "open",
    "created": "2026-11-09",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-10",
    "deadline": "2026-11-14"
   },
   {
@@ -433,49 +397,88 @@
    "watch_id": "w122",
    "status": "open",
    "created": "2026-11-09",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-10",
    "deadline": "2026-11-14"
+  },
+  {
+   "trigger": "加權指數能否開在模型估計的 42,125 點以上並守住，且上漲家數維持 700 檔以上（觀察期：今日）",
+   "trigger_full": "加權指數能否開在模型估計的 42,125 點以上並守住，且上漲家數維持 700 檔以上（觀察期：今日）",
+   "trigger_key": "tb98990d9e35f485e",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w123",
+   "status": "open",
+   "created": "2026-11-10",
+   "last_reviewed": "",
+   "deadline": "2026-11-11"
+  },
+  {
+   "trigger": "台積電 2330 能否站上 2,261 元中樞、成交金額是否同步放大（觀察期：今日）",
+   "trigger_full": "台積電 2330 能否站上 2,261 元中樞、成交金額是否同步放大（觀察期：今日）",
+   "trigger_key": "t5ec363fa35822f34",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w124",
+   "status": "open",
+   "created": "2026-11-10",
+   "last_reviewed": "",
+   "deadline": "2026-11-11"
+  },
+  {
+   "trigger": "外資台指期淨空 -101,771 口是否在五個交易日內縮回 9 萬口以內（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -101,771 口是否在五個交易日內縮回 9 萬口以內（觀察期：5 天內）",
+   "trigger_key": "te3241dc816e42035",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w125",
+   "status": "open",
+   "created": "2026-11-10",
+   "last_reviewed": "",
+   "deadline": "2026-11-15"
   }
  ],
- "watch_seq": 122,
+ "watch_seq": 125,
  "legacy_report": {
-  "date": "2026-11-09",
+  "date": "2026-11-10",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球最大晶圓代工，先進製程與 CoWoS 主力）**：延續法說前外資押寶這條線，市場傳出台積電評估跨足記憶體，公司回應後業界多認為是誤會一場 [經濟日報](https://news.google.com/rss/articles/CBMiVkFVX3lxTE56X19lbW9tR3JDMmNDMTBiRUZodDJkak05a2JsS3NHVlRaX0RpaVl4VDZwM2ZUQVdVclBWQWRSaDFjdTA5U2ZCUEN4bTYxQUFvTEYxSkV3?oc=5)[工商時報](https://news.google.com/rss/articles/CBMiX0FVX3lxTE8yWjVrYk5YR2lXbFdRUjJ2V3o3b09VRjlxNzM5YUlLLXBlMlhfYU04b3RHbWNaZGJSamRQVGdWTzdBTkFDUzNLSXdGTGJpaDJna1p1cjhsSW13LVg4M3NV?oc=5)。同時擴廠規模創紀錄、工安管理同步升級 [經濟日報](https://news.google.com/rss/articles/CBMiW0FVX3lxTE5iRFFxeVAxa1NabzhxQVNtUkhqV3dMX05uMFYtUlBYZkdlTWgyUi05bUxUVGtXVlFCc2NmSDZ1UzNUTG95ZHZERFcxa21GNzBnWDVFNUNvVHBMY3M?oc=5)。跨足記憶體的想像若成真會牽動 HBM 與先進封裝的垂直整合，但目前公司沒有改變路線，對 2330 的實質貢獻是零——這條只能當題材，不能當基本面。",
+    "statement": "**台達電（2308，電源管理與散熱模組廠，AI 伺服器電源主要供應商）**：10 月營收 746.66 億元，月增 14%、年增 30%，創單月歷史新高；累計前 10 月 6,143.33 億元、年增 36.3% [鉅亨](https://news.cnyes.com/news/id/6654744)[鉅亨網](https://news.google.com/rss/articles/CBMiT0FVX3lxTE1sMTRCZFVCeGxKcjdaYlNZXzh6TjN6TDI2QXhDdFF2SlhZVmlkSDg1VG9STHVkMXNWSzdCMURRNUstN256bVlnOXBlNGMxdzA?oc=5)。AI 機櫃瓦數提升帶動電源單位價值，營收是拉貨最直接的落後確認。量級上單月 746 億元確屬歷史新高，但公司未同步公布毛利率，用營收推獲利幅度會高估——這是「量」的證據，不是「價」的證據。**[A 級・信心:中-高]**",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiVkFVX3lxTE56X19lbW9tR3JDMmNDMTBiRUZodDJkak05a2JsS3NHVlRaX0RpaVl4VDZwM2ZUQVdVclBWQWRSaDFjdTA5U2ZCUEN4bTYxQUFvTEYxSkV3?oc=5",
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE8yWjVrYk5YR2lXbFdRUjJ2V3o3b09VRjlxNzM5YUlLLXBlMlhfYU04b3RHbWNaZGJSamRQVGdWTzdBTkFDUzNLSXdGTGJpaDJna1p1cjhsSW13LVg4M3NV?oc=5",
-     "https://news.google.com/rss/articles/CBMiW0FVX3lxTE5iRFFxeVAxa1NabzhxQVNtUkhqV3dMX05uMFYtUlBYZkdlTWgyUi05bUxUVGtXVlFCc2NmSDZ1UzNUTG95ZHZERFcxa21GNzBnWDVFNUNvVHBMY3M?oc=5"
+     "https://news.cnyes.com/news/id/6654744",
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1sMTRCZFVCeGxKcjdaYlNZXzh6TjN6TDI2QXhDdFF2SlhZVmlkSDg1VG9STHVkMXNWSzdCMURRNUstN256bVlnOXBlNGMxdzA?oc=5"
     ]
    },
    {
-    "statement": "**志聖（2467，台積電供應鏈設備商，先進封裝與高階 PCB 設備）**：10 月營收 10.13 億元、年增 80.68%，創同期新高，前三季每股純益已達 10.67 元 [鉅亨](https://news.cnyes.com/news/id/6652337)。設備出貨對應客戶擴產節奏，年增八成意味先進封裝與載板設備拉貨還在加速。這與 ABF 載板三雄創高、缺口一路看到 2028 的說法同向 [聚財網](https://news.google.com/rss/articles/CBMiTEFVX3lxTE40MVNBQ1JZQXA0NU1xZG5xQ1JpUVlCMHN2ZV9XMHhwUXJmb1JRNFBvRDJqWkNBTkxCMzlCQ0VQd3RKM29ycGQxX1puVGw?oc=5)，兩條都指向同一件事：載板與封裝產能吃緊還沒緩解。就量級而言，單月 10 億元對比台積電全年資本支出仍屬小額，要等第四季裝機才反映在 2330 稼動率上。**[A 級・信心:中]**",
+    "statement": "**美光（MU，全球第三大 DRAM 廠，HBM 為 AI 記憶體主力）**：新加坡兩案合計投資 310 億美元，含 240 億美元 NAND 新廠與 70 億美元 HBM 先進封裝廠，分別於 2028 年下半年與 2027 年貢獻產能；桃園 Fab 11E 新廠因勞資協商，11 月 17 日開第 4 次會議 [ETtoday](https://finance.ettoday.net/news/3269186)。HBM 先進封裝擴產對應 AI GPU 的堆疊需求，中長期利多先進封裝設備與材料供應鏈。但 310 億美元是十年期規劃、2027 年才有第一筆產能，對今年營收零貢獻；桃園廠進度未正面說明，台灣本地設備訂單的時程還無法確認。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6652337",
-     "https://news.google.com/rss/articles/CBMiTEFVX3lxTE40MVNBQ1JZQXA0NU1xZG5xQ1JpUVlCMHN2ZV9XMHhwUXJmb1JRNFBvRDJqWkNBTkxCMzlCQ0VQd3RKM29ycGQxX1puVGw?oc=5"
+     "https://finance.ettoday.net/news/3269186"
     ]
    },
    {
-    "statement": "**記憶體族群（南亞科、華邦電等）**：高盛估鎧俠 2028 財年本益比僅約 2.1 倍，BNS、野村、摩根大通同週跟進分析，但股價沒有立即反映 [鉅亨](https://news.cnyes.com/news/id/6652072)。壓抑評價的是中國長江存儲、長鑫擴產以及出口管制走向[原文](https://news.cnyes.com/news/id/6652072)；同一時間南亞科 DRAM 報價續強 [工商時報](https://news.google.com/rss/articles/CBMiX0FVX3lxTE9qb2JpeGk2blJFLWtjYWFBT1IyQ0dKeGFPWE0tcXNpTTJPVDc0NjNXd1pIUnpqSkQzTWh5cGZGVUtEajRsOGdwUDIwbFBDTlREZ0lSVDNKZDdYeGhRVG9J?oc=5)。基本面轉強與估值折價並存，問題出在市場不敢把現在的高獲利當常態，這是評價問題不是訂單問題，對 2330 的記憶體客戶拉貨沒有反向證據。**[B 級・信心:中-低]**",
+    "statement": "**AMD（全球第二大 x86 CPU 廠，MI 系列為資料中心 AI GPU 主力）**：延續 11 月初財報後的升評這條線，Oppenheimer 將評等調升至「優於大盤」、目標價 600 美元，預估 2027 年資料中心營收成長 135%，股價單日漲 13.26% [鉅亨](https://news.cnyes.com/news/id/6654538)[原文](https://news.cnyes.com/news/id/6654625)。AMD 的 GPU 與 ASIC 都在台積電投片，出貨放量直接推升 N3/N2 與 CoWoS 需求。值得注意的是它與昨夜輝達調查案形成對比：資金在 AI 晶片內部由龍頭轉向老二，不是離開 AI——這條與輝達那條同源但方向相反。目前沒有 AMD 追加投片的具體數字，量級還看不出來。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6652072",
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE9qb2JpeGk2blJFLWtjYWFBT1IyQ0dKeGFPWE0tcXNpTTJPVDc0NjNXd1pIUnpqSkQzTWh5cGZGVUtEajRsOGdwUDIwbFBDTlREZ0lSVDNKZDdYeGhRVG9J?oc=5"
+     "https://news.cnyes.com/news/id/6654538",
+     "https://news.cnyes.com/news/id/6654625"
     ]
    },
    {
-    "statement": "**Marvell（MRVL，AI ASIC 與光通訊晶片廠）與台股光通訊族群**：延續 11 月初併購 Lumentum 這條線，TD Cowen 與美銀雙雙降評，目標價由 350 美元砍到 175 美元，理由是股權稀釋與收購時點接近光通訊景氣高峰 [鉅亨](https://news.cnyes.com/news/id/6648372)。台股同步承壓，穩懋跌停領跌光通訊族群 [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTE91QmdFSUNEWU1sU0xzTXQ2dFlwOU5OQ0NfdDFvQnI3b1NYcHRoc1cxdDBRNUxKb1RQUmtDRG9UbGZEajdLVktjaEc5QjBnNHlDOG5kNm5teFVfQdIBX0FVX3lxTFB3MkJob3hMWWxrcW5RRHBERndaUVk2Q3lZenhESFpHZ1BValQ1NkgwRnp6VkQ2U2ZnU0k2OFZ0SkpTMUlwanUyZUs3OVVyNFhDMnVhcmY4RlVKQmxaT0hz?oc=5)。這條與 2330 沒有直接關聯，但光模組報價若鬆動，會反向壓縮 AI 伺服器整機報價的漲價空間。**[A 級・信心:中]**",
+    "statement": "**三星與 SK 海力士（全球前兩大記憶體廠）**：兩家各投入 10 兆至 20 兆韓元鎖定 ASML 2027 至 2028 年 EUV 產能，ASML 示警即使兩年各擴產 30% 仍無法滿足客戶，EUV 交機週期已拉長至原先兩倍 [鉅亨](https://news.cnyes.com/news/id/6653523)。記憶體廠擴產會排擠邏輯製程的設備交期，台積電先進製程的設備到貨節奏同樣受影響。量級上 ASML 今年 EUV 出貨約 65 台、年增近 50%，漲價效應要到 2027 年才浮現——今明兩年是交期問題，不是價格問題。這條與上一條美光擴產指向同一個記憶體擴產循環，互相加強。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6648372",
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE91QmdFSUNEWU1sU0xzTXQ2dFlwOU5OQ0NfdDFvQnI3b1NYcHRoc1cxdDBRNUxKb1RQUmtDRG9UbGZEajdLVktjaEc5QjBnNHlDOG5kNm5teFVfQdIBX0FVX3lxTFB3MkJob3hMWWxrcW5RRHBERndaUVk2Q3lZenhESFpHZ1BValQ1NkgwRnp6VkQ2U2ZnU0k2OFZ0SkpTMUlwanUyZUs3OVVyNFhDMnVhcmY4RlVKQmxaT0hz?oc=5"
+     "https://news.cnyes.com/news/id/6653523"
     ]
    },
    {
-    "statement": "**【航運｜全球】貨櫃三雄（長榮、陽明、萬海）**：全球塞港未解，國際運價高檔有撐，貨櫃三雄營運吃補 [經濟日報](https://news.google.com/rss/articles/CBMiYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZNIBYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZA?oc=5)。運價維持高檔直接反映在艙位收入與長約換約價，但 WTI 90.83 美元讓燃油成本同步墊高，真正決定毛利的是運價與油價的價差，不是單看運價。**[B 級・信心:中]**",
+    "statement": "**國巨*（2327，全球被動元件大廠，晶片電阻與 MLCC 為主）**：10 月營收 175.97 億元，月增 3.1%、年增 55%，再創單月新高；累計前 10 月 1,497.51 億元、年增 38.3% [自由財經](https://ec.ltn.com.tw/article/paper/1777890)。被動元件與 AI 伺服器、車用電子同步，年增五成代表庫存去化結束、進入回補階段。但公司未公布報價調整，無法判斷是量增還是價量齊揚，兩者對毛利率的意義差很多。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZNIBYEFVX3lxTFBNUlAwSXJmbFdGQUp2Tm5HNDlNM3F4eUN4T0VZU3E1eW93S1Z0NlNZRndMelV1ejF6amhZekZkZlZTWjJDWFFJTEhIUVk1M0p2VzNkSXNiWTFxbENSQXBhZA?oc=5"
+     "https://ec.ltn.com.tw/article/paper/1777890"
+    ]
+   },
+   {
+    "statement": "**【金融｜台灣】永豐金（2890，民營金控，銀行為主體）**：前 10 月稅後淨利 385.31 億元、年增 68%，創史上同期新高 [自由財經](https://news.google.com/rss/articles/CBMiX0FVX3lxTFBrVDNITVdtdFUtVGNrTnNQbHl2dXkwelg5NVFaNTM3WHhFdmxkLU0xQnFUN01ZQnkwWFJPLWpHeU1Yb1JXTWxHcUtyclViX0JLcUUzX0VuT1RuRkszWG8w0gFkQVVfeXFMUHY1dnVRZm5fOWduZGYzNDlyeGd0UE1CWWkxYW9KcDJMTTdqdDRtMWt2ZUs1VVhkSzNsZ1E4VzdoODFvX0tUMHV4TVItbzlvWmc0cEJVWTJaaTNyb01aMk5TS3dFZw?oc=5)。獲利跳增來自證券經紀手續費與銀行利息收入，成交量放大直接墊高經紀收入——同樣機制適用於以證券為核心的元大金。年增近七成是在高基期上加速，但單一數字無法拆解經常性與一次性投資收益各占多少。**[A 級・信心:中]**",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTFBrVDNITVdtdFUtVGNrTnNQbHl2dXkwelg5NVFaNTM3WHhFdmxkLU0xQnFUN01ZQnkwWFJPLWpHeU1Yb1JXTWxHcUtyclViX0JLcUUzX0VuT1RuRkszWG8w0gFkQVVfeXFMUHY1dnVRZm5fOWduZGYzNDlyeGd0UE1CWWkxYW9KcDJMTTdqdDRtMWt2ZUs1VVhkSzNsZ1E4VzdoODFvX0tUMHV4TVItbzlvWmc0cEJVWTJaaTNyb01aMk5TS3dFZw?oc=5"
     ]
    }
   ]

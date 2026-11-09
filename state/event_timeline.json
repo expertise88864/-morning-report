@@ -1,42 +1,4 @@
 {
- "export_controls:export_control:月之暗面:2026-11": {
-  "first_seen": "2026-11-06",
-  "days": 1,
-  "last_seen": "2026-11-06",
-  "latest_title": "月之暗面據傳洽租歐洲資料中心輝達GPU算力以避開美國出口管制",
-  "latest_summary": "",
-  "object": "月之暗面",
-  "incident_tokens": [
-   "gpu",
-   "中心",
-   "以避",
-   "出口",
-   "力以",
-   "口管",
-   "國出",
-   "心輝",
-   "料中",
-   "歐洲",
-   "洲資",
-   "洽租",
-   "租歐",
-   "算力",
-   "管制",
-   "美國",
-   "資料",
-   "輝達",
-   "避開",
-   "開美"
-  ],
-  "entity": "月之暗面",
-  "subject_basis": "literal",
-  "subjects": [
-   "月之暗面"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 14
- },
  "geopolitical:巴布亞紐幾內亞:2026-11": {
   "first_seen": "2026-11-07",
   "days": 1,
@@ -273,6 +235,68 @@
    "微軟"
   ],
   "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "cybersecurity:cyberattack:伊朗:2026-11": {
+  "first_seen": "2026-11-10",
+  "days": 1,
+  "last_seen": "2026-11-10",
+  "latest_title": "France attributes supermarket refrigerator cyberattacks to Iran's Revolutionary Guards and",
+  "latest_summary": "",
+  "object": "伊朗",
+  "incident_tokens": [
+   "and",
+   "attributes",
+   "cyberattacks",
+   "france",
+   "guards",
+   "plans",
+   "refrigerator",
+   "revolutionary",
+   "sanctions",
+   "supermarket",
+   "to"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "cybersecurity",
+  "action": "cyberattack",
+  "identity_schema": 14
+ },
+ "export_controls:輝達:2026-11": {
+  "first_seen": "2026-11-10",
+  "days": 1,
+  "last_seen": "2026-11-10",
+  "latest_title": "US lawmakers urge a pause in advanced AI-chip exports to China amid allegations involving ",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "advanced",
+   "ai",
+   "allegations",
+   "amid",
+   "ceo",
+   "china",
+   "chip",
+   "exports",
+   "in",
+   "involving",
+   "lawmakers",
+   "pause",
+   "to",
+   "urge",
+   "us"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "export_controls",
   "action": "",
   "identity_schema": 14
  }

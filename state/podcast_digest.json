@@ -8553,6 +8553,123 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "c76a8d15-0adf-417b-8633-782a5b061a01",
+        "title": "The \"Semi-Apocalypse\": Market Panic, Enterprise AI, and the 2028 GPU Glut Theory",
+        "published": "Mon, 09 Nov 2026 11:35:58 -0800",
+        "processed_at": "2026-11-09T23:08:22Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為這波「半導體大屠殺」（SOX 指數單日重挫、個股不分好壞下跌兩位數）找不到對應的明確利空：多數公司財報與訂單簿仍健康、超大規模雲端業者上週不是維持就是上調明年資本支出，因此判定是情緒與自動化、槓桿型 AI 交易策略自我強化造成的超跌。",
+            "Anthropic 更新 S1 顯示 Q3 季增從 150% 掉到 40%，市場解讀為 AI 需求見頂；但主持人反向解讀：年初曾因算力耗盡而中斷服務，Q3 花了 100 億美元算力、其中 45 億是現貨搶購，代表是算力不夠、被迫限流與延後簽約，而不是客戶不來。",
+            "Cloudflare 單季新增 15.8 萬付費客戶（過去每季約 2-3 萬），主持人（Ben）視為企業 AI 部署開始放量的關鍵鐵證，並強調企業才是這輪 AI 資本支出的最終付費方，這筆錢決定景氣是 go 或 no-go。",
+            "企業導入 AI 的真正門檻在資安、權限治理、可觀測性與非結構化資料（80% 企業資料是邊緣的非結構化資料），主持人認為現在還在非常早期；Ben 對時程比 Jay 樂觀，認為已有超乎預期的企業做完前置工程。",
+            "AMD 資料中心營收首度超越 Intel，2027 年成長由 70% 上調到 80%，主持人推算年營收有可能衝到 1000 億美元；並特別肯定 Lisa Su 主動說明晶圓、基板、記憶體供應已鎖定——對照 Intel 沒鎖到料，本季主題就是「有產能就贏、沒產能就挨打」。",
+            "SiTime 是把石英時鐘換成可程式化 MEMS 的類比轉數位機會：運算密度與機櫃同步需求上升會推高每台伺服器的 timing 含量與單價，併購 Renaissance 後掌握最大份額，主持人認為其可服務市場小但成長快、且卡在關鍵基礎設施位置。",
+            "2028 年開始被放進模型：記憶體新廠、資料中心、能源瓶頸同時在該年收斂，主持人認為市場正提前反映「2028 年可能出現 GPU 供過於求」的疑慮，這也是近期情緒轉壞的深層原因之一。"
+          ],
+          "tickers": [
+            {
+              "name": "超微 AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "資料中心營收首度超車 Intel、明年成長上調，加上已鎖定供應，主持人稱這是 Lisa Su 最好的一次表現、公司執行力極佳。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "英特爾 Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "在產能與供應鏈上明顯落後，市占被 AMD 拿走，主持人認為它本來可以規劃得更好。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "A lot of it seems to be they're picking up share from Intel who is obviously stumbling with capacity.",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "安謀 Arm",
+              "code": "ARM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "自研晶片銷售順利、上調中期出貨估計，供應鎖定後管理層語氣明顯轉鬆。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "arm seems to be doing very well with their chip sales. They again raise their estimate of how much they can sell in the sort of medium term.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "高通 Qualcomm",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "手機業務平淡、整體語氣較保守，但高速運算與車用開始有更多客戶興趣，取樣表現不錯。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Qualcomm. A little bit more tepid but they are starting to stay did mention that they have sounds like they have more interest more customers getting more interested.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Cloudflare",
+              "code": "NET",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "付費客戶單季暴增 15.8 萬、法說極度樂觀，主持人視為企業 AI 工作負載落地的最強證據。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "they reported this week, and they had phenomenal numbers, right? I mean, the stock is up a lot. They were very, very bullish on their call.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "SiTime",
+              "code": "SITM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "MEMS 時鐘隨運算密度提升而含量與單價齊揚，併購後握有 timing 市場絕大多數份額，主持人看好其成長空間。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "today's right they're they're worth spending time on because they're very very interesting with a lot of upside.",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人（Jay）認為這波科技股與 SOX 重挫沒有對應的明確利空，基本面訂單與資本支出仍在上修，跌勢更像壞情緒加上自動化／槓桿交易的自我強化，判斷是超跌；真正的風險時間點在 2028 年產能大量開出時。",
+          "action_view": "沒有明確加減碼指令；主持人的思路是遇到這種無差別下殺，應回頭檢查公司訂單與供應鏈掌握度，而不是跟隨情緒殺出，並把 2028 年供需反轉當成中長期要預先思考的變數。",
+          "notable_quote": "if you have capacity, you win and if you don't have capacity, you get punished",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "if you have capacity, you win and if you don't have capacity, you get punished"
+          },
+          "direction_quality": {
+            "attributed": 5,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "a55f89dc-2c19-4c60-ba54-393cc737b568",
         "title": "What a Week! Anthropic Opens the Books, Intel Raises More Questions, Marvell and Lumentum??",
         "published": "Mon, 02 Nov 2026 10:24:36 -0800",
@@ -9508,77 +9625,6 @@
           "market_view": "主持人認為 AI 基礎建設長期仍樂觀，但短期出現地方抗爭、情緒轉差，且半導體公司開始用資產負債表競爭，需留意債務與資金結構風險。",
           "action_view": "操作上可關注 analog 供應鏈（ADI/TI）受惠 800V 資料中心轉型，但要留意 2027 年可能出現成長空窗；同時對半導體公司透過 SPV 籌資的隱藏風險保持警覺。",
           "notable_quote": "I'm getting calls from fixed income investors and fixed income journalists. I've never talked to these people in my life."
-        }
-      },
-      {
-        "guid": "ab487da6-004f-4add-abcb-f2dd75fa74bf",
-        "title": "EP 188: The Wild West of Optical, Cisco's AI Hack, and Is Compute an Investable Asset",
-        "published": "Mon, 17 Aug 2026 09:12:01 -0700",
-        "processed_at": "2026-08-17T20:01:24Z",
-        "digest": {
-          "summary_points": [
-            "Lumentum 財報全面優於預期且上調財測，Coherent 營收雖好但毛利率承壓，股價表現分歧；主持人認為差異來自產品組合與晶圓尺寸策略，6 吋磷化銦晶圓生態系還不成熟，Coherent 推進較吃力，Lumentum 在 4 吋上表現較佳。",
-            "光學技術演進 LPO→NPO→CPO 常被過度樂觀，主持人認為 CPO 的製造與可靠性難度高，省下的功耗未必值得額外工程成本，因此 NPO 可能成為主流並維持很久；CPO 短期內不會在機架內大規模採用。",
-            "Scale up/scale out 用語混淆導致市場高估光學連接數量；主持人指出機架內（垂直）光連結採用遙遠，目前主流是機架間（水平）連結，若假設每 rack 光學含量需先確認連接場景，否則預測會偏離。",
-            "Cisco 財報看似普通但內涵正面，幾乎全產品線改用自家 ASIC，並在 AI 資料中心與企業本地 AI 集群取得超大型客戶訂單；另外利用 Anthropic 的 Claude 做安全審計的銷售策略很聰明，能帶動後續資安服務收入。",
-            "Applied Materials 財報強勁、營收創歷史最快季增，但股價因指引未達市場期待而下跌；主持人推測是因為 Intel 剛完成籌資、尚未確定設備訂單，10 月投資人日應會明朗；LTA 長期協議使設備商能見度從 2 季延長到 8 季，顯示產業結構性變化。",
-            "Nvidia 聯手金融機構推出 5,000 億美元資料中心融資，主持人認為有循環融資疑慮，但戰略上是為了分散客戶基礎；他也質疑「算力是可投資資產」的說法，因為算力會折舊、需持續升級，不像房地產能長期保值。",
-            "CoreWeave 與 Nebius 兩家 neocloud 財報佳，GPU 投資回收期已從 3 年縮短到 2 年，但高度依賴少數客戶；短期算力供不應求，長期需求能否維持仍存高度不確定性。"
-          ],
-          "tickers": [
-            {
-              "name": "Lumentum",
-              "code": "LITE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報全面優於預期且上調財測，4 吋晶圓產能表現佳，並有 NPO 相關 IP 可運用。"
-            },
-            {
-              "name": "Coherent",
-              "code": "COHR",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "營收雖好但毛利率受 6 吋晶圓新生態系不成熟拖累，股價反應負面。"
-            },
-            {
-              "name": "Cisco",
-              "code": "CSCO",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "全產品線採用自家 ASIC，AI 資料中心與企業本地 AI 集群訂單佳，並透過 AI 安全審計帶動資安服務。"
-            },
-            {
-              "name": "Applied Materials",
-              "code": "AMAT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "營收創最快季增，能見度延長至 8 季，但短期指引保守，10 月投資人日可能因 Intel 訂單明朗而上修。"
-            },
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "5,000 億美元融資案助長需求但也有循環性疑慮，長期算力投資回報不確定，短期仍是算力霸主。"
-            },
-            {
-              "name": "CoreWeave",
-              "code": "CRWV",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "財報佳、GPU 回收期縮短至 2 年，但高度依賴少數大客戶，長期需求未明。"
-            },
-            {
-              "name": "Nebius",
-              "code": "NBIS",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "財報與股價反應正面，但同樣有客戶集中風險。"
-            }
-          ],
-          "market_view": "主持人認為 AI 算力需求短期強勁、供不應求，但長期需求能否維持存高度不確定性；半導體設備與光通訊產業正經歷結構性變化，但實際採用速度可能比市場預期慢。",
-          "action_view": "主持人提醒不宜過度樂觀看待光學與 CPO 的採用速度，並指出 Nvidia 融資案具循環性疑慮；投資人可關注長期協議帶來的能見度提升，但需留意客戶集中風險與股價已反應的樂觀預期。",
-          "notable_quote": "It's going to take longer than any of us expect."
         }
       }
     ]

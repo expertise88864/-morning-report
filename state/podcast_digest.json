@@ -2542,6 +2542,93 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "38fc2bf7-4348-46f4-9190-7f2613bb3156",
+        "title": "EP352. 期中選舉藍色海嘯、民主黨會禁 AI 嗎、Cybertruck 要停產了 | M觀點",
+        "published": "Mon, 09 Nov 2026 07:44:06 GMT",
+        "processed_at": "2026-11-09T09:35:42Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為民主黨勝選後反 AI 不是只喊口號：民調顯示九成民主黨選民支持暫停或減速 AI，因此先進模型管制與資料中心從嚴審批將成真，AI 基建股估值可能跌三成、成長率下修導致估值腰斬。",
+            "主持人指出 AI 供給若減速，現有算力持有者（微軟、Google、亞馬遜等公有雲）溢價能力與現金流會轉強，市場反而偏好這些公司；前沿 AI 公司則可能縮減免費額度、變相漲價。",
+            "主持人預估美國 2027–2030 年 AI 資料中心新增容量可能從約 80 幾瓦下修 25% 至 60 幾瓦，主因德州、俄亥俄等州將以環保、居民同意等行政手段卡關，導致專案延遲且成本上升。",
+            "主持人判斷共和黨期中慘敗主因是伊朗戰爭、通膨感受與反 AI 民意，預期未來兩年民主黨掌控參眾兩院後將與川普陷入預算對抗、多次政府關門，政治動盪升溫。",
+            "主持人評論 Cybertruck 年銷量僅約兩三萬台、產能利用率只有十分之一，是馬斯克「老闆的夢想失敗」；停產是為了釋放產線給下一代車款，但未明確給出特斯拉股價方向。"
+          ],
+          "tickers": [
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 AI 供給減速時，微軟作為公有雲巨頭擁有現成算力，溢價能力與現金流會轉強，市場偏好此題材。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以你可以賣更貴然後你的成長雖然減速,可是你的現金流會回正",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet (Google)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Google 同為公有雲與現有算力持有者，在 AI 供給緊縮下可提高售價、改善自由現金流，受市場歡迎。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以你可以賣更貴然後你的成長雖然減速,可是你的現金流會回正",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Amazon 的公有雲業務將因 AI 算力供給減速而享有溢價，現金流回正，股價有撐。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以你可以賣更貴然後你的成長雖然減速,可是你的現金流會回正",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人評論 Cybertruck 銷量不佳、停產是釋放產線，但未對特斯拉整體股價給出多空看法。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "Cybertruck就是一個老闆的夢想失敗",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為民主黨勝選後 AI 發展減速是實質利空，AI 基建股可能跌三成、估值腰斬；但現有算力持有者（公有雲）反而受惠於供給緊縮，溢價與現金流改善。",
+          "action_view": "操作上主持人傾向避開 AI 基建（GPU、記憶體、光通、散熱等），轉向現有算力與公有雲巨頭；並提醒未來兩年政治動盪可能帶來波動。",
+          "notable_quote": "我覺得AI股的估值跌個三成都不算意外",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我覺得AI股的估值跌個三成都不算意外"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "f5bcee33-af5f-4a24-80db-ec4d2e72ce12",
         "title": "EP350. 美國期中選舉預測、英特爾財報大跌、近期台美股市場看法 | M觀點",
         "published": "Mon, 02 Nov 2026 06:22:46 GMT",
@@ -3352,82 +3439,6 @@
           }
         },
         "shown_at": "2026-09-29T01:11:59Z"
-      },
-      {
-        "guid": "7dc2a5f2-a116-4884-801e-28e756635e3a",
-        "title": "EP339. Grok 4.7 失敗了嗎、模型大戰趨勢觀察、Muse 爆紅後影響 | M觀點",
-        "published": "Thu, 24 Sep 2026 17:44:17 GMT",
-        "processed_at": "2026-09-24T23:41:24Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Grok 4.7 整體令人失望：智能僅微幅進步、成本倍增，但在 Agentic Coding 與知識型工作兩領域明顯強化，且僅在 Grok Build/Cursor 環境有效，因此較像防守自家生態系。",
-            "主持人解讀 OpenAI 新模型為價格戰而非智力突破：GPT-6 Soul/Luna 能力幾乎持平前代，但 GPT-6 Luna 成本僅 DeepSeek V4.1 Flash 四分之一，實質是砍掉 Terra 這階。",
-            "主持人指出 Anthropic Opus 5.5 在評測上領先 5 分、為現役最強，但社群認為 Fable 5.1 在未知難題上仍較聰明；此發表主要是為 IPO 衝刺企業市場。",
-            "主持人觀察到模型競爭正從單一模型轉向「模型+開發環境」產品化，且各模型走向專業分工，企業會同時採用多個模型。",
-            "主持人分析亞馬遜封殺 Meta Muse 的真實原因是商業利益：AI 代理購物會削弱推薦、衝動購買與廣告收入，長期動搖「上亞馬遜購物」習慣。",
-            "主持人預期 Meta 最終會對亞馬遜讓步，並可能與廣告整合/分潤；亞馬遜的物流與 Prime 會員是 AI 難以取代的實體護城河。",
-            "主持人重申看好 AI 趨勢與美股，今年 AI 股修正時他主張抱住，低檔應持有；他也認為 Google 被看衰但其實還行。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人長期看好 Meta 在 AI 追趕的能力，認為 Meta Muse 成功、股價上漲，且 Amazon 封殺應可透過談判讓步解決，不影響長期。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "Meta逆風的時候我們Meta很黑的時候我們在這裡說說Meta沒問題",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Google 被市場看衰但其實還行，不應看空。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我覺得Google還行啦,大家不要看碎Google",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人強調亞馬遜電商競爭力、物流與 Prime 會員的實體護城河在 AI 時代難以取代，能對 Meta 等外部 AI 代理讓步並維持主導。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "亞馬遜在電商的競爭力是真的非常強特別是在美國",
-                "direction": "bullish"
-              }
-            }
-          ],
-          "market_view": "主持人整體仍看好 AI 趨勢與美股，認為今年以來 AI 股修正只是暫時，低檔應抱住；他的美股部位今年創新高，並重申不要因短期雜音看空。",
-          "action_view": "操作上，主持人傾向在 AI 股修正時守住持倉而非賣出，並點名對 Meta、Google 等個股仍可持有。",
-          "notable_quote": "AI這個趨勢還是沒有問題啦,所以我自己還是會抱住AI股",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "AI這個趨勢還是沒有問題啦,所以我自己還是會抱住AI股"
-          },
-          "direction_quality": {
-            "attributed": 3,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-25T00:19:22Z"
       }
     ]
   },

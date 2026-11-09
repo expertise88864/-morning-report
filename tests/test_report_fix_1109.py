@@ -43,6 +43,9 @@ def test_taiwan_only_holiday_keeps_last_night_us_market():
     quotes = {"TARGET_SESSION": "2026-10-27", "LAST_TRADING_SESSION": "2026-10-23", "QQQ": {"date": "2026-10-26"}}
     out = sw.rewrite("半導體端昨夜很強,昨夜美股收高,昨日台股重挫。", quotes, today="2026-10-27")
     assert out == "半導體端昨夜很強,昨夜美股收高,上週五台股重挫。"
+    for ambiguous in ("美股昨日收盤上漲。", "昨日收盤價偏低。", "昨日成交量放大。"):   # PR #48 第二輪
+        assert sw.rewrite(ambiguous, quotes, today="2026-10-27") == ambiguous
+    assert sw.rewrite("美股昨日收盤上漲。", MON, today="2026-11-09") == "美股上週五收盤上漲。"
     note = sw.prompt_note(quotes, today="2026-10-27")
     assert "台股上一交易日是上週五(10/23)" in note and "美股" not in note
     no_us_date = {"TARGET_SESSION": "2026-11-09", "LAST_TRADING_SESSION": "2026-11-06"}

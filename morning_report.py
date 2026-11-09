@@ -11602,7 +11602,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             f"  上漲家數佔比: {breadth.get('advance_ratio',0):.1f}%"
             f"（{breadth.get('breadth_state','neutral')}）\n"
             f"  ※ ≥ 60% 普漲、≤ 40% 普跌;若指數漲但廣度低 = 少數權值股撐盤,健康度差。"
-            + _polish.big_move_rule(quotes.get("TAIEX_SESSION_PCT"), breadth)
+            + _polish.big_move_rule(quotes.get("TAIEX_SESSION_PCT"), breadth, _session_wording.yesterday(quotes))
         )
     else:
         breadth_block = "（大盤廣度資料抓取失敗）"
@@ -12134,7 +12134,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 {structured_news_block}
 </UNTRUSTED_SOURCE_DATA>
 ※ 各事件附 surprise_score(0-1,越高越意外、越值得優先寫)與 lifecycle(confirmed 已確認 / rumor 傳聞 / withdrawn 已撤回):
-  surprise_score ≥ 0.6 優先且醒目處理;< 0.3 可略過(不意外、低資訊量);lifecycle=rumor 必標「未證實」、
+  surprise_score ≥ 0.6 優先且醒目處理;< 0.3 可略過(不意外、低資訊量);lifecycle=rumor 必標「未證實」並指明是哪一部分(當事人已承認、官方已公告的部分不算)、
   withdrawn 須註明「已撤回/暫緩」。這些分數由 Python 計算,**請直接引用、不要自己重算或質疑數值**。
 
 {section_assignment_block}
@@ -15669,7 +15669,9 @@ def _render_weather_html(locs: list[dict],
     alerts_html = "".join(_alert_line(a) for a in (alerts or []))
     # 颱風風雨門檻警示(達標/接近才出現;紅字)。人事總處已公告的縣市不再列預測(10-24 重複訊息)
     import weather_dedupe
-    signal = _typhoon_signal(weather_dedupe.without_announced(locs, suspension))
+    # 只在颱風警報或停班停課公告時才算(11-09 實信:東北季風陣風 76km/h 也印「接近停班停課」)
+    signal = (_typhoon_signal(weather_dedupe.without_announced(locs, suspension))
+              if suspension or any((a or {}).get("typhoon") for a in alerts or []) else "")
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
                    if signal else "")
     # 停班停課公告新聞(縣市公告即時,黑字可點;無公告日自動消失)
@@ -22731,7 +22733,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
-    stance_detail = _polish.big_move_line(quotes.get("TAIEX_SESSION_PCT"), quotes.get("BREADTH")) + stance_detail
+    stance_detail = _polish.big_move_line(quotes.get("TAIEX_SESSION_PCT"), quotes.get("BREADTH"), _session_wording.yesterday(quotes)) + stance_detail
     summary_bar = _render_summary_bar(summary_text, stance_detail, _htmllib)
     # Decision Attribution 卡:批#26 使用者要求自信件移除顯示——歸因仍在後台
     # 計算(STANCE_ATTRIB 供 log/prompt),要恢復顯示改 True 即可。

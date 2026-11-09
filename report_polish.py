@@ -88,13 +88,13 @@ def twse_session_pct(get, expected_close=None) -> float | None:
     return round(pct, 2) if abs(pct) <= 11 else None
 
 
-def big_move_line(pct: float | None, breadth: dict | None) -> str:
+def big_move_line(pct: float | None, breadth: dict | None, when: str = "昨日") -> str:
     """大波動日今日結論的第一句由程式寫,模型漏寫也看得到(11-06 實信:跌 3.20% 結論沒寫)。"""
     if not big_move_rule(pct, breadth):
         return ""
     ratio = (breadth or {}).get("advance_ratio")
     parts = ([f"加權 {pct:+.2f}%"] if pct is not None else []) + ([f"上漲家數僅佔 {ratio:.1f}%"] if ratio is not None else [])
-    return "昨日台股大幅波動:" + "、".join(parts) + "。"
+    return f"{when}台股大幅波動:" + "、".join(parts) + "。"
 
 
 _T86_RETRIED: list = []
@@ -125,7 +125,7 @@ def taiex_card_text(pred: dict | None, pct: float | None) -> str:
     return f'加權指數 <b>{close:,.0f}</b> <b style="color:{color};">{pct:+.2f}%</b>　｜ '
 
 
-def big_move_rule(pct: float | None, breadth: dict | None) -> str:
+def big_move_rule(pct: float | None, breadth: dict | None, when: str = "昨日") -> str:
     """大波動日才加的寫稿規則:結論要交代,不可淡化。門檻由 Python 判,不交給模型。"""
     ratio = (breadth or {}).get("advance_ratio")
     big = (pct is not None and abs(pct) >= 2) or (ratio is not None and (ratio <= 20 or ratio >= 80))
@@ -133,7 +133,7 @@ def big_move_rule(pct: float | None, breadth: dict | None) -> str:
         return ""
     move = "、".join(([f"加權 {pct:+.2f}%"] if pct is not None else [])
                     + ([f"上漲佔比 {ratio:.1f}%"] if ratio is not None else []))
-    return (f"\n  ⚠ 昨日台股大幅波動({move}):「今日結論」必須寫出這個幅度與主因,"
+    return (f"\n  ⚠ {when}台股大幅波動({move}):「今日結論」必須寫出這個幅度與主因,"
             "「十、台灣本地動態」第一條交代哪些族群領漲或領跌。原因只能引用新聞或行情資料,查不到就寫"
             "「新聞未見單一原因」;不可用「不是全面崩潰」這類說法淡化。")
 

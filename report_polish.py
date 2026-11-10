@@ -16,7 +16,13 @@ _HEADING = re.compile(r"(?m)^(?=#{1,3}\s*[一二三四五六七八九十]+(?:之
 
 def normalize_terms(text: str) -> str:
     """同一個地名全信一種寫法(實信:同一條裡「荷姆茲」「荷莫茲」並存)。"""
-    return _TERMS.sub("荷姆茲", str(text or "")).replace("自行了斷", "自行了結")   # 11-07 實信
+    text = _TERMS.sub("荷姆茲", str(text or "")).replace("自行了斷", "自行了結")   # 11-07 實信
+    text = _BROKEN_BOLD.sub(r"\1", text)   # 11-10 實信:「**國巨*（2327…」粗體符號外露
+    return _NO_STOP.sub("。", text)         # 11-10 實信:結論最後一句沒有句號就接「主要風險」
+
+
+_BROKEN_BOLD = re.compile(r"(?m)^(\s*(?:[-*]\s+)?\*\*[^*\n]{1,40})\*(?=[（(])")
+_NO_STOP = re.compile(r"(?<=[\u4e00-\u9fff0-9%）)])(?=\n>?\s*\*\*主要風險\*\*)")
 
 
 def order_sections(text: str) -> str:
@@ -69,7 +75,12 @@ def notable_tennis(name) -> bool:
 
 
 def twse_session_pct(get, expected_close=None) -> float | None:
-    """上一交易日加權漲跌,用證交所官方的漲跌點數。不能拿 Yahoo 歷史的最後兩筆算:Yahoo 少一天時
+    return twse_session(get, expected_close)[0]
+
+
+def twse_session(get, expected_close=None) -> tuple[float | None, float | None]:
+    """上一交易日加權漲跌與**全市場**成交金額(億;11-10 實信:卡片只加總普通股,7,929 億 vs 官方 8,770 億)。
+    漲跌,用證交所官方的漲跌點數。不能拿 Yahoo 歷史的最後兩筆算:Yahoo 少一天時
     最後一筆會被改成證交所收盤,前一筆就差了兩天(11-05 實信:-0.83% 寫成 -4.39%)。
     查不到或收盤對不上就回 None,廣度卡不顯示。"""
     try:
@@ -80,12 +91,13 @@ def twse_session_pct(get, expected_close=None) -> float | None:
         close = float(str(row["TAIEX"]).replace(",", ""))
         change = float(str(row["Change"]).replace(",", "").replace("+", ""))
         if expected_close and abs(close - float(expected_close)) / close > 0.005:
-            return None
+            return None, None
         pct = change / (close - change) * 100
+        value = float(str(row.get("TradeValue") or "").replace(",", "") or 0) / 1e8
     except Exception as exc:  # noqa: BLE001 - 少一個數字不可讓晨報斷
         print(f"[report-polish] 加權漲跌查詢失敗: {type(exc).__name__}", flush=True)
-        return None
-    return round(pct, 2) if abs(pct) <= 11 else None
+        return None, None
+    return (round(pct, 2) if abs(pct) <= 11 else None), (round(value) if value > 0 else None)
 
 
 def big_move_line(pct: float | None, breadth: dict | None, when: str = "昨日") -> str:
@@ -93,7 +105,7 @@ def big_move_line(pct: float | None, breadth: dict | None, when: str = "昨日")
     if not big_move_rule(pct, breadth):
         return ""
     ratio = (breadth or {}).get("advance_ratio")
-    parts = ([f"加權 {pct:+.2f}%"] if pct is not None else []) + ([f"上漲家數僅佔 {ratio:.1f}%"] if ratio is not None else [])
+    parts = ([f"加權 {pct:+.2f}%"] if pct is not None else []) + ([f"上漲家數{'僅佔' if ratio < 40 else '佔'} {ratio:.1f}%"] if ratio is not None else [])   # 11-10:大漲日不寫「僅」
     return f"{when}台股大幅波動:" + "、".join(parts) + "。"
 
 

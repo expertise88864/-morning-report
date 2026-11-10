@@ -11596,7 +11596,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     breadth = quotes.get("BREADTH", {}) or {}
     if breadth.get("total"):
         breadth_block = (
-            f"  成交金額: {breadth.get('total_value_yi',0):,.0f} 億新台幣\n"
+            f"  成交金額: {quotes.get('TAIEX_SESSION_VALUE_YI') or breadth.get('total_value_yi',0):,.0f} 億新台幣\n"
             f"  上漲: {breadth.get('advance',0)} 檔・下跌: {breadth.get('decline',0)} 檔・"
             f"平盤: {breadth.get('unchanged',0)} 檔（共 {breadth.get('total',0)} 檔）\n"
             f"  上漲家數佔比: {breadth.get('advance_ratio',0):.1f}%"
@@ -16154,8 +16154,8 @@ def translate_journal_titles(articles: list[dict]) -> list[dict]:
         items = json.loads(r.json()["choices"][0]["message"]["content"]).get("items", [])
         zh_map = {int(it.get("i", -1)): str(it.get("zh", "")) for it in items}
         for i, a in enumerate(articles):
-            if zh_map.get(i):
-                a["zh"] = zh_map[i]
+            if zh_map.get(i):   # 11-10 實信:「（decoupling，語義待摘要確認）」只留原文術語
+                a["zh"] = zh_map[i].replace("，語義待摘要確認", "").replace("語義待摘要確認", "")
     except Exception as e:
         print(f"[journals] 中文摘要失敗(顯示英文): {e}", file=sys.stderr)
     return articles
@@ -22404,7 +22404,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <div style="background:#f1f5f9;border-radius:10px;padding:14px 18px;margin:12px 0;">
           <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:6px;">大盤成交額與市場廣度{_lts_label}</div>
           <div style="font-size:14px;color:#0f172a;line-height:1.7;">
-            {_polish.taiex_card_text(taiex_pred, quotes.get('TAIEX_SESSION_PCT'))}成交金額 <b>{breadth.get('total_value_yi',0):,.0f} 億</b>　｜
+            {_polish.taiex_card_text(taiex_pred, quotes.get('TAIEX_SESSION_PCT'))}成交金額 <b>{quotes.get('TAIEX_SESSION_VALUE_YI') or breadth.get('total_value_yi',0):,.0f} 億</b>　｜
             上漲 <b style="color:#dc2626;">{adv}</b> 檔・下跌 <b style="color:#16a34a;">{dec}</b> 檔・平盤 {unch} 檔　|
             上漲佔比 <b style="color:{b_color};">{adv_ratio:.1f}%</b>
             <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>{_fresh.margin_card_text(quotes.get("MARGIN"), quotes.get("LAST_TRADING_SESSION"))}
@@ -24786,7 +24786,7 @@ def _phase_taifex_and_chips(ctx) -> None:
     try:
         taiex_hist = fetch_taiex_history()
         twse_taiex_close = fetch_twse_taiex_close()
-        quotes["TAIEX_SESSION_PCT"] = _polish.twse_session_pct(_http_get, twse_taiex_close)
+        quotes["TAIEX_SESSION_PCT"], quotes["TAIEX_SESSION_VALUE_YI"] = _polish.twse_session(_http_get, twse_taiex_close)
         if twse_taiex_close and taiex_hist is not None and not taiex_hist.empty:
             yahoo_last = safe_float(taiex_hist.iloc[-1]["Close"]) or 0
             if yahoo_last and abs(twse_taiex_close - yahoo_last) / twse_taiex_close > 0.003:

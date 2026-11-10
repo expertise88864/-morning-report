@@ -217,7 +217,7 @@ MODULE_CEILINGS = {
     "scenario_window.py": 85,
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
-    "report_polish.py": 250,
+    "report_polish.py": 262,   # +官方成交金額、粗體與句號修補(2026-11-10)
     "report_tidy.py": 90,
     "apbc.py": 125,   # 亞冠賽中華隊賽程與比分(2026-11-08)
     "session_wording.py": 90,   # +週一「昨日台股」改上週五(2026-11-09)   # 週六、連假的「今日開盤」(2026-11-07)   # 模型沒照規則時的收尾(2026-11-06)

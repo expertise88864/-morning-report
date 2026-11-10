@@ -78,3 +78,24 @@ def test_monsoon_gust_is_not_a_typhoon_signal():
 def test_rumor_rule_names_the_unconfirmed_part():
     src = pathlib.Path(mr.__file__).read_text(encoding="utf-8")
     assert "lifecycle=rumor 必標「未證實」並指明是哪一部分(當事人已承認、官方已公告的部分不算)" in src
+
+
+def test_1110_fixes_rally_wording_broken_bold_missing_stop_and_official_turnover():
+    """11-10 實信:大漲日寫「上漲家數僅佔 74.1%」;「**國巨*（2327」;結論末句沒句號;成交金額只加總普通股。"""
+    assert rp.big_move_line(4.94, {"advance_ratio": 74.1}) == "昨日台股大幅波動:加權 +4.94%、上漲家數佔 74.1%。"
+    assert "上漲家數僅佔 9.6%" in rp.big_move_line(-4.51, {"advance_ratio": 9.6})
+    text = "> 否則開高後回吐的機率不低\n> **主要風險**：今晚 CPI。\n\n**國巨*（2327，被動元件）**：10 月營收創高。"
+    out = rp.normalize_terms(text)
+    assert "機率不低。\n> **主要風險**" in out and "**國巨（2327，被動元件）**：" in out
+    assert rp.normalize_terms("已有句號。\n> **主要風險**：x") == "已有句號。\n> **主要風險**：x"
+    assert rp.normalize_terms("**台積電**（2330）沒壞的不動") == "**台積電**（2330）沒壞的不動"
+
+    class _R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return [{"TAIEX": "41661.70", "Change": "1960.06", "TradeValue": "877025617232"}]
+    assert rp.twse_session(lambda *a, **k: _R(), 41661.7) == (4.94, 8770)
+    assert rp.twse_session(lambda *a, **k: _R(), 39000) == (None, None)
+    assert rp.twse_session(lambda *a, **k: 1 / 0) == (None, None)

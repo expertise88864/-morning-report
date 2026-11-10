@@ -204,7 +204,7 @@ MODULE_CEILINGS = {
     "watch_expiry.py": 30,
     "fallback_watch_gap.py": 96,   # +休市日期限的上一交易日回顧(2026-10-24)
     "weather_dedupe.py": 55,   # 天氣卡片重複訊息(2026-10-24)
-    "official_numbers.py": 125,   # 官方營收/財報佐證與更正(2026-11-10)
+    "official_numbers.py": 135,   # 官方營收/財報佐證與更正(2026-11-10)
     "legacy_evidence.py": 285,   # +查無來源的數字標「未核實」、官方數字佐證(2026-11-10);前值 250   # 備援逐句證據核對(2026-10-30;含英文來源單位)
     "legacy_watch.py": 125,   # 備援觀察點跨日追蹤(2026-10-30)
     "fulltext_fetch.py": 60,   # 全文並行抓取(2026-10-30)

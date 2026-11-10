@@ -150,3 +150,15 @@ def test_review_pr50_round3_growth_must_directly_follow_the_monthly_revenue():
     assert on.correction("國巨（2327）：10 月營收 175.97 億元，創單月新高，毛利率年增 2%") == ""
     assert "年增 55.0%" in on.correction("國巨（2327）：10 月營收 175.97 億元，月增 3.1%、年增 61%")
     assert on.correction("國巨（2327）：10 月營收 175.97 億元，月增 3.1%、年增 55%") == ""
+
+
+def test_review_pr50_round4_month_decline_and_signed_growth():
+    on.load(_get, lambda *_: None)
+    assert "年增 55.0%" in on.correction("國巨（2327）：10月營收175.97億元，月減3.1%、年增61%")
+    assert "年增 55.0%" in on.correction("國巨（2327）：10月營收175.97億元，月增-3.1%、年增61%")
+    assert on.correction("國巨（2327）：10月營收175.97億元，月減3.1%、年增55%") == ""
+    assert "年增 55.0%" in on.correction("國巨（2327）：10月營收175.97億元，年減55%")
+    on._DATA["2327"]["yoy"] = -12.3
+    assert on.correction("國巨（2327）：10月營收175.97億元，年減12.3%") == ""
+    assert on.correction("國巨（2327）：10月營收175.97億元，年增-12.3%") == ""
+    assert "年減 12.3%" in on.correction("國巨（2327）：10月營收175.97億元，年增12.3%")

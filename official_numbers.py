@@ -113,11 +113,15 @@ def correction(block: str) -> str:
     said = _num(stated.group(1))
     tail = str(block)[stated.end():stated.end() + 40]
     # 年增率要緊接在這筆單月營收後面(中間只容標點與月增率):隔著累計、EPS 等其他指標的不是它的(外審 PR #50)
-    growth = re.match(r"元?\s*[，、；;,]?\s*(?:月增\s*[\d.]+\s*%\s*[，、；;,]?\s*)?年增\s*([\d.]+)\s*%", tail)
+    growth = re.match(r"元?\s*[，、；;,]?\s*(?:月[增減]\s*[+\-−]?\s*[\d.]+\s*%\s*[，、；;,]?\s*)?"
+                      r"年([增減])\s*([+\-−]?)\s*([\d.]+)\s*%", tail)
     wrong_rev = said is not None and abs(said - rev) > max(0.01 * rev, 0.06)
-    wrong_yoy = bool(growth) and yoy is not None and abs(float(growth.group(1)) - yoy) > (
-        0.06 if "." in growth.group(1) else 0.6)
+    wrong_yoy = False
+    if growth and yoy is not None:   # 「年減 5%」「年增 -5%」都是負的
+        claimed = float(growth.group(3)) * (-1 if (growth.group(1) == "減") != (growth.group(2) in ("-", "−")) else 1)
+        wrong_yoy = abs(claimed - yoy) > (0.06 if "." in growth.group(3) else 0.6)
     if not (wrong_rev or wrong_yoy):
         return ""
-    official = f"{month} 月營收 {rev:,.2f} 億元" + (f"、年增 {yoy:.1f}%" if yoy is not None else "")
+    official = f"{month} 月營收 {rev:,.2f} 億元" + (
+        f"、年{'增' if yoy >= 0 else '減'} {abs(yoy):.1f}%" if yoy is not None else "")
     return f"（官方公告：{official}，與上述數字不同）"

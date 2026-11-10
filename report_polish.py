@@ -47,7 +47,7 @@ _DISPLAY = {"二、總經指標": "一、總經指標", "五、行情與開盤�
             "十之二、重大政策深度解析": "九、重大政策深度解析"}
 _DISPLAY_RE = re.compile(r"(?<=>)(\s*)(" + "|".join(map(re.escape, _DISPLAY)) + ")")
 _GRADE_NOTE = ('<div style="font-size:12px;color:#64748b;margin:0 0 8px;">'
-               "※ A 級＝有具體數字或正式公告；B 級＝只有方向性訊號、資訊有限。信心＝對這個判斷的把握。</div>")
+               "※ A 級＝有具體數字或正式公告；B 級＝只有方向性訊號、資訊有限。信心＝對這個判斷的把握。標「未核實」的數字＝在引用的新聞、行情與官方營收財報裡都對不到。</div>")
 _TECH_H = re.compile(r"(<h[1-6]\b[^>]*>\s*六、科技板塊脈動[^<]*</h[1-6]>)")
 
 
@@ -228,10 +228,11 @@ def _minor_dome_news(item: dict) -> bool:
     return bool(_DOME.search(title)) and not _DOME_BIG.search(title)
 
 
-def fresh_news(news: list, previous: dict | None) -> list:
+def fresh_news(news: list, previous: dict | None, today=None) -> list:
     """實信:創意 EPS 上修、BDI 2,648 點連兩天都寫。同一則連結,或同一段裡有兩個相同數字
     (至少一個帶小數,排除股票代號)就算昨天寫過;後續有新數字的報導不受影響。"""
-    news = [n for n in news or [] if not _minor_dome_news(n)]
+    import news_staleness   # 11-10:標題的資料月份太舊(11 月還在講 8 月銷量)不當新消息
+    news = news_staleness.fresh([n for n in news or [] if not _minor_dome_news(n)], today)
     if not previous:
         return news
     links = set(previous.get("links") or [])

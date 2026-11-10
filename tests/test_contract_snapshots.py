@@ -813,7 +813,7 @@ _FROZEN = {
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (52, "cca831f7839510f1"),  # Nov10: world events 6-8 items with a watch point.
+    "fallback_profile_version":  (53, "1f6d6edb6ef005a6"),  # Nov10: one value per market indicator; label a different basis.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。

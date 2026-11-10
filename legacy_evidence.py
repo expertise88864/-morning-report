@@ -18,6 +18,8 @@ import unicodedata
 
 #: 2026-10-30 使用者:「先觀察一週再刪」。改成 False 之後,不通過的條目整條不寄。
 OBSERVE_ONLY = True
+#: 2026-11-10 使用者:任何素材(新聞、行情、官方營收財報)都對不到的數字,在數字後面標出來。
+MARK = "（未核實）"
 #: 要核對的段落(標題開頭)。十、台灣本地動態的素材沒有編號,不核。
 AUDITED = ("七、", "七之二", "八、", "九、")
 EXAMPLES = 5
@@ -172,8 +174,20 @@ def _blocks(body: str) -> list[str]:
     return re.split(r"(\n\s*\n|\n(?=\s*(?:[-*] |\*\*【)))", body)
 
 
-def _check(block: str, market: list[float]) -> list[str]:
-    """這一條的問題(空 = 通過)。"""
+def _mark(block: str, claims: list[tuple]) -> str:
+    """在對不到來源的數字後面加上標記;原文裡找不到那個寫法(全形數字等)就不動。"""
+    for raw, _, _, mag, unit in claims:
+        for tail in (re.escape(mag) + r"\s*" + re.escape(unit), re.escape(mag)):
+            pattern = r"(?<![\d.,/=])" + re.escape(raw) + r"(?![\d.,])\s*" + tail + "(?!" + MARK + ")"
+            block, done = re.subn(pattern, lambda m: m.group(0) + MARK, block, count=1)
+            if done:
+                break
+    return block
+
+
+def _check(block: str, market: list[float], missing: list | None = None) -> list[str]:
+    """這一條的問題(空 = 通過)。`missing` 收下任何素材都對不到的數字。"""
+    import official_numbers
     ids = _ID.findall(block)
     problems = []
     if not ids:
@@ -182,11 +196,14 @@ def _check(block: str, market: list[float]) -> list[str]:
     if unknown:
         problems.append("編號不存在:" + "、".join(unknown[:3]))
     cited = [q for i in ids if known(i) for q in _quantities(_item_text(_REGISTRY[i]))]
+    cited += _quantities(official_numbers.facts(block))   # 官方營收、EPS、稅後淨利也算來源
     everything = [q for item in _REGISTRY.values() for q in _quantities(_item_text(item))]
     for claim in _quantities(_ID.sub(" ", _META.sub(" ", block))):
         if _supported(claim, cited, market):
             continue
         where = "其他新聞" if _supported(claim, everything) else "任何素材"
+        if where == "任何素材" and missing is not None:
+            missing.append(claim)
         problems.append(f"數字 {claim[0]}{claim[3]}{claim[4]} 不在引用的新聞裡(查{where})")
     return problems
 
@@ -204,7 +221,8 @@ def _audit(text: str, quotes, manifest) -> str:
     import legacy_watch
     legacy_watch.capture(text)   # 編號換成連結之前,先把觀察點回顧的證據編號接住
     market = _market_values(quotes or {})
-    report = {"checked": 0, "failed": 0, "dropped": 0, "examples": []}
+    import official_numbers
+    report = {"checked": 0, "failed": 0, "dropped": 0, "marked": 0, "corrected": 0, "examples": []}
     out = []
     for section in re.split(r"(?m)^(?=#{2,3} )", str(text or "")):
         head, nl, body = section.partition("\n")
@@ -218,7 +236,16 @@ def _audit(text: str, quotes, manifest) -> str:
                 kept.append(_convert(block))
                 continue
             report["checked"] += 1
-            problems = _check(block, market)
+            missing: list = []
+            problems = _check(block, market, missing)
+            fix = official_numbers.correction(block)
+            if fix:   # 同月份的營收與官方不符:附上官方數字
+                report["corrected"] += 1
+                block = block.rstrip() + fix + block[len(block.rstrip()):]
+            if missing:
+                marked = _mark(block, missing)
+                report["marked"] += marked.count(MARK) - block.count(MARK)
+                block = marked
             if problems:
                 report["failed"] += 1
                 if len(report["examples"]) < EXAMPLES:
@@ -242,6 +269,8 @@ def findings(manifest) -> list[tuple[str, str, str]]:
     if not isinstance(report, dict) or not report.get("failed"):
         return []
     mode = "觀察期,只記錄未刪除" if report.get("observe_only") else f"已拿掉 {report.get('dropped', 0)} 條"
-    detail = (f"備援分析 {report.get('failed')}／{report.get('checked')} 條證據核對未通過({mode})")
+    detail = (f"備援分析 {report.get('failed')}／{report.get('checked')} 條證據核對未通過({mode})"
+              + (f";{report['marked']} 個查無來源的數字已標「未核實」" if report.get("marked") else "")
+              + (f";{report['corrected']} 條附上官方營收" if report.get("corrected") else ""))
     examples = [str(e) for e in report.get("examples") or []][:EXAMPLES]
     return [("legacy_evidence_unverified", "degraded", detail + ("：" + "；".join(examples) if examples else ""))]

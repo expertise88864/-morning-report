@@ -63,6 +63,7 @@ from data_quality import (  # noqa: E402,F401  覆蓋率判準搬到葉模組,�
 import run_manifest as _rm
 import analysis_origin as _ao
 import legacy_actor_guard as _legacy_actor_guard
+import official_numbers as _official
 import report_polish as _polish
 import market_fresh as _fresh
 import session_wording as _session_wording
@@ -11194,7 +11195,7 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
-    news = _polish.fresh_news(news, quotes.get("NEWS_REPORTED"))   # 昨天信裡寫過的不再給(11-04 使用者)
+    news = _polish.fresh_news(news, quotes.get("NEWS_REPORTED"), quotes.get("TARGET_SESSION"))   # 昨天信裡寫過的不再給(11-04 使用者)
     def fmt_news(n: dict, with_full: bool = False) -> str:
         imp = n.get("importance", "normal")
         cat = n.get("category", "general")
@@ -15670,9 +15671,8 @@ def _render_weather_html(locs: list[dict],
     # 颱風風雨門檻警示(達標/接近才出現;紅字)。人事總處已公告的縣市不再列預測(10-24 重複訊息)
     import weather_dedupe
     # 只在颱風警報或停班停課公告時才算(11-09 實信:東北季風陣風 76km/h 也印「接近停班停課」)
-    signal = (_typhoon_signal(weather_dedupe.without_announced(locs, suspension))
-              if weather_dedupe.announced(suspension) or any((a or {}).get("typhoon") for a in alerts or [])
-              else "")   # 待定列與新聞備援不算(PR #48 外審)
+    signal = (_typhoon_signal(weather_dedupe.without_announced(locs, suspension))   # 待定列與新聞備援不算(PR #48 外審)
+              if weather_dedupe.announced(suspension) or any((a or {}).get("typhoon") for a in alerts or []) else "")
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
                    if signal else "")
     # 停班停課公告新聞(縣市公告即時,黑字可點;無公告日自動消失)
@@ -25301,6 +25301,7 @@ def _phase_events_and_models(ctx) -> None:
     quotes["MODEL_MONITORING"] = build_model_monitoring_report(
         quotes["MODEL_WALK_FORWARD"])
     quotes["US_HOLIDAY"] = detect_us_holiday(quotes, now_tpe.date())
+    _official.load(_http_get)   # 官方營收/財報:備援分析核對數字用(2026-11-10)
     ctx.recorder.data["us_market_session"] = dict(quotes["US_HOLIDAY"])
     try:
         # Absorption Ratio 系統性風險早警(借鏡 Kritzman-Li);失敗不影響晨報

@@ -204,7 +204,8 @@ MODULE_CEILINGS = {
     "watch_expiry.py": 30,
     "fallback_watch_gap.py": 96,   # +休市日期限的上一交易日回顧(2026-10-24)
     "weather_dedupe.py": 55,   # 天氣卡片重複訊息(2026-10-24)
-    "legacy_evidence.py": 250,   # 備援逐句證據核對(2026-10-30;含英文來源單位)
+    "official_numbers.py": 125,   # 官方營收/財報佐證與更正(2026-11-10)
+    "legacy_evidence.py": 280,   # +查無來源的數字標「未核實」、官方數字佐證(2026-11-10);前值 250   # 備援逐句證據核對(2026-10-30;含英文來源單位)
     "legacy_watch.py": 125,   # 備援觀察點跨日追蹤(2026-10-30)
     "fulltext_fetch.py": 60,   # 全文並行抓取(2026-10-30)
     "mover_news.py": 75,   # 大漲大跌權值股補查新聞(2026-10-30)
@@ -217,7 +218,8 @@ MODULE_CEILINGS = {
     "scenario_window.py": 85,
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
-    "report_polish.py": 262,   # +官方成交金額、粗體與句號修補(2026-11-10)
+    "news_staleness.py": 40,   # 資料月份過舊的新聞(2026-11-10)
+    "report_polish.py": 264,   # +官方成交金額、粗體與句號修補(2026-11-10)
     "report_tidy.py": 90,
     "apbc.py": 125,   # 亞冠賽中華隊賽程與比分(2026-11-08)
     "session_wording.py": 90,   # +週一「昨日台股」改上週五(2026-11-09)   # 週六、連假的「今日開盤」(2026-11-07)   # 模型沒照規則時的收尾(2026-11-06)

@@ -964,6 +964,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#faf5ff;border-left:5px solid #9333ea;border-radius:4px;">'
         'Podcast 重點（台灣節目在前・國際在後）</h2>'
+        '<div style="font-size:12px;color:#64748b;margin:0 0 8px;">※ 以下是主持人說法的摘要，未經查核；數字與單位可能有聽寫誤差。</div>'
         + "".join(cards))
 
 

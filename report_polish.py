@@ -257,3 +257,19 @@ def fresh_model_rows(rows: list, previous: dict | None) -> list:
         match = re.search(r"上架\s+(\S+?):", str(row))
         return bool(match and match[1] in text)
     return [r for r in rows or [] if not told(r)]
+
+
+def daily_chart(quotes: dict | None, report_date: str = "") -> str:
+    """今日一圖(2026-11-10):今天的值取自本班行情,歷史取自 quotes["HISTORY"]。失敗回空字串。"""
+    try:
+        import html
+
+        import daily_chart as chart
+        q = quotes or {}
+        today = {"date": str(report_date)[:10], "taifex_foreign_oi": (q.get("TAIFEX_OI") or {}).get("foreign_oi_net"),
+                 "vix": ((q.get("MACRO") or {}).get("VIX") or {}).get("close"), "usdtwd": q.get("USDTWD"),
+                 "actual_taiex_prev_close": (q.get("TAIEX_PRED") or {}).get("last_close")}
+        return chart.render(chart.pick(q.get("HISTORY") or [], today), html.escape)
+    except Exception as exc:  # noqa: BLE001 - 少一張圖不可讓晨報斷
+        print(f"::warning::daily_chart_failed:{type(exc).__name__}", flush=True)
+        return ""

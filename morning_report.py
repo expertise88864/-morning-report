@@ -22512,8 +22512,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         </table>
         """
     # 預測市場快照(Polymarket;2026-07-16 使用者要求「預測層面資訊」。顯示用不入模型)
-    macro_table_html += _render_poly_pulse_html(quotes.get("POLY_PULSE") or [],
-                                                stance=stance)
+    macro_table_html = (_polish.daily_chart(quotes, report_date) + macro_table_html   # 今日一圖(2026-11-10)
+                        + _render_poly_pulse_html(quotes.get("POLY_PULSE") or [], stance=stance))
     # Forecast Ledger 記分卡:批#26 使用者要求自信件移除顯示——帳本仍在後台
     # 累積結算(state/forecast_ledger.json),要恢復顯示改 True 即可。
     _SHOW_FORECAST_LEDGER_CARD = False

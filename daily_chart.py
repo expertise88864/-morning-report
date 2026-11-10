@@ -12,7 +12,7 @@ import math
 #: (歷史欄位, 名稱, 單位, 小數位)。順序只在偏離程度相同時有意義。
 SERIES = (("taifex_foreign_oi", "外資台指期淨部位", " 口", 0), ("vix", "VIX 恐慌指數", "", 2),
           ("actual_taiex_prev_close", "加權指數收盤", " 點", 0), ("usdtwd", "美元兌新台幣", " 元", 2),
-          ("txo_pc_oi_ratio", "台指選擇權賣權/買權未平倉比", "", 2))
+          ("txo_pc_oi_ratio", "台指選擇權賣權/買權未平倉比", "%", 2))
 BARS, LOOKBACK, MIN_POINTS = 20, 60, 30
 
 
@@ -22,10 +22,21 @@ def _number(value) -> float | None:
     return float(value)
 
 
+def _session(row: dict) -> str:
+    """一筆紀錄屬於哪個交易日:週六與週一的晨報都指向週一,算同一筆(外審 PR #51)。"""
+    return str(row.get("target_session_date") or row.get("date") or "")[:10]
+
+
+def _value(row: dict, key: str) -> float | None:
+    if key == "usdtwd" and row.get("usdtwd_stale"):   # 抓不到匯率時補的舊值不是當天的觀測
+        return None
+    return _number(row.get(key))
+
+
 def _points(history: list, key: str, today: dict) -> list[tuple[str, float]]:
-    rows = {str(r.get("date") or ""): _number(r.get(key)) for r in history or [] if isinstance(r, dict)}
-    if today.get("date"):
-        rows[str(today["date"])] = _number(today.get(key)) if key in today else rows.get(str(today["date"]))
+    rows = {_session(r): _value(r, key) for r in history or [] if isinstance(r, dict)}
+    if _session(today) and key in today:   # 本班給了這個欄位(即使是空的)就以本班為準,不沿用同一交易日的舊紀錄
+        rows[_session(today)] = _value(today, key)
     return [(day, value) for day, value in sorted(rows.items()) if day and value is not None][-LOOKBACK:]
 
 
@@ -34,7 +45,7 @@ def pick(history: list, today: dict | None = None) -> dict:
     today, best = today or {}, {}
     for key, label, unit, digits in SERIES:
         points = _points(history, key, today)
-        if len(points) < MIN_POINTS or (today.get("date") and points[-1][0] != str(today["date"])):
+        if len(points) < MIN_POINTS or (_session(today) and points[-1][0] != _session(today)):
             continue
         earlier = [v for _, v in points[:-1]]
         mean = sum(earlier) / len(earlier)
@@ -75,5 +86,5 @@ def render(chart: dict, esc) -> str:
             "<table role='presentation' style='width:100%;border-collapse:collapse;table-layout:fixed;height:60px;'>"
             f"<tr style='vertical-align:bottom;'>{bars}</tr></table>"
             "<div style='font-size:11px;color:#94a3b8;margin-top:4px;'>"
-            f"{esc(points[0][0][5:].replace('-', '/'))} → {esc(points[-1][0][5:].replace('-', '/'))}"
+            f"{esc(points[0][0][5:].replace('-', '/'))} → 最新"
             "（每格一個交易日，深色是最新；高度是區間內的相對位置，不從零起算）</div></div>")

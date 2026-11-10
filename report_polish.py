@@ -266,9 +266,16 @@ def daily_chart(quotes: dict | None, report_date: str = "") -> str:
 
         import daily_chart as chart
         q = quotes or {}
-        today = {"date": str(report_date)[:10], "taifex_foreign_oi": (q.get("TAIFEX_OI") or {}).get("foreign_oi_net"),
-                 "vix": ((q.get("MACRO") or {}).get("VIX") or {}).get("close"), "usdtwd": q.get("USDTWD"),
-                 "actual_taiex_prev_close": (q.get("TAIEX_PRED") or {}).get("last_close")}
+        pcr = q.get("TAIFEX_PCR") or {}
+        session = str(q.get("LAST_TRADING_SESSION") or "").replace("-", "")
+        pcr_fresh = bool(session) and str(pcr.get("date") or "").replace("-", "").replace("/", "") == session
+        today = {"date": str(report_date)[:10], "target_session_date": str(q.get("TARGET_SESSION") or "")[:10],
+                 "taifex_foreign_oi": (q.get("TAIFEX_OI") or {}).get("foreign_oi_net"),
+                 "vix": ((q.get("MACRO") or {}).get("VIX") or {}).get("close"),
+                 "usdtwd": q.get("USDTWD"), "usdtwd_stale": bool(q.get("USDTWD_STALE")),
+                 "actual_taiex_prev_close": (q.get("TAIEX_PRED") or {}).get("last_close"),
+                 # 選擇權資料日期要等於上一交易日才算今天的值(與存歷史時同一條規則)
+                 "txo_pc_oi_ratio": pcr.get("pc_oi_ratio") if pcr_fresh else None}
         return chart.render(chart.pick(q.get("HISTORY") or [], today), html.escape)
     except Exception as exc:  # noqa: BLE001 - 少一張圖不可讓晨報斷
         print(f"::warning::daily_chart_failed:{type(exc).__name__}", flush=True)

@@ -219,7 +219,7 @@ MODULE_CEILINGS = {
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
     "news_staleness.py": 55,   # 資料月份過舊的新聞(2026-11-10)
-    "daily_chart.py": 85,   # 今日一圖(2026-11-10)
+    "daily_chart.py": 95,   # 今日一圖(2026-11-10)
     "report_polish.py": 282,   # +今日一圖的接線   # +官方成交金額、粗體與句號修補(2026-11-10)
     "report_tidy.py": 90,
     "apbc.py": 125,   # 亞冠賽中華隊賽程與比分(2026-11-08)

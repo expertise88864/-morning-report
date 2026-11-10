@@ -55,3 +55,26 @@ def test_wiring_reads_quotes_and_never_raises():
     assert "外資台指期淨部位 -99,000 口" in page
     assert rp.daily_chart({}, "2026-10-11") == "" and rp.daily_chart(None) == ""
     assert rp.daily_chart({"HISTORY": "壞資料"}, "2026-10-11") == ""
+
+
+def test_review_pr51_same_session_once_stale_fx_out_and_pcr_in():
+    # 週六與週一都指向週一:同一個交易日只算一筆,今天那筆以本班為準
+    rows = _history()[:-1]
+    rows.append({"date": "2026-10-10", "target_session_date": "2026-10-12", "vix": 30.0})   # 週六那封
+    today = {"date": "2026-10-12", "target_session_date": "2026-10-12", "vix": 31.0}
+    points = dc._points(rows, "vix", today)
+    assert points[-1] == ("2026-10-12", 31.0) and [d for d, _ in points].count("2026-10-12") == 1
+    assert all(v != 30.0 for _, v in points)
+    # 補的舊匯率不是當天的觀測:今天與歷史都不算
+    fx = _history()[:-1]
+    fx[-3]["usdtwd"], fx[-3]["usdtwd_stale"] = 40.0, True
+    assert all(v != 40.0 for _, v in dc._points(fx, "usdtwd", {"date": "2026-10-11", "usdtwd": 32.0}))
+    assert dc._points(fx, "usdtwd", {"date": "2026-10-11", "usdtwd": 40.0, "usdtwd_stale": True})[-1][0] != "2026-10-11"
+    quotes = {"HISTORY": fx, "USDTWD": 40.0, "USDTWD_STALE": {"value": 40.0}, "MACRO": {"VIX": {"close": 18.5}}}
+    assert "美元兌新台幣" not in rp.daily_chart(quotes, "2026-10-11")
+    # 選擇權 P/C:資料日期等於上一交易日才是今天的值
+    pc = [dict(r, txo_pc_oi_ratio=60 + (i % 3)) for i, r in enumerate(_history()[:-1])]
+    q = {"HISTORY": pc, "TAIFEX_PCR": {"date": "20261009", "pc_oi_ratio": 140.0}, "LAST_TRADING_SESSION": "2026-10-09"}
+    assert "台指選擇權賣權/買權未平倉比 140.00%" in rp.daily_chart(q, "2026-10-11")
+    q["TAIFEX_PCR"]["date"] = "20261008"
+    assert rp.daily_chart(q, "2026-10-11") == ""

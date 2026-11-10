@@ -112,8 +112,8 @@ def correction(block: str) -> str:
         return ""
     said = _num(stated.group(1))
     tail = str(block)[stated.end():stated.end() + 40]
-    tail = re.split(r"。|累計|前\s*\d{1,2}\s*月", tail)[0]   # 講到累計就停:後面的年增率不是單月的
-    growth = re.search(r"年增\s*([\d.]+)\s*%", tail)
+    # 年增率要緊接在這筆單月營收後面(中間只容標點與月增率):隔著累計、EPS 等其他指標的不是它的(外審 PR #50)
+    growth = re.match(r"元?\s*[，、；;,]?\s*(?:月增\s*[\d.]+\s*%\s*[，、；;,]?\s*)?年增\s*([\d.]+)\s*%", tail)
     wrong_rev = said is not None and abs(said - rev) > max(0.01 * rev, 0.06)
     wrong_yoy = bool(growth) and yoy is not None and abs(float(growth.group(1)) - yoy) > (
         0.06 if "." in growth.group(1) else 0.6)

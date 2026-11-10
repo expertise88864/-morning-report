@@ -142,3 +142,11 @@ def test_review_pr50_round2_cumulative_without_space_and_semicolon_before_growth
     assert on.correction("國巨（2327）：前10月營收1,497.51億元") == ""
     assert "年增 55.0%" in on.correction("國巨（2327）：10月營收175.97億元；年增61%")
     assert on.correction("國巨（2327）：10月營收175.97億元；年增55%") == ""
+
+
+def test_review_pr50_round3_growth_must_directly_follow_the_monthly_revenue():
+    on.load(_get, lambda *_: None)
+    assert on.correction("國巨（2327）：10月營收175.97億元；第三季EPS年增38.3%") == ""
+    assert on.correction("國巨（2327）：10 月營收 175.97 億元，創單月新高，毛利率年增 2%") == ""
+    assert "年增 55.0%" in on.correction("國巨（2327）：10 月營收 175.97 億元，月增 3.1%、年增 61%")
+    assert on.correction("國巨（2327）：10 月營收 175.97 億元，月增 3.1%、年增 55%") == ""

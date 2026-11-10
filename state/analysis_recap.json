@@ -353,18 +353,6 @@
    "deadline": "2026-11-27"
   },
   {
-   "trigger": "外資台指期淨空 -93,647 口是否縮回 8 萬口以內（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空 -93,647 口是否縮回 8 萬口以內（觀察期：5 天內）",
-   "trigger_key": "t0e65840fc93a8392",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w115",
-   "status": "open",
-   "created": "2026-11-05",
-   "last_reviewed": "2026-11-10",
-   "deadline": "2026-11-10"
-  },
-  {
    "trigger": "外資台指期淨空 -95,651 口是否回補至 9 萬口以下（觀察期：5 天內）",
    "trigger_full": "外資台指期淨空 -95,651 口是否回補至 9 萬口以下（觀察期：5 天內）",
    "trigger_key": "t037f92ab290031c8",
@@ -435,50 +423,79 @@
    "created": "2026-11-10",
    "last_reviewed": "",
    "deadline": "2026-11-15"
+  },
+  {
+   "trigger": "10 年期美債殖利率能否回落至 4.90% 以下（觀察期：5 天內）",
+   "trigger_full": "10 年期美債殖利率能否回落至 4.90% 以下（觀察期：5 天內）",
+   "trigger_key": "t73e882e94ec4d4f8",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w126",
+   "status": "open",
+   "created": "2026-11-11",
+   "last_reviewed": "",
+   "deadline": "2026-11-16"
+  },
+  {
+   "trigger": "外資台指期淨空 -103,473 口是否縮回 9 萬口以內（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -103,473 口是否縮回 9 萬口以內（觀察期：5 天內）",
+   "trigger_key": "t647c45427f587cf5",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w127",
+   "status": "open",
+   "created": "2026-11-11",
+   "last_reviewed": "",
+   "deadline": "2026-11-16"
+  },
+  {
+   "trigger": "加權指數能否守穩本報估計區間下緣 42,191 點（觀察期：今日）",
+   "trigger_full": "加權指數能否守穩本報估計區間下緣 42,191 點（觀察期：今日）",
+   "trigger_key": "t1d6317ab7fefac92",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w128",
+   "status": "open",
+   "created": "2026-11-11",
+   "last_reviewed": "",
+   "deadline": "2026-11-12"
   }
  ],
- "watch_seq": 125,
+ "watch_seq": 128,
  "legacy_report": {
-  "date": "2026-11-10",
+  "date": "2026-11-11",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台達電（2308，電源管理與散熱模組廠，AI 伺服器電源主要供應商）**：10 月營收 746.66 億元，月增 14%、年增 30%，創單月歷史新高；累計前 10 月 6,143.33 億元、年增 36.3% [鉅亨](https://news.cnyes.com/news/id/6654744)[鉅亨網](https://news.google.com/rss/articles/CBMiT0FVX3lxTE1sMTRCZFVCeGxKcjdaYlNZXzh6TjN6TDI2QXhDdFF2SlhZVmlkSDg1VG9STHVkMXNWSzdCMURRNUstN256bVlnOXBlNGMxdzA?oc=5)。AI 機櫃瓦數提升帶動電源單位價值，營收是拉貨最直接的落後確認。量級上單月 746 億元確屬歷史新高，但公司未同步公布毛利率，用營收推獲利幅度會高估——這是「量」的證據，不是「價」的證據。**[A 級・信心:中-高]**",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：董事會通過第三季每股現金股利 9 元、資本預算約 409.27 億美元，並首度以各不超過 5 億美元認購 OpenAI 特別股與 Anthropic 普通股 [鉅亨台股](https://news.cnyes.com/news/id/6656911)。409 億美元用於先進製程、先進封裝與廠房興建，對應 N2 與 CoWoS 產能擴建。對照公司 2026 年資本支出 600 至 640 億美元的指引，這筆核准屬年度規劃內執行、不是上修；真正的新訊息是把 AI 模型商納入股東結構。量級上 10 億美元入股相對單季 7,630 億元稅後純益很小，對每股盈餘的直接貢獻可忽略，重點在把算力需求與客戶關係往前綁。**[A 級・信心:中-高]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6654744",
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1sMTRCZFVCeGxKcjdaYlNZXzh6TjN6TDI2QXhDdFF2SlhZVmlkSDg1VG9STHVkMXNWSzdCMURRNUstN256bVlnOXBlNGMxdzA?oc=5"
+     "https://news.cnyes.com/news/id/6656911"
     ]
    },
    {
-    "statement": "**美光（MU，全球第三大 DRAM 廠，HBM 為 AI 記憶體主力）**：新加坡兩案合計投資 310 億美元，含 240 億美元 NAND 新廠與 70 億美元 HBM 先進封裝廠，分別於 2028 年下半年與 2027 年貢獻產能；桃園 Fab 11E 新廠因勞資協商，11 月 17 日開第 4 次會議 [ETtoday](https://finance.ettoday.net/news/3269186)。HBM 先進封裝擴產對應 AI GPU 的堆疊需求，中長期利多先進封裝設備與材料供應鏈。但 310 億美元是十年期規劃、2027 年才有第一筆產能，對今年營收零貢獻；桃園廠進度未正面說明，台灣本地設備訂單的時程還無法確認。**[A 級・信心:中]**",
+    "statement": "**台積電（2330）**：第三季營收 1.49 兆元、毛利率 66.4%、稅後純益 7,630.6 億元、EPS 29.43 元，獲利年增 68.7% 並創歷史新高 [鉅亨台股](https://news.cnyes.com/news/id/6656875)。第四季毛利率指引 65% 至 67%，公司解釋是 2 奈米爬坡與海外廠稀釋。毛利率從 66.4% 往 66% 中位數走，代表先進製程學習曲線成本開始認列，但營益率指引 56.5% 至 58.5% 仍高於多數同業。對 2330 的意義是獲利創高已被股價部分反映，接下來要看的不是 EPS 而是毛利率能否守住 65% 下緣。**[A 級・信心:高]**",
     "source_urls": [
-     "https://finance.ettoday.net/news/3269186"
+     "https://news.cnyes.com/news/id/6656875"
     ]
    },
    {
-    "statement": "**AMD（全球第二大 x86 CPU 廠，MI 系列為資料中心 AI GPU 主力）**：延續 11 月初財報後的升評這條線，Oppenheimer 將評等調升至「優於大盤」、目標價 600 美元，預估 2027 年資料中心營收成長 135%，股價單日漲 13.26% [鉅亨](https://news.cnyes.com/news/id/6654538)[原文](https://news.cnyes.com/news/id/6654625)。AMD 的 GPU 與 ASIC 都在台積電投片，出貨放量直接推升 N3/N2 與 CoWoS 需求。值得注意的是它與昨夜輝達調查案形成對比：資金在 AI 晶片內部由龍頭轉向老二，不是離開 AI——這條與輝達那條同源但方向相反。目前沒有 AMD 追加投片的具體數字，量級還看不出來。**[A 級・信心:中]**",
+    "statement": "**輝達（NVDA，AI 加速器龍頭）**：口頭通知全球雲端夥伴至少 51% 服務須供應非中國企業，中國企業對合規工作站顯卡 RTX Pro 5500 下單逾 600 萬張、達輝達 2027 年全球產能上限的兩倍以上 [鉅亨美股](https://news.cnyes.com/news/id/6655907)。中國取得高階算力的兩條路同時緊縮，黑市 B300 機櫃成交價達國際價 4.7 倍。對台積電的傳導是客戶結構而非總量：中國需求被迫轉往合規產品與海外租用，先進製程訂單仍由美系雲端業者填補。**目前沒有台積電來自中國客戶的具體營收占比變化，還看不出對稼動率的淨影響**，能確定的是合規成本上升會壓抑中國 AI 訓練的擴張速度。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6654538",
-     "https://news.cnyes.com/news/id/6654625"
+     "https://news.cnyes.com/news/id/6655907"
     ]
    },
    {
-    "statement": "**三星與 SK 海力士（全球前兩大記憶體廠）**：兩家各投入 10 兆至 20 兆韓元鎖定 ASML 2027 至 2028 年 EUV 產能，ASML 示警即使兩年各擴產 30% 仍無法滿足客戶，EUV 交機週期已拉長至原先兩倍 [鉅亨](https://news.cnyes.com/news/id/6653523)。記憶體廠擴產會排擠邏輯製程的設備交期，台積電先進製程的設備到貨節奏同樣受影響。量級上 ASML 今年 EUV 出貨約 65 台、年增近 50%，漲價效應要到 2027 年才浮現——今明兩年是交期問題，不是價格問題。這條與上一條美光擴產指向同一個記憶體擴產循環，互相加強。**[A 級・信心:中]**",
+    "statement": "**超微（AMD，全球第二大 x86 CPU 與 AI GPU 廠）與博通（AVGO，AI ASIC 與網通晶片大廠）**：自 11 月 5 日收盤以來分別反彈約 29% 與 12%，同期輝達因黃仁勳風波走弱 [鉅亨美股](https://news.cnyes.com/news/id/6657838)。這是半導體內部的資金輪動，不是需求總量改變：AMD 與 AVGO 的 AI 晶片同樣在台積電投片，N3 與 CoWoS 產能不會因客戶換人而減少。**量級上無法從漲幅推算追加投片量，還看不出對 2330 稼動率的邊際貢獻**，但客戶集中度下降對台積電的議價結構偏中性偏多。**[B 級・信心:中-低,資訊有限]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6653523"
+     "https://news.cnyes.com/news/id/6657838"
     ]
    },
    {
-    "statement": "**國巨*（2327，全球被動元件大廠，晶片電阻與 MLCC 為主）**：10 月營收 175.97 億元，月增 3.1%、年增 55%，再創單月新高；累計前 10 月 1,497.51 億元、年增 38.3% [自由財經](https://ec.ltn.com.tw/article/paper/1777890)。被動元件與 AI 伺服器、車用電子同步，年增五成代表庫存去化結束、進入回補階段。但公司未公布報價調整，無法判斷是量增還是價量齊揚，兩者對毛利率的意義差很多。**[A 級・信心:中]**",
+    "statement": "**南亞科（2408，台灣 DRAM 廠）與記憶體產業**：南亞科 10 月毛利率衝上 85.7%、獲利創新高，並宣布砸近 700 億元擴產 [財訊](https://news.google.com/rss/articles/CBMie0FVX3lxTE1LU050T19pQWtjTUthdlJZdXFpQVZ4b3BKOUFlcElDalMyODVRa09yNm1XY1ZJUzlEdFFtMjdwbUEta3BQQl9vYzVDQXZCZUNOQ2psQVVJb1VXMFdxbWMtTC03ZkdTQjRUX3RFbTNac0VmUkREMXpiM1EwOA?oc=5)。同一時間摩根士丹利分析師 Shawn Kim 警告 2028 年將出現記憶體「獲利懸崖」，把 SK 海力士目標價下調 38%、三星下調 19% [鉅亨美股](https://news.cnyes.com/news/id/6656867)。兩者不矛盾：現貨報價與換約效益支撐今年獲利，但 2027 年底新產能開出後供給會反轉。對台股的傳導在設備與材料——擴產訂單今年看得到，2028 年的價格風險則還沒反映。**[A 級・信心:中]**",
     "source_urls": [
-     "https://ec.ltn.com.tw/article/paper/1777890"
-    ]
-   },
-   {
-    "statement": "**【金融｜台灣】永豐金（2890，民營金控，銀行為主體）**：前 10 月稅後淨利 385.31 億元、年增 68%，創史上同期新高 [自由財經](https://news.google.com/rss/articles/CBMiX0FVX3lxTFBrVDNITVdtdFUtVGNrTnNQbHl2dXkwelg5NVFaNTM3WHhFdmxkLU0xQnFUN01ZQnkwWFJPLWpHeU1Yb1JXTWxHcUtyclViX0JLcUUzX0VuT1RuRkszWG8w0gFkQVVfeXFMUHY1dnVRZm5fOWduZGYzNDlyeGd0UE1CWWkxYW9KcDJMTTdqdDRtMWt2ZUs1VVhkSzNsZ1E4VzdoODFvX0tUMHV4TVItbzlvWmc0cEJVWTJaaTNyb01aMk5TS3dFZw?oc=5)。獲利跳增來自證券經紀手續費與銀行利息收入，成交量放大直接墊高經紀收入——同樣機制適用於以證券為核心的元大金。年增近七成是在高基期上加速，但單一數字無法拆解經常性與一次性投資收益各占多少。**[A 級・信心:中]**",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTFBrVDNITVdtdFUtVGNrTnNQbHl2dXkwelg5NVFaNTM3WHhFdmxkLU0xQnFUN01ZQnkwWFJPLWpHeU1Yb1JXTWxHcUtyclViX0JLcUUzX0VuT1RuRkszWG8w0gFkQVVfeXFMUHY1dnVRZm5fOWduZGYzNDlyeGd0UE1CWWkxYW9KcDJMTTdqdDRtMWt2ZUs1VVhkSzNsZ1E4VzdoODFvX0tUMHV4TVItbzlvWmc0cEJVWTJaaTNyb01aMk5TS3dFZw?oc=5"
+     "https://news.google.com/rss/articles/CBMie0FVX3lxTE1LU050T19pQWtjTUthdlJZdXFpQVZ4b3BKOUFlcElDalMyODVRa09yNm1XY1ZJUzlEdFFtMjdwbUEta3BQQl9vYzVDQXZCZUNOQ2psQVVJb1VXMFdxbWMtTC03ZkdTQjRUX3RFbTNac0VmUkREMXpiM1EwOA?oc=5",
+     "https://news.cnyes.com/news/id/6656867"
     ]
    }
   ]

@@ -175,12 +175,17 @@ def _blocks(body: str) -> list[str]:
 
 
 def _mark(block: str, claims: list[tuple]) -> str:
-    """在對不到來源的數字後面加上標記;原文裡找不到那個寫法(全形數字等)就不動。"""
-    for raw, _, _, mag, unit in claims:
+    """在對不到來源的數字後面加上標記。同一個寫法出現兩次(「新台幣100億元、人民幣100億元」)時,
+    只標幣別與種類也對得上的那一處(外審 PR #50);原文裡找不到就不動。"""
+    for claim in claims:
+        raw, _, kind, mag, unit = claim
         for tail in (re.escape(mag) + r"\s*" + re.escape(unit), re.escape(mag)):
             pattern = r"(?<![\d.,/=])" + re.escape(raw) + r"(?![\d.,])\s*" + tail + "(?!" + MARK + ")"
-            block, done = re.subn(pattern, lambda m: m.group(0) + MARK, block, count=1)
-            if done:
+            hit = next((m for m in re.finditer(pattern, block)
+                        if any(q[0] == raw and q[2] == kind and q[3] == mag
+                               for q in _quantities(block[max(0, m.start() - 4):m.end()]))), None)
+            if hit:
+                block = block[:hit.end()] + MARK + block[hit.end():]
                 break
     return block
 

@@ -105,11 +105,14 @@ def correction(block: str) -> str:
     month, rev, yoy = d.get("month"), d.get("rev"), d.get("yoy")
     if not month or rev is None:
         return ""
-    stated = re.search(rf"(?<!\d){month}\s*月(?:份)?(?:合併)?營收\s*(?:為|達|約)?\s*([\d,]+(?:\.\d+)?)\s*億", str(block))
+    # 「前 10 月營收」「累計 10 月營收」是累計,不拿來比單月(外審 PR #50)
+    stated = re.search(rf"(?<![\d前至到~～\-])(?<![前至到計]\s){month}\s*月(?:份)?(?:合併)?營收\s*(?:為|達|約)?\s*"
+                       r"([\d,]+(?:\.\d+)?)\s*億", str(block))
     if not stated:
         return ""
     said = _num(stated.group(1))
     tail = str(block)[stated.end():stated.end() + 40]
+    tail = re.split(r"[；;。]|累計|前\s*\d{1,2}\s*月", tail)[0]   # 年增率只看同一句單月營收的敘述
     growth = re.search(r"年增\s*([\d.]+)\s*%", tail)
     wrong_rev = said is not None and abs(said - rev) > max(0.01 * rev, 0.06)
     wrong_yoy = bool(growth) and yoy is not None and abs(float(growth.group(1)) - yoy) > (

@@ -114,3 +114,23 @@ def test_prompt_rule_podcast_note_and_reader_legend():
     assert "不可寫成「80 幾瓦」" in (root / "podcast_digest.py").read_text(encoding="utf-8")
     html = rp.display_pass('<h2 style="x">八、科技板塊脈動</h2><p>內容</p>')
     assert "標「未核實」的數字＝在引用的新聞、行情與官方營收財報裡都對不到" in html
+
+
+def test_review_pr50_cumulative_future_months_and_same_number_two_currencies():
+    on.load(_get, lambda *_: None)
+    # 累計營收不拿來比單月;累計的年增率不套到單月
+    assert on.correction("國巨（2327）：前 10 月營收 1,497.51 億元、年增 38.3%") == ""
+    assert on.correction("國巨（2327）：累計 10 月營收 1,497.51 億元") == ""
+    assert on.correction("國巨（2327）：10 月營收 175.97 億元；累計營收 1,497.51 億元、年增 38.3%") == ""
+    assert on.correction("國巨（2327）：10 月營收 175.97 億元，累計前 10 月 1,497.51 億元、年增 38.3%") == ""
+    assert on.correction("國巨（2327）：10 月營收 175.97 億元、年增 61%") != ""
+    # 明確的未來月份是展望;寫了年份就照年月算
+    nov = dt.date(2026, 11, 10)
+    assert not ns.stale("台積電明年 3 月出貨放量", nov) and not ns.stale("2027 年 3 月出貨放量", nov)
+    assert ns.stale("2026 年 3 月出口年增 8%", nov) and ns.stale("2025 年 12 月營收回顧", nov)
+    assert not ns.stale("2026 年 10 月營收創高", nov)
+    # 同一個數字兩種幣別:只標對不到來源的那一筆
+    le.tag({"title": "某公司擬發債新台幣100億元 - 經濟日報", "link": "https://news.example/bond"})
+    manifest = {}
+    out = le.audit("## 八、科技板塊脈動\n- 某公司擬發債新台幣100億元、另籌人民幣100億元 [經濟日報][N1]\n", {}, manifest)
+    assert "新台幣100億元、另籌人民幣100億元（未核實）" in out and manifest["llm"]["legacy_evidence"]["marked"] == 1

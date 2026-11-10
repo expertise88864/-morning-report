@@ -16,10 +16,23 @@ _DATA_MONTH = re.compile(
     r"[^，。、；：\s]{0,6}?(?:營收|銷量|銷售|出口|進口|外銷訂單|訂單|CPI|PPI|PMI|數據|財報|獲利|出貨|產值|失業率|零售|非農|通膨)")
 
 
+_FUTURE = re.compile(r"(?:明年|後年|來年|下一?年度?)\s*$")
+_YEAR = re.compile(r"(\d{4})\s*年\s*$")
+
+
 def stale(title, today: dt.date) -> bool:
-    for month in _DATA_MONTH.findall(str(title or "")):
-        gap = (today.month - int(month)) % 12
-        if 1 <= int(month) <= 12 and MIN_GAP <= gap <= 8:   # 9～11 個月前多半是在講明年
+    text = str(title or "")
+    for match in _DATA_MONTH.finditer(text):
+        month, before = int(match.group(1)), text[max(0, match.start() - 8):match.start()]
+        if not 1 <= month <= 12 or _FUTURE.search(before):   # 「明年 3 月出貨」是展望(外審 PR #50)
+            continue
+        year = _YEAR.search(before)
+        if year:   # 標題寫了年份就照年月算
+            gap = (today.year - int(year.group(1))) * 12 + today.month - month
+            if gap >= MIN_GAP:
+                return True
+            continue
+        if MIN_GAP <= (today.month - month) % 12 <= 8:   # 9～11 個月前多半是在講明年
             return True
     return False
 

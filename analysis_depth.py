@@ -57,7 +57,7 @@ NEWS_TARGET_MAX = NEWS_TARGET_MIN + 5
 #: 世界大事速覽的條數(2026-09-04 使用者:「世界大事改成五條」)。prompt 說五條,
 #: 這裡是它的守衛:素材夠(packet 新聞的 `source` 帶「世界-」前綴 ≥ 5 則)而輸出
 #: 不足五條時,用加深輪把它補齊 —— prompt 指令不是保證。
-WORLD_EVENTS_TARGET = 5
+WORLD_EVENTS_TARGET = 6   # 11-10 使用者:「加入更多條」;前值 5
 
 #: 總則數那一條的素材前提(逐段那兩條用**自己那一段**的素材數,見
 #: `depth_advisories`)。2026-08-25 外審:先前是 `目標 × 2` 且整組建議

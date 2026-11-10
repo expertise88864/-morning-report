@@ -74,14 +74,28 @@ def test_world_events_up_to_seven_longer_and_no_overlap_with_top3():
     import fixtures_analysis as fx
     import prompt_profiles
     legacy = open(writing_rules.__file__, encoding="utf-8").read()
-    assert "最多 7 條" in legacy and "150～240 字" in legacy and "市場影響見七段" in legacy
-    assert "最多七條" in open(prompt_profiles.__file__, encoding="utf-8").read()
+    assert "6～8 條" in legacy and "200～300 字" in legacy and "市場影響見七段" in legacy   # 11-10:更多條、多一句觀察重點
+    assert "最多八條" in open(prompt_profiles.__file__, encoding="utf-8").read()
     obj = fx.valid_analysis()
     obj["world_events"] = [{"source_item_id": "n1", "what": f"事件{i}", "why_it_matters": "意涵",
                             "what_next": "後續"} for i in range(9)]
     out = ar.render(obj)
     world = out.split("## " + ar.SECTION_WORLD, 1)[1].split("\n## ", 1)[0]
-    assert world.count("\n- ") == 7
+    assert world.count("\n- ") == 8
+
+
+def test_world_event_keeps_three_why_sentences_and_two_next_sentences():
+    """11-10 使用者:每條多寫一兩句後續發展、可能影響、觀察重點。"""
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    obj = fx.valid_analysis()
+    obj["world_events"] = [{"source_item_id": "n1", "what": "美伊重啟談判",
+                            "why_it_matters": "意涵一。意涵二。意涵三。意涵四。",
+                            "what_next": "後續發展。觀察重點是下一輪會談。第三句不留。"}]
+    world = ar.render(obj).split("## " + ar.SECTION_WORLD, 1)[1].split("\n## ", 1)[0]
+    assert "意涵三。" in world and "意涵四" not in world
+    assert "觀察重點是下一輪會談。" in world and "第三句不留" not in world
+    assert "**觀察重點**" in open(writing_rules.__file__, encoding="utf-8").read()
 
 
 def test_offseason_hides_mlb_and_cpbl_standings_only():
@@ -120,7 +134,7 @@ def test_heat_table_name_stays_out_while_hidden_and_ai_race_must_cite():
                                           "sectors": {"半導體業": {"value_yi": 1, "median_pct": 0}}})
     assert "全信不得出現「類股熱度表」這個名稱" in block
     assert "`[OpenRouter][N12]`" in open(mr.__file__, encoding="utf-8").read()
-    assert "每條 3～4 句、合計 150～240 字" in open(writing_rules.__file__, encoding="utf-8").read()
+    assert "每條 4～5 句、合計 200～300 字" in open(writing_rules.__file__, encoding="utf-8").read()
 
 
 def test_full_prompt_has_no_conflicting_heat_table_citation_rule(monkeypatch):

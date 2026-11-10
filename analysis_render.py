@@ -244,17 +244,17 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 一氣呵成一個段落(郵件渲染最穩的形狀)。
         import legacy_layout   # 2026-10-19:比照備援在事件句末標發布者
         head = legacy_layout.with_source(w.get("what"), legacy_layout.source_of(packet, w.get("source_item_id")))
-        # 10-20 使用者:「寫太多廢話」—— 解讀最多兩句、後續影響一句(比照備援信)。
+        # 11-10 使用者:每條多一兩句(後續發展、觀察重點)—— 解讀最多三句、後續兩句;10-20 是兩句、一句。
         from analysis_render_depth import _sentences
-        why = "".join(_sentences(_sent(w.get("why_it_matters")))[:2]) if _s(w.get("why_it_matters")) else ""
-        nxt = _sentences(_s(w.get("what_next")))[0] if _s(w.get("what_next")) else ""
+        why = "".join(_sentences(_sent(w.get("why_it_matters")))[:3]) if _s(w.get("why_it_matters")) else ""
+        nxt = "".join(_sentences(_sent(w.get("what_next")))[:2]) if _s(w.get("what_next")) else ""
         # 10-21 使用者:比照備援,後續影響直接接成一句,不掛「後續可能影響:」標籤。
         return ("- " + head + why + (_sent(nxt) if nxt else "")).rstrip()
 
     world = [_world_line(w) for w in _reader.importance_order(obj.get("world_events") or [], packet or {})
              if isinstance(w, dict) and _s(w.get("what"))]
     if world:
-        parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world[:7]))   # 11-03 使用者:最多 7 條
+        parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world[:8]))   # 11-10 使用者:最多 8 條
 
     # 未來 48 小時:每件事一個小段(基準/偏多/偏空/最受影響/失效)。
     from scenario_window import heading as scenario_heading

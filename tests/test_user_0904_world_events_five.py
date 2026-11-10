@@ -22,16 +22,16 @@ import writing_rules as wr
 
 
 def test_both_prompts_ask_for_five_world_events():
-    # 2026-11-03 使用者:改「最多 7 條」(重大事件多才寫滿);守衛目標仍是 5
+    # 2026-11-10 使用者:「加入更多條」—— 6～8 條,守衛目標 6(11-03 是最多 7 條、目標 5)
     src = open(pp.__file__, encoding="utf-8").read()
-    assert "**`world_events` 是股市之外的世界**（最多七條" in src
+    assert "**`world_events` 是股市之外的世界**（素材夠就寫六條以上、最多八條）" in src
     assert "（約三條）" not in src
     rules = open(wr.__file__, encoding="utf-8").read()
-    assert "## 七之二、世界大事速覽（最多 7 條;" in rules and "（3-5 條;" not in rules
+    assert "## 七之二、世界大事速覽（6～8 條;" in rules and "（3-5 條;" not in rules
     # legacy 過長重試:先前壓成「最多 3 條」,現在仍要 5 條
     msrc = open(mr.__file__, encoding="utf-8").read()
     assert "世界大事速覽仍要 5 條" in msrc and "世界大事速覽最多 3 條" not in msrc
-    assert ad.WORLD_EVENTS_TARGET == 5
+    assert ad.WORLD_EVENTS_TARGET == 6
 
 
 def _packet(world_sources: int, other: int = 6, *, source: str = "世界-國際") -> dict:
@@ -55,8 +55,9 @@ def _world_hits(obj, packet):
 
 def test_the_advisory_asks_for_five_only_when_the_material_is_there():
     hit = _world_hits(_obj(3), _packet(world_sources=6))
-    assert hit and "只有 3 條" in hit[0] and "目標 5 條" in hit[0], hit
-    assert not _world_hits(_obj(5), _packet(world_sources=6))                 # 已經五條:不催
+    assert hit and "只有 3 條" in hit[0] and "目標 6 條" in hit[0], hit
+    assert not _world_hits(_obj(6), _packet(world_sources=6))                 # 已經六條:不催
+    assert not _world_hits(_obj(3), _packet(world_sources=5, other=20))       # 料只有五則:不硬湊
     assert not _world_hits(_obj(3), _packet(world_sources=3, other=20))       # 料只有三則:不硬湊
     assert not _world_hits(_obj(3), {"w1", "w2"})                              # ID 集合的舊呼叫形狀:不炸、不催
 
@@ -65,7 +66,7 @@ def test_world_material_is_counted_with_the_same_predicate_as_the_legacy_prompt(
     """Codex P2:中央社國際、去重後掛在一般來源上的 world_cat 都是料。"""
     assert _world_hits(_obj(3), _packet(world_sources=6, source="中央社國際"))
     pk = _packet(world_sources=0, other=8)
-    for it in pk["news"][:5]:
+    for it in pk["news"][:6]:
         it["world_cat"] = "地緣"          # 一般來源(Google:2330)但帶世界標記
     assert _world_hits(_obj(3), pk)
     assert not _world_hits(_obj(3), _packet(world_sources=0, other=8))

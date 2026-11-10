@@ -150,6 +150,6 @@ def test_world_depth_guard_does_not_count_minor_incidents_as_material():
     adv = analysis_depth.depth_advisories({"world_events": [w, w], "top_news_analysis": []}, pk)
     assert not any("world_events" in a for a in adv)
     pk["news"] += [{"source_item_id": f"x{i}", "title": f"美中峰會第{i}輪", "source": "中央社國際"}
-                   for i in range(3)]
+                   for i in range(4)]   # 11-10:目標改六條
     adv = analysis_depth.depth_advisories({"world_events": [w, w], "top_news_analysis": []}, pk)
-    assert any("world_events" in a for a in adv)          # 重大素材真的夠五則時照催
+    assert any("world_events" in a for a in adv)          # 重大素材真的夠六則時照催

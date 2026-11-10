@@ -134,3 +134,11 @@ def test_review_pr50_cumulative_future_months_and_same_number_two_currencies():
     manifest = {}
     out = le.audit("## 八、科技板塊脈動\n- 某公司擬發債新台幣100億元、另籌人民幣100億元 [經濟日報][N1]\n", {}, manifest)
     assert "新台幣100億元、另籌人民幣100億元（未核實）" in out and manifest["llm"]["legacy_evidence"]["marked"] == 1
+
+
+def test_review_pr50_round2_cumulative_without_space_and_semicolon_before_growth():
+    on.load(_get, lambda *_: None)
+    assert on.correction("國巨（2327）：累計10月營收1,497.51億元") == ""
+    assert on.correction("國巨（2327）：前10月營收1,497.51億元") == ""
+    assert "年增 55.0%" in on.correction("國巨（2327）：10月營收175.97億元；年增61%")
+    assert on.correction("國巨（2327）：10月營收175.97億元；年增55%") == ""

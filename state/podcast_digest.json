@@ -857,6 +857,65 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2435290512",
+        "title": "2026/11/10(二)美股大反彈!現在該加碼 還是停損?輝達小M頭 棒打AI多頭?【早晨財經速解讀】",
+        "published": "Tue, 10 Nov 2026 01:06:26 +0000",
+        "processed_at": "2026-11-10T02:52:27Z",
+        "digest": {
+          "summary_points": [
+            "主持人判斷輝達這波下跌並非反映情報外流，而是市場擔憂黃仁勳地位不保與接班不確定性；其預估本益比已降至約11–12倍，若股價續跌可能創本世紀新低，後續獨立調查、國會聽證與財報是關鍵。",
+            "主持人認為輝達陷入間諜風暴時，超微有機會在AI加速器市場取得更多美國政府或企業訂單，看好其競爭地位提升。",
+            "主持人引述摩根大通亞洲科技股報告，AI半導體企業獲利預估上修至成長60–70%，2027年資料中心資本支出將再成長70%、接近1兆美元，認為基本面未惡化，賣壓主要來自預期落差。",
+            "主持人認為選後民主黨執政州目前未有資料中心禁制令，明年也不太可能全面實施，因此AI資料中心需求不至於大幅延後；若四大指數快速站回中長期均線，輝達事件可視為外部利空。",
+            "主持人提出操作思路：以股價乖離與VIX為情緒指標，乖離低、VIX大漲恐慌時偏樂觀，乖離高、VIX大跌情緒高漲時偏謹慎，不應單憑新聞訊息操作。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為輝達下跌主因領導與接班不確定性，本益比已降至約12倍偏低，但未明確表達買賣方向。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "輝達在最近本益比,其實下滑幅度也非常之快,因為股價還算是經歷了比較大的修正,可是預估本季度的獲利,仍然會持續創下新高,整體本益比大概已經降到接近12倍左右的水準了,如果以28財年來看,就明年年底來看的話,11到12倍,這波真的蠻低的",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為輝達陷間諜風暴時，超微在AI加速器市場有機會拿到更多美國政府或企業訂單。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為美股反彈速度極快，若快速站回中長期均線，輝達利空可視為外部性；AI科技股基本面未惡化，選後民主黨州不太可能祭出資料中心禁制令，預期落差可能促成反彈。",
+          "action_view": "主持人操作思路是以乖離率和VIX情緒為依據：乖離高、VIX低時謹慎，乖離低、VIX大漲恐慌時樂觀；不應單憑新聞訊息，而應依高低位階投入。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "absent",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2434627578",
         "title": "2026/11/9(一)黑天鵝?輝達間諜案 國安調查全面轉向?國安基金來了台股四萬點防線 守得住嗎?【早晨財經速解讀】",
         "published": "Mon, 09 Nov 2026 01:04:49 +0000",
@@ -1657,80 +1716,6 @@
           }
         },
         "shown_at": "2026-10-23T22:34:30Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2423613372",
-        "title": "2026/10/22(四)美股財報反攻 誰最值得買?巨頭狂燒錢 誰來買單?【早晨財經速解讀】",
-        "published": "Thu, 22 Oct 2026 01:12:20 +0000",
-        "processed_at": "2026-10-22T06:58:14Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Meta 將全年資本支出下限從 1300 億美元上修至 1350 億美元、上限維持 1450 億美元，顯示 AI 需求仍旺、對半導體訂單利多；他判斷 AI 泡沫破滅風險不高，真正風險是供給端「蓋不出來」而非沒人用。",
-            "主持人指出 Meta 財報附註揭露約 6281 億美元未來承諾，是帳面債務與租賃負債 1120 億美元的 5.6 倍，傳統本益比低估 AI 擴張的資金壓力，可能造成估值失真與中期回調。",
-            "主持人認為特斯拉營收零成長、汽車業務年減 3%、本益比在七巨頭中最高，必須靠自動駕駛、機器人或併入 SpaceX 才能解套；他解讀馬斯克推動特斯拉與 SpaceX 合併是垂直整合帝國戰略，而非單純炒作。",
-            "主持人觀察 SpaceX 股價上漲但債券殖利率飆到 8.1%、CDS 利差從 110 點擴大到 200 點，顯示市場對其高槓桿要求極高風險補償；他提醒高殖利率公司債不代表無風險，單一企業債風險不低。",
-            "主持人建議投資人勿因追逐 6%～8% 高殖利率而過度集中，應區分「需要報酬」與「想要報酬」，以分散風險、跟隨大盤、恐慌時分批加碼為較佳策略；並提醒勿因前期獲利順遂就放大槓桿。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為 Meta 資本支出上修且 AI 需求仍在，但表外承諾可能使估值失真，中期或有回調風險。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我個人的看法是喔,其實他是有能力回收的,大多數巨頭都有能力回收,唯一的問題是怕他蓋不出來,怕他蓋不出來那就有違約的可能性了",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為特斯拉營收零成長、估值高，須靠自駕、機器人或與 SpaceX 合併解套；合併是垂直整合戰略但仍有監管與中國市場等挑戰。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "唯一的解套方式我們過去提過只有一個,就是AI、自動駕駛、機器人,進一步整合馬斯克旗下的資源,那如果要這樣做的話,那也只有一種方式了,直接把它併入SpaceX嘛",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人指出 SpaceX 財報強勁但債券殖利率 8.1%、CDS 利差擴大，顯示市場要求極高風險補償；高殖利率不代表無風險。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "這也導致SpaceX的CTS價格喔,在昨天持續的走高喔,所以他是股價一邊上談,但是避險成本一邊上去喔,這等同於股價漲越多,大家買的保險越多喔,利差從六月份大概是110個基點,升到十月份已經來到200個基點喔",
-                "direction": "neutral"
-              }
-            }
-          ],
-          "market_view": "主持人認為美股大型科技股撐住、費半試圖打底，小型股能否反彈取決 FOMC 是否不升息；AI 資本支出趨勢未變，但市場融資風險與評價調整壓力猶存，可能出現中期回調，泡沫破滅風險仍低。",
-          "action_view": "主持人建議不要過度放大槓桿，分批投入、恐慌時加碼，跟隨大盤分散風險；對高殖利率公司債應分清「需要」與「想要」，不要被高息吸引而過度集中。",
-          "notable_quote": "投資最可怕的,不是說股市就突然下跌,就是前面原本賺得太順,讓你誤以為能夠承受更大的風險,於是你開始提高曝險,放大槓桿",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "投資最可怕的,不是說股市就突然下跌,就是前面原本賺得太順,讓你誤以為能夠承受更大的風險,於是你開始提高曝險,放大槓桿"
-          },
-          "direction_quality": {
-            "attributed": 3,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-22T22:36:35Z"
       }
     ]
   },

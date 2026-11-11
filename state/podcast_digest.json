@@ -7963,6 +7963,51 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "8de68398-23b0-492c-b5d4-f18ff7bd227f",
+        "title": "Freedom vs. Safety: Axon CEO Rick Smith on the Future of Policing",
+        "published": "Tue, 10 Nov 2026 23:03:00 +0000",
+        "processed_at": "2026-11-11T00:19:37Z",
+        "digest": {
+          "summary_points": [
+            "主持人把整集定調為「安全 vs 自由」的大辯論，並以《關鍵報告》式的 AI 預測犯罪質疑界線，認為一般人對隱私被侵犯的感受遠強於安全帶來的效益；Smith 回應支持在聯邦層級立護欄，內容包括搜索須有案件編號、須有第二位警員共同授權，以及警員個人濫用時負刑事責任。",
+            "主持人注意到密錄器影片本身就是一門龐大的內容生意（節目一開始即提到 Live PD／Cops 這類直播警務節目），Smith 也證實 Axon 曾想做「密錄器直播內容」，最後因上市公司 DNA、不敢做太邊緣的內容而作罷。這是本集獨有的商業角度。",
+            "Axon 能規模化的關鍵是押注雲端：Smith 說當年自建資料中心曾差點弄丟所有客戶資料，Hadi Partovi 勸他「自建機房不值得」，才轉上 AWS、再轉 Azure；主持人追問 Partovi 在董事會與轉型中的角色。市值從 2004 年約 20 億美元高峰、隔年一度掉到 1 億美元，到今天約 300 至 400 億美元。",
+            "規模數字：超過一百萬名警員每天各上傳約 2 小時影片，Smith 稱 Axon 每天管理的影片量比 YouTube 還多（但觀看數遠不及）。",
+            "機器人與無人機佈局：Axon 買下 Skydio 近半股權，成為美國領先無人機公司的最大投資人，並取得獨家通路權；Smith 預測未來幾年美國將部署數百萬架無人機，人形機器人則有 5 家業者將在 12 至 18 個月內開賣，價位約在 1 萬至 3 萬美元。他同時提到 2022 年倫理顧問團因「武裝 Taser 無人機（校園槍擊用途）」辭職的風波，公司改組顧問會後仍持續研發。"
+          ],
+          "tickers": [
+            {
+              "name": "Axon Enterprise",
+              "code": "AXON",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人主要追問它從 Taser 轉型為警用軟體與雲端平台、以及監管與隱私爭議，並未給出明確的多空投資判斷。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I think there's this great debate on how much safety and at what cost",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I think there's this great debate on how much safety and at what cost"
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "53093a95-1b90-4228-aaf2-2d8ee77fd504",
         "title": "Midterm Blood Bath, $4T AI Sell Off, Data Center Freeze, What's Next for Trump",
         "published": "Sat, 07 Nov 2026 18:27:00 +0000",
@@ -8507,27 +8552,6 @@
           "notable_quote": "This technology is too dangerous to centralize."
         },
         "shown_at": "2026-08-15T22:10:34Z"
-      },
-      {
-        "guid": "2d3f7c13-7a54-434d-8136-5c13aeca9ca1",
-        "title": "Rahm Emanuel: Trump's Foreign Policy, China, Europe's Decline, Immigration & DSA vs Democrats",
-        "published": "Thu, 13 Aug 2026 02:10:00 +0000",
-        "processed_at": "2026-08-13T04:25:29Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為美國過去過度專注反恐而忽略中國在供應鏈、科技領域的崛起，主張聯合日本、韓國、澳洲、台灣、歐盟等民主國家形成經濟集團，孤立中國。",
-            "主持人批評川普政府大幅削減NIH等科研預算，認為這會拱手讓出生技領導地位給中國，呼籲加倍投資DARPA、NSF、NIH等科研機構。",
-            "主持人認為中國對台灣的威脅是現在進行式，而非2027年才發生——中國正利用美國被中東戰事分心的時機，在南海、菲律賓、日本周邊加強軍事與經濟挑釁。",
-            "主持人批評歐洲（尤其是梅克爾關閉核電、開放邊境的政策）導致歐洲製造業持續下滑，但美國不應落井下石，而應聯合歐洲共同對抗中國的經濟壓力。",
-            "主持人提出教育是經濟長期成長的關鍵，認為美國50%的孩子閱讀不達標，必須改革K-12與高等教育，增加職業培訓，並建議大學招收20%全額付費留學生來補貼本國學生。",
-            "主持人主張改革稅制，認為現行稅制獎勵財富保存（如遺產稅漏洞），應轉向獎勵財富創造；美國債務問題不能只靠削減支出，必須同時處理收入與支出兩方面。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為美國面臨財政不可持續、債務高築與財富集中加劇的雙重挑戰，必須進行結構性的稅制與支出改革，否則經濟長期成長將受拖累。",
-          "action_view": "",
-          "notable_quote": "We're going to have to actually deal with the revenue side as well as the spending side."
-        },
-        "shown_at": "2026-08-13T22:52:15Z"
       }
     ]
   },

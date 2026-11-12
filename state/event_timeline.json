@@ -1,110 +1,4 @@
 {
- "geopolitical:3037:2026-11": {
-  "first_seen": "2026-11-09",
-  "days": 1,
-  "last_seen": "2026-11-09",
-  "latest_title": "3037 欣興 - 美伊戰爭，油價大漲，美國國債40兆美元，美國9月cpi 3.... - 股市爆料同學會 - CMoney",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "40",
-   "cpi",
-   "伊戰",
-   "價大",
-   "兆美",
-   "同學",
-   "國債",
-   "國國",
-   "大漲",
-   "學會",
-   "市爆",
-   "戰爭",
-   "料同",
-   "欣興",
-   "油價",
-   "爆料",
-   "美伊",
-   "美元",
-   "美國",
-   "股市"
-  ],
-  "entity": "3037",
-  "subject_basis": "alias",
-  "subjects": [
-   "3037"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "cybersecurity:輝達:2026-11": {
-  "first_seen": "2026-11-09",
-  "days": 1,
-  "last_seen": "2026-11-09",
-  "latest_title": "NVIDIA board launches independent investigation into alleged intelligence and security ris",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "alleged",
-   "and",
-   "board",
-   "independent",
-   "intelligence",
-   "into",
-   "investigation",
-   "launches",
-   "risks",
-   "security"
-  ],
-  "entity": "輝達",
-  "subject_basis": "alias",
-  "subjects": [
-   "輝達"
-  ],
-  "event_type": "cybersecurity",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:微軟:2026-11": {
-  "first_seen": "2026-11-09",
-  "days": 1,
-  "last_seen": "2026-11-09",
-  "latest_title": "AI 代理 ARTEX 盯上 GitHub 公開憑證，微軟示警攻擊鏈已壓縮到五分鐘 - https://cyberq.tw/",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "ai",
-   "artex",
-   "cyberq",
-   "github",
-   "https",
-   "tw",
-   "五分",
-   "代理",
-   "公開",
-   "分鐘",
-   "到五",
-   "壓縮",
-   "已壓",
-   "憑證",
-   "擊鏈",
-   "攻擊",
-   "盯上",
-   "示警",
-   "縮到",
-   "警攻",
-   "鏈已",
-   "開憑"
-  ],
-  "entity": "微軟",
-  "subject_basis": "alias",
-  "subjects": [
-   "微軟"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "cybersecurity:cyberattack:伊朗:2026-11": {
   "first_seen": "2026-11-10",
   "days": 1,
@@ -268,6 +162,99 @@
   ],
   "event_type": "export_controls",
   "action": "",
+  "identity_schema": 14
+ },
+ "cybersecurity:cyberattack:台積電:2026-11": {
+  "first_seen": "2026-11-13",
+  "days": 1,
+  "last_seen": "2026-11-13",
+  "latest_title": "部分員工資訊遭置外部網站台積電：無證據顯示系統遭入侵| 產經 - 中央社 CNA",
+  "latest_summary": "",
+  "object": "台積電",
+  "incident_tokens": [
+   "入侵",
+   "分員",
+   "員工",
+   "外部",
+   "工資",
+   "據顯",
+   "無證",
+   "示系",
+   "系統",
+   "統遭",
+   "網站",
+   "置外",
+   "訊遭",
+   "證據",
+   "資訊",
+   "遭入",
+   "遭置",
+   "部分",
+   "部網",
+   "顯示"
+  ],
+  "entity": "台積電",
+  "subject_basis": "alias",
+  "subjects": [
+   "台積電"
+  ],
+  "event_type": "cybersecurity",
+  "action": "cyberattack",
+  "identity_schema": 14
+ },
+ "export_controls:Megaspeed:2026-11": {
+  "first_seen": "2026-11-13",
+  "days": 1,
+  "last_seen": "2026-11-13",
+  "latest_title": "Megaspeed cooperates with BIS review and launches GPU compliance audit",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "and",
+   "audit",
+   "bis",
+   "compliance",
+   "cooperates",
+   "gpu",
+   "launches",
+   "review",
+   "with"
+  ],
+  "entity": "Megaspeed",
+  "subject_basis": "literal",
+  "subjects": [
+   "Megaspeed"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:strait_tension:2026-11": {
+  "first_seen": "2026-11-13",
+  "days": 1,
+  "last_seen": "2026-11-13",
+  "latest_title": "G7 foreign ministers reaffirm importance of Taiwan Strait peace and stability",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "and",
+   "foreign",
+   "g7",
+   "importance",
+   "ministers",
+   "of",
+   "peace",
+   "reaffirm",
+   "stability",
+   "strait"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "geopolitical",
+  "action": "strait_tension",
   "identity_schema": 14
  }
 }

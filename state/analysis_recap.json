@@ -289,7 +289,7 @@
    "watch_id": "w68",
    "status": "open",
    "created": "2026-10-20",
-   "last_reviewed": "2026-11-10",
+   "last_reviewed": "2026-11-13",
    "deadline": "2026-11-17"
   },
   {
@@ -313,7 +313,7 @@
    "watch_id": "w73",
    "status": "open",
    "created": "2026-10-22",
-   "last_reviewed": "2026-11-09",
+   "last_reviewed": "2026-11-13",
    "deadline": "2026-11-19"
   },
   {
@@ -337,7 +337,7 @@
    "watch_id": "w100",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-09",
+   "last_reviewed": "2026-11-13",
    "deadline": "2026-11-27"
   },
   {
@@ -349,7 +349,7 @@
    "watch_id": "w101",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-09",
+   "last_reviewed": "2026-11-13",
    "deadline": "2026-11-27"
   },
   {
@@ -361,19 +361,7 @@
    "watch_id": "w121",
    "status": "open",
    "created": "2026-11-09",
-   "last_reviewed": "2026-11-10",
-   "deadline": "2026-11-14"
-  },
-  {
-   "trigger": "10 年期美債殖利率 4.859%，觀察 11/10 CPI 公布後是否續站 4.86% 上方，以及 12 月升息機率是否突破八成（觀察期：5 天內）",
-   "trigger_full": "10 年期美債殖利率 4.859%，觀察 11/10 CPI 公布後是否續站 4.86% 上方，以及 12 月升息機率是否突破八成（觀察期：5 天內）",
-   "trigger_key": "t34adfa5874e2ef92",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w122",
-   "status": "open",
-   "created": "2026-11-09",
-   "last_reviewed": "2026-11-10",
+   "last_reviewed": "2026-11-13",
    "deadline": "2026-11-14"
   },
   {
@@ -385,7 +373,7 @@
    "watch_id": "w125",
    "status": "open",
    "created": "2026-11-10",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-13",
    "deadline": "2026-11-15"
   },
   {
@@ -411,18 +399,6 @@
    "created": "2026-11-11",
    "last_reviewed": "",
    "deadline": "2026-11-16"
-  },
-  {
-   "trigger": "加權指數能否守穩本報估計區間下緣 42,191 點（觀察期：今日）",
-   "trigger_full": "加權指數能否守穩本報估計區間下緣 42,191 點（觀察期：今日）",
-   "trigger_key": "t1d6317ab7fefac92",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w128",
-   "status": "open",
-   "created": "2026-11-11",
-   "last_reviewed": "",
-   "deadline": "2026-11-12"
   },
   {
    "trigger": "輝達董事會週四會議是否正式決議撤換黃仁勳，以及 11 月 17 日財報的接單指引是否下修（觀察期：5 天內）",
@@ -457,43 +433,91 @@
    "watch_id": "w131",
    "status": "open",
    "created": "2026-11-12",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-13",
    "deadline": "2026-11-13"
+  },
+  {
+   "trigger": "外資台指期淨空 -99,573 口，觀察 5 個交易日內能否縮回 9 萬口以內（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -99,573 口，觀察 5 個交易日內能否縮回 9 萬口以內（觀察期：5 天內）",
+   "trigger_key": "t818e9776a0fa2675",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w132",
+   "status": "open",
+   "created": "2026-11-13",
+   "last_reviewed": "",
+   "deadline": "2026-11-18"
+  },
+  {
+   "trigger": "2330 今日開盤後是否守住模型估計區間下緣 2,295 元（觀察期：今日）",
+   "trigger_full": "2330 今日開盤後是否守住模型估計區間下緣 2,295 元（觀察期：今日）",
+   "trigger_key": "t77c99e7b0577cc9d",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w133",
+   "status": "open",
+   "created": "2026-11-13",
+   "last_reviewed": "",
+   "deadline": "2026-11-14"
+  },
+  {
+   "trigger": "10 年期美債利率是否進一步站上 5.2%，以及 12 月升息機率是否維持在九成上方（觀察期：5 天內）",
+   "trigger_full": "10 年期美債利率是否進一步站上 5.2%，以及 12 月升息機率是否維持在九成上方（觀察期：5 天內）",
+   "trigger_key": "t3a7c8cb2831a499f",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w134",
+   "status": "open",
+   "created": "2026-11-13",
+   "last_reviewed": "",
+   "deadline": "2026-11-18"
   }
  ],
- "watch_seq": 131,
+ "watch_seq": 134,
  "legacy_report": {
-  "date": "2026-11-12",
+  "date": "2026-11-13",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠）**：ADR 在 11 月 11 日大漲 4.25%、重返 400 美元 [中央社財經](https://www.cna.com.tw/news/afe/202611120030.aspx)，但今日早盤本地股反向開低，以 2,385 元開出、下跌 10 元 [鉅亨台股](https://news.cnyes.com/news/id/6660068)。原因是 ADR 反映的是 CoreWeave 財報利多，而輝達盤後暴跌發生在收盤之後，本地股先消化利空。傳導機制上，輝達佔台積電先進製程訂單比重高，治理動盪壓抑 AI 供應鏈評價；但實質訂單短期未見削減 [科技新報](https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/)。量級上，2330 已連 5 日上漲、累積 6.47%，短線回檔風險大於基本面翻轉。**[A 級・信心:中]**",
+    "statement": "**鴻海（2317，全球最大 EMS 代工廠，AI 伺服器與電動車雙引擎）**：董事長劉揚偉在法說會表示營運能見度較 8 月更好，全面上調四大產品線全年展望，第四季營收季對季、年對年都將強勁成長。但同一份數據的另一面是，前 3 季自由現金流淨流出 2,874 億元、營業活動現金流淨流出 1,257 億元，存貨與應收帳款占用了資金。AI 機櫃單價高、備貨週期長，鴻海必須先墊付，因此現金流缺口其實是出貨規模的同步指標；對 2330 的傳導是 AI 加速器與 CPU 的拉貨節奏，而非鴻海自己的毛利。全年自由現金流能否轉正取決於第四季收款進度，目前沒有金額可推估對 2330 的增量。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6660917) [優分析](https://news.cnyes.com/news/id/6661096)",
     "source_urls": [
-     "https://www.cna.com.tw/news/afe/202611120030.aspx",
-     "https://news.cnyes.com/news/id/6660068",
-     "https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/"
+     "https://news.cnyes.com/news/id/6660917",
+     "https://news.cnyes.com/news/id/6661096"
     ]
    },
    {
-    "statement": "**NVIDIA（NVDA，AI 加速器龍頭）**：Baird 將評等由優於大盤降至中立、目標價由 500 美元砍至 200 美元 [科技新報](https://finance.technews.tw/2026/11/12/baird-morgan-stanley-sour-on-nvidia-as-ceo-affair-controversy-deepens/)，摩根士丹利同步移出首選股名單。理由是 2027 年資料中心需求能見度不足、AI 投資可能放緩，加上執行長去留未定。對台股傳導：輝達是台積電最大客戶，但分析師普遍認為先進製程需求大於人事風險 [科技新報](https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/)，真正要觀察的是 11 月 17 日財報的接單指引。**[A 級・信心:中]**",
+    "statement": "**華碩（2357，PC 與伺服器品牌廠）**：財務長吳長榮在法說會表示，受惠訂單動能與第三季遞延出貨，第四季伺服器營收將季增 150%、年增 280%，2027 年內部以挑戰三位數成長為企圖心。整機拉貨會經 GPU 與 CPU 模組傳導到台積電先進製程與先進封裝，這與上一條鴻海上修展望指向同一波 AI 伺服器需求。不過華碩處於後段組裝，季增 150% 有很大一部分是自己的低基期，換算成台積電營收占比目前沒有數字，還看不出對 2330 的量級。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6660917)",
     "source_urls": [
-     "https://finance.technews.tw/2026/11/12/baird-morgan-stanley-sour-on-nvidia-as-ceo-affair-controversy-deepens/",
-     "https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/"
+     "https://news.cnyes.com/news/id/6660917"
     ]
    },
    {
-    "statement": "**聯發科（2454，全球第二大手機晶片設計商）**：股價重回 4,000 元大關、早盤漲 2.32% [自由財經](https://ec.ltn.com.tw/article/breakingnews/5637872)[鉅亨台股](https://news.cnyes.com/news/id/6660068)。公司預估第四季營收季增 25% 至 32%、年增 40% 至 48%，AI ASIC 業務明年可拿下全球 20% 市佔 [自由財經](https://ec.ltn.com.tw/article/breakingnews/5637872)。這是輝達風暴下的資金轉移受益者：ASIC 不需依賴輝達 GPU，需求獨立性較高。量級上，聯發科市值 6.4 兆元（未核實）、新客戶訂單要明年才放量，對今年營收貢獻仍有限，屬評價面先行。**[A 級・信心:中]**",
+    "statement": "**MSCI 半年度調整：台灣指數新增南電、景碩、台燿，刪除中租-KY、嘉澤、元太、萬海**，成分股降為 73 檔，另有 24 檔調整在外流通股數。這是純資金面事件：被動型基金必須在生效日前調整持股，對 PCB 與載板族群的買盤屬一次性。它與基本面無關，卻與下一條台玻的 AI 玻纖布題材形成對照——一個是資金流入、一個是營收成長，兩者不能互相驗證。實際流入金額取決於追蹤 MSCI 台灣指數的資產規模，資料未提供，無法量化。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6660917) [證交所](https://www.twse.com.tw/zh/about/news/news/content.html?8a8216d6a19afd9c01a1ce6f664c0468)",
     "source_urls": [
-     "https://ec.ltn.com.tw/article/breakingnews/5637872",
-     "https://news.cnyes.com/news/id/6660068"
+     "https://news.cnyes.com/news/id/6660917",
+     "https://www.twse.com.tw/zh/about/news/news/content.html?8a8216d6a19afd9c01a1ce6f664c0468"
     ]
    },
    {
-    "statement": "**【金融｜台灣】中信金（2891，銀行、證券、人壽綜合金控）**：前 10 月累計稅後純益 685.5 億元、每股稅後 3.45 元；加計 FVOCI 股票處分利益後可達 1,488 億元、超越歷年全年 [鉅亨網](https://news.google.com/rss/articles/CBMiT0FVX3lxTFBGcUVZSTlNaE81bk0wWVpfb2lNZUYxQmF0azFUVHh2ZlRYWHBPdTYzZU5nNnVjWVkzcGxWWXhXOXVXMEFtWWtZNW1XMG1Jam8?oc=5)[自由財經](https://news.google.com/rss/articles/CBMiX0FVX3lxTE03cEo1NTZuYnpxRmFsWTBnMnJVZkN1ZnI1ZC1WZlJuZWswYndhMVd6MWQweXk2aWhudUduUnhONTJ3a003YThuS1JwbU5jcHU5UWQwMjUxazNIY2gyLW1r0gFkQVVfeXFMUEFseFlleGNlNzNfbnR6WlltenczR3l0bHR6ZXllVVNaSld5X09PNFdob2tJUmpyZVpMeFVOQ29iSTMwNnZSMlVZQ2ZiMXNwTDluXzh1MDZJbU5LUHRMVHcxOEs1cw?oc=5)。壽險與證券投資收益是主要動能，其中 FVOCI 屬於一次性實現利益。對金融權值股是評價面支撐，但明年能否延續要看股債市表現。**[A 級・信心:中]**",
+    "statement": "**【航運｜台灣】長榮（2603，貨櫃航運）**：第三季稅後純益 466 億元、每股純益 21.53 元、年增 114%，前三季每股純益 32.77 元已賺贏去年全年。推升獲利的是高檔運價加上塞港與地緣擾動，這條傳導鏈直接連到歐洲線與美國線的艙位供給。要留意的是出海口徑：長榮獲利看的是運價，與油價（燃油成本）方向相反，今日 WTI 上漲反而侵蝕部分利差。**[A 級・信心:中]**　[鉅亨](https://news.google.com/rss/articles/CBMiT0FVX3lxTE9kSVQtdnViVXNsdVVTazBocmZhV0ZDOUFlY1NwdVhucUJzMUZ3OUF2MmJPUXNzSjdUQy14XzR5ajZhM3Y1cktlcTAzZ0RVeWs?oc=5) [自由財經](https://news.google.com/rss/articles/CBMiX0FVX3lxTE00T1NiTy1pYmluMUJ0VUJoMXlrN1pXU0JqaFlBODJIdTJyWWpQbHhRMi1sLXFpY1VYdWlmeFRCUTV0VHVJd3VkNEtHRmhCdTdTS2d6SWxYai1OQXlzS1A40gFkQVVfeXFMUGhpU0RrdTNMbVJqU3pTaVVkUnhmeU00VEFlaFhZS0VfRTNjemZEdG54YnBRRDh5c05iWEU2MnYwUkxvUENuLUJSOGNqdi02c0EzVVBHd2tJTWh6aTJ3bnpjeF9lQQ?oc=5)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBGcUVZSTlNaE81bk0wWVpfb2lNZUYxQmF0azFUVHh2ZlRYWHBPdTYzZU5nNnVjWVkzcGxWWXhXOXVXMEFtWWtZNW1XMG1Jam8?oc=5",
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE03cEo1NTZuYnpxRmFsWTBnMnJVZkN1ZnI1ZC1WZlJuZWswYndhMVd6MWQweXk2aWhudUduUnhONTJ3a003YThuS1JwbU5jcHU5UWQwMjUxazNIY2gyLW1r0gFkQVVfeXFMUEFseFlleGNlNzNfbnR6WlltenczR3l0bHR6ZXllVVNaSld5X09PNFdob2tJUmpyZVpMeFVOQ29iSTMwNnZSMlVZQ2ZiMXNwTDluXzh1MDZJbU5LUHRMVHcxOEs1cw?oc=5"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE9kSVQtdnViVXNsdVVTazBocmZhV0ZDOUFlY1NwdVhucUJzMUZ3OUF2MmJPUXNzSjdUQy14XzR5ajZhM3Y1cktlcTAzZ0RVeWs?oc=5",
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE00T1NiTy1pYmluMUJ0VUJoMXlrN1pXU0JqaFlBODJIdTJyWWpQbHhRMi1sLXFpY1VYdWlmeFRCUTV0VHVJd3VkNEtHRmhCdTdTS2d6SWxYai1OQXlzS1A40gFkQVVfeXFMUGhpU0RrdTNMbVJqU3pTaVVkUnhmeU00VEFlaFhZS0VfRTNjemZEdG54YnBRRDh5c05iWEU2MnYwUkxvUENuLUJSOGNqdi02c0EzVVBHd2tJTWh6aTJ3bnpjeF9lQQ?oc=5"
+    ]
+   },
+   {
+    "statement": "**【航運｜全球】赫伯羅特 12 月 1 日起調漲遠東至歐洲綜合貨類運價**，並在今年第三度上修財測。這是歐洲線供給端的主動定價行為，若能落實，對長榮、陽明的歐洲線營收是直接挹注。但要注意 SCFI 與歐洲線合約價是不同口徑，不能拿單一漲價公告推估全季營收；實際貢獻要看 12 月裝載率是否同時守住。**[B 級・信心:中-低]**　[IndexBox](https://news.google.com/rss/articles/CBMi0AFBVV95cUxORkRlTENEYU9tUWxjcjRwNGlxMGxxTFRNQmtWZWZrYkpZeWZ2Tm83RzNzVEpuVmw3YWthS2dHV01ad2V2TUEwaTBYRHQtQl9hb2hMdVl0UXpSTFI5STJKYmQ2LVd6Yy1SN0ozWHZjQzAyU3RZbkpFaDA4ODFBQ1hhZEtRa1ZyRnV3TXdjVFVOc3p2cHVfclhLMDdIdDFwbEd2bVJrT2RJNHJzNTlBRXotclJIQTBGdFZCeklhR1ViSGZPV3otTHpMdkZOVVdLaVBZ?oc=5) [台視](https://news.google.com/rss/articles/CBMiqwFBVV95cUxNQjhLTkE5aUtLVFVtZVBYMmJacXBrZGc5M1hNblJRV3h6Z3BYNkV0blNOOVJXd21ZNXY2VFlONFdzM0s3VmJyZnlweW1tcEkzelhqSm1kdTN5V21ab2VnRUEzUGdsalJKZFhiY2NVVGYyQjRQc0ZLN2RpOHo2WWpWZnM2UlR1SEtuQzdibnMwSXJnR3dfUTh3NmE0SUJPbjVYU3M4NjNubFNYcjQ?oc=5)",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMi0AFBVV95cUxORkRlTENEYU9tUWxjcjRwNGlxMGxxTFRNQmtWZWZrYkpZeWZ2Tm83RzNzVEpuVmw3YWthS2dHV01ad2V2TUEwaTBYRHQtQl9hb2hMdVl0UXpSTFI5STJKYmQ2LVd6Yy1SN0ozWHZjQzAyU3RZbkpFaDA4ODFBQ1hhZEtRa1ZyRnV3TXdjVFVOc3p2cHVfclhLMDdIdDFwbEd2bVJrT2RJNHJzNTlBRXotclJIQTBGdFZCeklhR1ViSGZPV3otTHpMdkZOVVdLaVBZ?oc=5",
+     "https://news.google.com/rss/articles/CBMiqwFBVV95cUxNQjhLTkE5aUtLVFVtZVBYMmJacXBrZGc5M1hNblJRV3h6Z3BYNkV0blNOOVJXd21ZNXY2VFlONFdzM0s3VmJyZnlweW1tcEkzelhqSm1kdTN5V21ab2VnRUEzUGdsalJKZFhiY2NVVGYyQjRQc0ZLN2RpOHo2WWpWZnM2UlR1SEtuQzdibnMwSXJnR3dfUTh3NmE0SUJPbjVYU3M4NjNubFNYcjQ?oc=5"
+    ]
+   },
+   {
+    "statement": "**【重電｜台灣】重電大廠在手訂單突破 600 億元**，前三季每股純益 6.74 元賺贏去年全年，明年新廠完工後變壓器產能估計增加 3 成。這是台電強韌電網計畫與外銷交期遞延共同作用的結果，訂單能見度已延伸到明年之後。新廠產能開出時點落在明年，對今年營收沒有增量；短線股價已從高點拉回，法人目標價成為觀察依據。**[B 級・信心:中-低]**　[FTNN](https://news.google.com/rss/articles/CBMiS0FVX3lxTE5sbjlYb2cwMW5xZmxjSzJBMmhEZ0tVNnZRczV0ZGVTRU9PS3JqaW9fal9LRHZHTUNnQ2djYXRBcGROd19ibElsR1VJZw?oc=5) [旺得富](https://news.google.com/rss/articles/CBMiakFVX3lxTE55dEJ3dURfUjVXX2xvTTA4aktqNC0yN21pRkJVLUVCTDNhZUM4bk0wZnlISXRyQTJLWGZzQm9ET3hFWE55Vm5SWVNJUnZnSjZIeFExQjJBejhXaGRSRVpIQ1hWU3RNd3g5X1E?oc=5)",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiS0FVX3lxTE5sbjlYb2cwMW5xZmxjSzJBMmhEZ0tVNnZRczV0ZGVTRU9PS3JqaW9fal9LRHZHTUNnQ2djYXRBcGROd19ibElsR1VJZw?oc=5",
+     "https://news.google.com/rss/articles/CBMiakFVX3lxTE55dEJ3dURfUjVXX2xvTTA4aktqNC0yN21pRkJVLUVCTDNhZUM4bk0wZnlISXRyQTJLWGZzQm9ET3hFWE55Vm5SWVNJUnZnSjZIeFExQjJBejhXaGRSRVpIQ1hWU3RNd3g5X1E?oc=5"
     ]
    }
   ]

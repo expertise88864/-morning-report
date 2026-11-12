@@ -18,7 +18,8 @@ def normalize_terms(text: str) -> str:
     """同一個地名全信一種寫法(實信:同一條裡「荷姆茲」「荷莫茲」並存)。"""
     text = _TERMS.sub("荷姆茲", str(text or "")).replace("自行了斷", "自行了結")   # 11-07 實信
     text = _BROKEN_BOLD.sub(r"\1", text)   # 11-10 實信:「**國巨*（2327…」粗體符號外露
-    return _NO_STOP.sub("。", text)         # 11-10 實信:結論最後一句沒有句號就接「主要風險」
+    import source_placement   # 11-12 使用者:來源連結放段尾,不夾在句子中間
+    return source_placement.last(_NO_STOP.sub("。", text))   # 11-10 實信:結論末句沒句號就接「主要風險」
 
 
 _BROKEN_BOLD = re.compile(r"(?m)^(\s*(?:[-*]\s+)?\*\*[^*\n]{1,40})\*(?=[（(])")

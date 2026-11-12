@@ -68,7 +68,8 @@ def parse(text: str) -> dict:
         if trigger and not _PRIVATE.search(trigger) and len(triggers) < MAX_NEW:
             triggers.append({"trigger": trigger, "why": "", "horizon": _horizon(trigger)})
     reviews = []
-    for wid, rest in re.findall(r"(?m)^\s*[-*]\s+\[(w\d{1,6})\]\s*(.+)$", _section(text, REVIEW_HEADING)):
+    # 11-12 實信:模型把回顧寫進「十、台灣本地動態」—— 專屬段落沒有就整篇找
+    for wid, rest in re.findall(r"(?m)^\s*[-*]\s+\[(w\d{1,6})\]\s*(.+)$", _section(text, REVIEW_HEADING) or str(text or "")):
         status = next((s for word, s in _STATUS if rest.lstrip().startswith(word)), "")
         ids = [i for i in re.findall(r"\[(N\d{1,4})\]", rest) if known(i)]
         if status in ("triggered", "no_longer_relevant") and not ids:

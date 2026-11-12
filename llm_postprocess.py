@@ -794,8 +794,9 @@ def strip_reader_hidden(text: str) -> str:
         bold = _NUMBERED_BOLD_HEADING.match(line)
         if hashed or bold:
             title = (hashed or bold).group(1).strip().strip("*").strip()
+            numbered_hidden = title.startswith("七之三、")   # 11-12 實信:標題少了「情境」兩字就漏進信
             title = re.sub(r"^[〇零一二三四五六七八九十百\d]+(?:之[〇零一二三四五六七八九十百]+)?、", "", title)
-            skipping = title.startswith(hidden)
+            skipping = numbered_hidden or title.startswith(hidden)
         if not skipping:
             out.append(line)
     return "\n".join(out).strip()

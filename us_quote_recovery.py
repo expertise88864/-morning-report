@@ -72,3 +72,22 @@ def fetch(symbol: str, session: str, previous: str, http_get) -> dict:
         value = series[latest] if isinstance(series, list) and len(series) == len(times) else None
         out[field] = (_number(value, field) if value is not None else None)
     return out
+
+
+def fetch_any(symbol: str, session: str, previous: str, http_get) -> dict:
+    """先問 Yahoo chart;拿不到再問備用來源(Nasdaq 官網)。兩邊都不行就拋 Yahoo 那次的原因。
+
+    2026-11-12:Yahoo 的 11/11 收盤是空的,yfinance 與 chart 是同一家、一起缺 —— 備用來源要是別家。
+    """
+    try:
+        return fetch(symbol, session, previous, http_get)
+    except Exception as first:   # noqa: BLE001 - 任何失敗都換備用來源
+        import us_quote_backup
+        try:
+            quote = us_quote_backup.fetch(symbol, session, previous, http_get)
+        except Exception as second:   # noqa: BLE001
+            reason = getattr(second, "reason", type(second).__name__)
+            print(f"::warning::{symbol} backup quote failed ({reason})")
+            raise first from None
+        print(f"[quote] {symbol} 改用備用來源 Nasdaq 取得 {session} 收盤")
+        return quote

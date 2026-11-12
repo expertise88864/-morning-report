@@ -7021,8 +7021,8 @@ TW_LIQUIDITY_MIN_TWD = 50_000_000
 def _parse_twse_date(value: str) -> Optional[str]:
     """將 TWSE 民國年或西元日期轉成 YYYY-MM-DD。"""
     import re as _re
-    parts = _re.findall(r"\d+", str(value or ""))
-    if len(parts) < 3:
+    parts = _re.findall(r"\d+", _re.sub(r"^\s*(\d{3,4})(\d{2})(\d{2})\s*$", r"\1-\2-\3", str(value or "")))
+    if len(parts) < 3:   # ↑ 11-12:FMTQIK 給的是沒有分隔的「1151111」,原本一律解析失敗、日曆只剩 Yahoo
         return None
     year, month, day = map(int, parts[:3])
     if year < 1911:
@@ -24478,7 +24478,7 @@ def _phase_market_and_macro(ctx) -> None:
         "SPY": fetch_quote("SPY"),
     }
     _us_session.refresh_quotes(quotes, now_tpe, lambda ticker: fetch_quote(ticker, period="5d"),
-                              recover=lambda symbol, day, prev: _us_recovery.fetch(symbol, day, prev, _http_get))
+                              recover=lambda symbol, day, prev: _us_recovery.fetch_any(symbol, day, prev, _http_get))
     usdtwd_today, usdtwd_prev = fetch_usdtwd_pair()
     quotes["USDTWD"] = usdtwd_today
     quotes["USDTWD_prev"] = usdtwd_prev
@@ -24727,7 +24727,7 @@ def _phase_taifex_and_chips(ctx) -> None:
     ctx.mark_phase("TAIFEX/籌碼/預測", time.monotonic())
     # A(2026-10-14):美股日線晚到 → 預測鏈開始前同一來源再試一次,補到就重算兩檔預測
     if _us_session.retry_stale(ctx.quotes, ctx.now_tpe, lambda t: fetch_quote(t, period="5d"),
-                               lambda sym, day, prev: _us_recovery.fetch(sym, day, prev, _http_get)):
+                               lambda sym, day, prev: _us_recovery.fetch_any(sym, day, prev, _http_get)):
         ctx.fair, ctx.predictions = _us_price_predictions(
             ctx.quotes, ctx.us_pred_inputs, ctx.hist_2330, ctx.ex_div)
     ex_div, fair, predictions, quotes = ctx.ex_div, ctx.fair, ctx.predictions, ctx.quotes

@@ -54,6 +54,7 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
         title = head.lstrip("# ").strip()
         if title in hidden:
             continue
+        section = re.sub(r"(?m)^[ \t]*[-*][ \t]+\[w\d{1,6}\].*\n?", "", section)   # 回顧列寫錯段落也不進信(11-12)
         if title in integrated:
             paragraphs = [" ".join(p.splitlines()).strip() for p in re.split(r"(?m)^- ", body) if p.strip()]
             if title == "情境與觸發條件":   # 基準/偏多/偏空各一句,觸發條件不另列

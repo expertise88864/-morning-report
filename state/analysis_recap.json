@@ -353,18 +353,6 @@
    "deadline": "2026-11-27"
   },
   {
-   "trigger": "外資台指期淨空 -95,651 口是否回補至 9 萬口以下（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空 -95,651 口是否回補至 9 萬口以下（觀察期：5 天內）",
-   "trigger_key": "t037f92ab290031c8",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w119",
-   "status": "open",
-   "created": "2026-11-06",
-   "last_reviewed": "2026-11-10",
-   "deadline": "2026-11-11"
-  },
-  {
    "trigger": "外資台指期淨空 -99,930 口，觀察 5 天內是否縮回 8 萬口以內（觀察期：5 天內）",
    "trigger_full": "外資台指期淨空 -99,930 口，觀察 5 天內是否縮回 8 萬口以內（觀察期：5 天內）",
    "trigger_key": "t89deca8eb679f7b2",
@@ -387,30 +375,6 @@
    "created": "2026-11-09",
    "last_reviewed": "2026-11-10",
    "deadline": "2026-11-14"
-  },
-  {
-   "trigger": "加權指數能否開在模型估計的 42,125 點以上並守住，且上漲家數維持 700 檔以上（觀察期：今日）",
-   "trigger_full": "加權指數能否開在模型估計的 42,125 點以上並守住，且上漲家數維持 700 檔以上（觀察期：今日）",
-   "trigger_key": "tb98990d9e35f485e",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w123",
-   "status": "open",
-   "created": "2026-11-10",
-   "last_reviewed": "",
-   "deadline": "2026-11-11"
-  },
-  {
-   "trigger": "台積電 2330 能否站上 2,261 元中樞、成交金額是否同步放大（觀察期：今日）",
-   "trigger_full": "台積電 2330 能否站上 2,261 元中樞、成交金額是否同步放大（觀察期：今日）",
-   "trigger_key": "t5ec363fa35822f34",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w124",
-   "status": "open",
-   "created": "2026-11-10",
-   "last_reviewed": "",
-   "deadline": "2026-11-11"
   },
   {
    "trigger": "外資台指期淨空 -101,771 口是否在五個交易日內縮回 9 萬口以內（觀察期：5 天內）",
@@ -459,43 +423,77 @@
    "created": "2026-11-11",
    "last_reviewed": "",
    "deadline": "2026-11-12"
+  },
+  {
+   "trigger": "輝達董事會週四會議是否正式決議撤換黃仁勳，以及 11 月 17 日財報的接單指引是否下修（觀察期：5 天內）",
+   "trigger_full": "輝達董事會週四會議是否正式決議撤換黃仁勳，以及 11 月 17 日財報的接單指引是否下修（觀察期：5 天內）",
+   "trigger_key": "t6d98e38f3512569a",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w129",
+   "status": "open",
+   "created": "2026-11-12",
+   "last_reviewed": "",
+   "deadline": "2026-11-17"
+  },
+  {
+   "trigger": "外資台指期淨空 104,271 口是否在 3 個交易日內縮回 10 萬口以內，現貨市值前 10 大是否轉為買超（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 104,271 口是否在 3 個交易日內縮回 10 萬口以內，現貨市值前 10 大是否轉為買超（觀察期：5 天內）",
+   "trigger_key": "t5bb8009c77844866",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w130",
+   "status": "open",
+   "created": "2026-11-12",
+   "last_reviewed": "",
+   "deadline": "2026-11-17"
+  },
+  {
+   "trigger": "加權能否守穩 44,000 點與模型估計開盤區間下緣 44,075 點（觀察期：今日）",
+   "trigger_full": "加權能否守穩 44,000 點與模型估計開盤區間下緣 44,075 點（觀察期：今日）",
+   "trigger_key": "t2608cf1895ebde74",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w131",
+   "status": "open",
+   "created": "2026-11-12",
+   "last_reviewed": "",
+   "deadline": "2026-11-13"
   }
  ],
- "watch_seq": 128,
+ "watch_seq": 131,
  "legacy_report": {
-  "date": "2026-11-11",
+  "date": "2026-11-12",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠）**：董事會通過第三季每股現金股利 9 元、資本預算約 409.27 億美元，並首度以各不超過 5 億美元認購 OpenAI 特別股與 Anthropic 普通股 [鉅亨台股](https://news.cnyes.com/news/id/6656911)。409 億美元用於先進製程、先進封裝與廠房興建，對應 N2 與 CoWoS 產能擴建。對照公司 2026 年資本支出 600 至 640 億美元的指引，這筆核准屬年度規劃內執行、不是上修；真正的新訊息是把 AI 模型商納入股東結構。量級上 10 億美元入股相對單季 7,630 億元稅後純益很小，對每股盈餘的直接貢獻可忽略，重點在把算力需求與客戶關係往前綁。**[A 級・信心:中-高]**",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：ADR 在 11 月 11 日大漲 4.25%、重返 400 美元 [中央社財經](https://www.cna.com.tw/news/afe/202611120030.aspx)，但今日早盤本地股反向開低，以 2,385 元開出、下跌 10 元 [鉅亨台股](https://news.cnyes.com/news/id/6660068)。原因是 ADR 反映的是 CoreWeave 財報利多，而輝達盤後暴跌發生在收盤之後，本地股先消化利空。傳導機制上，輝達佔台積電先進製程訂單比重高，治理動盪壓抑 AI 供應鏈評價；但實質訂單短期未見削減 [科技新報](https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/)。量級上，2330 已連 5 日上漲、累積 6.47%，短線回檔風險大於基本面翻轉。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6656911"
+     "https://www.cna.com.tw/news/afe/202611120030.aspx",
+     "https://news.cnyes.com/news/id/6660068",
+     "https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/"
     ]
    },
    {
-    "statement": "**台積電（2330）**：第三季營收 1.49 兆元、毛利率 66.4%、稅後純益 7,630.6 億元、EPS 29.43 元，獲利年增 68.7% 並創歷史新高 [鉅亨台股](https://news.cnyes.com/news/id/6656875)。第四季毛利率指引 65% 至 67%，公司解釋是 2 奈米爬坡與海外廠稀釋。毛利率從 66.4% 往 66% 中位數走，代表先進製程學習曲線成本開始認列，但營益率指引 56.5% 至 58.5% 仍高於多數同業。對 2330 的意義是獲利創高已被股價部分反映，接下來要看的不是 EPS 而是毛利率能否守住 65% 下緣。**[A 級・信心:高]**",
+    "statement": "**NVIDIA（NVDA，AI 加速器龍頭）**：Baird 將評等由優於大盤降至中立、目標價由 500 美元砍至 200 美元 [科技新報](https://finance.technews.tw/2026/11/12/baird-morgan-stanley-sour-on-nvidia-as-ceo-affair-controversy-deepens/)，摩根士丹利同步移出首選股名單。理由是 2027 年資料中心需求能見度不足、AI 投資可能放緩，加上執行長去留未定。對台股傳導：輝達是台積電最大客戶，但分析師普遍認為先進製程需求大於人事風險 [科技新報](https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/)，真正要觀察的是 11 月 17 日財報的接單指引。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6656875"
+     "https://finance.technews.tw/2026/11/12/baird-morgan-stanley-sour-on-nvidia-as-ceo-affair-controversy-deepens/",
+     "https://technews.tw/2026/11/12/taiwans-chip-show-will-go-on/"
     ]
    },
    {
-    "statement": "**輝達（NVDA，AI 加速器龍頭）**：口頭通知全球雲端夥伴至少 51% 服務須供應非中國企業，中國企業對合規工作站顯卡 RTX Pro 5500 下單逾 600 萬張、達輝達 2027 年全球產能上限的兩倍以上 [鉅亨美股](https://news.cnyes.com/news/id/6655907)。中國取得高階算力的兩條路同時緊縮，黑市 B300 機櫃成交價達國際價 4.7 倍。對台積電的傳導是客戶結構而非總量：中國需求被迫轉往合規產品與海外租用，先進製程訂單仍由美系雲端業者填補。**目前沒有台積電來自中國客戶的具體營收占比變化，還看不出對稼動率的淨影響**，能確定的是合規成本上升會壓抑中國 AI 訓練的擴張速度。**[A 級・信心:中]**",
+    "statement": "**聯發科（2454，全球第二大手機晶片設計商）**：股價重回 4,000 元大關、早盤漲 2.32% [自由財經](https://ec.ltn.com.tw/article/breakingnews/5637872)[鉅亨台股](https://news.cnyes.com/news/id/6660068)。公司預估第四季營收季增 25% 至 32%、年增 40% 至 48%，AI ASIC 業務明年可拿下全球 20% 市佔 [自由財經](https://ec.ltn.com.tw/article/breakingnews/5637872)。這是輝達風暴下的資金轉移受益者：ASIC 不需依賴輝達 GPU，需求獨立性較高。量級上，聯發科市值 6.4 兆元（未核實）、新客戶訂單要明年才放量，對今年營收貢獻仍有限，屬評價面先行。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6655907"
+     "https://ec.ltn.com.tw/article/breakingnews/5637872",
+     "https://news.cnyes.com/news/id/6660068"
     ]
    },
    {
-    "statement": "**超微（AMD，全球第二大 x86 CPU 與 AI GPU 廠）與博通（AVGO，AI ASIC 與網通晶片大廠）**：自 11 月 5 日收盤以來分別反彈約 29% 與 12%，同期輝達因黃仁勳風波走弱 [鉅亨美股](https://news.cnyes.com/news/id/6657838)。這是半導體內部的資金輪動，不是需求總量改變：AMD 與 AVGO 的 AI 晶片同樣在台積電投片，N3 與 CoWoS 產能不會因客戶換人而減少。**量級上無法從漲幅推算追加投片量，還看不出對 2330 稼動率的邊際貢獻**，但客戶集中度下降對台積電的議價結構偏中性偏多。**[B 級・信心:中-低,資訊有限]**",
+    "statement": "**【金融｜台灣】中信金（2891，銀行、證券、人壽綜合金控）**：前 10 月累計稅後純益 685.5 億元、每股稅後 3.45 元；加計 FVOCI 股票處分利益後可達 1,488 億元、超越歷年全年 [鉅亨網](https://news.google.com/rss/articles/CBMiT0FVX3lxTFBGcUVZSTlNaE81bk0wWVpfb2lNZUYxQmF0azFUVHh2ZlRYWHBPdTYzZU5nNnVjWVkzcGxWWXhXOXVXMEFtWWtZNW1XMG1Jam8?oc=5)[自由財經](https://news.google.com/rss/articles/CBMiX0FVX3lxTE03cEo1NTZuYnpxRmFsWTBnMnJVZkN1ZnI1ZC1WZlJuZWswYndhMVd6MWQweXk2aWhudUduUnhONTJ3a003YThuS1JwbU5jcHU5UWQwMjUxazNIY2gyLW1r0gFkQVVfeXFMUEFseFlleGNlNzNfbnR6WlltenczR3l0bHR6ZXllVVNaSld5X09PNFdob2tJUmpyZVpMeFVOQ29iSTMwNnZSMlVZQ2ZiMXNwTDluXzh1MDZJbU5LUHRMVHcxOEs1cw?oc=5)。壽險與證券投資收益是主要動能，其中 FVOCI 屬於一次性實現利益。對金融權值股是評價面支撐，但明年能否延續要看股債市表現。**[A 級・信心:中]**",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6657838"
-    ]
-   },
-   {
-    "statement": "**南亞科（2408，台灣 DRAM 廠）與記憶體產業**：南亞科 10 月毛利率衝上 85.7%、獲利創新高，並宣布砸近 700 億元擴產 [財訊](https://news.google.com/rss/articles/CBMie0FVX3lxTE1LU050T19pQWtjTUthdlJZdXFpQVZ4b3BKOUFlcElDalMyODVRa09yNm1XY1ZJUzlEdFFtMjdwbUEta3BQQl9vYzVDQXZCZUNOQ2psQVVJb1VXMFdxbWMtTC03ZkdTQjRUX3RFbTNac0VmUkREMXpiM1EwOA?oc=5)。同一時間摩根士丹利分析師 Shawn Kim 警告 2028 年將出現記憶體「獲利懸崖」，把 SK 海力士目標價下調 38%、三星下調 19% [鉅亨美股](https://news.cnyes.com/news/id/6656867)。兩者不矛盾：現貨報價與換約效益支撐今年獲利，但 2027 年底新產能開出後供給會反轉。對台股的傳導在設備與材料——擴產訂單今年看得到，2028 年的價格風險則還沒反映。**[A 級・信心:中]**",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMie0FVX3lxTE1LU050T19pQWtjTUthdlJZdXFpQVZ4b3BKOUFlcElDalMyODVRa09yNm1XY1ZJUzlEdFFtMjdwbUEta3BQQl9vYzVDQXZCZUNOQ2psQVVJb1VXMFdxbWMtTC03ZkdTQjRUX3RFbTNac0VmUkREMXpiM1EwOA?oc=5",
-     "https://news.cnyes.com/news/id/6656867"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBGcUVZSTlNaE81bk0wWVpfb2lNZUYxQmF0azFUVHh2ZlRYWHBPdTYzZU5nNnVjWVkzcGxWWXhXOXVXMEFtWWtZNW1XMG1Jam8?oc=5",
+     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE03cEo1NTZuYnpxRmFsWTBnMnJVZkN1ZnI1ZC1WZlJuZWswYndhMVd6MWQweXk2aWhudUduUnhONTJ3a003YThuS1JwbU5jcHU5UWQwMjUxazNIY2gyLW1r0gFkQVVfeXFMUEFseFlleGNlNzNfbnR6WlltenczR3l0bHR6ZXllVVNaSld5X09PNFdob2tJUmpyZVpMeFVOQ29iSTMwNnZSMlVZQ2ZiMXNwTDluXzh1MDZJbU5LUHRMVHcxOEs1cw?oc=5"
     ]
    }
   ]

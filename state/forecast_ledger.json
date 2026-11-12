@@ -9835,8 +9835,16 @@
    "2618"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "6446": 1375.0,
+   "2610": 21.9,
+   "3533": 1715.0,
+   "2356": 56.0,
+   "2618": 44.15
+  },
+  "taiex_entry": 42130.33
  },
  {
   "question": "2330_open_up",
@@ -9984,7 +9992,12 @@
    "ledger_schema": 2,
    "git_sha": "fd2b10604a40"
   },
-  "git_sha": "fd2b10604a40"
+  "git_sha": "fd2b10604a40",
+  "resolved": "2026-11-12",
+  "outcome": true,
+  "actual": 2330.0,
+  "brier_model": 0.0471,
+  "brier_base": 0.3036
  },
  {
   "question": "taiex_open_up",
@@ -10034,6 +10047,10 @@
    "ledger_schema": 2,
    "git_sha": "fd2b10604a40"
   },
-  "git_sha": "fd2b10604a40"
+  "git_sha": "fd2b10604a40",
+  "resolved": "2026-11-12",
+  "actual": 2330.0,
+  "err_raw": 32.12,
+  "err_shadow": 35.65
  }
 ]

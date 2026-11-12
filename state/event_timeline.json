@@ -201,5 +201,73 @@
   "event_type": "export_controls",
   "action": "",
   "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-11": {
+  "first_seen": "2026-11-12",
+  "days": 1,
+  "last_seen": "2026-11-12",
+  "latest_title": "伊朗警告若美國再度襲擊，歐洲境內美軍基地可能成為目標",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "內美",
+   "再度",
+   "可能",
+   "告若",
+   "國再",
+   "地可",
+   "基地",
+   "境內",
+   "度襲",
+   "成為",
+   "歐洲",
+   "洲境",
+   "為目",
+   "目標",
+   "美國",
+   "美軍",
+   "能成",
+   "若美",
+   "襲擊",
+   "警告",
+   "軍基"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:輝達:2026-11#af08ac": {
+  "first_seen": "2026-11-12",
+  "days": 1,
+  "last_seen": "2026-11-12",
+  "latest_title": "報導稱中國大學持續取得輝達高階AI晶片",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "ai",
+   "中國",
+   "取得",
+   "國大",
+   "大學",
+   "學持",
+   "持續",
+   "晶片",
+   "稱中",
+   "續取",
+   "高階"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 14
  }
 }

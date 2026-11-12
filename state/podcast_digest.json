@@ -45,7 +45,8 @@
             "unverified": 0,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-11-12T02:23:45Z"
       },
       {
         "guid": "4fc7e5b8-4d4d-4e4c-ae20-96c2e0f9af45",
@@ -898,7 +899,8 @@
             "unverified": 2,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-11-12T02:23:45Z"
       },
       {
         "guid": "tag:soundcloud,2010:tracks/2435858556",
@@ -943,7 +945,8 @@
             "unverified": 0,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-11-12T02:23:45Z"
       },
       {
         "guid": "tag:soundcloud,2010:tracks/2435290512",
@@ -7932,7 +7935,8 @@
             "unverified": 1,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-11-12T02:23:45Z"
       },
       {
         "guid": "53093a95-1b90-4228-aaf2-2d8ee77fd504",

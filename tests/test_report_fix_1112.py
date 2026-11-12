@@ -63,3 +63,17 @@ def test_source_links_move_to_the_end_of_each_paragraph():
     assert out[7] == "多行段落第一行" and out[8] == f"第二行。　{a} {b}"
     assert sp.last("沒有連結") == "沒有連結" and sp.last(None) is None
     assert rp.normalize_terms(para).endswith(f"　{a} {b} {c}")
+
+
+def test_review_pr52_integrated_sections_and_bold_chapter_headings():
+    # 回顧列寫進「觀察觸發點」也不可併進展望
+    text = "## 觀察觸發點\n- [w68] 未觸發：殖利率未達 5.2%\n- 外資台指期淨空縮回 9 萬口以內(觀察期:5 天內)\n\n## 我的明確立場\n中性\n"
+    shown = reader_prose.public_sections(text)
+    assert "w68" not in shown and "外資台指期淨空縮回 9 萬口以內" in shown
+    # 整行粗體的編號章節是段落邊界:連結不跨過去,標題原樣保留
+    a, b = "[A](https://a.example)", "[B](https://b.example)"
+    out = sp.last(f"新聞甲 {a}\n**八、科技板塊脈動**\n新聞乙 {b}").split("\n")
+    assert out == [f"新聞甲　{a}", "**八、科技板塊脈動**", f"新聞乙　{b}"]
+    assert sp.last(f"新聞甲 {a}\n**七之二、世界大事速覽**") == f"新聞甲　{a}\n**七之二、世界大事速覽**"
+    # 段首粗體公司名不是章節:照常是內文
+    assert sp.last(f"**台積電（2330）**：大漲 {a}。") == f"**台積電（2330）**：大漲。　{a}"

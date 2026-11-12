@@ -9,7 +9,8 @@ from __future__ import annotations
 import re
 
 _LINK = re.compile(r"[ \t　]*\[([^\[\]\n]{1,24})\]\((https?://[^)\s]+)\)")
-_SKIP = re.compile(r"^\s*(?:#{1,6}\s|\|)")
+#: 標題(`#` 或整行粗體的編號章節,渲染端兩種都當章節)與表格:不動,也不讓連結跨過去
+_SKIP = re.compile(r"^\s*(?:#{1,6}\s|\||\*\*\s*[〇零一二三四五六七八九十百]+(?:之[〇零一二三四五六七八九十百]+)?、[^*\n]*\*\*\s*$)")
 _STARTS = re.compile(r"^\s*(?:[-*+]\s|\d+[.)]\s|>)")
 
 

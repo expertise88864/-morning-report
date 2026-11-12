@@ -47,6 +47,8 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
     obj = obj or {}   # legacy 路徑只傳 markdown(不可少:conclusion 要讀 obj)
     hidden = {"資料缺口", "本段的保留事項", "證據衝突與調和", "昨日觀察點回顧"}
     integrated = {"情境與觸發條件", "觀察觸發點"}
+    # 11-12:回顧列(- [w68] …)寫錯段落也不進信;分段之前拿掉,併入展望的段落才讀不到(外審 PR #52)
+    markdown = re.sub(r"(?m)^[ \t]*[-*][ \t]+\[w\d{1,6}\].*\n?", "", markdown)
     sections = re.split(r"(?m)^(?=#{2,3} )", markdown)
     kept, additions = [], []
     for section in sections:
@@ -54,7 +56,6 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
         title = head.lstrip("# ").strip()
         if title in hidden:
             continue
-        section = re.sub(r"(?m)^[ \t]*[-*][ \t]+\[w\d{1,6}\].*\n?", "", section)   # 回顧列寫錯段落也不進信(11-12)
         if title in integrated:
             paragraphs = [" ".join(p.splitlines()).strip() for p in re.split(r"(?m)^- ", body) if p.strip()]
             if title == "情境與觸發條件":   # 基準/偏多/偏空各一句,觸發條件不另列

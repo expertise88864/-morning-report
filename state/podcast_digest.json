@@ -842,6 +842,65 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2436414129",
+        "title": "2026/11/12(四)利空連環爆 輝達盤後重挫7% 老黃再爆桃花劫!股市V轉 該追股票嗎?【早晨財經速解讀】",
+        "published": "Thu, 12 Nov 2026 01:06:33 +0000",
+        "processed_at": "2026-11-12T02:08:46Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為輝達近期利空接連（黃仁勳婚外情、董事會調查、可能撤換CEO）是政治鬥爭，市場真正擔憂的是CEO換人而非個人私德；股價已跌到歷史低本益比，但調查結果出爐前不確定性極高，可能是第二、三次回檔測底的第一波。",
+            "主持人指出CoreWeave上季營收年增168%、EBITDA利潤率62%，但利息費用高達8.46億美元、是營業利益3.79億美元的2.3倍，認為AI需求真實但融資成本過高，是最大風險。",
+            "主持人觀察半導體獲利上調廣度由6月近80%降至35%，且Intel、AMD、博通、甲骨文CDS利差一週擴大40至186個基點，認為市場謹慎看多、尚未出現真正恐慌，可能還需第二、三次回檔打底。",
+            "主持人認為民主黨期中選舉大勝反而可能延長AI景氣：要求配套與減速可避免科技巨頭「chicken game」過度投資與舉債壓力，且資安監管將優先於資料中心電力管制，資安ETF今年大幅跑贏大盤。",
+            "主持人強調當前美股/台股反彈被輝達利空沖銷，操作上需要耐心、以均攤成本應對回檔，不要因短期政治事件被洗出場；引述Steve Eisman四情境中40%資料中心供給過剩才是真正泡沫風險，目前仍有一段距離。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為黃仁勳醜聞與潛在CEO撤換造成短期股價壓力，但估值已跌至歷史低檔，後續要看獨立調查結果。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "CoreWeave",
+              "code": "CRWV",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為CoreWeave營運動能強但利息負擔過高，信用市場壓力大，是主要風險。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為當前只是估值回調，市場尚未出現真正恐慌，可能需第二、三次回檔打底；民主黨勝選反而可能減緩AI過度投資、延長景氣，但短期仍須消化輝達CEO不確定性。",
+          "action_view": "主持人傾向長期看多，建議以均攤成本應對回檔、保持耐心，不要因政治事件或單一利空被洗出場；等待利空測底後再分批布局。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2435858556",
         "title": "2026/11/11(三)輝達跌不停 美股被拖垮?通膨炸鍋!12月升息避不了?【早晨財經速解讀】",
         "published": "Wed, 11 Nov 2026 01:07:27 +0000",
@@ -1585,122 +1644,6 @@
           }
         },
         "shown_at": "2026-10-28T22:40:39Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2426605968",
-        "title": "2026/10/27(二)美股止跌了?加碼or觀望 Anthropic上市倒數 期中選舉恐衝擊AI?【早晨財經速解讀】",
-        "published": "Tue, 27 Oct 2026 01:08:01 +0000",
-        "processed_at": "2026-10-27T07:21:38Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為目前 AI 最大隱憂不是需求不足，而是融資遊戲與建置延宕：美國在蓋資料中心 2,800 座、規劃電力容量 386GW 為現有 6.2 倍，近一個月已有多起融資/電力監管延宕事件，高收益債融資利率最高達 16.6%，違約風險升高。",
-            "主持人指出 AI Token 成本半年跌 54%（每百萬 2.07→0.95 美元），但企業資本支出與記憶體/被動元件成本未降，信用風險分化：Triple C 與整體垃圾債利差從 3 個百分點擴大到 7 個百分點，為 2020 年以來最高。",
-            "主持人認為科技七雄本益比已降至 24 倍以下，低於十年平均 29 倍，亞馬遜更跌到 20 倍（2008 年以來最低），但七雄 2026 獲利成長 34%、2027 年估 27%，是十年來最便宜，長線依循頭部企業報酬仍漂亮。",
-            "主持人分析 Anthropic 上市文件：上半年營收 162.9 億美元、年增 13 倍，但前 1% 客戶支出占比由 25% 升至近 50%，月均支付從 30 萬增至 285 萬美元，營收集中風險升高。",
-            "主持人提醒 Meta 自由現金流已轉負並擬增資 950 億美元（350 億公開發行、600 億明年分批出售），若 Google、微軟、亞馬遜陸續跟進，高殖利率下市場吸金能力成關鍵；並引述馬斯克預警逾 200 家 AI 雲端公司可能無法存活。"
-          ],
-          "tickers": [
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為長線依循頭部企業報酬漂亮，輝達十年累積報酬高且其擔保能壓低 AI 融資成本。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "你只要永遠依循著頭部的那幾家企業,你會發現長年報酬還是很漂亮的,以過去十年,你不要用過去十個月,過去十年來看,輝達累積報酬是13490%",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人指出亞馬遜本益比跌至 20 倍，為 2008 年以來最低，屬於十年來最便宜的科技七雄之一。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "亞馬遜本益比甚至跌到20倍了,這個是2008年以來的最低喔",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為過去沉寂的蘋果近期股價表現不錯，且是七雄中明顯超越大盤的少數個股。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "過去沉寂一段時間的蘋果,最近股價表現也非常不錯啊",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Google 有穩定現金流與財務結構，能提供信用擔保，屬可受市場評價的成熟平台。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "如果你有穩定的現金流,你有穩健的財務結構,反而可以受到市場的評價",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人點出 Meta 自由現金流轉負、擬大規模增資，股價可能受壓，但未給明確多空方向。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "Meta之前是挑高資本支出了嘛,他的自由性金流也轉負了,那市場上一度是看好運營啦,結果呢股價反而受到市場上壓回",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "甲骨文",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人提到甲骨文資料中心計畫貸款價格跌破面額 90%、開發商收到不可抗力通知延後，融資與建置風險升高。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "甲骨文之前在新墨西哥州的木星計畫,2.25GW,180億美元的建設貸款價格,跌破面額的90%,開發商也收到不可抗力的通知,延後了",
-                "direction": "bearish"
-              }
-            }
-          ],
-          "market_view": "主持人認為市場沒有想像中樂觀，AI 隱憂在融資遊戲與建置延宕而非需求不足；但科技七雄估值降至十年低點，只要未出現算力過剩，他仍對 AI 前景保持正面，並視當前回調為中期修正而非泡沫破滅。",
-          "action_view": "主持人操作思路：以分散風險方式長期留在市場，優先依循有穩定現金流的頭部企業，避免單押個股；面對 AI 回調視為中期修正，靜待生產力提升與融資循環汰弱留強，而非因波動離場。",
-          "notable_quote": "我對於AI的前景而言,只要沒有算力過剩的那一天出現,我基本上還是保持著正面態度的",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "我對於AI的前景而言,只要沒有算力過剩的那一天出現,我基本上還是保持著正面態度的"
-          },
-          "direction_quality": {
-            "attributed": 6,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-27T22:35:16Z"
       }
     ]
   },

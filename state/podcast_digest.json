@@ -2472,6 +2472,65 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "79b3c4ee-2a2b-455b-92f4-5e49f79f69cd",
+        "title": "EP353. 黃仁勳被逼到辭職、ANT IPO 最新消息、Grok Bot 成本分析 | M觀點",
+        "published": "Thu, 12 Nov 2026 16:29:49 GMT",
+        "processed_at": "2026-11-12T22:09:04Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為黃仁勳是被晶片管制鷹派有計畫地逼下台，此事大幅削弱美國晶片管制鴿派力量；他主張封鎖高階晶片擋不住中國AI，反而讓華為獲得規模經濟，賣次等晶片才符合美國利益。",
+            "主持人認為少了黃仁勳的NVIDIA長期價值會打折，即使短期業績無礙，他會減碼自己持股，且目前找不到能取代黃仁勳的CEO。",
+            "主持人表示Anthropic以1.4兆美元估值IPO，他會在上市後買進作為AI主導風險的避險（雖然不喜歡其文化），並認為其Q4營收預估明顯低估。",
+            "主持人指出Anthropic新旗艦模型（節目中稱Fable 5.2）雖在AI排行榜奪冠（65分，領先5分為世代差距），但每任務成本26.5美元、是前代2倍與其比較基準模型的2.5倍，商業使用有限，主要是IPO前展示實力。",
+            "主持人解析AI代理服務（節目中稱Grabba）的成本：虛擬主機每人每月約4美元，且代理式用戶會用滿token、使用Anthropic模型需付其4到7倍成本；短期解方是用戶訂閱ChatGPT/Claude CLI讓該服務調用省token。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為少了黃仁勳的輝達長期價值打折，自己會減碼持股。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人表示IPO後會買進，作為AI主導風險的避險，並認為Q4營收預估明顯低估。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得Androby的確算是一種避險吧,避險,如果未來AI模型真的這麼強,然後取代所有其他的產業,那你買其他產業的公司,其他公司都會虧死嘛,那但是你如果真的這麼強,那你知道Androby這部分會把你賺回來,所以Androby有點像是對於其他,我投資其他公司的一個避險,的一種做法,所以我還是會買啦",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為黃仁勳下台是公司治理與政治角力事件，不代表AI需求泡沫；但此事削弱美國晶片管制鴿派力量，對AI產業政策不利。",
+          "action_view": "主持人表示自己會減碼輝達持股；Anthropic上市後會買進作為AI主導風險的避險；並建議Grabba用戶可透過訂閱ChatGPT/Claude的CLI來節省token成本。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "38fc2bf7-4348-46f4-9190-7f2613bb3156",
         "title": "EP352. 期中選舉藍色海嘯、民主黨會禁 AI 嗎、Cybertruck 要停產了 | M觀點",
         "published": "Mon, 09 Nov 2026 07:44:06 GMT",
@@ -3282,94 +3341,6 @@
           }
         },
         "shown_at": "2026-10-02T01:06:05Z"
-      },
-      {
-        "guid": "a7e2f7cb-f0ec-42e9-ac0c-b93996196d81",
-        "title": "EP340. 川習會台灣怎麼看、Meta Connect 大會、資料中心搶電大戰 | M觀點",
-        "published": "Mon, 28 Sep 2026 16:53:53 GMT",
-        "processed_at": "2026-09-28T20:51:09Z",
-        "digest": {
-          "summary_points": [
-            "主持人解讀川習會：關稅戰休兵延長兩個月、雙方各降300億美元項目關稅只是小禮物；稀土仍是美國不敢全面課稅的關鍵，MP 產能雖提升仍不足以完全取代中國。",
-            "主持人看好 Meta：Muse agent 成功後，AI 眼鏡/VR 眼鏡故事缺口補上；他預測新 VR 眼鏡（約4萬台幣、100公克）銷量將遠超 Apple Vision Pro，價格與舒適度是關鍵。",
-            "主持人認為 Oracle 木星計畫延遲不是 AI 泡沫，而是電力卡關；對比 SpaceX 已解決電力，年底前 Colossus 2 有機會再加 66 萬顆 GB300，新增用電約 1.6GW，等於核三廠對外供電量。",
-            "主持人稱 SpaceX 資料中心是印鈔機，Q3/Q4 財報將爆發；太空資料中心因地面電力與政治阻力而更具吸引力，未來5-10年只有 SpaceX 能賺。",
-            "主持人透露自身投資操作：SpaceX 持股已超過3%，目標加到主動部位4%，回檔會繼續補；強調自己長線投資，短期跌不是壞事。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好 Meta 將 AI 整合至眼鏡，Muse 成功與 VR 眼鏡低價輕量將帶動硬體銷售，AI 裝置故事缺口補上。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我認為 meta他是有能力把 ai 整合到他的眼鏡的所以當他把 ai 很妥善的整合到眼鏡眼鏡就成為最好的 ai device",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 SpaceX 解決電力、算力出租如印鈔機，Q3/Q4 財報將爆發，太空資料中心未來5-10年只有它能賺；自身持股已逾3%，目標4%。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我跟你講這是印鈔機啊這真的是印鈔機啊所以今年這個第三季第四季 spaces 的財報要大爆發",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "MP Materials",
-              "code": "MP",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人提到 MP 稀土產能提升，可覆蓋美國本土約三成需求，降低對中國稀土依賴，但未給買賣建議。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Oracle",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為 Oracle 木星計畫延遲是因州政府否決天然氣管線用地、電力卡關，而非 AI 泡沫。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人未對大盤明說方向，但認為 AI 資料中心缺電是核心瓶頸，電力與算力供給者將受惠；同時看好 AI 裝置整合（Meta）與太空資料中心（SpaceX）長線趨勢。",
-          "action_view": "主持人透露自身操作：長線持有並加碼 SpaceX，目標從目前逾3%加至主動部位4%，回檔視為補貨機會；未給個股買進建議，僅分享自身看法。",
-          "notable_quote": "我跟你講這是印鈔機啊這真的是印鈔機啊所以今年這個第三季第四季 spaces 的財報要大爆發",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "我跟你講這是印鈔機啊這真的是印鈔機啊所以今年這個第三季第四季 spaces 的財報要大爆發"
-          },
-          "direction_quality": {
-            "attributed": 2,
-            "non_investment": 0,
-            "unverified": 2,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-29T01:11:59Z"
       }
     ]
   },

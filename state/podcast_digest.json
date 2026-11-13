@@ -1654,6 +1654,79 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmwdn5qya009x01s2230n6qej",
+        "title": "577.【財經時事放大鏡】AI命犯桃花 x 成材趨勢觀察",
+        "published": "Thu, 12 Nov 2026 23:02:07 GMT",
+        "processed_at": "2026-11-13T00:59:44Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為黃仁勳若下台對台灣 AI 供應鏈有實質影響，不只股價波動，因為供應鏈合作高度依賴其個人關係與文化默契，換執行長可能改變重心。",
+            "主持人認為台積電入股 OpenAI 與另一家 AI 公司的策略意義在於直接掌握終端需求，減少供應鏈長鞭效應的資訊不對稱，並有機會提供算力，對台積電長期有利。",
+            "主持人從 CoreWeave 法說看到 AI 算力需求極強：舊款 GPU 租金一季內漲約 35%、投資回收期 6-18 個月；但 CoreWeave 本身像創業公司，現金流仍流出，FCF 不佳，未來成長放緩時估值可能大幅收斂。",
+            "主持人認為 AI 成長的真正瓶頸在於電力與基礎設施交付而非需求，許可/施工延後可能造成數據中心上線遞延一至兩季，導致供應鏈砍單與波動，上游供應商受影響較大。",
+            "主持人觀察先進封裝/CPO 趨勢：CPO 技術路線尚未收斂，台積電仍需要 OSAT 支援，測試環節因規格變化快而需更緊密合作，OSAT 有機會。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為黃仁勳醜聞與可能下台為公司前景及台灣供應鏈帶來不確定性，但未明確看多或看空。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人認為晶片缺貨且台積電為龍頭，受需求遞延影響低，且入股 AI 公司有助直接掌握終端需求，長期策略有利。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "CoreWeave",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為其需求強勁但現金流仍在流出，公司像創業公司玩現金流，FCF 不理想，未來成長停滯時估值可能大幅收斂。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為高估值下面臨突發事件風險，市場對 AI 供應鏈擔憂升溫，但終端需求仍強，瓶頸在供給而非需求。",
+          "action_view": "當前資訊混亂且供應鏈波動大，應持續追蹤政策與地緣變化；晶片缺貨下龍頭廠商相對抗跌，可留意新應用落地與海外數據中心地點選擇。",
+          "notable_quote": "你永遠不知道打爆你的是哪一根棒啊",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "你永遠不知道打爆你的是哪一根棒啊"
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "cmw3stv1m089s01y1gwvm7dpx",
         "title": "576.【財經時事放大鏡】期中選舉 x AIDC & Marvell 併購 Lumentum",
         "published": "Thu, 05 Nov 2026 23:02:08 GMT",
@@ -2424,47 +2497,6 @@
           }
         },
         "shown_at": "2026-09-22T00:29:50Z"
-      },
-      {
-        "guid": "cmu5m6dlc01pb01z5af6idb88",
-        "title": "565.【財經時事放大鏡】看見光博會的光 x AI 安全賽局論",
-        "published": "Thu, 17 Sep 2026 23:02:18 GMT",
-        "processed_at": "2026-09-18T07:14:28Z",
-        "digest": {
-          "summary_points": [
-            "SKY認為AI降溫呼籲是「假議題」：廠商與國家都陷入囚徒困境，沒人敢真的在訓練端放慢，中國也不會跟進；監管成本反而有利已領先的模型廠商。",
-            "他認為市場對AI降溫的反應不大，只是「魔鬼終結者看太多」的情緒；真正值得注意的反而是像果蠅大腦模型這類科幻級技術進展，但尚未影響投資決策。",
-            "CIOE光博會顯示光通訊仍是明確趨勢，但CPO/MPO/光源等技術方案尚未收斂、百花齊放，此時應轉向觀察組件級變化而非只看系統級共識。",
-            "投資主軸仍是AI的「電」與「光」：電力看800VDC進程與碳化矽，光通訊看1.6T放量後的元件升級（如MZAP、振盪器、電容、PCB成型等），但不會全面齊漲，必須往component層找標的。",
-            "華邦電收購英飛凌NOR Flash事業後成為絕對龍頭，但SKY目前看不到近一兩年穿戴式需求帶動的大利多，先中性看待。"
-          ],
-          "tickers": [
-            {
-              "name": "華邦電",
-              "code": "2344",
-              "market": "TW",
-              "direction": "unknown",
-              "reason": "併購英飛凌NOR Flash事業後成為絕對龍頭，但尚未看到穿戴式需求帶來的大利多，先中性看待。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "SKY認為AI降溫呼籲不致改變市場大方向，AI電與光仍是主軸；短線情緒波動不需過度反應。",
-          "action_view": "操作上仍聚焦AI電與光題材，但不會全面買進，而是深入組件級標的；對華邦電等併購題材先觀望，等需求訊號。",
-          "notable_quote": "大家都不慢下來是你的最佳解啦，是大家的最佳解啦",
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 0,
-            "unverified": 1,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-09-18T23:56:29Z"
       }
     ]
   },

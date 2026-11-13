@@ -843,6 +843,79 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2437188945",
+        "title": "2026/11/13(五)黃仁勳退位 輝達下一步?輝達股價最壞 時刻過了嗎?【早晨財經速解讀】",
+        "published": "Fri, 13 Nov 2026 01:11:11 +0000",
+        "processed_at": "2026-11-13T09:13:42Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為輝達股價已嚴重超跌：從高點回檔約三成、今年跌15%，同期費半仍漲47%，本益比僅約12倍，因此他近日少量買進輝達個股；但強調政治調查與新團隊投資意願仍是變數。",
+            "主持人認為最大變數在新管理團隊能否維持黃仁勳原有的投資與最後擔保人角色：輝達過去一年承諾或未完成投資高達1,240億美元、一年超過120筆新創投資；若以CFO為首的團隊不願承接風險，AI融資循環與客戶信任可能重估。",
+            "主持人判斷台灣供應鏈是這波最大輸家：黃仁勳過去把台廠毛利率從蘋果時代的「毛三道四」拉到AI伺服器約13-14%，少了這位潤滑劑後，新任執行長若無相同協調力，高溢價地位可能鬆動；加上美國鷹派施壓、出口管制法案與H200取消只是時間問題。",
+            "主持人提醒「最壞已過」仍待驗證：共和黨鷹派先出招後，民主黨明年掌握國會調查權可能續打出口管制，川普點名庫克接任被他視為比黃仁勳辭職更大的利空；短線市場反彈不必然代表政治風險結束。",
+            "主持人認為輝達事件的可能受惠者是Google TPU與超微，並以2023年Sam Altman五天回歸為例，推測黃仁勳不排除重返；股價若跌更深反而可能加速其回鍋。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達（NVIDIA）",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為股價從高點回檔約三成、本益比僅約12倍，有嚴重超跌味道，近期逢跌買進，長期仍偏樂觀。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我對於輝達的長期未來。還是有信心的啦。重點就是他本益比已經創下。幾乎是本世紀以來的新低了。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "超微（AMD）",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為輝達不確定性下，超微做為直接競爭對手有機會受惠。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那另外一個就是超偉,他的直接性的競爭對手。",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet（Google）",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為輝達不確定性下，Google自研TPU有機會取得更多客戶與供應鏈信任，成為市場焦點。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那真正因此而受惠的是誰呢?其實就是Google的TPU。",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人仍以結構性樂觀看待後市，認為市場對輝達事件有過度悲觀、超跌機會；但他也提醒美國政治風險未除，台股短線大漲逾千點是否利空出盡仍待觀察。",
+          "action_view": "主持人表示自己多數部位在科技型ETF，近日逢輝達下跌小量買進輝達個股；心態上認為股價超跌後可視為中長期布局，但短線仍須觀察國會聽證、財報與新任執行長決策。",
+          "notable_quote": "樂觀者獲利,但悲觀者正確。",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "樂觀者獲利,但悲觀者正確。"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2436414129",
         "title": "2026/11/12(四)利空連環爆 輝達盤後重挫7% 老黃再爆桃花劫!股市V轉 該追股票嗎?【早晨財經速解讀】",
         "published": "Thu, 12 Nov 2026 01:06:33 +0000",
@@ -1601,52 +1674,6 @@
           }
         },
         "shown_at": "2026-10-29T22:37:47Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2427272874",
-        "title": "2026/10/28(三)川普選情告急!美股將迎政治變局?Anthropic IPO行情 美股買點到了?【早晨財經速解讀】",
-        "published": "Wed, 28 Oct 2026 01:07:51 +0000",
-        "processed_at": "2026-10-28T08:20:31Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為本週真正的重點是 FOMC 與微軟、Google、亞馬遜財報後的資本支出定價；10 年期公債殖利率跌破 5% 反映升息預期降溫，但風險貼水與通膨疑慮未消失。",
-            "主持人指出美國 2 年期公債標售間接投標者比重單月降至 45.7%、為 2011 年以來最低，海外央行不願承接；加上科技投資級債發行與油價僅回檔，利率回檔幅度有限、資金仍貴。",
-            "主持人分析 AI 資料中心融資愈來愈像不動產證券化：高收益債、ABS 與 CDS 信用利差全面走高，巨頭承租的資料中心債券殖利率高達 9.9%～16%，市場對 AI 信用風險仍存，若錢太貴恐抑制 AI 發展。",
-            "主持人主張與其預測 30 年 AI 泡沫，不如回看眼前企業獲利；SK 海力士營業利益年增約 7 倍、AI 新創獲利暴增等，顯示上游 AI 供應鏈有實質獲利，但不代表股票無泡沫。",
-            "主持人對台股後市偏多，指數收在 46,808 點，認為整理已久，以台積電過去盤整後走高為例，行情總在半信半疑中創高。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "主持人以台積電為例，認為整理過後有機會持續走高，並用以支撐對台股後市的偏多看法。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "有一天台積電以前五六百塊,它也給你盤了大半年,莫名其妙就七八九百了",
-                "direction": "bullish"
-              }
-            }
-          ],
-          "market_view": "主持人認為美股短期聚焦 FOMC 與大型科技財報，殖利率回檔但信用利差與風險貼水仍高；台股則整理後有機會創高。",
-          "action_view": "主持人未明確喊加減碼，但建議以企業獲利與財報為依歸觀察 AI 投資，並對台股保持信心；認為若 AI 能度過明後年算力交付期則遊戲可持續，否則高融資成本可能抑制發展。",
-          "notable_quote": "行情總在半信半疑中創高",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "行情總在半信半疑中創高"
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-28T22:40:39Z"
       }
     ]
   },
@@ -8497,6 +8524,135 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "8d7490d5-bfbf-4ee5-b1d8-a75c1c862e77",
+        "title": "Jensen Huang Resigns: NVIDIA's Succession Crisis and the Fate of the AI Supply Chain",
+        "published": "Thu, 12 Nov 2026 19:45:53 -0800",
+        "processed_at": "2026-11-13T09:22:46Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為黃仁勳請辭最關鍵的損失，是 NVIDIA 不再能扮演「AI 中央銀行」：過去靠自身資產負債表替 neocloud 提供信用背書、把客戶資金成本壓到專案可行，這角色將大幅縮水；那筆宣稱 5,000 億美元、有六家大型私募與投行連署的平台案（他說連條款清單都還沒簽）預期不會推進。",
+            "權力向 hyperscaler 傾斜：主持人預測超大型雲端業者會趁 NVIDIA 過渡期壓價、加速第二供應來源（AMD、Google TPU），台積電則成為決定額外產能給誰的「kingmaker」；若 NVIDIA 需求鬆動，他點名 Broadcom 與 AMD 是最可能分到產能與市占的一方。",
+            "治理與時程：Kress 暫代執行長，主持人預期新執行長約明年三月出爐、可能趕上 GTC，但董事會正面臨四到五件聯邦調查與國會聽證，法律程序只會拖慢速度；他強調 AI 需求本身由前沿實驗室帶動、仍然真實，但少了這位「北極星」會讓 AI 熱潮洩掉一些動能。",
+            "Neocloud 財報兩樣情：CoreWeave 數字強勁、前兩大客戶佔營收降到 60%（去年 70%、IPO 時 75%），緩解信用疑慮；Nebius 因資料中心通電時程延到明年而下修財測。主持人對 CoreWeave 從 hyperscaler 長約轉向短約、預付與現貨定價存疑——現貨適合訓練，但要當企業推論雲、客戶要的是可預測長約，這條路行不通。",
+            "對中國晶片管制：主持人自稱有陰謀論，認為這波爆料有華府政治操作痕跡、中國鷹派是受益者；他也認為緊縮出口效果有限（BIS 人力與經費不足，晶片可繞道馬來西亞、新加坡、日本、韓國），並提醒中國若反制，PCB、載板與成熟製程零件的供應鏈會受衝擊。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "失去黃仁勳與其替 neocloud 提供信用支持的能力，長期需求與對客戶、對台積電的談判力都會轉弱，短期訂單雖仍滿。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "CoreWeave",
+              "code": "CRWV",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "強勁財報緩解信用疑慮、客戶集中度改善，但主持人質疑其改走短約與現貨定價的模式能否支撐企業推論業務。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I would worry though that yeah they're able to do that right now I don't know how sustainable that will be going forward.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Nebius",
+              "code": "NBIS",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "資料中心完工與通電時程延到明年，被迫下修財測，市場反應劇烈；主持人認為問題很單純、就是時程延誤。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "The completion date and the powering on date is got pushed into next year. So they had to lower guidance and people didn't like that.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為台積電處於決定額外產能分配給誰的關鍵位置，NVIDIA 出事反而讓它更有籌碼。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "I think it definitely puts TSMC very much in the kingmaker position. They're the ones who were deciding this year next who gets the extra allocation.",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Broadcom",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "若 NVIDIA 需求或供給鬆動，主持人點名 Broadcom 是最可能接手台積電額外產能、並帶動 Google TPU 的一方。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "可望成為 hyperscaler 加速扶植的第二供應來源，但主持人強調 AMD 沒有像 NVIDIA 那樣以資產負債表替客戶撐資金的能力。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 Google 想對外賣 TPU 的時機正好，hyperscaler 議價力增強對它有利。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "Google has picked a great time to be wanting to sell TPUs, right? Publicly.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為 AI 需求仍由前沿實驗室帶動、確實還在成長，但這起事件會讓 AI 熱潮少掉一些動能；若熱度退去，半導體就回到過去那個「正常產業」，而市場原本就已傾向認為 2029 年之後算力需求不再成長。",
+          "action_view": "他沒有給明確加減碼指令，只點出要盯的線索：neocloud 能否真的拿到長期、可預測的企業推論客戶，以及台積電的額外產能最後分配給誰。",
+          "notable_quote": "I think the ability of Nvidia to play the role of central bank to AI that goes away.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I think the ability of Nvidia to play the role of central bank to AI that goes away."
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 6,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "c76a8d15-0adf-417b-8633-782a5b061a01",
         "title": "The \"Semi-Apocalypse\": Market Panic, Enterprise AI, and the 2028 GPU Glut Theory",
         "published": "Mon, 09 Nov 2026 11:35:58 -0800",
@@ -9515,62 +9671,6 @@
           "notable_quote": "Nvidia is most incentivized to help Intel execute here and that they are customer zero cleaning the pipe for Intel the same way that Apple did for TSMC."
         },
         "shown_at": "2026-09-01T00:28:37Z"
-      },
-      {
-        "guid": "16b331fc-37f8-427a-9583-53c817f7a53c",
-        "title": "EP 189: Analyzing ADI Earnings, Custom Silicon Shifts, and Semiconductor Debt",
-        "published": "Sun, 23 Aug 2026 16:10:27 -0700",
-        "processed_at": "2026-08-24T09:12:09Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 ADI 終於加入 AI 資料中心派對：資料中心營收已佔 ADI 約 10% 且季度倍增，並給出每 GW 資料中心有 10~15 億美元 analog 含量的估算，顯示 analog 在 800V 資料中心時代價值量大增。",
-            "主持人提醒 analog 成長路徑可能不平順：目前 800V 資料中心仍在原型階段，真正放量要到 2028，2027 年可能出現資料中心營收增速放緩的斷層。",
-            "主持人解析 Marvell 與 Google 擴大合作：認為這是 Marvell 的重大勝利，可減輕過度依賴 Amazon 的疑慮；但 Marvell 角色偏向 XPU 周邊（CXL、光電、網路），並非取代 Broadcom 的 TPU 核心設計，對 Broadcom 只是小負面。",
-            "主持人對 Broadcom 傳出籌組 600 億美元 SPV 與 Nvidia 500 億美元 SPV 感到擔憂：半導體公司過去幾乎不舉債，如今被迫用資產負債表競爭，債務與 SPV 的隱藏義務可能成為未來風險。",
-            "主持人認為 Moderna 的黑色素瘤疫苗被誤解為「AI 治病」：實際上是 bioinformatics 個人化計算，AI 尚未真的發明新藥；但上海 Insilico 用 AI 強化藥物開發流程、五年內擁有 30 個管線，顯示 AI 是流程加速器而非最終解答。",
-            "主持人觀察到資料中心建置的地方阻力升溫（如亞馬遜在家鄉附近建資料中心遭遇居民抗議），AI 情緒轉差，但主持人仍維持長期樂觀，認為 AI 才剛開始。"
-          ],
-          "tickers": [
-            {
-              "name": "Analog Devices",
-              "code": "ADI",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "資料中心營收倍增、每 GW 類比含量高，SAM 比預期大，進入 AI 供電商機。"
-            },
-            {
-              "name": "Texas Instruments",
-              "code": "TXN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "數據中心類比營收同樣倍增，800V 轉換將帶來高規格 IC 需求。"
-            },
-            {
-              "name": "Marvell",
-              "code": "MRVL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Google 合作降低亞馬遜集中度，XPU 周邊/CXL/光電角色明確。"
-            },
-            {
-              "name": "Broadcom",
-              "code": "AVGO",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Google 增加 Marvell 做周邊是小負面，但仍掌握 TPU 核心，且 SPV 籌資增加財務風險。"
-            },
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "用 500 億美元 SPV 融資資料中心，顯示需要以資產負債表競爭，技術優勢非絕對。"
-            }
-          ],
-          "market_view": "主持人認為 AI 基礎建設長期仍樂觀，但短期出現地方抗爭、情緒轉差，且半導體公司開始用資產負債表競爭，需留意債務與資金結構風險。",
-          "action_view": "操作上可關注 analog 供應鏈（ADI/TI）受惠 800V 資料中心轉型，但要留意 2027 年可能出現成長空窗；同時對半導體公司透過 SPV 籌資的隱藏風險保持警覺。",
-          "notable_quote": "I'm getting calls from fixed income investors and fixed income journalists. I've never talked to these people in my life."
-        }
       }
     ]
   },

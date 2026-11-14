@@ -11224,7 +11224,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             # <UNTRUSTED_SOURCE_DATA> 圍住(見本函式後段),內層再開一組,
             # 其結束標籤會提前關閉外層圍欄,後面所有新聞反而落到圍欄外,
             # 比原本沒圍更糟。
-            safe = _sanitize_untrusted_text(str(n["fulltext"]))[:1500]
+            safe = " ".join(_sanitize_untrusted_text(str(n["fulltext"])).split())[:1500]   # 壓成一行:一則 = 標題列 + 一行摘錄(11-14)
             text += f"\n  [全文摘錄]：{safe}"
         return text
 

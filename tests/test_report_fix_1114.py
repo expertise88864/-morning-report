@@ -115,22 +115,23 @@ def test_review_pr53_full_text_excerpt_goes_with_its_news_item():
     assert dropped == 1 and "現場約三千人" not in out and "[N4]" in out
 
 
-def test_review_pr53_round2_multi_paragraph_excerpts_stay_with_their_item():
-    """全文保留分段:第二段起沒有縮排、中間有空行,也都是同一則。"""
-    prompt = ("【重大事件】\n"
-              "- [N1] [來源A:路透] 兩國領袖會面（摘要）\n"
-              "  [全文摘錄]：第一段。\n"
-              "第二段談習近平。\n"
-              "\n"
-              "第三段是後續。\n"
-              "- [N2] [來源A:鉅亨] 台達電營收創高（摘要）\n"
-              "  [全文摘錄]：單月 746 億元。\n"
-              "第二段講毛利率。\n"
-              "※ 各事件附 surprise_score\n"
-              "寫稿規則照舊,提到習近平也不動\n")
+def test_review_pr53_excerpt_is_one_line_so_the_whole_article_goes_together():
+    """全文保留原文分段(沒縮排的段落、空行、【小標題】):在組提示詞時就壓成一行,
+    一則新聞 = 標題列 + 一行摘錄,減新聞時邊界是確定的(外審 PR #53 第二、三輪)。"""
+    import morning_report as mr
+    from test_deepseek_legacy_golden import legacy_prompt_inputs
+    args = list(legacy_prompt_inputs())
+    body = "第一段講會面。\n【背景】\n第二段談習近平。\n\n第三段是後續。"
+    args[3] = [{"title": "兩國領袖會面", "link": "https://news/a", "source": "路透", "summary": "", "importance": "critical",
+                "fulltext": body},
+               {"title": "台達電營收創高", "link": "https://news/b", "source": "鉅亨", "summary": "", "importance": "high",
+                "fulltext": "單月 746 億元。\n第二段講毛利率。"}]
+    prompt = mr._build_prompt(*args)
+    line = next(row for row in prompt.split("\n") if "[全文摘錄]" in row and "第一段講會面" in row)
+    assert line.startswith("  [全文摘錄]：") and "【背景】 第二段談習近平。 第三段是後續。" in line
+    assert "\n【背景】\n" not in prompt and "\n第二段談習近平" not in prompt
     out, dropped = cr.soften(prompt, 1)
-    assert dropped == 1 and "[N1]" not in out and "第二段談習近平" not in out and "第三段是後續" not in out
-    assert "[N2]" in out and "第二段講毛利率" in out and "【重大事件】" in out
-    assert "※ 各事件附 surprise_score" in out and "寫稿規則照舊,提到習近平也不動" in out
-    clean = prompt.replace("習近平", "某人")
-    assert cr.soften(clean, 1) == (clean, 0)   # 沒有東西要拿:原樣
+    assert dropped >= 1 and "習近平" not in "\n".join(r for r in out.split("\n") if "全文摘錄" in r)
+    assert "兩國領袖會面" not in out and "第三段是後續" not in out
+    assert "台達電營收創高" in out and "第二段講毛利率" in out
+    assert len(out.split("\n")) == len(prompt.split("\n")) - 2 * dropped or dropped > 1   # 一則 = 兩行

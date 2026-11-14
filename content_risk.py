@@ -31,17 +31,28 @@ def is_refusal(error) -> bool:
     return MARKER in str(error or "")
 
 
+#: 全文摘錄的終點:下一則清單列,或提示詞的結構列(段落標題、圍欄標籤、附註)
+_BOUNDARY = re.compile(r"^\s*(?:[-・]\s|【|<|#|※|=)")
+
+
 def _items(prompt: str) -> list[list[str]]:
-    """把提示詞切成「一則」:清單列連同它下面縮排的延續列(高權重新聞的 `  [全文摘錄]：…`)是同一則;
-    其他每一行各自一則。外審 PR #53:只刪標題列會把全文摘錄留在提示詞裡,重送照樣被拒。"""
+    """把提示詞切成「一則」:清單列連同它下面縮排的延續列是同一則;其他每一行各自一則。
+
+    高權重新聞的下一行是 `  [全文摘錄]：…`,而全文保留原本的分段 —— 第二段起沒有縮排、中間可能有空行。
+    所以摘錄一旦開始,就一路收到下一則清單列或結構列為止(外審 PR #53:只刪標題列或只收縮排列,
+    都會把觸發內容留在提示詞裡,重送照樣被拒)。"""
     items: list[list[str]] = []
+    excerpt = False
     for line in str(prompt or "").split("\n"):
-        continuation = bool(items) and bool(_LISTED.match(items[-1][0])) and line[:1] in (" ", "\t") \
-            and line.strip() and not _LISTED.match(line)
-        if continuation:
+        listed = bool(items) and bool(_LISTED.match(items[-1][0]))
+        if listed and excerpt and not _BOUNDARY.match(line):
             items[-1].append(line)
+        elif listed and line[:1] in (" ", "\t") and line.strip() and not _LISTED.match(line):
+            items[-1].append(line)
+            excerpt = excerpt or "[全文摘錄]" in line
         else:
             items.append([line])
+            excerpt = False
     return items
 
 

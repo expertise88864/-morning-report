@@ -102,7 +102,7 @@ def test_review_pr53_full_text_excerpt_goes_with_its_news_item():
               "  [全文摘錄]：報導提到習近平與川普將會面。\n"
               "- [N2] [來源A:鉅亨] 台達電營收創高（摘要）\n"
               "  [全文摘錄]：單月 746 億元。\n"
-              "\n"
+              "</UNTRUSTED_SOURCE_DATA>\n"
               "  縮排但不屬於任何新聞的說明,提到習近平\n"
               "一般段落\n")
     out, dropped = cr.soften(prompt, 1)
@@ -113,3 +113,24 @@ def test_review_pr53_full_text_excerpt_goes_with_its_news_item():
     orphan = "- [N3] [來源A:大紀元] 法輪功集會\n  [全文摘錄]：現場約三千人。\n- [N4] 其他新聞\n"
     out, dropped = cr.soften(orphan, 1)
     assert dropped == 1 and "現場約三千人" not in out and "[N4]" in out
+
+
+def test_review_pr53_round2_multi_paragraph_excerpts_stay_with_their_item():
+    """全文保留分段:第二段起沒有縮排、中間有空行,也都是同一則。"""
+    prompt = ("【重大事件】\n"
+              "- [N1] [來源A:路透] 兩國領袖會面（摘要）\n"
+              "  [全文摘錄]：第一段。\n"
+              "第二段談習近平。\n"
+              "\n"
+              "第三段是後續。\n"
+              "- [N2] [來源A:鉅亨] 台達電營收創高（摘要）\n"
+              "  [全文摘錄]：單月 746 億元。\n"
+              "第二段講毛利率。\n"
+              "※ 各事件附 surprise_score\n"
+              "寫稿規則照舊,提到習近平也不動\n")
+    out, dropped = cr.soften(prompt, 1)
+    assert dropped == 1 and "[N1]" not in out and "第二段談習近平" not in out and "第三段是後續" not in out
+    assert "[N2]" in out and "第二段講毛利率" in out and "【重大事件】" in out
+    assert "※ 各事件附 surprise_score" in out and "寫稿規則照舊,提到習近平也不動" in out
+    clean = prompt.replace("習近平", "某人")
+    assert cr.soften(clean, 1) == (clean, 0)   # 沒有東西要拿:原樣

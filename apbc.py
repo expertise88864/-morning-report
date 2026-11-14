@@ -20,6 +20,9 @@ TPE = dt.timezone(dt.timedelta(hours=8))
 JST = dt.timezone(dt.timedelta(hours=9))
 TEAMS = {"TPE": "中華隊", "JPN": "日本", "KOR": "韓國", "AUS": "澳洲"}
 _FINALS = ("季軍賽", "冠軍賽")
+#: 隊名欄位的各種寫法 → 代號。11-13 實信:比賽打完後編輯把 RoadAbr 從「TPE」改成「中華台北」,賽程整個不見
+_ALIAS = {"中華台北": "TPE", "中華": "TPE", "中華隊": "TPE", "台灣": "TPE", "臺灣": "TPE",
+          "日本": "JPN", "韓國": "KOR", "南韓": "KOR", "澳洲": "AUS", "澳大利亞": "AUS"}
 _WIKI = "https://zh.wikipedia.org/w/api.php"
 _FIELD = r"\|\s*{}\s*=\s*([^|\n}}]*)"
 
@@ -27,6 +30,14 @@ _FIELD = r"\|\s*{}\s*=\s*([^|\n}}]*)"
 def _field(block: str, key: str) -> str:
     m = re.search(_FIELD.format(key), block)
     return m.group(1).strip() if m else ""
+
+
+def _team(block: str, side: str) -> str:
+    """先看 `Road= {{bb|TPE}}` 的模板代號(最穩),再看縮寫欄位(代號或中文隊名);認不出回空字串(待定)。"""
+    code = re.search(r"\|\s*%s\s*=[^|\n]*\{\{\s*bb\s*\|\s*([A-Za-z]{3})\s*\}\}" % side, block)
+    name = code.group(1) if code else _field(block, side + "Abr").strip("' ")
+    name = _ALIAS.get(name, name.upper())
+    return name if name in TEAMS else ""
 
 
 def _runs(text: str) -> int | None:
@@ -51,7 +62,7 @@ def parse(wikitext: str) -> list[dict]:
             raise ValueError("亞冠賽 linescore 缺日期或時間")
         start = dt.datetime(*map(int, day.groups()), *map(int, clock.groups()), tzinfo=JST)
         games.append({"stage": stage, "start": start.astimezone(TPE),
-                      "away": _field(block, "RoadAbr"), "home": _field(block, "HomeAbr"),
+                      "away": _team(block, "Road"), "home": _team(block, "Home"),
                       "away_score": _runs(_field(block, "RR")), "home_score": _runs(_field(block, "HR"))})
     return games
 

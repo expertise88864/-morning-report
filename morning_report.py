@@ -63,6 +63,7 @@ from data_quality import (  # noqa: E402,F401  覆蓋率判準搬到葉模組,�
 import run_manifest as _rm
 import analysis_origin as _ao
 import legacy_actor_guard as _legacy_actor_guard
+import content_risk as _content_risk
 import official_numbers as _official
 import report_polish as _polish
 import market_fresh as _fresh
@@ -12824,7 +12825,7 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     accepted=False, error=_http_reason[:160],
                     elapsed=time.monotonic() - _t0,
                     prompt_chars=len(prompt))
-                if code == 400 and not slim:
+                if code == 400 and not slim and not _content_risk.is_refusal(body):
                     # 400 → 改精簡 payload(去 reasoning + 降 tokens)立即重試,排除參數/長度問題
                     print("[llm] DeepSeek 400 → 改用精簡 payload 重試", file=sys.stderr)
                     _backoff_reason = _http_reason
@@ -15012,8 +15013,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
         # prompt 組裝崩了（例：歷史記憶欄位格式化錯誤）—— 仍寄信，但用備援文字
         print(f"[llm] prompt 組裝失敗，改用備援文字: {type(e).__name__}: {e}", file=sys.stderr)
         return _fallback_analysis_text(news, e)   # 出處在該函式內標記
-    try:
-        text = _call_llm_text(prompt)
+    try:   # 11-14:供應商以內容風險拒收時,拿掉可能觸發的新聞再送;之後的短版重試沿用實際送出的那份
+        text, prompt = _content_risk.call(_call_llm_text, prompt, _DEGRADED_STEPS.append)
         if _analysis_complete_enough(text):
             return text
         print("[llm] 分析輸出疑似截斷，改用短版提示重試一次", file=sys.stderr)
@@ -15670,8 +15671,7 @@ def _render_weather_html(locs: list[dict],
     alerts_html = "".join(_alert_line(a) for a in (alerts or []))
     # 颱風風雨門檻警示(達標/接近才出現;紅字)。人事總處已公告的縣市不再列預測(10-24 重複訊息)
     import weather_dedupe
-    # 只在颱風警報或停班停課公告時才算(11-09 實信:東北季風陣風 76km/h 也印「接近停班停課」)
-    signal = (_typhoon_signal(weather_dedupe.without_announced(locs, suspension))   # 待定列與新聞備援不算(PR #48 外審)
+    signal = (_typhoon_signal(weather_dedupe.without_announced(locs, suspension))   # 只在颱風警報或正式公告時才算(11-09;PR #48)
               if weather_dedupe.announced(suspension) or any((a or {}).get("typhoon") for a in alerts or []) else "")
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
                    if signal else "")
@@ -16155,7 +16155,7 @@ def translate_journal_titles(articles: list[dict]) -> list[dict]:
         zh_map = {int(it.get("i", -1)): str(it.get("zh", "")) for it in items}
         for i, a in enumerate(articles):
             if zh_map.get(i):   # 11-10 實信:「（decoupling，語義待摘要確認）」只留原文術語
-                a["zh"] = zh_map[i].replace("，語義待摘要確認", "").replace("語義待摘要確認", "")
+                a["zh"] = zh_map[i].replace("，語義待摘要確認", "").replace("；語義待摘要確認", "").replace("語義待摘要確認", "")
     except Exception as e:
         print(f"[journals] 中文摘要失敗(顯示英文): {e}", file=sys.stderr)
     return articles

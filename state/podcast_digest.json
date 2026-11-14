@@ -7897,6 +7897,107 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "8acea033-ba08-4e5a-ab7c-b543bc7e486f",
+        "title": "Jensen Ousted as Nvidia CEO: \"Spy\" Scandal, Export Restrictions, Market Impact",
+        "published": "Sat, 14 Nov 2026 02:35:00 +0000",
+        "processed_at": "2026-11-14T14:38:27Z",
+        "digest": {
+          "summary_points": [
+            "主持人（Chamath）認為 Jensen 去職真正嚴重的傳導機制是「NVIDIA 銀行」停擺：NVIDIA 對新創、資料中心與基建的資本與保證多由他一人拍板，換上傳統 CEO 後投資決策會被委員會與盡職調查拖慢，這條資本鏈是市場低估的風險。",
+            "Sacks 把事件拆成兩條線：一條是疑似走私／可疑情報關係，該查；但至今唯一確定的犯罪是有人把機密情報備忘錄洩漏給媒體。他也點出中國其實不要美國晶片（已禁 H20、擋 H200，最新開源模型全用華為晶片訓練），所以「賣降規晶片給中國」這條政策爭議本身已無實質意義，而中國鷹派與中共在此議題上立場一致。",
+            "Friedberg 認為美國的 AI 優勢是「迭代速度」而非某一顆晶片：NVIDIA 每年推進一個世代，失去 Jensen 可能掉一兩個節拍，等於送給華為追趕時間（華為以 384 顆自製晶片組 rack 對抗 NVIDIA 的 NVL72）。他並預期新一屆國會將推動晶片內建 GPS 與遠端關機（兩黨的 Chip Security Act），這是比人事更長期的風險。",
+            "Chamath 逐一拆解「誰受益」：中國在無晶片與有晶片兩種情境下都不會更好，AMD、Google 與晶片新創短期也拿不到好處（產能、HBM 與規模驗證仍要自己做），唯一明確受益的是想把算力監控與遠端關機權收歸政府的一方——這正好給他們推動立法的切口。",
+            "Anthropic IPO：出售 8.25 億股、定價 70–78 美元、估值約 1.4 兆美元、募資 900 億美元；Chamath 預測超額認購會把估值推上 1.75 兆、募資上看 1,000 億美元，但他提醒這檔股票只有 20% 的價值來自 Anthropic 自身，其餘 80% 繫於總經、AI 交易與 NVIDIA；Jason 則認為 Anthropic 正在做「終極捆綁」（會議、白板／試算表、個人理財、法律），是微軟與所有 SaaS 的殺手，甚至可能是全球最大公司且目前被低估。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為失去 Jensen 等於失去每年推進一個晶片世代的節奏，短期內很難不「掉一兩個節拍」，即使換人接手也難以維持原本的迭代速度。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Nvidia's success was based on the ability to tape out a new chip design every year. And Jensen is fundamental to that rapid progress.",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為其企業級營收已超車 OpenAI，產品線一路捆綁擴張，若相信「贏者全拿」的故事，IPO 值得配置一部分資產。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為 Anthropic 以捆綁策略直接侵蝕 Office 與各項 SaaS，微軟若不推出對等競品反擊，特許權會被吃掉。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I think anthropic is building the Microsoft killer and every SaaS company killer by bundling.",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為 NVIDIA 出事不會自動把需求轉給超微，因為它們仍得先讓晶片在規模上跑通、並搶到晶圓與 HBM 產能。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "So they don't necessarily benefit in the short term. They still have a lot of work that they have to do.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Palo Alto Networks",
+              "code": "PANW",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "僅為主持人的假設性想法：提議 NVIDIA 乾脆買下 Palo Alto 補足資安，並由 Nikesh Arora 接任執行長；並非明確的買賣建議。",
+              "stance_basis": "unclear",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "Why not have Nvidia buy Palo Alto networks? They need security. Security is a key issue, cyber in this space. And just Nvidia can easily afford to buy Palo Alto. You put Nikash in that suit.",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "Chamath 認為最壞情境下要認真考慮折損 50 到 150 個基點的經濟成長：民主黨勝選後本來就有一整套減緩資料中心與 AI 的立法框架，再加上 NVIDIA 這類錨定型公司可能放慢投資，會進一步壓縮成長；他並直言「我認為 2028 年前我們會進入衰退」。",
+          "action_view": "對 Anthropic IPO，Chamath 主張不必猜最終定價，只要相信「贏者全拿」的情境有足夠機率成真，就值得把一部分投資組合配置進去；但他也提醒若 NVIDIA 事件還有未爆彈、市場轉為 risk-off，IPO 的實際定價會被 11 月 20 日前的消息面主導。",
+          "notable_quote": "The Bank of Nvidia ran through Jensen and it's not clear what happens now.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "The Bank of Nvidia ran through Jensen and it's not clear what happens now."
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 2,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "8de68398-23b0-492c-b5d4-f18ff7bd227f",
         "title": "Freedom vs. Safety: Axon CEO Rick Smith on the Future of Policing",
         "published": "Tue, 10 Nov 2026 23:03:00 +0000",
@@ -8435,58 +8536,6 @@
           "notable_quote": "I want to live in one where we're safer. And I want to keep my privacy while I do it."
         },
         "shown_at": "2026-08-18T22:29:01Z"
-      },
-      {
-        "guid": "b9acd3c5-2292-42ed-8fcb-4228ccea6dfd",
-        "title": "Anthropic's $2T IPO, Zuck's AI Manifesto, Nvidia's $500B AI Bet, Grok's Comeback",
-        "published": "Fri, 14 Aug 2026 20:11:00 +0000",
-        "processed_at": "2026-08-15T19:56:52Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Anthropic 傳出以 2 兆美元 IPO 的估值「有點誇張」,可能是銀行放話;實際定價會更保守,以便吸收鎖定期賣壓,但對其年化營收將達 100-120 億美元、年增 10 倍的驚人成長仍表肯定。",
-            "針對 Zuckerberg「去中心化、開源」宣言,主持人強調 AI 太危險所以不能集中化;人類需要能代表個別使用者的 AI,而非由單一公司(如 Anthropic)決定利益,並呼應「開放原始碼讓前沿模型更有價值」的觀點。",
-            "對 NVIDIA 攜手 Goldman/BlackRock 等籌集 5000 億美元 AI 算力融資,主持人看好其將 GPU 視為可融資資產的策略,並認為這不是循環融資,反而能解除算力建設的資金限制;最大風險是未來可能出現算力過剩(暗 GPU)。",
-            "主持人評估 Anthropic 明年營收成長將明顯減速,因為開源模型(GLM/Meta 等)以便宜 90% 的價格搶市;他預估 2027 年收入約 4000-5000 億美元(出口年率),而非 1 兆美元,但這已是史詩級成長。",
-            "xAI 的 Grok 4.6 已追上前沿,打破原本「Anthropic+OpenAI 雙寡頭」看法;Grok Bot 的普及讓 AI 更個人化,而 Elon 整合 Cursor 與 SpaceX 團隊是追上來的關鍵。",
-            "主持人認為市場對資料中心的「水電恐慌」是被誇大的謊言;AI 資料中心反而降低電價、繁榮小鎮,短期需要天然氣,長期靠太陽能/核能,而這波建設潮將帶動能源與設備股。",
-            "Silver Lake 據傳將收購 Workday,主持人視為軟體業觸底的重要訊號;開源 AI 降低了軟體公司成本,讓私有股權資金願意回頭買軟體,整個產業的投資環境將改變。",
-            "Anthropic 的 S1 財報將是 AI 產業最重要的領先訊號;若它踩煞車(需求下滑),整個算力供應鏈會連環追撞;但主持人也強調 Anthropic 其實有現金流、並非補貼,市場上很多「AI泡沫論」是錯的。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "把 GPU 變成可融資資產,並與 Goldman/BlackRock 合作融資,解除算力建設資金限制,主持人認為策略聰明且有利需求。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Zuckerberg 提倡開源與去中心化 AI,主持人普遍認同,並認為這符合美國利益及用戶自主權。"
-            },
-            {
-              "name": "Workday",
-              "code": "WDAY",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "傳被 Silver Lake 收購,主持人視為軟體業觸底訊號,私有化買盤將改變軟體投資環境。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Amazon DSP 司機僱用爭議引來監管壓力,主持人意見分歧;成本與聲譽風險需觀察,但整體效率仍高。"
-            }
-          ],
-          "market_view": "AI 需求極大、成長驚人,但必須注意算力與能源的實體限制、開源模型的競爭,以及封閉前沿公司高估值的風險;整體仍看好 AI 與軟體業,認為 AI 泡沫論者忽略實際現金流。",
-          "action_view": "持續看好 AI 基礎設施(如 NVIDIA、能源/資料中心)與開源生態;對封閉前沿模型 IPO 估值持保留態度,可留意軟體公司私有化/併購機會(如 Workday)。",
-          "notable_quote": "This technology is too dangerous to centralize."
-        },
-        "shown_at": "2026-08-15T22:10:34Z"
       }
     ]
   },

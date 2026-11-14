@@ -94,3 +94,22 @@ def test_apbc_reads_team_from_the_template_or_chinese_names():
     assert [(g["away"], g["home"]) for g in apbc.parse(plain)] == [("JPN", "TPE")]
     unknown = "{{linescore\n|Date= 2026年11月15日\n|Time= 19:00\n|Road= {{bb|}}\n|RoadAbr= \n|Home= 待定\n|HomeAbr= 勝者\n}}\n"
     assert [(g["away"], g["home"]) for g in apbc.parse(unknown)] == [("", "")]
+
+
+def test_review_pr53_full_text_excerpt_goes_with_its_news_item():
+    """高權重新聞下一行是 `  [全文摘錄]：…`:只刪標題列會把觸發內容留在提示詞裡。"""
+    prompt = ("- [N1] [來源A:路透] 白宮討論出口管制（摘要）\n"
+              "  [全文摘錄]：報導提到習近平與川普將會面。\n"
+              "- [N2] [來源A:鉅亨] 台達電營收創高（摘要）\n"
+              "  [全文摘錄]：單月 746 億元。\n"
+              "\n"
+              "  縮排但不屬於任何新聞的說明,提到習近平\n"
+              "一般段落\n")
+    out, dropped = cr.soften(prompt, 1)
+    assert dropped == 1 and "[N1]" not in out and "報導提到習近平與川普" not in out   # 標題沒敏感字,全文有:整則拿掉
+    assert "[N2]" in out and "單月 746 億元" in out
+    assert "縮排但不屬於任何新聞的說明" in out and "一般段落" in out and out.endswith("\n")
+    # 標題敏感、全文不敏感:延續列也一起拿掉,不留孤兒
+    orphan = "- [N3] [來源A:大紀元] 法輪功集會\n  [全文摘錄]：現場約三千人。\n- [N4] 其他新聞\n"
+    out, dropped = cr.soften(orphan, 1)
+    assert dropped == 1 and "現場約三千人" not in out and "[N4]" in out

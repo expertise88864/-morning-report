@@ -31,17 +31,32 @@ def is_refusal(error) -> bool:
     return MARKER in str(error or "")
 
 
-def soften(prompt: str, level: int) -> tuple[str, int]:
-    """回傳 (減過的提示詞, 拿掉幾列)。level 1 較保守,2 較廣。"""
-    kept, dropped = [], 0
+def _items(prompt: str) -> list[list[str]]:
+    """把提示詞切成「一則」:清單列連同它下面縮排的延續列(高權重新聞的 `  [全文摘錄]：…`)是同一則;
+    其他每一行各自一則。外審 PR #53:只刪標題列會把全文摘錄留在提示詞裡,重送照樣被拒。"""
+    items: list[list[str]] = []
     for line in str(prompt or "").split("\n"):
-        tagged = bool(_TAGGED.match(line))
-        risky = (tagged and _HIGH.search(line)) or (
-            level >= 2 and ((tagged and _BROAD.search(line)) or (_LISTED.match(line) and _HIGH.search(line))))
+        continuation = bool(items) and bool(_LISTED.match(items[-1][0])) and line[:1] in (" ", "\t") \
+            and line.strip() and not _LISTED.match(line)
+        if continuation:
+            items[-1].append(line)
+        else:
+            items.append([line])
+    return items
+
+
+def soften(prompt: str, level: int) -> tuple[str, int]:
+    """回傳 (減過的提示詞, 拿掉幾則)。level 1 較保守,2 較廣;判斷看整則(含延續列)。"""
+    kept, dropped = [], 0
+    for item in _items(prompt):
+        head, whole = item[0], "\n".join(item)
+        tagged = bool(_TAGGED.match(head))
+        risky = (tagged and _HIGH.search(whole)) or (
+            level >= 2 and ((tagged and _BROAD.search(whole)) or (_LISTED.match(head) and _HIGH.search(whole))))
         if risky:
             dropped += 1
         else:
-            kept.append(line)
+            kept.extend(item)
     return "\n".join(kept), dropped
 
 

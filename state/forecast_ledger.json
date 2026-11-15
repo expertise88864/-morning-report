@@ -10116,8 +10116,16 @@
    "6446"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "1802": 85.1,
+   "3661": 4040.0,
+   "2618": 46.9,
+   "3443": 8645.0,
+   "6446": 1375.0
+  },
+  "taiex_entry": 43719.75
  },
  {
   "question": "2330_open_up",
@@ -10210,9 +10218,9 @@
  },
  {
   "type": "top5",
-  "created": "2026-11-14",
+  "created": "2026-11-16",
   "ledger_schema_version": 2,
-  "created_at": "2026-11-14T06:06:21.172667+08:00",
+  "created_at": "2026-11-16T06:06:16.230801+08:00",
   "target_session": "2026-11-16",
   "base_session": "2026-11-13",
   "codes": [
@@ -10241,8 +10249,8 @@
  {
   "question": "2330_open_up",
   "label": "2330 開盤高於昨收",
-  "created": "2026-11-14",
-  "created_at": "2026-11-14T06:06:21.172667+08:00",
+  "created": "2026-11-16",
+  "created_at": "2026-11-16T06:06:16.230801+08:00",
   "target": "2026-11-16",
   "threshold": 2350.0,
   "pred_pct": -0.346,
@@ -10259,15 +10267,15 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "6b83b6df34eb"
+   "git_sha": "3dc51cb01b7b"
   },
-  "git_sha": "6b83b6df34eb"
+  "git_sha": "3dc51cb01b7b"
  },
  {
   "question": "taiex_open_up",
   "label": "加權指數開盤高於昨收",
-  "created": "2026-11-14",
-  "created_at": "2026-11-14T06:06:21.172667+08:00",
+  "created": "2026-11-16",
+  "created_at": "2026-11-16T06:06:16.230801+08:00",
   "target": "2026-11-16",
   "threshold": 43675.12,
   "pred_pct": -0.437,
@@ -10284,21 +10292,21 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "6b83b6df34eb"
+   "git_sha": "3dc51cb01b7b"
   },
-  "git_sha": "6b83b6df34eb"
+  "git_sha": "3dc51cb01b7b"
  },
  {
   "type": "mz_shadow",
-  "created": "2026-11-14",
-  "created_at": "2026-11-14T06:06:21.172667+08:00",
+  "created": "2026-11-16",
+  "created_at": "2026-11-16T06:06:16.230801+08:00",
   "target": "2026-11-16",
   "raw": 2341.87,
-  "shadow": 2343.29,
+  "shadow": 2343.82,
   "base": 2350.0,
-  "a": -0.184,
-  "b": 0.8023,
-  "n_train": 119,
+  "a": 0.275,
+  "b": 0.7942,
+  "n_train": 120,
   "forecast_version": "prob-v2",
   "mz_rule": "delta-mz-hac-v1",
   "versions": {
@@ -10309,8 +10317,8 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "6b83b6df34eb"
+   "git_sha": "3dc51cb01b7b"
   },
-  "git_sha": "6b83b6df34eb"
+  "git_sha": "3dc51cb01b7b"
  }
 ]

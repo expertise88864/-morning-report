@@ -2475,6 +2475,65 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "2dbfc3b6-cce7-40f4-a605-ee2a7486f32d",
+        "title": "EP354. 是誰想打倒黃仁勳、輝達 AI 央行的未來、SPCX 併 TSLA 快來了！ | M觀點",
+        "published": "Mon, 16 Nov 2026 05:49:25 GMT",
+        "processed_at": "2026-11-16T09:31:13Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為黃仁勳下台是四股勢力合擊（白宮對中鷹派、國會反AI與鷹派議員、民主黨透過紐時、以及可能受益的Anthropic），關鍵在接下來國會閉門聽證；若他無法交代MegaSpeed 5萬片GPU去向，恐難回任，對輝達是大不利空。",
+            "主持人拆解輝達循環融資：股權投資660億、保證算力回購360億、信用擔保1085億美元，總計約2105億，而輝達今明兩年營業利益合計約3800億美元；即使最糟全部歸零也不足一年獲利，合理最壞虧損僅300-400億，批評者根本沒算數字。",
+            "主持人警告若黃仁勳無法回任，新任CFO可能縮減AI基礎建設融資，導致AI算力成長從40%下修至30%，相關公司估值可能腰斬；但循環融資本身不是危機。",
+            "主持人認為SpaceX與特斯拉合併預計12月宣布，將以SpaceX為主體併購特斯拉，特斯拉股東可獲15-20%溢價且會同意；未來兩年川普政府任內應可通過，但2028民主黨執政後可能找麻煩。",
+            "主持人推演最壞情境：黃仁勳若無法回任可能自掏數百億美元、募資200-300億成立ASIC晶片公司，挖角100名輝達精英，兩三年內成為有競爭力的AI晶片廠，對輝達是另一大利空。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為黃仁勳若無法回任，輝達將面對人才流失與可能新公司競爭，整體走向是大利空。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "現在這整個走向就是輝達的大利空",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為SpaceX與特斯拉合併即將宣布，特斯拉股東會同意且預期有15-20%溢價。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得特斯拉股東一定會同意我無法想像特斯拉股東會不同意",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為黃仁勳回任與否是輝達與AI基礎建設族群的關鍵變數；若回不去，AI央行縮手將拖慢算力成長並引發估值修正，但循環融資實際風險遠低於市場擔憂。",
+          "action_view": "主持人沒有明確進出時點，但暗示以國會聽證結果為判讀關鍵；股東可對董事會施壓，若黃仁勳無法回任應留意輝達及AI基礎建設股的下修風險。",
+          "notable_quote": "輝達這錢對輝達來講是一個piece of cake好嗎",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "輝達這錢對輝達來講是一個piece of cake好嗎"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "79b3c4ee-2a2b-455b-92f4-5e49f79f69cd",
         "title": "EP353. 黃仁勳被逼到辭職、ANT IPO 最新消息、Grok Bot 成本分析 | M觀點",
         "published": "Thu, 12 Nov 2026 16:29:49 GMT",
@@ -3243,108 +3302,6 @@
           }
         },
         "shown_at": "2026-10-06T02:19:08Z"
-      },
-      {
-        "guid": "2f27b778-c361-467b-b886-8c9ff15d88c6",
-        "title": "EP341. Anthropic S1 流出、OpenAI 開發者日、谷歌 Meta SPCX | M觀點",
-        "published": "Thu, 01 Oct 2026 16:08:17 GMT",
-        "processed_at": "2026-10-01T19:52:11Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Anthropic 上市估值即使達 1.8-2 兆美元也不算太不合理，因為它是當下最強前沿 AI 實驗室；但他批評其 IPO 治理架構：創辦人透過 Founder LLC 掌握 50.1% 投票權，加上 5 人 Long Term Benefit Trust 可選 4/7 董事、自我延續，可能凌駕創辦人，但上市後他仍會買。",
-            "主持人指出 OpenAI 的 GPT-6.1 Turbo 是當前 CP 值之王／工作碼之王：AAI 52 分僅比三個前沿模型低 1 分，成本約 0.7 美元，是 Gemini 4 Argon 的約三分之一；他認為 GPT-6.1 Turbo 的 High 模式約等於 GPT-6 Extra 的 Medium 模式，且實際 Token 用量比 GPT-6 還少。",
-            "主持人認為 OpenAI 的 DOTS 是急就章：因 Meta Muse 免費爆紅壓力而提前推出，Pro 用戶回報功能有一半未開、回應慢；他預期企業 AI Agent 市場中微軟 AutoPilot 因原生整合 Microsoft 365 在 Fortune 500 最具優勢，OpenAI、Meta、xAI 只能搶非微軟派。",
-            "主持人反駁市場看衰 Google：Google 有算力、資料、人才三要素，Gemini 4 Argon 重回前沿模型，AAI 53 分與 Extra、Fable 5.1 同級，成本 1.99 美元低於 Fable 7.63 與 Extra 3.26；尤其 Agentic Coding 指數升到第三，證明先前嘲笑者是跟風。",
-            "主持人對 SpaceX 長線有信心：Starship 第 14 飛首次進入低地軌道並部署 26 顆 Starlink V3，任務約 90 分；他預期第 15 飛可能在 10 月、2027 下半年進入成熟商業營運，股價短期難預測但基本面沒有問題，投資需耐心。"
-          ],
-          "tickers": [
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為若上市後仍是前沿 AI 第一，會買進，且估值有望接近 2 兆美元；同時批評其治理架構，但不影響買入意願。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "如果Entropy上市之後我會不會買呢,我應該會買怎麼可能不買呢,因為除非Entropy他疊出AI前沿公司以外吧,否則我們作為科技投資我們怎麼可能不去買最目前最強的AI公司一定會去買",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Google 已重回前沿模型，Agentic Coding 大幅追趕，先前看衰者是跟風；但也指出 GPT-6.1 Turbo 的 CP 值更高。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "嘴砲王過去這兩三個月你去翻過去這兩三個月他在網路上在嘲笑Google那些人那些網紅那些K.O你以後都不用聽他們的就代表他們只是個跟風向仔",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為 Meta 挖角 MongoDB CEO 進軍企業 AI 雖有小成功，但大成功需打敗微軟等，不特別看好也不看壞。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我目前並不特別看好並不特別看好但是我覺得它會有一些小成功可是它會不會有大成功就代表你要大成功你就要打敗我們剛剛講的所有的對手",
-                "direction": "neutral"
-              }
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為企業 AI Agent 市場終究由微軟主導，因原生整合 Microsoft 365 與權限系統，除非微軟自己搞砸。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "除非微軟做爛除非微軟搞砸否則這塊市場的大公司的部分應該還是微軟主導",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為 Starship 進度順利，首次進入低地軌道並部署衛星；對 SpaceX 長線有信心，但股價短期難預測。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "可是我覺得他長線還是滿有信心的他的營運沒有什麼問題只是我說真的股價什麼時候會真的到我們覺得說一路往上噴真的不是我們那麼容易能預測的",
-                "direction": "bullish"
-              }
-            }
-          ],
-          "market_view": "",
-          "action_view": "主持人提醒投資不要 all-in，即使他有八九成準確也可能看錯；對基本面沒問題的股票要有耐心，市場終究會還公道。",
-          "notable_quote": "不要all in投資mula我從來不all in你為什麼要all in你知道為什麼不all in嗎我們不all in的原因是因為我們也會看錯",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "不要all in投資mula我從來不all in你為什麼要all in你知道為什麼不all in嗎我們不all in的原因是因為我們也會看錯"
-          },
-          "direction_quality": {
-            "attributed": 5,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-02T01:06:05Z"
       }
     ]
   },

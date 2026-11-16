@@ -1,6 +1,7 @@
 """Weekly synthesis of source-backed developments; no network or model calls."""
 import datetime as dt
 import json
+import re
 import sys
 
 import state_store as _ss
@@ -228,3 +229,22 @@ _FORECAST_SECTION = """
 def _forecast_part(block: str) -> str:
     """預測統計(Python 算,事件標題已在呼叫端圍欄消毒);沒有就不出現。"""
     return block + chr(10) * 2 if block else ""
+
+
+_NUMBERED = re.compile(r"^\s*\d{1,2}[.)、]\s+")
+_NO_DATED = re.compile(r"已知日期事件[:：][^。\n]*(?:未提供|沒有|無|省略)[^。\n]*。\s*")
+
+
+def readable(markdown: str) -> str:
+    """模型輸出 → 排得開的 Markdown(只動排版,不動內容)。11-15 實信:
+
+    * 「1. … 2. … 3. …」三條大事擠成一段 —— 信件的 Markdown 轉換不認編號清單,編號列改成項目符號;
+    * 「已知日期事件：素材未提供…故省略。」是寫稿說明,不是內容,整句拿掉;
+    * 「未定期觀察條件：」自己一行,不黏在上一句後面;
+    * 模型自加的 `---` 水平線拿掉(2026-08-30 實信:會印成三個橫槓)。"""
+    text, omitted = _NO_DATED.subn("", str(markdown or ""))
+    # 沒有已知日期的事件時,另一個小標也不必留(只剩一類就不用分類)
+    text = re.sub(r"[ \t]*(未定期觀察條件[:：])[ \t]*", "\n\n" if omitted else r"\n\n\1\n\n", text)
+    lines = [_NUMBERED.sub("- ", line) for line in text.splitlines() if line.strip() not in ("---", "***", "___")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip("\n")
+

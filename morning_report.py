@@ -24028,9 +24028,8 @@ def _render_week_review_html(analysis_md: str, htmllib) -> str:
         return ""
     # 模型自加的 `---` 水平線:`_md_to_html` 不認得,會印成三個橫槓的
     # 文字行(2026-08-30 實信)。段落間距版面已有,直接拿掉。
-    analysis_md = chr(10).join(
-        ln for ln in str(analysis_md).splitlines()
-        if ln.strip() not in ("---", "***", "___"))
+    import week_review
+    analysis_md = week_review.readable(analysis_md)   # 也把編號列改成項目符號、拿掉寫稿說明(11-15 實信)
     from render_utils import _md_to_html as _md, _style_analysis_html
     # 與平日段落同一版式:不再包卡片(11-08 使用者:iPhone 上卡片內距吃掉寬度,一行少 6 字)
     return _style_analysis_html("<h2>本週回顧與下週展望</h2>" + _md(analysis_md))

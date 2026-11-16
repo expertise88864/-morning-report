@@ -119,16 +119,18 @@ class _Yi(float):
 
 def _market_values(quotes, budget: int = 20000) -> list[float]:
     """行情資料裡的數字(漲跌幅寫成「跌 3.2%」時資料是 -3.2,取絕對值)。"""
-    out, stack = [], [quotes]
-    while stack and len(out) < budget:
-        node = stack.pop()
+    out, stack, seen = [], [quotes], 0   # 11-16 實信:類股法人買超 71.1 億排在上限之後,被標成未核實
+    while stack and seen < 400000:
+        node, seen = stack.pop(), seen + 1
         if isinstance(node, dict):
             stack.extend(_Yi(abs(v)) if str(k).endswith("_yi") and isinstance(v, (int, float)) and not isinstance(v, bool)
                          else v for k, v in node.items() if not str(k).startswith("NEWS"))
         elif isinstance(node, (list, tuple)):
             stack.extend(node[:200])
-        elif isinstance(node, (int, float)) and not isinstance(node, bool):
-            out.append(node if isinstance(node, _Yi) else abs(float(node)))
+        elif isinstance(node, _Yi):
+            out.append(node)   # 以億為單位的欄位不多,全收
+        elif isinstance(node, (int, float)) and not isinstance(node, bool) and len(out) < budget:
+            out.append(abs(float(node)))
     return out
 
 

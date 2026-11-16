@@ -46,3 +46,13 @@ def test_review_pr54_dated_events_survive_even_when_they_mention_absence():
     assert "已知日期事件：11/18 輝達財報，觀察是否仍無中國市場營收。" in out and "未定期觀察條件：" in out
     for meta in ("已知日期事件：素材未提供下週已排定日期事件，故省略。", "已知日期事件：無。", "已知日期事件：本週沒有。"):
         assert "已知日期事件" not in wr.readable(f"### 下週關注方向\n{meta} 未定期觀察條件：\n\n- 甲\n")
+
+
+def test_review_pr54_round2_chinese_dates_and_later_clauses_are_content():
+    for real in ("已知日期事件：十一月十八日輝達財報，觀察是否仍無中國市場營收。",
+                 "已知日期事件：下週三 FOMC 會議紀要，市場關注有無降息暗示。",
+                 "已知日期事件：輝達財報（週二盤後），若無上修指引則利空。"):
+        out = wr.readable(f"### 下週關注方向\n{real} 未定期觀察條件：\n\n- 甲\n")
+        assert real in out and "未定期觀察條件：" in out, real
+    for meta in ("已知日期事件：無，故省略。", "已知日期事件：上方素材沒有下週排定事件，因此不列。", "已知日期事件：尚無。"):
+        assert "已知日期事件" not in wr.readable(f"### 下週關注方向\n{meta} 未定期觀察條件：\n\n- 甲\n"), meta

@@ -38,3 +38,11 @@ def test_yi_fields_are_always_market_evidence_even_past_the_budget():
                    quotes, manifest)
     assert "71.1 億元（未核實）" not in out and manifest["llm"]["legacy_evidence"]["marked"] == 0
     le.reset()
+
+
+def test_review_pr54_dated_events_survive_even_when_they_mention_absence():
+    dated = "### 下週關注方向\n已知日期事件：11/18 輝達財報，觀察是否仍無中國市場營收。 未定期觀察條件：\n\n- Fed 升息路徑\n"
+    out = wr.readable(dated)
+    assert "已知日期事件：11/18 輝達財報，觀察是否仍無中國市場營收。" in out and "未定期觀察條件：" in out
+    for meta in ("已知日期事件：素材未提供下週已排定日期事件，故省略。", "已知日期事件：無。", "已知日期事件：本週沒有。"):
+        assert "已知日期事件" not in wr.readable(f"### 下週關注方向\n{meta} 未定期觀察條件：\n\n- 甲\n")

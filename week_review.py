@@ -232,7 +232,8 @@ def _forecast_part(block: str) -> str:
 
 
 _NUMBERED = re.compile(r"^\s*\d{1,2}[.)、]\s+")
-_NO_DATED = re.compile(r"已知日期事件[:：][^。\n]*(?:未提供|沒有|無|省略)[^。\n]*。\s*")
+#: 整句沒有任何數字(沒有日期)又說「未提供/沒有/無/省略」才是寫稿說明;有日期的句子一律保留(外審 PR #54)
+_NO_DATED = re.compile(r"已知日期事件[:：](?![^。\n]*\d)[^。\n]*(?:未提供|沒有|無|省略)[^。\n]*。\s*")
 
 
 def readable(markdown: str) -> str:

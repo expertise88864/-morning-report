@@ -289,7 +289,7 @@
    "watch_id": "w68",
    "status": "open",
    "created": "2026-10-20",
-   "last_reviewed": "2026-11-16",
+   "last_reviewed": "2026-11-17",
    "deadline": "2026-11-17"
   },
   {
@@ -313,7 +313,7 @@
    "watch_id": "w73",
    "status": "open",
    "created": "2026-10-22",
-   "last_reviewed": "2026-11-13",
+   "last_reviewed": "2026-11-17",
    "deadline": "2026-11-19"
   },
   {
@@ -337,7 +337,7 @@
    "watch_id": "w100",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-13",
+   "last_reviewed": "2026-11-17",
    "deadline": "2026-11-27"
   },
   {
@@ -349,32 +349,8 @@
    "watch_id": "w101",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-13",
+   "last_reviewed": "2026-11-17",
    "deadline": "2026-11-27"
-  },
-  {
-   "trigger": "10 年期美債殖利率能否回落至 4.90% 以下（觀察期：5 天內）",
-   "trigger_full": "10 年期美債殖利率能否回落至 4.90% 以下（觀察期：5 天內）",
-   "trigger_key": "t73e882e94ec4d4f8",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w126",
-   "status": "open",
-   "created": "2026-11-11",
-   "last_reviewed": "2026-11-16",
-   "deadline": "2026-11-16"
-  },
-  {
-   "trigger": "外資台指期淨空 -103,473 口是否縮回 9 萬口以內（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空 -103,473 口是否縮回 9 萬口以內（觀察期：5 天內）",
-   "trigger_key": "t647c45427f587cf5",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w127",
-   "status": "open",
-   "created": "2026-11-11",
-   "last_reviewed": "2026-11-16",
-   "deadline": "2026-11-16"
   },
   {
    "trigger": "外資台指期淨空 104,271 口是否在 3 個交易日內縮回 10 萬口以內，現貨市值前 10 大是否轉為買超（觀察期：5 天內）",
@@ -385,7 +361,7 @@
    "watch_id": "w130",
    "status": "open",
    "created": "2026-11-12",
-   "last_reviewed": "2026-11-16",
+   "last_reviewed": "2026-11-17",
    "deadline": "2026-11-17"
   },
   {
@@ -397,7 +373,7 @@
    "watch_id": "w132",
    "status": "open",
    "created": "2026-11-13",
-   "last_reviewed": "2026-11-16",
+   "last_reviewed": "2026-11-17",
    "deadline": "2026-11-18"
   },
   {
@@ -409,20 +385,8 @@
    "watch_id": "w134",
    "status": "open",
    "created": "2026-11-13",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-17",
    "deadline": "2026-11-18"
-  },
-  {
-   "trigger": "加權指數今日開盤是否跌破模型估計的 43,484 點，以及 2330 是否守住 2,342 元（觀察期：今日）",
-   "trigger_full": "加權指數今日開盤是否跌破模型估計的 43,484 點，以及 2330 是否守住 2,342 元（觀察期：今日）",
-   "trigger_key": "t9991a8b8ff35c3fa",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w135",
-   "status": "open",
-   "created": "2026-11-16",
-   "last_reviewed": "",
-   "deadline": "2026-11-17"
   },
   {
    "trigger": "外資台指期淨空 -100,870 口能否在 5 個交易日內縮回 9 萬口以內（觀察期：5 天內）",
@@ -447,53 +411,80 @@
    "created": "2026-11-16",
    "last_reviewed": "",
    "deadline": "2026-11-21"
+  },
+  {
+   "trigger": "台積電現貨開盤是否跌破模型估計的 2,151 元中樞，以及盤中能否收復 2,200 元（觀察期：今日）",
+   "trigger_full": "台積電現貨開盤是否跌破模型估計的 2,151 元中樞，以及盤中能否收復 2,200 元（觀察期：今日）",
+   "trigger_key": "t771f4e7e5b692350",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w138",
+   "status": "open",
+   "created": "2026-11-17",
+   "last_reviewed": "",
+   "deadline": "2026-11-18"
+  },
+  {
+   "trigger": "外資台指期淨空單是否從 96,787 口繼續回補至 9 萬口以內，同時現貨市值前 10 大合計轉為買超（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空單是否從 96,787 口繼續回補至 9 萬口以內，同時現貨市值前 10 大合計轉為買超（觀察期：5 天內）",
+   "trigger_key": "t1d108f0c5b2bf458",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w139",
+   "status": "open",
+   "created": "2026-11-17",
+   "last_reviewed": "",
+   "deadline": "2026-11-22"
+  },
+  {
+   "trigger": "10 年期美債殖利率是否站上 5.2%，以及 12 月升息 1 碼機率是否維持在 95% 上方（觀察期：5 天內）",
+   "trigger_full": "10 年期美債殖利率是否站上 5.2%，以及 12 月升息 1 碼機率是否維持在 95% 上方（觀察期：5 天內）",
+   "trigger_key": "taf5207310cd5de1e",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w140",
+   "status": "open",
+   "created": "2026-11-17",
+   "last_reviewed": "",
+   "deadline": "2026-11-22"
   }
  ],
- "watch_seq": 137,
+ "watch_seq": 140,
  "legacy_report": {
-  "date": "2026-11-16",
+  "date": "2026-11-17",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球晶圓代工龍頭，先進製程市佔逾九成）**：10 月營收 5,868.9 億元、年增 59.7%，同步改寫單月新高；中科廠區持續布建先進封裝產能，設備商萬潤、倍利科同步受惠。營收創高來自 AI 加速器與先進封裝拉貨，這條鏈直接連到 2330 的稼動率；但近 5 日已漲 10.07%，好消息的邊際效應在遞減。今日開盤跟的是 ADR 折價，模型估合理價 2,342 元、低於上週五收盤 2,350 元，短線先看回測而非續攻。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6662565) [經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTFB6cExncktma3VSTEpxU194T0dkejZJSkctcEVSM2JZa3lvalJaeG5EZ0tSSGl4a2t6VG03allqR05CZ1Y1QzJ2cDRLcW1lRllaSkh3M1RrUy1FZ9IBX0FVX3lxTE9ad1cwS0ZHWEpGNkJ2dlFUUjJuVjVnNFhYdXF0OE1jUkx3UWgtWFR4TWRmQWg0cDhHbXp1NEtNOXJVYm9LRGc3eHJIN09KZlB3QVY2Z3k4RkJLa0hzOUxj?oc=5)",
+    "statement": "**台積電（2330）旗下投資布局**：媒體報導台積電將在 5 億美元額度內設立投資公司，扶植半導體產業。這與日前宣布以 300 億美元及 200 億美元增資海外子公司是不同層級的事——前者是對外布局，後者是對內生態系投資。機制上，5 億美元相對台積電單季資本支出僅屬小額，對 2330 的每股盈餘影響目前判斷不出來，真正值得追的是這家投資公司的標的會不會落在先進封裝或矽光子等 CoWoS 周邊環節。**目前沒有投資標的與時程，還看不出影響多大**。**[B 級・信心:低-中]**　[經濟日報](https://news.google.com/rss/articles/CBMieEFVX3lxTE1PRzRLeWlRY1dmeG8xdktXelpSWUp0eHluUmNCaGJOWmMxcGhRSFlLdXNGVnM3QUIyZzFEZnI2QThQb2dXa1cxVjJIS1ZoSjdJLUZ6d3lRc1J5NnJ4cUtKcC1Vb1BVaDBMVG9QUUFxcVFCU241S1lZWQ?oc=5) [鉅亨台灣總經](https://news.cnyes.com/news/id/6663974)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6662565",
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTFB6cExncktma3VSTEpxU194T0dkejZJSkctcEVSM2JZa3lvalJaeG5EZ0tSSGl4a2t6VG03allqR05CZ1Y1QzJ2cDRLcW1lRllaSkh3M1RrUy1FZ9IBX0FVX3lxTE9ad1cwS0ZHWEpGNkJ2dlFUUjJuVjVnNFhYdXF0OE1jUkx3UWgtWFR4TWRmQWg0cDhHbXp1NEtNOXJVYm9LRGc3eHJIN09KZlB3QVY2Z3k4RkJLa0hzOUxj?oc=5"
+     "https://news.google.com/rss/articles/CBMieEFVX3lxTE1PRzRLeWlRY1dmeG8xdktXelpSWUp0eHluUmNCaGJOWmMxcGhRSFlLdXNGVnM3QUIyZzFEZnI2QThQb2dXa1cxVjJIS1ZoSjdJLUZ6d3lRc1J5NnJ4cUtKcC1Vb1BVaDBMVG9QUUFxcVFCU241S1lZWQ?oc=5",
+     "https://news.cnyes.com/news/id/6663974"
     ]
    },
    {
-    "statement": "**南亞科（2408，DRAM 製造商）**：業者認為明年上半年 DRAM 供給恐更缺，部分模組廠已採惜售策略，南亞科第 3 季獲利再創新高、前三季 EPS 49.28 元。缺貨推升報價，南亞科直接受益，但股價 5 日僅漲 9.8%，落後大盤，顯示市場已部分定價。缺貨延續到明年上半年，惟新聞未提供報價漲幅，還看不出對毛利率的具體貢獻。**[B 級・信心:中-低]**　[中央社](https://www.cna.com.tw/news/afe/202611150073.aspx)",
+    "statement": "**記憶體族群（南亞科、華邦電）**：美國加州北區聯邦地方法院駁回三星、SK 海力士與美光撤銷 DRAM 反壟斷訴訟的動議，案件將繼續審理，原告主張三家合計占全球 DRAM 營收逾 91%。這是一項程序裁定，並未認定三家確實共謀或違法，但代表 2022 年以來的減產與轉向 HBM 行為會持續被放在放大鏡下。同日南亞科、華邦電股價仍重挫逾 9%，顯示市場並沒有把「報價上漲」當成利多。機制在於：若後續判決導致擴產壓力，傳統 DRAM 供給緊俏的假設就要打折；不過訴訟時程以年計，第 4 季還看不到現金流影響。**[A 級・信心:中-低]**　[鉅亨美股](https://news.cnyes.com/news/id/6664467) [聚財網](https://news.google.com/rss/articles/CBMiTEFVX3lxTFBBckhfckduNi1GY19VdDZ1OFp2NjY4bjZtRTdOWl9HZDlwTEJfOEcwZ2FMZnlyQ3VLYzlzTDJPa01iRjAxZ3ZFeUszOUI?oc=5)",
     "source_urls": [
-     "https://www.cna.com.tw/news/afe/202611150073.aspx"
+     "https://news.cnyes.com/news/id/6664467",
+     "https://news.google.com/rss/articles/CBMiTEFVX3lxTFBBckhfckduNi1GY19VdDZ1OFp2NjY4bjZtRTdOWl9HZDlwTEJfOEcwZ2FMZnlyQ3VLYzlzTDJPa01iRjAxZ3ZFeUszOUI?oc=5"
     ]
    },
    {
-    "statement": "**Marvell（MRVL，資料中心網通晶片商）**：傳出以千億美元級規模併購，CPO（把光引擎與晶片封裝在一起、以光取代部分銅線互連）「光進銅退」加速，台廠三大族群爆轉單潮。CPO 需要更高階的先進封裝與矽光子產能，對台積電的 SoIC 與 CoWoS 是新增需求。不過併購金額不等於台廠訂單，目前沒有轉單金額與時程，還看不出影響多大；這條與上一條的模型價格戰同向——推論需求放大，頻寬與封裝需求就跟著放大。**[B 級・信心:低]**　[中時新聞網](https://news.google.com/rss/articles/CBMibkFVX3lxTFA0d2ZIcTg0cTVoMzVsWnpGUFd5YmRabnVKSlNHQWQ0cXpsa2pUSVUtUU1Ma2tfZE9sMExEZUNDN285Z0NuWF8xMFRkNjl4ZFU5dW1uZlhvZTUzdXF6NFRXcVVkWjVTRjV2SU5PcmZR?oc=5)",
+    "statement": "**緯穎（6669，AI 伺服器與資料中心代工）**：高盛重申買進並維持目標價 4,000 元，理由是 ASIC 與 GPU 雙引擎帶動成長。對照昨日股價下跌 7.34% 至 1,515 元、5 日累計 -7.9%，這是賣方觀點與市場價格的明顯分歧。機制上，緯穎的營收有 80.9% 的年增率支撐，但外資 30 日累積買超僅 1.1 萬張（未核實）、投信反而賣超 1.47 萬張（未核實），籌碼與基本面不同調。**目前沒有訂單金額能驗證 4,000 元的假設，量級判斷不出來**；這與上一條記憶體的訴訟風險是兩種不同的不確定性，一個在需求端、一個在報價端，不能相加。**[B 級・信心:中-低，資訊有限]**　[TechNews 科技新報](https://news.google.com/rss/articles/CBMickFVX3lxTE5RbGJQZ2J4OFk5QlA2OTN0VjlkQ0dlbVNja18wRWJITjhTSlg4V2t3MVhpUHo4NlhQdEFpVnlqYnRqMzRYQkxLT1dSZFVTYnNTMnhmS18yODhNVHB4WGxHZGZpbHNtbU96U0pBejdVak8zUQ?oc=5)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMibkFVX3lxTFA0d2ZIcTg0cTVoMzVsWnpGUFd5YmRabnVKSlNHQWQ0cXpsa2pUSVUtUU1Ma2tfZE9sMExEZUNDN285Z0NuWF8xMFRkNjl4ZFU5dW1uZlhvZTUzdXF6NFRXcVVkWjVTRjV2SU5PcmZR?oc=5"
+     "https://news.google.com/rss/articles/CBMickFVX3lxTE5RbGJQZ2J4OFk5QlA2OTN0VjlkQ0dlbVNja18wRWJITjhTSlg4V2t3MVhpUHo4NlhQdEFpVnlqYnRqMzRYQkxLT1dSZFVTYnNTMnhmS18yODhNVHB4WGxHZGZpbHNtbU96U0pBejdVak8zUQ?oc=5"
     ]
    },
    {
-    "statement": "**【金融｜台灣】中信金（2891，銀行＋證券＋人壽金控）**：前 10 月 EPS 3.45 元、中信銀累計獲利創同期新高；金控 10 月成績單全面報喜，合庫、兆豐、台新新光同步創高，兆豐金前 10 月稅後 343.31 億元、年增 12.8%、EPS 2.31 元。銀行淨息差與財富管理手收是主要動能，壽險則靠股債評價回升，這條鏈把美債利率與台股多頭直接接到金控獲利。金融保險類股上週五法人合計買超 71.1 億元（未核實），中信金單日外資加投信買超 22,925 張。獲利創高是已實現數字，但股價月漲 18.35% 已提前反應，第 4 季就看股債市會不會回吐評價利益。**[A 級・信心:中]**　[LINE TODAY](https://news.google.com/rss/articles/CBMiZEFVX3lxTFBSNTg4bTNkbkRHalQ5ZHNKMlZJVkIwRnV3QU4wZmRBaXBSX01WSndnTFpzaDFBVHhWYkZDR1pSQ3FacjlKc2ZCbkhFMlNkS0t0N095MllacFY5SlVHVVphOWJzcEw?oc=5) [FTNN](https://news.google.com/rss/articles/CBMiS0FVX3lxTE1wZGRVdXE3VFZYUVRMWG9obVJ0dGhNUzR5eTJrdV9TeUZoTVVFQVFNX2pGVGhZQ3YzblhJOFZaZjlzR0JGUEhQb0xsUQ?oc=5) [鉅亨](https://news.cnyes.com/news/id/6663078)",
+    "statement": "**【金融｜台灣】13 家上市金控**：10 月自結合計稅後純益 361.09 億元，較 9 月的 529.74 億元月減約 31.8%，僅國泰金與台新新光金月增，其餘 11 家全數衰退；惟前 10 月累計仍達 6,679.88 億元、年增 31.8%。10 月股債匯三重動盪壓抑投資評價與資本利得，這是壽險型金控單月獲利急縮的直接原因。累計數字仍創同期新高，代表前 9 月的厚實基礎足以吸收一個月的回吐，第 4 季的觀察點是股債市會不會再來一次評價回沖。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6663495)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiZEFVX3lxTFBSNTg4bTNkbkRHalQ5ZHNKMlZJVkIwRnV3QU4wZmRBaXBSX01WSndnTFpzaDFBVHhWYkZDR1pSQ3FacjlKc2ZCbkhFMlNkS0t0N095MllacFY5SlVHVVphOWJzcEw?oc=5",
-     "https://news.google.com/rss/articles/CBMiS0FVX3lxTE1wZGRVdXE3VFZYUVRMWG9obVJ0dGhNUzR5eTJrdV9TeUZoTVVFQVFNX2pGVGhZQ3YzblhJOFZaZjlzR0JGUEhQb0xsUQ?oc=5",
-     "https://news.cnyes.com/news/id/6663078"
+     "https://news.cnyes.com/news/id/6663495"
     ]
    },
    {
-    "statement": "**【航運｜台灣】萬海（2615，貨櫃航商）**：前三季 EPS 14.61 元、法人估全年 19.4 元；貨櫃三雄第 4 季淡季不淡，法人目標價一次出籠。運價維持高檔，加上塞港與地緣擾動使艙位供給偏緊，這條鏈直接連到貨櫃航商的營收。淡季不淡代表全年 EPS 有機會站上 19 元，但 WTI 88.56 美元的燃油成本居高，利差不會等比例放大。**[B 級・信心:中]**　[經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTE9TQ3ZEVF83N1VWTG5WWUxRV0NSdnJGUDg4Vnd6bWpXSjU0dWxfOXg1cHlEX0psU0VvN1lOZU5fV2dTM1FHMEV6dXA2MjRkM01qUlFuTW90cmNJd9IBX0FVX3lxTE9ZZ3dEQ2dKSF8ydHkzM1ZpZUtxTEdhZWVyS1pUa3FJTUYxNlVsUXM1Vmo2QWd6bFhjZU9fRENvSFRVLTNHaVI5Vm5YNGR6cWc2Sl9KcVZpdS14ZnJfbkg4?oc=5) [旺得富](https://news.google.com/rss/articles/CBMiakFVX3lxTE1PRHZfR19vTXZZczNEanpnOFo5Umc1Z2h1b1hnYkx5LWJwd0lTWHcyR25Vd01vTWRva2dHTW5VR0ZrY201Y21fbnJoUGVNR2laLUlwTC1NNHdOS1VJS2ZaSWRPaEhrLWxyY3c?oc=5)",
+    "statement": "**【汽車｜全球】特斯拉（TSLA，全球電動車龍頭）**：Cybercab 開放個人訂購，售價不到 3 萬美元，但買家須月付 299 美元訂閱自動駕駛功能。把自駕從「一次性選配」改成「訂閱制」，等於把營收從賣車延伸到軟體服務。機制上，若訂閱滲透率成形，自駕軟體的毛利遠高於整車組裝，對供應鏈的意義是感測器與車用鏡頭需求穩定但不會暴增。台廠中與車用鏡頭、ADAS 相關的廠商屬間接受惠，**目前沒有訂閱轉換率數據，還看不出影響多大**。**[B 級・信心:低-中]**　[JUKSY 街星](https://news.google.com/rss/articles/CBMiTEFVX3lxTE44NWFGZlBxS2NtSl9jcGtCS1M2ZGNxZFoyQ3lsbTdEUEE0VHpiWUEwSk1VM1Q5UWsxb3poZmFxVVFYZkVjdWE1aXRQR3M?oc=5)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE9TQ3ZEVF83N1VWTG5WWUxRV0NSdnJGUDg4Vnd6bWpXSjU0dWxfOXg1cHlEX0psU0VvN1lOZU5fV2dTM1FHMEV6dXA2MjRkM01qUlFuTW90cmNJd9IBX0FVX3lxTE9ZZ3dEQ2dKSF8ydHkzM1ZpZUtxTEdhZWVyS1pUa3FJTUYxNlVsUXM1Vmo2QWd6bFhjZU9fRENvSFRVLTNHaVI5Vm5YNGR6cWc2Sl9KcVZpdS14ZnJfbkg4?oc=5",
-     "https://news.google.com/rss/articles/CBMiakFVX3lxTE1PRHZfR19vTXZZczNEanpnOFo5Umc1Z2h1b1hnYkx5LWJwd0lTWHcyR25Vd01vTWRva2dHTW5VR0ZrY201Y21fbnJoUGVNR2laLUlwTC1NNHdOS1VJS2ZaSWRPaEhrLWxyY3c?oc=5"
-    ]
-   },
-   {
-    "statement": "**【傳產原物料｜台灣】台塑四寶**：台塑、台塑化股價跟著原油走，原物料連動個股受關注；南亞上週獲主動式 ETF 加碼逾 5,526 張，南亞營收年增 64.6% 主要來自 BT/ABF 載板而非塑化。油價 88.56 美元決定石化利差，南亞的漲勢則是電子材料比重提升，兩者要分開看。資訊有限，看不出這波ETF 加碼對股價的延續性。**[B 級・信心:中-低，資訊有限]**　[理財周刊](https://news.google.com/rss/articles/CBMib0FVX3lxTE1YVVgyR1hoYWFGLXN5VnQ2T2dqMHJ1T3VzQUhBbzJvZHhRV3hiY3FOWlRGUS1wd21mUXVFdzhHOXhHREloekhpcFdkQW1idTBOcHhmdHd4aWFxY2FCaFRMOEVjU0dPczJldnIxbjJ1aw?oc=5) [CMoney](https://news.google.com/rss/articles/CBMikAFBVV95cUxQSHZtc3owQmtuYzQ3QVY3M2Z0anNDbnc5R1NEWUoxb0E4OGswb25ESFdmb0lmQmVrM2hnT1V3LWdCYmM5RnpqQnIzcndJc28tR0V6ZFd5OGQ2ZnNjVkpUODRMTFJ5VVRNQ2tRdWtYYTdQamc1bERFY3UyeS01aElSR09oVGMtdWNfVjM0bi1RYmU?oc=5)",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMib0FVX3lxTE1YVVgyR1hoYWFGLXN5VnQ2T2dqMHJ1T3VzQUhBbzJvZHhRV3hiY3FOWlRGUS1wd21mUXVFdzhHOXhHREloekhpcFdkQW1idTBOcHhmdHd4aWFxY2FCaFRMOEVjU0dPczJldnIxbjJ1aw?oc=5",
-     "https://news.google.com/rss/articles/CBMikAFBVV95cUxQSHZtc3owQmtuYzQ3QVY3M2Z0anNDbnc5R1NEWUoxb0E4OGswb25ESFdmb0lmQmVrM2hnT1V3LWdCYmM5RnpqQnIzcndJc28tR0V6ZFd5OGQ2ZnNjVkpUODRMTFJ5VVRNQ2tRdWtYYTdQamc1bERFY3UyeS01aElSR09oVGMtdWNfVjM0bi1RYmU?oc=5"
+     "https://news.google.com/rss/articles/CBMiTEFVX3lxTE44NWFGZlBxS2NtSl9jcGtCS1M2ZGNxZFoyQ3lsbTdEUEE0VHpiWUEwSk1VM1Q5UWsxb3poZmFxVVFYZkVjdWE1aXRQR3M?oc=5"
     ]
    }
   ]

@@ -40,61 +40,6 @@
   "action": "cyberattack",
   "identity_schema": 14
  },
- "export_controls:Megaspeed:2026-11": {
-  "first_seen": "2026-11-13",
-  "days": 1,
-  "last_seen": "2026-11-13",
-  "latest_title": "Megaspeed cooperates with BIS review and launches GPU compliance audit",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "and",
-   "audit",
-   "bis",
-   "compliance",
-   "cooperates",
-   "gpu",
-   "launches",
-   "review",
-   "with"
-  ],
-  "entity": "Megaspeed",
-  "subject_basis": "literal",
-  "subjects": [
-   "Megaspeed"
-  ],
-  "event_type": "export_controls",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:strait_tension:2026-11": {
-  "first_seen": "2026-11-13",
-  "days": 1,
-  "last_seen": "2026-11-13",
-  "latest_title": "G7 foreign ministers reaffirm importance of Taiwan Strait peace and stability",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "and",
-   "foreign",
-   "g7",
-   "importance",
-   "ministers",
-   "of",
-   "peace",
-   "reaffirm",
-   "stability",
-   "strait"
-  ],
-  "entity": "台灣",
-  "subject_basis": "alias",
-  "subjects": [
-   "台灣"
-  ],
-  "event_type": "geopolitical",
-  "action": "strait_tension",
-  "identity_schema": 14
- },
  "export_controls:export_control:輝達:2026-11": {
   "first_seen": "2026-11-14",
   "days": 1,
@@ -293,6 +238,116 @@
    "烏克蘭"
   ],
   "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:輝達:2026-11": {
+  "first_seen": "2026-11-17",
+  "days": 1,
+  "last_seen": "2026-11-17",
+  "latest_title": "美國新規限制第三國資料中心向中國提供輝達先進算力",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "三國",
+   "中國",
+   "中心",
+   "先進",
+   "制第",
+   "向中",
+   "國提",
+   "國新",
+   "國資",
+   "心向",
+   "提供",
+   "料中",
+   "新規",
+   "第三",
+   "算力",
+   "美國",
+   "規限",
+   "資料",
+   "進算",
+   "限制"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:輝達:2026-11#93c974": {
+  "first_seen": "2026-11-17",
+  "days": 1,
+  "last_seen": "2026-11-17",
+  "latest_title": "美財長要求輝達就疑似規避對中晶片管制疑慮說明",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "中晶",
+   "似規",
+   "制疑",
+   "對中",
+   "就疑",
+   "慮說",
+   "晶片",
+   "片管",
+   "疑似",
+   "疑慮",
+   "管制",
+   "美財",
+   "要求",
+   "規避",
+   "說明",
+   "財長",
+   "避對",
+   "長要"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:美光:2026-11": {
+  "first_seen": "2026-11-17",
+  "days": 1,
+  "last_seen": "2026-11-17",
+  "latest_title": "美國法官拒絕駁回對 Samsung、SK Hynix 及 Micron 的 DRAM 價格操控訴訟 - Techritual",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "dram",
+   "hynix",
+   "samsung",
+   "sk",
+   "techritual",
+   "價格",
+   "回對",
+   "國法",
+   "官拒",
+   "拒絕",
+   "控訴",
+   "操控",
+   "格操",
+   "法官",
+   "絕駁",
+   "美國",
+   "訴訟",
+   "駁回"
+  ],
+  "entity": "美光",
+  "subject_basis": "alias",
+  "subjects": [
+   "美光"
+  ],
+  "event_type": "litigation",
   "action": "",
   "identity_schema": 14
  }

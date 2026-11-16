@@ -247,4 +247,3 @@ def readable(markdown: str) -> str:
     text = re.sub(r"[ \t]*(未定期觀察條件[:：])[ \t]*", "\n\n" if omitted else r"\n\n\1\n\n", text)
     lines = [_NUMBERED.sub("- ", line) for line in text.splitlines() if line.strip() not in ("---", "***", "___")]
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip("\n")
-

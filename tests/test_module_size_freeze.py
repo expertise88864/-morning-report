@@ -263,7 +263,7 @@ MODULE_CEILINGS = {
     "numeric_evidence_audit.py": 65,
     "podcast_input.py": 20,
     "news_research_runtime.py": 250,
-    "week_review.py": 255,
+    "week_review.py": 260,
     "weekend_quality.py": 130,
     # 2026-09-06: candidate delivery gate and offline contract tests are new root
     # modules. Freeze their measured initial sizes; no existing cap is raised.

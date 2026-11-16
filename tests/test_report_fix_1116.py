@@ -56,3 +56,16 @@ def test_review_pr54_round2_chinese_dates_and_later_clauses_are_content():
         assert real in out and "未定期觀察條件：" in out, real
     for meta in ("已知日期事件：無，故省略。", "已知日期事件：上方素材沒有下週排定事件，因此不列。", "已知日期事件：尚無。"):
         assert "已知日期事件" not in wr.readable(f"### 下週關注方向\n{meta} 未定期觀察條件：\n\n- 甲\n"), meta
+
+
+def test_review_pr54_round3_only_fixed_absence_phrasings_are_dropped():
+    for real in ("已知日期事件：下週三無人機展開幕。", "已知日期事件：無人機出口管制聽證會。",
+                 "已知日期事件：本週無薪假統計公布。", "已知日期事件：沒有懸念的 Fed 升息決議。"):
+        out = wr.readable(f"### 下週關注方向\n{real} 未定期觀察條件：\n\n- 甲\n")
+        assert real in out, real
+    for meta in ("已知日期事件：素材未提供下週已排定日期事件，故省略。", "已知日期事件：無。", "已知日期事件：本週沒有。",
+                 "已知日期事件：上方素材沒有下週排定事件，因此不列。", "已知日期事件：尚無。", "已知日期事件：無，故省略。",
+                 "已知日期事件：資料中查無可核實的日期事件。"):
+        assert "已知日期事件" not in wr.readable(f"### 下週關注方向\n{meta} 未定期觀察條件：\n\n- 甲\n"), meta
+    import pathlib
+    assert "沒有就連這個小標都不寫、也不必說明沒有" in pathlib.Path(wr.__file__).read_text(encoding="utf-8")

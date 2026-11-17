@@ -14,6 +14,8 @@ SERIES = (("taifex_foreign_oi", "外資台指期淨部位", " 口", 0), ("vix", 
           ("actual_taiex_prev_close", "加權指數收盤", " 點", 0), ("usdtwd", "美元兌新台幣", " 元", 2),
           ("txo_pc_oi_ratio", "台指選擇權賣權/買權未平倉比", "%", 2))
 BARS, LOOKBACK, MIN_POINTS = 20, 60, 30
+#: 夠極端才畫(2026-11-17 使用者:「不夠極端就不顯示」):今天是圖上 20 個交易日的新高或新低。
+#: 不用標準差門檻 —— 11-16 外資淨空偏離 2.15 個標準差,圖上卻只是「高於 3 天」,讀者看不出極端在哪。
 
 
 def _number(value) -> float | None:
@@ -41,7 +43,7 @@ def _points(history: list, key: str, today: dict) -> list[tuple[str, float]]:
 
 
 def pick(history: list, today: dict | None = None) -> dict:
-    """偏離最多的那個指標;今天沒有值的指標不選(圖的最後一格必須是今天)。"""
+    """夠極端的指標裡偏離最多的那個;都不夠極端就回空(當天不畫)。今天沒有值的指標不選。"""
     today, best = today or {}, {}
     for key, label, unit, digits in SERIES:
         points = _points(history, key, today)
@@ -51,6 +53,9 @@ def pick(history: list, today: dict | None = None) -> dict:
         mean = sum(earlier) / len(earlier)
         spread = math.sqrt(sum((v - mean) ** 2 for v in earlier) / len(earlier))
         score = abs(points[-1][1] - mean) / spread if spread > 0 else 0.0
+        window = [v for _, v in points[-BARS:]]
+        if points[-1][1] not in (max(window), min(window)):
+            continue
         if score > best.get("score", -1.0):
             best = {"key": key, "label": label, "unit": unit, "digits": digits, "score": score, "points": points[-BARS:]}
     return best

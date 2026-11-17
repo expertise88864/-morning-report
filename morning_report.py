@@ -63,7 +63,7 @@ from data_quality import (  # noqa: E402,F401  覆蓋率判準搬到葉模組,�
 import run_manifest as _rm
 import analysis_origin as _ao
 import legacy_actor_guard as _legacy_actor_guard
-import content_risk as _content_risk
+import content_risk as _content_risk, corporate_splits as _splits   # noqa: E401 - 行數上限
 import official_numbers as _official
 import report_polish as _polish
 import market_fresh as _fresh
@@ -4906,7 +4906,7 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
     premium_pct: Optional[float] = None    # 折溢價（vs NDX 隱含 NAV 的 60 日中位數）
     try:
         qqq_hist = yf.Ticker("QQQ").history(period="3mo", auto_adjust=False)
-        tw_hist  = yf.Ticker("00662.TW").history(period="3mo", auto_adjust=False)
+        tw_hist  = _splits.history(yf, "00662.TW", period="3mo", auto_adjust=False)   # 1 拆 5 還原(11-17)
         fx_hist  = yf.Ticker("TWD=X").history(period="3mo", auto_adjust=False)
 
         qqq_s = qqq_hist["Close"].dropna()
@@ -5142,7 +5142,7 @@ def fetch_ma200_status() -> dict:
                                  ("00631L.TW", "00631L 台灣50正2", True),
                                  ("2330.TW", "2330 台積電", False)):
         try:
-            d = yf.Ticker(sym).history(period="15mo", auto_adjust=False)
+            d = _splits.history(yf, sym, period="15mo", auto_adjust=False)   # 分割前的舊刻度還原(11-17)
             closes = [float(c) for c in d["Close"].dropna().tolist() if c == c and c > 0]
             if len(closes) < 200:
                 continue
@@ -10052,7 +10052,7 @@ def build_prediction_backtest(history: list[dict]) -> str:
         # 假持平 bar(開=收=前收、量 0),否則「不存在的開盤」會以 0.00% 誤差進入
         # MAE/bias 統計,把自我校正帶偏(理由詳 backfill_actual_opens)。
         def _hist_open(sym):
-            h = yf.Ticker(sym).history(period="10d", auto_adjust=False).dropna(subset=["Open"])
+            h = _splits.history(yf, sym, period="10d", auto_adjust=False).dropna(subset=["Open"])
             if "Volume" in h.columns:
                 h = h[h["Volume"] > 0]
             return h
@@ -10134,7 +10134,7 @@ def _fetch_open_map(symbol: str, require_volume: bool = False) -> dict:
     EMA bias,實測會讓 00662/0050 的 bias 正負號翻轉。
     ^TWII 指數的量值語意不同(可為 0/NaN),不套此濾(實測指數源不產生假 bar)。
     """
-    d = yf.Ticker(symbol).history(period="3mo", auto_adjust=False)
+    d = _splits.history(yf, symbol, period="3mo", auto_adjust=False)   # 分割還原:否則一次分割就是 -80% 的「誤差」
     d = d.dropna(subset=["Open"])
     if require_volume and "Volume" in getattr(d, "columns", []):
         d = d[d["Volume"] > 0]
@@ -10226,7 +10226,7 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         a662 = t00662_o.get(open_date)
         a2330 = t2330_o.get(open_date)
         atwii = twii_o.get(open_date)
-        p662 = h.get("fair_00662")
+        p662 = _splits.value("00662", open_date, h.get("fair_00662"), max(t00662_o, default=""))
         if p662 and a662:
             err["00662"].append((a662 - p662) / p662)
         if a2330:
@@ -10381,7 +10381,7 @@ def backfill_actual_opens(history: list[dict]) -> int:
         return 0
     try:
         def _ohlc(sym: str, require_volume: bool = False) -> tuple[dict, dict]:
-            h = yf.Ticker(sym).history(period="1mo", auto_adjust=False).dropna(subset=["Open"])
+            h = _splits.history(yf, sym, period="1mo", auto_adjust=False).dropna(subset=["Open"])
             # 個股/ETF 要求成交量 > 0:yfinance 在台股「臨時休市日」(颱風)會回一根
             # 開=收=前收、量 0 的假持平 bar(Yahoo 行事曆不知道臨時停市)。不濾掉會把
             # 「不存在的開盤」寫進 history → 回顧表出現 +0.00% 幽靈列、且污染 MAE/bias
@@ -15870,18 +15870,9 @@ def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
     from event_clock import future_rows
     events = _dedupe_calendar_events(future_rows(events, now_tpe))
 
-    # 重點美股財報(yfinance earnings;逐檔輕量,失敗逐檔略過)
-    for tk in ("NVDA", "AAPL", "MSFT", "AVGO", "TSLA", "AMD", "GOOGL", "META", "MU", "QCOM"):
-        try:
-            cal = yf.Ticker(tk).calendar
-            dates = (cal or {}).get("Earnings Date") or []
-            for d in dates[:1]:
-                ed = d if isinstance(d, dt.date) else getattr(d, "date", lambda: None)()
-                if ed and today <= ed <= end:
-                    events.append({"date": ed, "time": "盤後(美東)", "title": f"{tk} 財報",
-                                   "note": "", "impact": "high"})
-        except Exception:
-            continue
+    # 重點美股財報:換算成台北時間(11-17:calendar 的日期比公司公告晚一天,見 us_earnings)
+    import us_earnings
+    events.extend(us_earnings.events(yf, today, end, TPE))
     events.sort(key=lambda e: (e["date"], e.get("time", "")))
     return events
 
@@ -18860,7 +18851,7 @@ def _prediction_delta_note(history: list, report_date: str,
     parts: list[str] = []
     any_move = False
     for label, cur in current.items():
-        pv = prev.get(key_map.get(label, ""))
+        pv = _splits.value(label, prev.get("date"), prev.get(key_map.get(label, "")), today)   # 跨分割要同刻度比
         if (isinstance(cur, (int, float)) and isinstance(pv, (int, float)) and pv):
             pct = (cur - pv) / pv * 100
             if abs(pct) >= 0.05:

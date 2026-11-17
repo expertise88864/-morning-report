@@ -23019,6 +23019,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         if _estimated_email_kb(html) > LIMIT_KB:
             print(f"[render] keep 模式已壓到 {podcast_shown_n} 集 × {_pts_floor} 條仍偏長",
                   file=sys.stderr)
+    import email_size   # 11-17 使用者選 b:寄出那份超過約 100KB 才精簡體育(NBA 賽程 4 場、新聞 2 條)
+    if sports_html and email_size.over(_estimated_email_kb(_polish.display_pass(html))):
+        sports_html = _safe_block("體育", _render_sports_html,
+                                  email_size.compact_sports(quotes.get("SPORTS") or {}), _htmllib)
+        html = _assemble()
+        print("[render] 信件超過 100KB,體育快訊已精簡", file=sys.stderr)
     # 橫幅:trim 模式真的動了區塊 → 紅色「已暫略…」;否則(含 keep 模式)內容偏長 → 琥珀色提示可點開看全文。
     if dropped or (reduced and podcast_html):
         still_over = _estimated_email_kb(_assemble()) > LIMIT_KB  # 估含內容、未含橫幅

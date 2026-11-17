@@ -224,7 +224,7 @@ MODULE_CEILINGS = {
     "source_placement.py": 50,   # 來源連結移到段尾(2026-11-12)
     "report_polish.py": 285,   # +今日一圖的接線   # +官方成交金額、粗體與句號修補(2026-11-10)
     "report_tidy.py": 90,
-    "corporate_splits.py": 70,
+    "corporate_splits.py": 95,
     "us_earnings.py": 65,   # 美股財報日換算台北時間(2026-11-17)   # 分割還原(2026-11-17 00662 1 拆 5)
     "content_risk.py": 105,   # 供應商內容風險拒收時減新聞重送(2026-11-14)
     "apbc.py": 140,   # 亞冠賽中華隊賽程與比分(2026-11-08)

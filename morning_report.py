@@ -10081,10 +10081,10 @@ def build_prediction_backtest(history: list[dict]) -> str:
             # 回溯要衡量「實際拿來預測的值」= weighted_final;舊紀錄沒存才退回 model3。
             # 否則回溯準確度衡量的是 ADR 衰減模型(model3)、與報告實際給的預測不一致。
             pred_2330 = h.get("weighted_final_2330") or h.get("model3_2330")
-            pred_00662 = h.get("fair_00662")
             pred_0050 = h.get("pred_0050")
             actual_2330 = tw2330_opens.get(next_date)
             actual_00662 = tw0066_opens.get(next_date)
+            pred_00662 = _splits.match("00662", actual_00662, h.get("fair_00662"))   # 分割前的預測換到實際開盤的刻度
             actual_0050 = tw0050_opens.get(next_date)
 
             err_2330 = err_00662 = err_0050 = None
@@ -10226,7 +10226,7 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         a662 = t00662_o.get(open_date)
         a2330 = t2330_o.get(open_date)
         atwii = twii_o.get(open_date)
-        p662 = _splits.value("00662", open_date, h.get("fair_00662"), max(t00662_o, default=""))
+        p662 = _splits.match("00662", a662, h.get("fair_00662"))   # 預測換到實際開盤的刻度
         if p662 and a662:
             err["00662"].append((a662 - p662) / p662)
         if a2330:
@@ -10427,8 +10427,8 @@ def backfill_actual_opens(history: list[dict]) -> int:
         if not tgt or tgt >= today:        # 只回填已成熟(過去)的交易日
             continue
         for field, omap in series.items():
-            if field not in rec and tgt in omap:
-                rec[field] = omap[tgt]
+            if field not in rec and tgt in omap:   # 00662:寫回那筆紀錄自己的刻度(與它的預測一致)
+                rec[field] = _splits.match("00662", rec.get("fair_00662"), omap[tgt]) if field == "actual_open_00662" else omap[tgt]
                 filled += 1
             elif (field != "actual_open_taiex" and field in rec and omap
                   and _floor_by_field[field] <= tgt and tgt not in omap
@@ -15867,12 +15867,10 @@ def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
                                "note": "、".join(extra), "impact": "high"})
         except Exception as ex:
             print(f"[calendar] FF 日曆抓取失敗: {ex}", file=sys.stderr)
+    import us_earnings   # 重點美股財報換算台北時間(11-17:calendar 晚一天);先加進來,再一起濾掉已發生的(PR #55)
+    events.extend(us_earnings.events(yf, today, end, TPE))
     from event_clock import future_rows
     events = _dedupe_calendar_events(future_rows(events, now_tpe))
-
-    # 重點美股財報:換算成台北時間(11-17:calendar 的日期比公司公告晚一天,見 us_earnings)
-    import us_earnings
-    events.extend(us_earnings.events(yf, today, end, TPE))
     events.sort(key=lambda e: (e["date"], e.get("time", "")))
     return events
 
@@ -18851,7 +18849,7 @@ def _prediction_delta_note(history: list, report_date: str,
     parts: list[str] = []
     any_move = False
     for label, cur in current.items():
-        pv = _splits.value(label, prev.get("date"), prev.get(key_map.get(label, "")), today)   # 跨分割要同刻度比
+        pv = _splits.match(label, cur, prev.get(key_map.get(label, "")))   # 跨分割要同刻度比
         if (isinstance(cur, (int, float)) and isinstance(pv, (int, float)) and pv):
             pct = (cur - pv) / pv * 100
             if abs(pct) >= 0.05:

@@ -24,16 +24,35 @@ def test_split_restores_only_the_old_scale_rows():
     out = cs.frame("00662.TW", _yahoo_00662())
     assert [round(v, 2) for v in out["Close"]] == [23.75, 22.67, 22.88, 23.56, 23.56, 23.56, 23.07]
     assert list(out["Volume"]) == [1, 1, 5, 5, 0, 0, 5]                       # 成交量不動
-    now = "2026-11-17"
-    assert cs.value("00662", "2026-11-16", 116.18, now) == 116.18 / 5          # 停牌期間的舊刻度預測
-    assert cs.value("00662", "2026-11-17", 22.25, now) == 22.25                # 新刻度不動
-    assert cs.value("00662", "2026-11-09", 22.88, now) == 22.88                # Yahoo 已改過的不再除
-    assert cs.value("00662", "2026-07-14", 120.0, "2026-07-16") == 120.0       # 兩邊都在分割前:同刻度,不動
-    assert cs.value("0050", "2026-01-01", 190.0, now) == 190.0 and cs.value("00662", "2026-11-16", None, now) is None
-    early = _yahoo_00662().iloc[:2]                                           # 序列沒跨過分割日:不動
+    assert cs.match("00662", 22.25, 116.18) == 116.18 / 5                    # 舊刻度預測換到新刻度
+    assert cs.match("00662", 116.18, 23.07) == 23.07 * 5                      # 新刻度實價換回舊刻度紀錄
+    assert cs.match("00662", 22.25, 23.07) == 23.07 and cs.match("00662", 120.0, 121.0) == 121.0   # 同刻度不動
+    assert cs.match("0050", 25.0, 190.0) == 190.0 and cs.match("00662", None, 116.0) == 116.0
+    early = _yahoo_00662().iloc[:2]                                           # 全是舊刻度:不動
     assert list(cs.frame("00662.TW", early)["Close"]) == [118.75, 113.35]
+    halted = _yahoo_00662().iloc[:6]                                          # 復牌日開盤前:資料只到 11/16 也要換
+    assert [round(v, 2) for v in cs.frame("00662.TW", halted)["Close"]] == [23.75, 22.67, 22.88, 23.56, 23.56, 23.56]
     assert cs.series("00662", {"2026-11-06": 113.35, "2026-11-17": 23.07}) == {"2026-11-06": 113.35 / 5, "2026-11-17": 23.07}
-    assert cs.frame("0050.TW", _yahoo_00662()) is not None
+
+
+def test_prediction_delta_compares_on_the_same_scale():
+    hist = [{"date": "2026-11-16", "fair_00662": 116.18, "pred_0050": 102.66}]
+    note = mr._prediction_delta_note(hist, "2026-11-17", {"00662": 22.25, "0050": 95.18})
+    assert "00662 -4.24%" in note and "0050 -7.29%" in note and "-80" not in note
+    old = [{"date": "2026-07-15", "fair_00662": 121.0}]                      # 兩邊都是分割前:照舊比
+    assert "00662 -0.41%" in mr._prediction_delta_note(old, "2026-07-16", {"00662": 120.5})
+
+
+def test_backfill_writes_the_open_on_the_records_own_scale(monkeypatch):
+    """分割前的紀錄(預測是舊刻度)補實際開盤時,寫回舊刻度,不和自己的預測打架(外審 PR #55)。"""
+    import pandas as pd
+
+    def frame(values, days):
+        idx = pd.DatetimeIndex(pd.to_datetime(days)).tz_localize("Asia/Taipei")
+        return pd.DataFrame({"Open": values, "Close": values, "Volume": [1] * len(values)}, index=idx)
+    days = ["2026-11-06", "2026-11-13"]
+    data = {"00662.TW": frame([113.25, 23.07], days), "2330.TW": frame([2300.0, 2200.0], days),
+            "0050.TW": frame([100.0, 95.0], days), "^TWII": frame([40000.0, 40500.0], days)}
 
     class _YF:
         class Ticker:
@@ -41,14 +60,12 @@ def test_split_restores_only_the_old_scale_rows():
                 self.symbol = symbol
 
             def history(self, **_):
-                return _yahoo_00662()
-    assert round(cs.history(_YF, "00662.TW", period="3mo")["Close"].iloc[0], 2) == 23.75
-
-
-def test_prediction_delta_compares_on_the_same_scale():
-    hist = [{"date": "2026-11-16", "fair_00662": 116.18, "pred_0050": 102.66}]
-    note = mr._prediction_delta_note(hist, "2026-11-17", {"00662": 22.25, "0050": 95.18})
-    assert "00662 -4.24%" in note and "0050 -7.29%" in note and "-80" not in note
+                return data[self.symbol]
+    monkeypatch.setattr(mr, "yf", _YF)
+    history = [{"date": "2026-11-06", "target_session_date": "2026-11-06", "fair_00662": 112.09},
+               {"date": "2026-11-13", "target_session_date": "2026-11-13", "fair_00662": 22.25}]
+    mr.backfill_actual_opens(history)
+    assert history[0]["actual_open_00662"] == 113.25 and history[1]["actual_open_00662"] == 23.07
 
 
 def _rows(values, key="vix"):
@@ -85,3 +102,23 @@ def test_us_earnings_use_the_exact_time_and_convert_to_taipei():
     amd = next(r for r in rows if r["title"] == "AMD 財報")
     assert (amd["date"], amd["time"], amd["note"]) == (dt.date(2026, 11, 18), "盤後(美東)", "日期待確認")
     assert ue.events(_YF, dt.date(2026, 12, 1), dt.date(2026, 12, 8), TPE) == []
+
+
+def test_already_released_earnings_drop_out_of_the_calendar(monkeypatch):
+    """11/18 06:00 產報時,05:00 公布的 NVDA 財報已經發生,不可留在「未來 7 天風險事件」(外審 PR #55)。"""
+    import types
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return []
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp())
+    rows = [{"date": dt.date(2026, 11, 18), "time": "05:00", "title": "NVDA 財報", "note": "", "impact": "high"},
+            {"date": dt.date(2026, 11, 19), "time": "05:00", "title": "AMD 財報", "note": "", "impact": "high"}]
+    monkeypatch.setitem(__import__("sys").modules, "us_earnings",
+                        types.SimpleNamespace(events=lambda *a, **k: list(rows)))
+    got = mr.fetch_event_calendar(dt.datetime(2026, 11, 18, 6, 0, tzinfo=TPE))
+    titles = [e["title"] for e in got]
+    assert "NVDA 財報" not in titles and "AMD 財報" in titles

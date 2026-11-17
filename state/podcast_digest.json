@@ -815,6 +815,107 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2439693045",
+        "title": "2026/11/17(二)費半重挫5.2%美股還有 多少壞消息?投信轉賣第四法人鬆了?【早晨財經速解讀】",
+        "published": "Tue, 17 Nov 2026 01:03:51 +0000",
+        "processed_at": "2026-11-17T03:05:04Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為本波美股下殺不是AI估值泡沫，而是支撐AI資本支出的融資機制遭輝達經營危機與美國監管政策考驗；他目前無法推論AI需求反轉，反而認為AI供給可能更稀缺，短期觀察輝達財報、電話會議與Anthropic上市。",
+            "主持人認為民主黨主導的新國會可能讓科技巨頭資本支出適度放緩：對Google、微軟等軟體／雲端巨頭有助自由現金流，對硬體／半導體則是訂單延後，因此這波比較像資本支出調速與估值修正，不是泡沫破滅。",
+            "台股罕見出現投信單日賣超179億元，主持人提醒要釐清是否為散戶ETF贖回；但融資單日減121億元、規模從10月高點6500億降到5244億，維持率回到138%，他認為去槓桿已相當程度、潛在賣壓有機會減輕，若今日再跌會再洗一次，但現貨型存股族集體贖回尚未看到、他也不認為會發生。",
+            "台幣逼近16年低點，主持人解釋主因是台灣出口商大量將順差轉為海外投資（今年前九月660億美元、為2025年兩倍，北美投資成長六倍），而非外資看空；他形容這是台灣集體對賭AI：AI若失敗將是史上最大金融海嘯，若成功則大鳴大放。",
+            "主持人提到若輝達主導的AI資本支出競賽降溫，對Google、AMD不見得是利空，客製化晶片（ASIC）需求可能拉升，聯發科、創意等有機會受惠新一波榮景。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為AI需求尚未反轉、供給可能更稀缺，跌勢反映資本支出融資疑慮而非泡沫破滅；短期觀察財報與電話會議。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人認為客製化晶片需求可能拉升，聯發科有機會受惠新一波榮景。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "創意",
+              "code": "3443",
+              "market": "TW",
+              "direction": "unknown",
+              "reason": "主持人認為客製化晶片需求可能拉升，創意有機會受惠新一波榮景。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為輝達資本支出降溫對Google未必是利空，客製化晶片趨勢可能受惠；未給明確方向。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那對於Google。對於AMD而言。那不見得是一個利空啊。",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為輝達資本支出降溫對AMD未必是利空，客製化晶片趨勢可能受惠；未給明確方向。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那對於Google。對於AMD而言。那不見得是一個利空啊。",
+                "direction": "neutral"
+              }
+            }
+          ],
+          "market_view": "主持人認為本波下跌是利率預期造成的流動性收縮與AI資本支出放緩，屬於估值修正而非泡沫破滅；台股去槓桿已相當程度，但需觀察投信賣超是否為散戶ETF贖回。",
+          "action_view": "主持人主張長期投資者不要因單日大跌全面出場，應依回檔幅度判斷是否加碼；部位若影響睡眠應先降低，並用ETF分散而非重押個股。",
+          "notable_quote": "目前我覺得還不能夠推論AI的需求已經反轉。反而是AI的供給搞不好更稀缺。",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "目前我覺得還不能夠推論AI的需求已經反轉。反而是AI的供給搞不好更稀缺。"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 3,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2438934672",
         "title": "2026/11/16(一)輝達崩跌 散戶狂抄底 誰是贏家?矽谷對決華府!老黃復甦 華府大封殺?【早晨財經速解讀】",
         "published": "Mon, 16 Nov 2026 01:07:26 +0000",
@@ -1531,94 +1632,6 @@
           }
         },
         "shown_at": "2026-11-02T22:16:49Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2428998408",
-        "title": "2026/10/30(五)Alphabet狂瀉12% Marvell暴跌逾13% 英特爾暴跌20% 美股到底 跌完了沒有?【早晨財經速解讀】",
-        "published": "Fri, 30 Oct 2026 01:13:47 +0000",
-        "processed_at": "2026-10-31T14:12:36Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 Alphabet（Google）重挫是機會：前瞻本益比僅14倍、為20年低點，且自研TPU占AI加速器78%、GPU僅22%，不受輝達售價綁架，比台積電便宜，值得留意買點。",
-            "主持人認為本輪巨頭財報下跌（Alphabet、亞馬遜、Intel）並非危機而是機會，因美股企業91%債務為固定利率、無立即流動性風險，重點是長期基本面是否上行，跌10%-20%後應反過來尋找機會。",
-            "主持人觀察羅素2000已連日反彈並站穩年線，資金可能從大型股流向中小型股，利率預期回檔給中小型股喘氣空間，值得留意。",
-            "主持人提醒財富效應風險：高盛估算AI股若跌40%、其他股票跌15%，財富效果可能拖累GDP 0.5個百分點，股市下跌可能反噬實體經濟。",
-            "主持人指出期中選舉後民主黨若勝選可能加強AI監管，資料中心周邊選民支持民主黨比例上升，供給可能放緩；但需求不減，算力反而不會過剩，是好壞參半。"
-          ],
-          "tickers": [
-            {
-              "name": "Alphabet（Google）",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為 Alphabet 重挫是機會，前瞻本益比14倍為20年低點，自研TPU使其不受輝達綁架，看好長期。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為亞馬遜電商收入不如預期、自由現金流轉負，股價遭受賣壓，成長幅度不如想像。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人指出Intel一天跌兩成，PC業務崩潰、以色列工廠停工、毛利率下滑，財報展望不佳。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人指出蘋果是七巨頭中唯一撐住，iPhone銷售佳。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "7巨頭大概也只剩下蘋果還撐著",
-                "direction": "bullish"
-              }
-            }
-          ],
-          "market_view": "主持人認為本輪大型股財報重挫反映融資成本與非AI需求疲軟的疑慮，但不構成危機；長期基本面仍上行，應尋找機會而非恐慌。",
-          "action_view": "主持人建議不要把每日雜訊當操作依據，應建立中心邏輯；在巨頭重挫、估值便宜時留意買點，並注意資金從大型股輪動至中小型股的機會。",
-          "notable_quote": "行情本來就是在半信半疑中成長",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "行情本來就是在半信半疑中成長"
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 3,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-31T22:10:33Z"
       }
     ]
   },

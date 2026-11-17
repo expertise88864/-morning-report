@@ -63,7 +63,7 @@ from data_quality import (  # noqa: E402,F401  覆蓋率判準搬到葉模組,�
 import run_manifest as _rm
 import analysis_origin as _ao
 import legacy_actor_guard as _legacy_actor_guard
-import content_risk as _content_risk, corporate_splits as _splits   # noqa: E401 - 行數上限
+import content_risk as _content_risk, corporate_splits as _splits, trading_halts as _halts   # noqa: E401 - 行數上限
 import official_numbers as _official
 import report_polish as _polish
 import market_fresh as _fresh
@@ -4877,7 +4877,7 @@ def build_historical_calibration(hist_2330: Optional[pd.DataFrame],
 def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
                            usdtwd: float, last_00662_price: Optional[float],
                            usdtwd_prev: Optional[float] = None,
-                           ex_div_amt: float = 0.0) -> dict:
+                           ex_div_amt: float = 0.0, since_trade: Optional[dt.date] = None) -> dict:
     """
     精準版 00662 公允淨值與合理價估算（V2 — 不依賴外部 NAV API）。
 
@@ -4915,6 +4915,10 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
         qqq_s.index = qqq_s.index.tz_localize(None) if qqq_s.index.tz else qqq_s.index
         tw_s.index  = tw_s.index.tz_localize(None)  if tw_s.index.tz  else tw_s.index
         fx_s.index  = fx_s.index.tz_localize(None)  if fx_s.index.tz  else fx_s.index
+        if since_trade:   # 復牌日:從停牌前最後交易日起累計 QQQ 與匯率(11-17 使用者同意,見 trading_halts)
+            qqq_prev_close, usdtwd_prev = _halts.bases(qqq_s, fx_s, since_trade, qqq_prev_close, usdtwd_prev)
+            qqq_pct = (qqq_close - qqq_prev_close) / qqq_prev_close
+            fx_pct = (usdtwd - usdtwd_prev) / usdtwd_prev if usdtwd and usdtwd_prev else 0.0
 
         # 計算 00662 隔日漲跌（台股對應前一夜美股）
         df = pd.DataFrame({
@@ -22790,7 +22794,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預估漲跌</th>
           </tr>
           {_pred_row("2330 台積電", _p_last, _p_mid, _p_pct, "TSM ADR 最新收盤未取得，暫停開盤預測" if (quotes.get("TSM") or {}).get("stale") else "資料缺失")}
-          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct, "QQQ 最新收盤未取得，暫停公允價估算" if (quotes.get("QQQ") or {}).get("stale") else "資料缺失")}
+          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct, fair["error"] if isinstance(fair, dict) and fair.get("halted") else "QQQ 最新收盤未取得，暫停公允價估算" if (quotes.get("QQQ") or {}).get("stale") else "資料缺失")}
           {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
         {_prediction_delta_note(quotes.get("HISTORY") or [], report_date, {
@@ -23748,7 +23752,7 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         else:
             add("00662 估值", "fallback", fair.get("method", "簡化版（歷史資料不足）"))
     else:
-        add("00662 估值", "error", (fair or {}).get("error", "資料缺失"))
+        add("00662 估值", "ok" if (fair or {}).get("halted") else "error", (fair or {}).get("error", "資料缺失"))
 
     # 2330 三模型預測
     if isinstance(predictions, dict) and not predictions.get("error"):
@@ -24525,7 +24529,7 @@ def _phase_market_and_macro(ctx) -> None:
 
     # 4. 計算（升級版：NAV + 折溢價 + 匯率變動 + ADR 衰減）
     us_pred_inputs = {"usdtwd_today": usdtwd_today, "usdtwd_prev": usdtwd_prev,
-                      "last_00662": last_00662}
+                      "last_00662": last_00662, "target_day": target_session_day}
     fair, predictions = _us_price_predictions(quotes, us_pred_inputs, hist_2330, ex_div)
     ctx.quotes, ctx.hist_2330, ctx.ex_div = quotes, hist_2330, ex_div
     ctx.fair, ctx.predictions, ctx.us_pred_inputs = fair, predictions, us_pred_inputs
@@ -24539,12 +24543,14 @@ def _us_price_predictions(quotes: dict, inputs: dict, hist_2330, ex_div: dict) -
     usdtwd_today, usdtwd_prev = inputs["usdtwd_today"], inputs["usdtwd_prev"]
     qqq_q = require_quote(quotes, "QQQ")
     tsm_q = require_quote(quotes, "TSM")
-    if qqq_q is not None:
+    day = inputs.get("target_day")   # 停牌日不估;復牌日累計停牌期間的變化(11-17 使用者同意)
+    if _halts.halted("00662", day):
+        fair = {"error": _halts.halt_note("00662", day), "halted": True}
+    elif qqq_q is not None:
         fair = calc_00662_fair_value(
             qqq_q["close"], qqq_q["prev_close"],
             usdtwd_today, inputs["last_00662"], usdtwd_prev=usdtwd_prev,
-            ex_div_amt=ex_div.get("00662", 0.0),
-        )
+            ex_div_amt=ex_div.get("00662", 0.0), since_trade=_halts.resumed_since("00662", day))
     else:
         fair = {"error": "QQQ 行情抓取失敗，無法估算 00662 合理價"}
         print("[main] QQQ 行情缺失 → 00662 估值降級", file=sys.stderr)

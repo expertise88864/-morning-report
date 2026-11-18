@@ -3,6 +3,51 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "6e0d7037-eff5-4cc1-917e-dc43ef5dedbc",
+        "title": "EP715 | 🥐",
+        "published": "Wed, 18 Nov 2026 07:04:56 GMT",
+        "processed_at": "2026-11-18T09:40:33Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 NVIDIA 這次財報沒下修、反而擴大 buyback，代表新管理層決定踩煞車，這對 AI 供應鏈情緒不利，且後續空降管理者可能走 Tim Cook 路線放慢供應鏈迭代，導致 push out delay 機率大增。",
+            "主持人判斷老黃下台後，AI 的 FOMO 情緒與供應鏈短期通膨有機會降溫，但長期需求仍真，類似 202? 出現小洞後再向上；他提醒要檢視持股：若集單消失是否重擊財務，長期需求不變者才可續抱。",
+            "主持人目前操作轉為防守：拉高現金比例、嚴格守下檔，看不懂或持續虧損部位不再加碼，等整理明朗再進場；做多為主但不做空，並引用 Druckenmiller 觀點強調先守住淨值活下來。",
+            "主持人看好 AI 以外的增量市場，特別點名衛星（馬斯克持續發射）是第二、三增量市場；雖然近期衛星相對強但大盤弱勢下仍一起跌、只是跌較少，他仍認為是少數可識別的確定性方向。",
+            "主持人認為大盤已失去信心、回檔過深，短期難見新高、需整理；長線仍相信台股 6、7 萬點，但現在市場賣壓太重、融資槓桿爆倉風險高，反彈至大均線應先出。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為 NVIDIA 擴大 buyback 代表公司開始踩煞車，且後續空降管理者可能放慢供應鏈迭代與降本，對 AI 供應鏈情緒有負面影響，但未直接看空 NVIDIA 股價。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為近期大盤已失去信心、回檔過深，短期要看到新高不易，需時間整理；但長線仍相信台股會到 6、7 萬點，現階段反彈至大均線應先出。",
+          "action_view": "主持人在操作上轉為防守，做多為主但不做空，拉高現金比例、嚴格守下檔，看不懂或持續虧損部位不再加碼，等整理明朗後再進場，並優先找增量市場如衛星小量參與。",
+          "notable_quote": "現在就是一個你要活下來的時刻,你要去守住你淨值的時刻,你寧願放掉一些做多的機會,你要把淨值先守好",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "現在就是一個你要活下來的時刻,你要去守住你淨值的時刻,你寧願放掉一些做多的機會,你要把淨值先守好"
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "52dc3b92-2b06-49b6-ae34-821a9d632754",
         "title": "EP714 | 🥏",
         "published": "Sat, 14 Nov 2026 04:00:04 GMT",
@@ -734,80 +779,6 @@
           }
         },
         "shown_at": "2026-10-11T00:13:15Z"
-      },
-      {
-        "guid": "0b071f57-45ba-47d3-9f15-2129a0c645a8",
-        "title": "EP703 | 🏈",
-        "published": "Wed, 07 Oct 2026 08:09:40 GMT",
-        "processed_at": "2026-10-07T15:27:50Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為台股5萬點不是終點，以台積電未來1至3年可推算EPS當定海神針，但供應鏈狂潮最終上去怎麼上去就怎麼下去，回檔幅度可能回到2萬多點，須預先規劃避險。",
-            "主持人提出股票核心的避險思維：同時配置缺貨漲價受惠股，以及因缺貨受害但供應鏈穩定、出貨量放大後會受惠的冷門股，讓兩族群互相對沖，現階段不採股債配置。",
-            "主持人認為大盤創新高，但很多標的未創新高甚至月新高都沒突破，應減碼或丟掉這些弱者，避免修正時跌最快；強勢股不追，把現金部位提高、降低槓桿，保留加碼彈性。",
-            "主持人分享趨勢判斷：大盤往多勝率高，不需摸頭；實務上可自己進場按關鍵價位觀察追單力道，技術指標中均線較難造假，但最終要回歸基本面，EPS成長趨勢就是股價趨勢。",
-            "主持人認為台指期轉倉常態正價差是現階段必須付出的成本，因大盤今年漲70%，這點成本不算什麼；等盤面冷卻才會再現逆價差。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "主持人以台積電未來1至3年可推算EPS為定海神針，認為5萬點不是終點，隱含對台積電中長期正面看法。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "5萬點它應該不會是一個終點",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Nebius",
-              "code": "NBIS",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人表示自己沒這麼喜歡 Neo Cloud 相關題材，認為包括 Nebius 在內的 AI 供應鏈公司風險特別大。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "CoreWeave",
-              "code": "CRWV",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為 CoreWeave 等 Neo Cloud 題材風險特別大，自己沒這麼喜歡。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人對大盤整體偏多但保持警戒：認為5萬點不是終點，但供應鏈狂潮最終會大幅回檔，回檔可能回到2萬多點；目前盤面相對容易，但很多人戒慎恐懼時多頭有機會延續。",
-          "action_view": "主持人操作思路是汰弱留強：減碼未創新高或破底標的，不追強勢股，提高現金部位、降低槓桿；同時規劃配置缺貨漲價受惠與不漲價受惠的兩類股票做對沖，保留子彈等待修正加碼。",
-          "notable_quote": "",
-          "quote_evidence": {
-            "version": 1,
-            "status": "unverified",
-            "quote": ""
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 2,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-08T01:24:07Z"
       }
     ]
   },
@@ -7800,6 +7771,51 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "22b845c5-e5be-4dd1-b4dd-7f3843120d12",
+        "title": "Databricks CEO: AGI Is Already Here, Why Companies Are Behind, and the Superintelligence Debate",
+        "published": "Tue, 17 Nov 2026 21:43:00 +0000",
+        "processed_at": "2026-11-18T09:49:03Z",
+        "digest": {
+          "summary_points": [
+            "Ali 認為企業 AI 採用仍很初階：多數公司只把 AI 當「升級版 Google 搜尋」與寫程式，coding 僅帶來約 20-30% 加速，還沒有成千上萬個 agent 自動跑核心工作，這正是 Databricks 看到的真實需求缺口。",
+            "Ali 歸納企業導入 AI 的四道障礙：會議與流程上下文無法被抓取、資安與治理、token 成本暴增但營收未同步、以及被模型商鎖定與 IP／資料主權；Databricks 以 Genie 的 ontology 與 Lakewatch 等產品對應。",
+            "Databricks 目前 run rate 約 70 億美元、年增 70-80%，Ali 說多數員工在 tender 中選擇不賣、看好複合成長；這也讓公司可用流動性做十億美元級併購。",
+            "Ali 預測 Databricks 會上市，但不在 AI 轉換期上市，因股價劇烈波動會打擊員工與 CEO 的長期經營；他認為私有市場的年度 tender 已提供足夠流動性。",
+            "Ali 認為超級智慧／遞迴自我改進的四條件（訓練更快、資源更少、準確度全面線性提升、形成持續加速飛輪）目前都未成立，因此不擔心 RSI；但他認為資安風險真實且可管理，AI 對 GDP 的影響會很慢、可能以十年計。"
+          ],
+          "tickers": [
+            {
+              "name": "Databricks",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Ali 表示 run rate 約 70 億美元、年增 70-80%，多數員工在 tender 中選擇不賣，長期看好公司成長。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "the business is $7 billion plus and it's growing 70, 80% they do the math.",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "Ali 認為 AI 對 GDP 的推動會很慢、企業全面導入可能以十年計；超級智慧／RSI 目前看不到證據，最大實質風險是資安但可管理。",
+          "action_view": "Ali 表示 Databricks 不急著上市，因 AI 轉換期股價波動會干擾長期經營；公司以年度 tender 提供流動性，多數員工選擇續抱，並持續做十億美元級併購。",
+          "notable_quote": "I actually think GDP will move very slowly and it's going to take decades.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I actually think GDP will move very slowly and it's going to take decades."
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "8acea033-ba08-4e5a-ab7c-b543bc7e486f",
         "title": "Jensen Ousted as Nvidia CEO: \"Spy\" Scandal, Export Restrictions, Market Impact",
         "published": "Sat, 14 Nov 2026 02:35:00 +0000",
@@ -8419,27 +8435,6 @@
           "notable_quote": "It's just a repackaging of what Dario has always wanted, which is an FDA for AI. Now he's saying it's an FAA for AI."
         },
         "shown_at": "2026-08-21T22:34:18Z"
-      },
-      {
-        "guid": "428ae13c-11c4-4412-876b-0559528050e9",
-        "title": "Flock CEO Garrett Langley on Controversy, \"Surveillance State\" Claims, and Privacy vs Safety",
-        "published": "Tue, 18 Aug 2026 00:47:00 +0000",
-        "processed_at": "2026-08-18T03:01:21Z",
-        "digest": {
-          "summary_points": [
-            "Flock Safety 執行長 Garrett Langley 表示，公司已將車牌辨識鏡頭的預設資料保留期從 30 天下調至 7 天，並強調地方城市與民選官員仍擁有最終決定權。",
-            "主持人 Jason 表明自己作為家長，願意接受車牌辨識系統保留 30 天資料，但明確反對臉部辨識技術，認為那是隱私的紅線。",
-            "Flock 新推出的「審計輔助」工具已協助抓出多名濫用系統的警員，執行長強調這是強制性功能，而非選配，並呼籲警界應主動清除害群之馬。",
-            "無人機業務目前是 Flock 成長最快的部門，911 事件發生時可先派遣無人機到場，例如達拉斯地區的案例中，無人機以 40 倍變焦確認可疑男子手持的是打火機而非槍枝，成功化解潛在衝突。",
-            "執行長坦承公司過去一年的公關危機主要來自溝通不足，並承認內部士氣受創，但強調企業仍持續成長，且已有約 20 個城市重新啟用曾被關閉的系統。",
-            "主持人認為，社區應自行決定安全與隱私的平衡，例如新罕布夏州僅保留 3 分鐘、華盛頓州保留 21 天，這種因地制宜的彈性才是關鍵。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "I want to live in one where we're safer. And I want to keep my privacy while I do it."
-        },
-        "shown_at": "2026-08-18T22:29:01Z"
       }
     ]
   },

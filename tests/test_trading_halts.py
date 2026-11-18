@@ -177,3 +177,18 @@ def test_00662_keeps_the_cumulative_fx_move_when_etf_history_fails(monkeypatch):
     out = mr.calc_00662_fair_value(close, prev, 32.5, 23.56, usdtwd_prev=32.4, since_trade=D(2026, 11, 10))
     assert out["fx_pct"] == round((32.5 / 32.0 - 1) * 100, 3)
     assert out["qqq_pct"] == round((close / by_day[D(2026, 11, 9)] - 1) * 100, 2)
+
+
+def test_00662_keeps_the_cumulative_fx_move_when_qqq_history_fails(monkeypatch):
+    """外審 PR #59:QQQ 歷史讀不到時,匯率的累計仍要保留(兩者各自成敗)。"""
+    days = pd.bdate_range("2026-08-03", "2026-11-16")
+    fx = pd.DataFrame({"Close": [32.0 if d.date() <= D(2026, 11, 10) else 32.4 for d in days]}, index=days)
+
+    def ticker(sym):
+        if sym == "TWD=X":
+            return _Hist(fx)
+        raise RuntimeError("history down")
+    monkeypatch.setattr(mr.yf, "Ticker", ticker)
+    out = mr.calc_00662_fair_value(600.0, 610.0, 32.5, 23.56, usdtwd_prev=32.4, since_trade=D(2026, 11, 10))
+    assert out["fx_pct"] == round((32.5 / 32.0 - 1) * 100, 3)
+    assert out["qqq_pct"] == round((600 / 610 - 1) * 100, 2)   # QQQ 沒有歷史 → 只能用報價的一天漲跌

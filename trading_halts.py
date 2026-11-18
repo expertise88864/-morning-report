@@ -9,7 +9,7 @@
 - 停牌要在這裡登記(與 corporate_splits 同理);沒登記的停牌照舊 —— 已知限制。
 - 連假靠證交所休市日表(tw_holidays);表抓不到時退回只跳週末 → 只會少算、不會重複算。
 - 只有最後交易日之後真的有兩個以上美股收盤才累計;平常日子與原本完全相同。
-純函式,不做網路呼叫。
+網路呼叫只經呼叫端給的 `yf`(closes)。
 """
 from __future__ import annotations
 
@@ -62,6 +62,16 @@ def _points(series) -> list:
         return [(_day(stamp), float(v)) for stamp, v in series.items() if float(v) > 0]
     except Exception:   # noqa: BLE001 - 取不到就由呼叫端沿用原值
         return []
+
+
+def closes(yf, symbol, period="3mo"):
+    """收盤序列(去時區);取不到回 None,不拋例外 —— 讓 QQQ 與匯率各自成敗(外審 PR #59)。"""
+    try:
+        s = yf.Ticker(symbol).history(period=period, auto_adjust=False)["Close"].dropna()
+        s.index = s.index.tz_localize(None) if s.index.tz else s.index
+        return s
+    except Exception:   # noqa: BLE001 - 由呼叫端降級
+        return None
 
 
 def rebase(us_series, fx_series, last: dt.date | None, close, prev, pct, fx=None, fx_prev=None, fx_pct=0.0):

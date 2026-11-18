@@ -4905,15 +4905,11 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
     samples = 0
     premium_pct: Optional[float] = None    # 折溢價（vs NDX 隱含 NAV 的 60 日中位數）
     try:
-        qqq_hist = yf.Ticker("QQQ").history(period="3mo", auto_adjust=False)
-        qqq_s = qqq_hist["Close"].dropna()
-        qqq_s.index = qqq_s.index.tz_localize(None) if qqq_s.index.tz else qqq_s.index
-        qqq_prev_close, qqq_pct, _, _ = _halts.rebase(qqq_s, None, since_trade, qqq_close, qqq_prev_close, qqq_pct)   # 先累計:其他歷史失敗也保留(外審 PR #59)
-        fx_hist  = yf.Ticker("TWD=X").history(period="3mo", auto_adjust=False)   # 匯率也在 00662 歷史之前(外審 PR #59)
-        fx_s  = fx_hist["Close"].dropna()
-        fx_s.index  = fx_s.index.tz_localize(None)  if fx_s.index.tz  else fx_s.index
+        qqq_s, fx_s = _halts.closes(yf, "QQQ"), _halts.closes(yf, "TWD=X")   # 各自讀,一個失敗不拖累另一個(外審 PR #59)
         qqq_prev_close, qqq_pct, usdtwd_prev, fx_pct = _halts.rebase(   # 停牌/連假後累計(使用者 11-17、11-18 同意)
             qqq_s, fx_s, since_trade, qqq_close, qqq_prev_close, qqq_pct, usdtwd, usdtwd_prev, fx_pct)
+        if qqq_s is None or fx_s is None:
+            raise ValueError("QQQ / TWD=X 歷史取不到")   # 回歸與折溢價照舊降級
         tw_hist  = _splits.history(yf, "00662.TW", period="3mo", auto_adjust=False)   # 1 拆 5 還原(11-17)
         tw_s  = tw_hist["Close"].dropna()
         tw_s.index  = tw_s.index.tz_localize(None)  if tw_s.index.tz  else tw_s.index

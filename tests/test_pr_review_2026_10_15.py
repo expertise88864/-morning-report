@@ -184,7 +184,8 @@ class RecordRetryTests(unittest.TestCase):
             unrecorded = Path(tmp) / "pr_review_unrecorded.json"
             binding.write_text(json.dumps({"head": "b" * 40}), encoding="utf-8")
             entry = {"repo": "owner/repo", "pr": 7, "verdict": "APPROVE", "base": "c" * 40, "head": SHA,
-                     "session": "s", "bound_session": "s", "message": "APPROVE", "resume": True}
+                     "session": "s", "bound_session": "s", "message": "APPROVE", "resume": True,
+                     "model": pr.MODEL, "effort": pr.EFFORT}
             unrecorded.write_text(json.dumps(entry), encoding="utf-8")
             api, pull = FakeAPI(lambda path: None), {"number": 7}
             with patch.object(pr, "record", side_effect=pr.Blocked("HTTP 502")), \
@@ -206,6 +207,18 @@ class RecordRetryTests(unittest.TestCase):
             for pull, head in (({"number": 8}, SHA), ({"number": 7}, "b" * 40)):
                 with self.subTest(pull=pull, head=head), self.assertRaises(pr.Blocked):
                     pr.retry_record(FakeAPI(lambda path: None), pull, head, Path(tmp) / "b.json", unrecorded)
+
+
+    def test_retry_refuses_a_verdict_from_the_previous_reviewer(self):
+        """2026-11-18 換 gpt-6.2-astra:切換前沒登錄的 gpt-6.1-sol 裁決不可用新 context 重送。"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            unrecorded = Path(tmp) / "u.json"
+            for extra in ({}, {"model": "gpt-6.1-sol", "effort": "xhigh"}, {"model": pr.MODEL, "effort": "xhigh"}):
+                unrecorded.write_text(json.dumps({"repo": "owner/repo", "pr": 7, "head": SHA, **extra}),
+                                      encoding="utf-8")
+                with self.subTest(extra=extra), self.assertRaisesRegex(pr.Blocked, "configured reviewer"):
+                    pr.retry_record(FakeAPI(lambda path: None), {"number": 7}, SHA, Path(tmp) / "b.json", unrecorded)
 
 
 class RebuttalTests(unittest.TestCase):

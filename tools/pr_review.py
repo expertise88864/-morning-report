@@ -347,10 +347,19 @@ def finish(api: API, pr: dict, entry: dict, binding: Path, unrecorded: Path) -> 
     return {"APPROVE": 0, "REQUEST_CHANGES": 2, "QUOTA_PENDING": 3}.get(verdict, 1)
 
 
+def current_model(entry: dict) -> bool:
+    """未登錄的裁決只有出自目前的審查者(2026-11-18 起 gpt-6.2-astra / medium)才可重送;
+    切換前留下的沒有記模型,一律作廢(外審 CMUH PR #25 同一問題)。"""
+    return entry.get("model") == MODEL and entry.get("effort") == EFFORT
+
+
 def retry_record(api: API, pr: dict, head: str, binding: Path, unrecorded: Path) -> int:
     if not unrecorded.is_file():
         raise Blocked("No unrecorded verdict in this checkout")
     entry = json.loads(unrecorded.read_text(encoding="utf-8"))
+    if not current_model(entry):
+        raise Blocked("The unrecorded verdict was not produced by the configured reviewer "
+                      f"({MODEL}/{EFFORT}); run a first round")
     if entry.get("repo") != api.repo or entry.get("pr") != pr["number"] or entry.get("head") != head:
         raise Blocked("The unrecorded verdict is for another PR or head")
     return finish(api, pr, entry, binding, unrecorded)
@@ -406,6 +415,8 @@ def main() -> int:
         unrecorded = ROOT / ".codex-review" / "pr_review_unrecorded.json"
         if args.retry_record:
             return retry_record(api, pr, head, binding, unrecorded)
+        if unrecorded.is_file() and not current_model(json.loads(unrecorded.read_text(encoding="utf-8"))):
+            unrecorded.unlink()   # 舊審查者的裁決不重送;這次照常重審
         if unrecorded.is_file() and json.loads(unrecorded.read_text(encoding="utf-8")).get("head") == head:
             raise Blocked("A verdict for this head was not recorded on GitHub; run --retry-record")
         resume_session = None
@@ -434,6 +445,7 @@ def main() -> int:
         # Keep the verdict until GitHub has it: a failed POST is retried with
         # --retry-record instead of being lost (or blocking the next --resume).
         entry = {"repo": api.repo, "pr": pr["number"], "verdict": verdict, "base": base, "head": head,
+                 "model": MODEL, "effort": EFFORT,
                  "session": session, "bound_session": resume_session or session,
                  "message": message, "resume": args.resume, "rebuttal": bool(rebuttal),
                  "same_head_rebuttal": bool(rebuttal) and previous_head is None}

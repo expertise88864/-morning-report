@@ -291,8 +291,8 @@ def list_pending(api: API) -> int:
         if status and status["state"] == "success":
             continue
         legacy = None if status else latest_status(api, head, LEGACY_CONTEXT)
-        if legacy and legacy["state"] == "success":
-            continue   # 切換前已依當時規定(gpt-6.1-sol)APPROVE
+        if legacy and legacy["state"] == "success" and pr.get("merged_at"):
+            continue   # 已合併、切換前依當時規定(gpt-6.1-sol)APPROVE;還開著的仍要新模型審
         status = status or legacy
         label = status["description"] if status else "never reviewed"
         merged = "merged" if pr.get("merged_at") else pr["state"]

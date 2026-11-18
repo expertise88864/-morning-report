@@ -315,8 +315,9 @@ class LegacyContextTests(unittest.TestCase):
     def _api(self, statuses):
         def routes(path):
             if path.startswith("/pulls"):
-                return [{"number": n, "title": f"PR{n}", "state": "closed", "merged_at": "x",
-                         "head": {"sha": sha}} for n, sha in ((1, "1" * 40), (2, "2" * 40), (3, "3" * 40))]
+                return [{"number": n, "title": f"PR{n}", "state": "open" if n == 4 else "closed",
+                         "merged_at": None if n == 4 else "x", "head": {"sha": sha}}
+                        for n, sha in ((1, "1" * 40), (2, "2" * 40), (3, "3" * 40), (4, "4" * 40))]
             return statuses.get(path.split("/")[2], [])
         return FakeAPI(routes)
 
@@ -327,6 +328,8 @@ class LegacyContextTests(unittest.TestCase):
                         "description": "APPROVE base=" + "a" * 40}],
             "2" * 40: [{"id": 2, "context": pr.LEGACY_CONTEXT, "state": "pending", "creator": owner,
                         "description": "quota-pending base=" + "a" * 40}],
+            "4" * 40: [{"id": 4, "context": pr.LEGACY_CONTEXT, "state": "success", "creator": owner,
+                        "description": "APPROVE base=" + "a" * 40}],   # 還開著:推 main 仍要新模型審
         })
         import contextlib
         import io
@@ -338,7 +341,8 @@ class LegacyContextTests(unittest.TestCase):
         self.assertIn("#2 ", text)
         self.assertIn("quota-pending", text)
         self.assertIn("#3 ", text)
-        self.assertIn("2 PR(s)", text)
+        self.assertIn("#4 ", text)
+        self.assertIn("3 PR(s)", text)
 
     def test_promotion_gate_only_accepts_the_new_context(self):
         import importlib

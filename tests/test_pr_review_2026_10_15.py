@@ -364,3 +364,15 @@ class LegacyContextTests(unittest.TestCase):
         gate = importlib.import_module("_delivery_review")
         self.assertEqual(gate.REVIEW_CONTEXT, pr.CONTEXT)
         self.assertNotEqual(pr.CONTEXT, pr.LEGACY_CONTEXT)
+
+
+class LegacyBaseTests(unittest.TestCase):
+    def test_backfill_recovers_the_base_from_the_legacy_status(self):
+        """外審 PR #58:舊模型留下 quota-pending、main 已含該 head → 補審範圍要從舊 context 取回。"""
+        owner = {"login": "owner"}
+        legacy = [{"id": 1, "context": pr.LEGACY_CONTEXT, "creator": owner,
+                   "description": "quota-pending base=" + "c" * 40}]
+        self.assertEqual(pr.reviewed_base(FakeAPI(lambda path: legacy), SHA), "c" * 40)
+        both = legacy + [{"id": 2, "context": pr.CONTEXT, "creator": owner,
+                          "description": "REQUEST_CHANGES base=" + "d" * 40}]
+        self.assertEqual(pr.reviewed_base(FakeAPI(lambda path: both), SHA), "d" * 40)   # 目前 context 優先

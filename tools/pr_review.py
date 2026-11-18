@@ -252,10 +252,20 @@ def record(api: API, pr: dict, verdict: str, base: str, head: str, session: str,
 
 
 def reviewed_base(api: API, sha: str) -> str:
-    """Base of the newest owner review status on this head (any verdict), or ''."""
+    """Base of the newest owner review status on this head (any verdict), or ''.
+    目前 context 沒有紀錄時,退回切換前的舊 context —— 只用來重建補審範圍(外審 PR #58);
+    推 main 仍只認目前 context。"""
     owner = api.repo.split("/")[0].lower()
-    rows = [s for s in api.call("GET", f"/commits/{sha}/statuses?per_page=100") or []
-            if s.get("context") == CONTEXT
+    statuses = api.call("GET", f"/commits/{sha}/statuses?per_page=100") or []
+    for context in (CONTEXT, LEGACY_CONTEXT):
+        base = _base_in(statuses, context, owner)
+        if base:
+            return base
+    return ""
+
+
+def _base_in(statuses: list, context: str, owner: str) -> str:
+    rows = [s for s in statuses if s.get("context") == context
             and str(s.get("creator", {}).get("login", "")).lower() == owner]
     for status in sorted(rows, key=lambda s: s["id"], reverse=True):
         match = BASE_IN_STATUS.search(str(status.get("description", "")))

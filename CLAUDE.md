@@ -5,7 +5,7 @@
 本節優先於下方所有關於審查模型與 effort 的敘述。
 - PR review、續審（`--resume`）、反駁續審與 quota-pending 補審，一律 `gpt-6.2-astra`、reasoning effort `medium`（取代 2026-10-14 的 `gpt-6.1-sol`／`xhigh`），經 `tools/pr_review.py` → `tools/codex_review.sh`（read-only，以 session 紀錄驗證實際模型，證明不了就不算一輪；不得 fallback 到其他模型或 effort）。
 - commit status 改為 `codex-review/gpt-6.2-astra`；推 main 的 hook 只認這個 context，舊 `gpt-6.1-sol` 的 APPROVE 不再算數。
-- gpt-6.2-astra 需要 Codex CLI 0.169.1 以上（2026-11-18 實測：桌面版內附 0.163.0-alpha 被拒、npm 全域 0.169.1 可用；`python tools/gpt_diff_review.py which` 顯示實際選用的 CLI）。CLI 不支援時先問使用者，不得默默降級。
+- gpt-6.2-astra 需要 Codex CLI 0.169.1 以上（2026-11-18 實測：桌面版內附 0.163.0-alpha 被拒、npm 全域 0.169.1 可用；`python tools/gpt_diff_review.py which` 顯示實際選用的 CLI）。npm 的 `codex.cmd` 是批次檔，會把多行 prompt 截成第一行（2026-11-18 實測，PR #58 前四輪因此作廢）；wrapper 一律改用同套件內附的原生 `codex.exe`，找不到就擋下，不得用批次檔。CLI 不支援時先問使用者，不得默默降級。
 - 歷史 trailer 名稱（`GPT-6-1-Sol-Review` 等）沿用，只用來辨認切換前的 pending commit；它們改由新模型補審。
 
 ## 最新使用者定案：每個 PR review 一次（2026-10-15）

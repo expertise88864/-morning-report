@@ -134,7 +134,7 @@ def codex_candidates() -> list[str]:
     for name in (("codex.cmd", "codex.exe", "codex") if os.name == "nt" else ("codex",)):
         hit = shutil.which(name)
         if hit:
-            found.append(hit)
+            found.append(native_cli(hit))
     seen: set[str] = set()
     out = []
     for path in found:
@@ -145,9 +145,26 @@ def codex_candidates() -> list[str]:
     return out
 
 
+_SHIMS = (".cmd", ".bat", ".ps1")
+
+
+def native_cli(path: str) -> str:
+    """npm 的 `codex.cmd` 是批次檔:cmd.exe 會把多行參數截成第一行(2026-11-18 實測:審查者只收到
+    prompt 第一行,範圍、任務說明、輸出格式都沒收到)。改用同一個 npm 套件內附的原生 codex.exe;
+    找不到就原樣回傳(find_codex 會拒絕批次檔,不會默默截斷)。"""
+    if not path.lower().endswith(_SHIMS):
+        return path
+    root = os.path.join(os.path.dirname(path), "node_modules", "@openai", "codex")
+    hits = sorted(glob.glob(os.path.join(root, "node_modules", "@openai", "codex-win32-*",
+                                         "vendor", "*", "bin", "codex.exe")))
+    return hits[-1] if hits else path
+
+
 def find_codex() -> tuple[str, str]:
     """→ `(路徑, 版本字串)`。明示的 `GPT_REVIEW_CODEX_BIN` 直接採用;否則取版本最高者。"""
     explicit = os.environ.get("GPT_REVIEW_CODEX_BIN", "").strip()
+    if explicit.lower().endswith(_SHIMS):
+        raise ReviewError(f"GPT_REVIEW_CODEX_BIN 不可是批次檔/腳本(多行 prompt 會被截斷):{explicit}")
     if explicit:
         version = _cli_version(explicit)
         if not version:
@@ -155,6 +172,8 @@ def find_codex() -> tuple[str, str]:
         return explicit, version
     ranked = []
     for path in codex_candidates():
+        if path.lower().endswith(_SHIMS):
+            continue   # 批次檔會截斷多行 prompt,寧可擋下也不用
         version = _cli_version(path)
         if version:
             ranked.append((_version_key(version), path, version))

@@ -496,3 +496,32 @@ def test_legacy_high_pending_commits_stay_in_the_queue_after_the_xhigh_switch():
     assert not queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["low"]}, gpt)
     assert queue.effort_value(gpt) == "medium" and queue.effort_value(claude) == "high"
     assert queue.accepted_efforts(claude) == ("high",), "Claude 佇列不受影響"
+
+
+# ---------------------------------------------------------------------------
+# 7. 批次檔會截斷多行 prompt(2026-11-18 實測:npm codex.cmd 只送出第一行)
+# ---------------------------------------------------------------------------
+def test_npm_shim_resolves_to_the_bundled_native_exe(tmp_path):
+    shim = tmp_path / "codex.cmd"
+    shim.write_text("@echo off\n", encoding="utf-8")
+    exe = (tmp_path / "node_modules" / "@openai" / "codex" / "node_modules" / "@openai" / "codex-win32-x64"
+           / "vendor" / "x86_64-pc-windows-msvc" / "bin" / "codex.exe")
+    exe.parent.mkdir(parents=True)
+    exe.write_bytes(b"")
+    assert gpt.native_cli(str(shim)) == str(exe)
+    assert gpt.native_cli(str(exe)) == str(exe)
+    lonely = tmp_path / "elsewhere" / "codex.cmd"
+    assert gpt.native_cli(str(lonely)) == str(lonely)   # 找不到原生 exe 就原樣回傳 → find_codex 擋下
+
+
+def test_batch_files_are_never_used_as_the_reviewer_cli(tmp_path, monkeypatch):
+    shim = tmp_path / "codex.cmd"
+    shim.write_text("@echo off\n", encoding="utf-8")
+    monkeypatch.setenv("GPT_REVIEW_CODEX_BIN", str(shim))
+    with pytest.raises(gpt.ReviewError, match="批次檔"):
+        gpt.find_codex()
+    monkeypatch.delenv("GPT_REVIEW_CODEX_BIN")
+    monkeypatch.setattr(gpt, "codex_candidates", lambda: [str(shim)])
+    monkeypatch.setattr(gpt, "_cli_version", lambda path: "codex-cli 9.9.9")
+    with pytest.raises(gpt.ReviewError, match="not found"):
+        gpt.find_codex()

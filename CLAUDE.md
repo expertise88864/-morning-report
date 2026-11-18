@@ -1,10 +1,18 @@
 # 晨報系統(-morning-report-main)— 常駐工作規則
 
+## 最新使用者定案：所有 review 一律 gpt-6.2-astra／medium（2026-11-18）
+
+本節優先於下方所有關於審查模型與 effort 的敘述。
+- PR review、續審（`--resume`）、反駁續審與 quota-pending 補審，一律 `gpt-6.2-astra`、reasoning effort `medium`（取代 2026-10-14 的 `gpt-6.1-sol`／`xhigh`），經 `tools/pr_review.py` → `tools/codex_review.sh`（read-only，以 session 紀錄驗證實際模型，證明不了就不算一輪；不得 fallback 到其他模型或 effort）。
+- commit status 改為 `codex-review/gpt-6.2-astra`；推 main 的 hook 只認這個 context，舊 `gpt-6.1-sol` 的 APPROVE 不再算數。
+- gpt-6.2-astra 需要 Codex CLI 0.169.1 以上（2026-11-18 實測：桌面版內附 0.163.0-alpha 被拒、npm 全域 0.169.1 可用；`python tools/gpt_diff_review.py which` 顯示實際選用的 CLI）。CLI 不支援時先問使用者，不得默默降級。
+- 歷史 trailer 名稱（`GPT-6-1-Sol-Review` 等）沿用，只用來辨認切換前的 pending commit；它們改由新模型補審。
+
 ## 最新使用者定案：每個 PR review 一次（2026-10-15）
 
 本節優先於下方及舊文件中所有「逐 commit review」「review trailer」「audit commit」規則；模型、CI、禁止付費測試與資料保護要求不變。
 - 不再逐 commit review，也不用 pre-commit／commit-msg hook 審查（兩支 hook 已刪除）；commit 不需要 review trailer。
-- 分支推上 `codex/*` 後執行 `python tools/pr_review.py`：開（或找到）指向 main 的 PR，以 `gpt-6.1-sol`／`xhigh` 唯讀審查 `merge-base(main, head)..head` 整段 diff（`tools/codex_review.sh`，以 session 紀錄驗證實際模型，證明不了就不算一輪），結論與 findings 寫成 PR comment，並在 exact head SHA 設 `codex-review/gpt-6.1-sol` commit status。
+- 分支推上 `codex/*` 後執行 `python tools/pr_review.py`：開（或找到）指向 main 的 PR，以 `gpt-6.2-astra`／`medium`（2026-11-18 起）唯讀審查 `merge-base(main, head)..head` 整段 diff（`tools/codex_review.sh`，以 session 紀錄驗證實際模型，證明不了就不算一輪），結論與 findings 寫成 PR comment，並在 exact head SHA 設 `codex-review/gpt-6.1-sol` commit status。
 - findings 逐條驗證（CONFIRMED／REJECTED／UNCERTAIN），只修 CONFIRMED；修正後 push，再跑 `python tools/pr_review.py --resume`（同一 session）直到 APPROVE。head 一變，舊 APPROVE 即作廢。
 - 有 finding 經驗證為 REJECTED、程式不該改時：把證據寫成反駁檔（不可含 diff），執行 `python tools/pr_review.py --resume --rebuttal 反駁檔`，在同一 session 請審查者重新查證；同一 head 只能反駁一次，審查者不接受就維持 REQUEST_CHANGES（使用者定案 2026-10-15）。
 - 推 main 時 pre-push hook（`_delivery.py`，policy `pr_review: true`）除候選 CI 外，還要求 exact head 有本人建立的 APPROVE status，且審查範圍涵蓋所有要進 main 的 commit。額度不足時 status 為 quota-pending：可照常發佈但不是通過；額度恢復後用 `python tools/pr_review.py --pending` 找出並補審，結果寫在同一 PR。
@@ -28,7 +36,7 @@
 - HsiaoEye 視覺基準只能由 Ubuntu 產生並人工確認，不自動接受差異；保留 CMS 新修改，衝突停止，不 force-push。CMS 存檔不等於正式發佈完成。
 - 晨報候選 CI 不得寄信、寫回正式 state 或觸發正式排程；變更產報/LLM/外部資料關鍵路徑時另做不寄信 dry-run。既有正式寄信排程不得因候選驗證中斷。
 - CI 失敗持續診斷並修正可確認缺陷，修正後重跑完整遠端驗證；取消、逾時、缺失、讀不到及應跑卻跳過皆不通過。禁止 skip-ci、降門檻或繞 hook 製造全綠。
-- 審查方式見上方 2026-10-15 定案（每個 PR 一次，gpt-6.1-sol／xhigh／read-only）；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。
+- 審查方式見上方 2026-10-15 定案（每個 PR 一次，gpt-6.2-astra／medium／read-only）；quota pending 只延後模型審查，不豁免正式發佈的遠端 CI。
 - main 發佈後還要驗證 exact-SHA 正式 CI／部署及適用 smoke checks，才可宣告交付；純文件變更也走候選流程。
 - 詳細入口、範圍與限制見 REMOTE_CI_DELIVERY.md。不得把本機快速檢查說成完整 CI，也不得把候選 CI 綠燈當作正式部署成功。
 
@@ -71,11 +79,11 @@ ruff → `python -m py_compile <改過的檔>` → `python -m pytest`(全套)→
 動渲染則離線預覽 → push `codex/*` → 候選 CI → **`python tools/pr_review.py`(每個 PR 一次)**。
 一主題一 commit;繁中 commit message;結尾 `Co-Authored-By: Claude <當前模型名> <noreply@anthropic.com>`。
 
-### GPT-6.1-Sol PR review(使用者 2026-10-15 定案,取代 2026-10-14 逐 commit 閘門)
+### GPT PR review(使用者 2026-10-15 定案;模型 2026-11-18 改 gpt-6.2-astra / medium)
 
 **每個 PR 審一次,包括 docs-only、tests-only 與 cosmetic。** commit 時不審、不加 trailer;
 推上 `codex/*` 後執行 `python tools/pr_review.py`(第一輪;沒有 PR 會自動開),reviewer 固定
-`gpt-6.1-sol`、effort `xhigh`(Codex CLI read-only,經 `tools/codex_review.sh`);**不得 fallback**
+`gpt-6.2-astra`、effort `medium`(Codex CLI read-only,經 `tools/codex_review.sh`);**不得 fallback**
 到其他模型或較低 effort。wrapper 以 Codex session rollout 的 `turn_context` 證明實際模型、repo
 與本次呼叫,證明不了、未登入或沒有明確裁決一律不算一輪(PR status 記 error)。
 
@@ -99,9 +107,9 @@ Git 只保留 `.githooks/pre-push`(`_delivery.py`:codex/* 跑離線 delivery 測
 
 1. 使用 `python tools/pr_review.py`(內部呼叫本 repo 專用 wrapper `tools/codex_review.sh`);不得直接呼叫
    `codex exec`,也不得透過 Codex MCP(user-scope `codex` MCP 已於 2026-07-10 移除)。
-2. 一般實作用 `targeted` + GPT-6.1-Sol xhigh(2026-10-14 起所有模式一律 xhigh)。
+2. 一般實作用 `targeted` + gpt-6.2-astra medium(2026-11-18 起所有模式一律 medium)。
 3. 只有 authentication、authorization、payments、破壞性 DB 變更、concurrency、產線事故、
-   資料完整性風險、大型跨模組 refactor 才用 `deep`(範圍較大;同樣 GPT-6.1-Sol xhigh)。
+   資料完整性風險、大型跨模組 refactor 才用 `deep`(範圍較大;同樣 gpt-6.2-astra medium)。
 4. 不得把完整 diff 貼進 Codex prompt(Codex 自行在 repo 內跑 git)。
 5. Codex 必須 read-only,且關閉 web search 與 apps。
 6. 獨立驗證每一項 Codex finding(CONFIRMED / REJECTED / UNCERTAIN)。
@@ -115,7 +123,7 @@ Git 只保留 `.githooks/pre-push`(`_delivery.py`:codex/* 跑離線 delivery 測
 
 **推 main 前 PR 必須 APPROVE**(額度不足的 quota-pending 例外,事後補審)。 歷史上 Codex 擋下多個真 bug
 (state 檔漏登錄、stale FX 誤入計分、`float('nan')` 不拋例外、podcast 集數餓死、2026 世足第 3 名
-仍可晉級)——不要跳過。**模型 gpt-6.1-sol 需較新的 Codex CLI**(npm 0.155.1 被拒、Codex 桌面版內附 0.162.0-alpha 可用;`python tools/gpt_diff_review.py which` 顯示實際選用的 CLI);若不可用,**先問使用者**,
+仍可晉級)——不要跳過。**模型 gpt-6.2-astra 需 Codex CLI 0.169.1 以上**(2026-11-18:桌面版內附 0.163.0-alpha 被拒、npm 全域 0.169.1 可用;`python tools/gpt_diff_review.py which` 顯示實際選用的 CLI);若不可用,**先問使用者**,
 勿默默降級。
 
 ## 3. 禁改清單(違反即失敗)

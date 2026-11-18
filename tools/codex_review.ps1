@@ -9,7 +9,7 @@ tools/codex_review.ps1 — 本 repo 唯一的外部 code-review 入口(Codex CLI
 mode:
   diff      低風險/局部(文案、註解、CSS、tests-only)      medium / 額外檔 3 / findings 3
   targeted  一般非 trivial 實作(預設)                      medium / 額外檔 12 / findings 5
-  deep      auth、金流、DB migration、併發、資安、大重構     xhigh   / 額外檔 30 / findings 8
+  deep      auth、金流、DB migration、併發、資安、大重構     medium  / 額外檔 30 / findings 8
   resume    後續輪(僅限 confirmed P0/P1/material P2 修正後;沿用同一 session)
 
 設計原則(勿改):
@@ -34,7 +34,7 @@ param(
 # 刻意用 Continue 而非 Stop:PS 5.1 對 native exe 做 2>&1 會把每行 stderr 包成 NativeCommandError,
 # 在 Stop 模式下被誤判為終止錯誤。本腳本改以 $LASTEXITCODE 與明確 Die() 控制流程。
 $ErrorActionPreference = 'Continue'
-$Model = 'gpt-6.1-sol'   # 使用者 2026-10-14 定案:任何 diff review 一律 gpt-6.1-sol / xhigh
+$Model = 'gpt-6.2-astra'   # 使用者 2026-11-18 定案:任何 review(含續審、補審)一律 gpt-6.2-astra / medium
 $Harden = if ($env:CODEX_REVIEW_HARDEN) { $env:CODEX_REVIEW_HARDEN } else { '1' }
 $Strict = if ($env:CODEX_REVIEW_STRICT) { $env:CODEX_REVIEW_STRICT } else { '1' }
 
@@ -66,14 +66,14 @@ if (-not (Test-Path $UsageTsv)) {
 }
 
 switch ($Mode) {
-    'diff'     { $Effort = 'xhigh';   $ExtraFileLimit = 3;  $FindingLimit = 3 }
-    'targeted' { $Effort = 'xhigh';   $ExtraFileLimit = 12; $FindingLimit = 5 }
-    'deep'     { $Effort = 'xhigh';   $ExtraFileLimit = 30; $FindingLimit = 8 }
+    'diff'     { $Effort = 'medium';   $ExtraFileLimit = 3;  $FindingLimit = 3 }
+    'targeted' { $Effort = 'medium';   $ExtraFileLimit = 12; $FindingLimit = 5 }
+    'deep'     { $Effort = 'medium';   $ExtraFileLimit = 30; $FindingLimit = 8 }
     'resume'   { $Effort = '';       $ExtraFileLimit = ''; $FindingLimit = '' }
     default    { Die "未知 mode '$Mode'(可用:diff | targeted | deep | resume)" }
 }
 
-# CLI 與強制閘門同一個選擇邏輯(gpt-6.1-sol 需要較新的 Codex CLI;不降級)
+# CLI 與強制閘門同一個選擇邏輯(gpt-6.2-astra 需要較新的 Codex CLI;不降級)
 $PyBin = (Get-Command python3, python -ErrorAction SilentlyContinue | Select-Object -First 1).Source
 if (-not $PyBin) { Die '找不到 Python,無法決定要用哪一支 Codex CLI。' }
 # CLI 路徑可能含非 ASCII(中文使用者名稱):Python 以 UTF-8 輸出,這裡也暫時以 UTF-8 解碼
@@ -201,7 +201,7 @@ if ($Mode -eq 'resume') {
     }
 
     $last = (Get-Content $UsageTsv | Select-Object -Last 1) -split "`t"
-    $ResumeEffort = 'xhigh'   # 2026-10-14:一律 xhigh,不沿用舊紀錄裡可能的 medium / high
+    $ResumeEffort = 'medium'   # 2026-11-18:一律 medium,不沿用舊紀錄裡的 xhigh / high
     $ResumeBase   = if ($last.Count -ge 6 -and $last[5]) { $last[5] } else { 'unavailable' }
 
     $ResumePrompt = @"

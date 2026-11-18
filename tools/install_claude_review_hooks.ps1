@@ -4,7 +4,7 @@ param()
 # File name kept for existing entry points (commit_push.bat). Since the user
 # decision of 2026-10-15 there is no per-commit review hook: only the tracked
 # pre-push delivery gate is installed. Each PR is reviewed once with
-# tools/pr_review.py (gpt-6.1-sol, xhigh, read-only).
+# tools/pr_review.py (gpt-6.2-astra, medium, read-only).
 
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -37,4 +37,4 @@ if ($Actual -ne '.githooks') {
 }
 
 Write-Host '[delivery] pre-push delivery gate installed (no per-commit review hooks).'
-Write-Host '[delivery] Review each pushed codex/* PR once: python tools/pr_review.py (gpt-6.1-sol, xhigh, read-only).'
+Write-Host '[delivery] Review each pushed codex/* PR once: python tools/pr_review.py (gpt-6.2-astra, medium, read-only).'

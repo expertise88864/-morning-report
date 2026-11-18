@@ -13,7 +13,7 @@ import sys
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
-REVIEW_CONTEXT = "codex-review/gpt-6.1-sol"
+REVIEW_CONTEXT = "codex-review/gpt-6.2-astra"   # 使用者 2026-11-18(舊 gpt-6.1-sol 的 APPROVE 不再算數)
 REVIEW_DESCRIPTION = re.compile(r"(APPROVE|quota-pending) base=([0-9a-f]{40})")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 

@@ -357,7 +357,7 @@ def test_claude_finding_can_be_resolved_by_a_gpt_reviewed_repair(repo, monkeypat
     with pytest.raises(gate.ReviewError, match="exact pending-commit approval"):
         gpt.commit_message(str(path))                   # 修正本身還沒經 GPT 審過
     queue.save_approvals(gpt, [queue.commit_range(gpt, fix)], "verified-diff-fingerprint")
-    path.write_text("Record review\n\nGPT-6-1-Sol-Review: passed\nGPT-6-1-Sol-Review-Effort: xhigh\n"
+    path.write_text("Record review\n\nGPT-6-1-Sol-Review: passed\nGPT-6-1-Sol-Review-Effort: medium\n"
                     f"GPT-6-1-Sol-Reviewed-Commit: {fix}\n", encoding="utf-8")
     assert gpt.commit_message(str(path)) == 0
     git("commit", "--allow-empty", "-F", str(path))

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""GPT-6.1-Sol (Codex CLI) diff review gate with explicitly marked quota deferral.
+"""GPT (Codex CLI) diff review gate with explicitly marked quota deferral.
+
+2026-11-18 使用者定案:**所有 review(含續審、補審)一律 gpt-6.2-astra / medium**,取代
+2026-10-14 的 gpt-6.1-sol / xhigh。gpt-6.2-astra 需要 Codex CLI 0.169.1 以上(桌面版內附
+0.163.0-alpha 會被拒;npm 全域 0.169.1 可用),`which` 照舊挑版本最高的那支、不降級。
+trailer 名稱沿用 `GPT-6-1-Sol-*`:它們只用來辨認切換前留下的歷史 pending commit。
 
 2026-10-15 使用者定案:改為**每個 PR review 一次**(`tools/pr_review.py`),不再逐 commit /
 逐 push 審查;pre-commit、commit-msg hook 已移除,`_delivery.py` 也不再呼叫本閘門。仍在使用的
@@ -70,11 +75,11 @@ push_fingerprint = _base.push_fingerprint
 
 # ---- 這道閘門自己的身分 -----------------------------------------------------
 STATE_DIR = ROOT / ".gpt-review"
-MODEL = "gpt-6.1-sol"
-# 使用者 2026-10-14 定案兩次:先 high,同日改 xhigh(不降級、不 fallback)
-EFFORT = "xhigh"
-#: 佇列認得的 effort trailer:切換 xhigh 前已排入的 high 仍是待審(見 queue.accepted_efforts)
-ACCEPTED_TRAILER_EFFORTS = ("xhigh", "high")
+MODEL = "gpt-6.2-astra"
+# 使用者 2026-11-18 定案:gpt-6.2-astra / medium(取代 gpt-6.1-sol / xhigh;不降級、不 fallback)
+EFFORT = "medium"
+#: 佇列認得的 effort trailer:切換前排入的 xhigh / high 仍是待審(見 queue.accepted_efforts),由新模型補審
+ACCEPTED_TRAILER_EFFORTS = ("medium", "xhigh", "high")
 PENDING_PATH = STATE_DIR / "pending_review.json"
 # trailer key 裡**不能有 `.`**:`GPT-6.1-Sol-Review: pending` git interpret-trailers 不認(實測
 # 解析出 0 行),佇列會把內容 commit 判成「沒排進去」而擋下。所以版本號用連字號寫。
@@ -205,7 +210,7 @@ def build_prompt(scope: str, ranges: Sequence[PushRange], snapshot_path: Path) -
     text = _base.build_prompt(scope, ranges, snapshot_path)
     text = text.replace(
         f"MODEL REQUIREMENT: this run must use Claude Opus 5.5 (`{_base.MODEL}`).",
-        f"MODEL REQUIREMENT: this run must use GPT-6.1-Sol (`{MODEL}`) with reasoning effort `{EFFORT}`.")
+        f"MODEL REQUIREMENT: this run must use GPT-6.2-Astra (`{MODEL}`) with reasoning effort `{EFFORT}`.")
     text = text.replace(
         "Then use Read to inspect",
         "Then read (with read-only shell commands such as `git show`, `git diff`, `cat`, `rg`) the file")

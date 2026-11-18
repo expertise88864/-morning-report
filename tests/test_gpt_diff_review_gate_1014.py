@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""**之後任何 diff review 一律 gpt-6.1-sol / xhigh**(使用者 2026-10-14 定案;同日由 high 改 xhigh)。
+"""**任何 review 一律 gpt-6.2-astra / medium**(使用者 2026-11-18 定案,取代 2026-10-14 的 gpt-6.1-sol / xhigh)。
 
 `tools/gpt_diff_review.py` 取代 Claude Opus 5.5 成為強制 diff 閘門。它與 Claude 閘門共用
 git 證據、fingerprint、pending 佇列與 hook 契約(同一份程式碼),只替換審查後端、模型證據
@@ -43,15 +43,15 @@ def _rollout(root: Path, turns, thread=THREAD, cli="0.162.0-alpha.17.2") -> Path
 def test_command_pins_gpt61_high_read_only_and_isolated(tmp_path):
     cmd = gpt.build_command("codex.exe", tmp_path / "last.txt")
     assert cmd[1] == "exec"
-    assert cmd[cmd.index("--model") + 1] == "gpt-6.1-sol"
-    assert "model_reasoning_effort=xhigh" in cmd
+    assert cmd[cmd.index("--model") + 1] == "gpt-6.2-astra"
+    assert "model_reasoning_effort=medium" in cmd
     assert cmd[cmd.index("--sandbox") + 1] == "read-only"
     for flag in ("--ignore-user-config", "--strict-config", "--json"):
         assert flag in cmd
     assert "web_search=disabled" in cmd and "features.apps=false" in cmd
     assert cmd[-1] == "-", "prompt 走 stdin;diff 永遠不進 argv"
     assert not any("dangerously" in part or "bypass" in part for part in cmd)
-    assert (gpt.MODEL, gpt.EFFORT) == ("gpt-6.1-sol", "xhigh")
+    assert (gpt.MODEL, gpt.EFFORT) == ("gpt-6.2-astra", "medium")
 
 
 def test_windows_sandbox_survives_ignore_user_config(tmp_path, monkeypatch):
@@ -67,7 +67,7 @@ def test_windows_sandbox_survives_ignore_user_config(tmp_path, monkeypatch):
 
 def test_prompt_is_the_shared_contract_with_the_gpt_model_requirement(tmp_path):
     text = gpt.build_prompt("staged", [], tmp_path / "review.patch")
-    assert "GPT-6.1-Sol (`gpt-6.1-sol`) with reasoning effort `xhigh`" in text
+    assert "GPT-6.2-Astra (`gpt-6.2-astra`) with reasoning effort `medium`" in text
     assert "Claude Opus" not in text
     # 審查契約與 Claude 閘門是同一份(不另抄一份會分歧的版本)
     assert "The final non-empty line must be exactly APPROVE or REQUEST_CHANGES." in text
@@ -75,22 +75,23 @@ def test_prompt_is_the_shared_contract_with_the_gpt_model_requirement(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 2. 模型證據:每一回合都必須是 gpt-6.1-sol / xhigh / read-only,否則 fail closed
+# 2. 模型證據:每一回合都必須是 gpt-6.2-astra / medium / read-only,否則 fail closed
 # ---------------------------------------------------------------------------
 def test_rollout_proves_model_effort_and_sandbox(tmp_path):
-    _rollout(tmp_path, [("gpt-6.1-sol", "xhigh", "read-only")] * 2)
+    _rollout(tmp_path, [("gpt-6.2-astra", "medium", "read-only")] * 2)
     ev = gpt.rollout_evidence(THREAD, tmp_path)
     assert ev["turns"] == 2 and ev["cli_version"].startswith("0.162")
 
 
 @pytest.mark.parametrize("turn", [
-    ("gpt-5.6-sol", "xhigh", "read-only"),    # 被悄悄換成別的模型
-    ("gpt-6.1-sol", "high", "read-only"),     # 2026-10-14 改 xhigh 後,high 不再算數
-    ("gpt-6.1-sol", "medium", "read-only"),   # effort 被降級
-    ("gpt-6.1-sol", "xhigh", "workspace-write"),  # 不是唯讀
+    ("gpt-6.1-sol", "xhigh", "read-only"),    # 2026-11-18 換 gpt-6.2-astra 後,舊模型不再算數
+    ("gpt-5.6-sol", "medium", "read-only"),   # 被悄悄換成別的模型
+    ("gpt-6.2-astra", "xhigh", "read-only"),  # effort 不是定案的 medium
+    ("gpt-6.2-astra", "low", "read-only"),    # effort 被降級
+    ("gpt-6.2-astra", "medium", "workspace-write"),  # 不是唯讀
 ])
 def test_any_mismatching_turn_fails_closed(tmp_path, turn):
-    _rollout(tmp_path, [("gpt-6.1-sol", "xhigh", "read-only"), turn])
+    _rollout(tmp_path, [("gpt-6.2-astra", "medium", "read-only"), turn])
     with pytest.raises(gpt.ReviewError, match="cannot prove"):
         gpt.rollout_evidence(THREAD, tmp_path)
 
@@ -138,7 +139,7 @@ def test_reviewer_that_read_nothing_is_blocked_not_request_changes(monkeypatch, 
     結論(沒有 finding 可修),要擋下(rc 4),不可當成 rc 2 的審查意見。"""
     _isolate(monkeypatch, tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
-    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "xhigh", "read-only")])
+    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.2-astra", "medium", "read-only")])
     denied = {"type": "item.completed", "item": {
         "type": "command_execution", "command": "git diff --cached", "exit_code": 1}}
     out = "\n".join(json.dumps(e) for e in ({"type": "thread.started", "thread_id": THREAD}, denied, _DONE))
@@ -165,7 +166,7 @@ def test_recovered_error_does_not_override_the_completed_verdict(monkeypatch, tm
     REQUEST_CHANGES 變成 pending(pre-commit 會放行 rc 3)。"""
     _isolate(monkeypatch, tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
-    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "xhigh", "read-only")])
+    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.2-astra", "medium", "read-only")])
     out = "\n".join(json.dumps(e) for e in (
         {"type": "thread.started", "thread_id": THREAD}, {"type": "error", "message": recovered},
         _READ, _DONE))
@@ -187,7 +188,7 @@ def test_verdict_without_a_completed_turn_is_blocked(monkeypatch, tmp_path):
     不是完成的審查,擋下,不採信那個 APPROVE。"""
     _isolate(monkeypatch, tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
-    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.1-sol", "xhigh", "read-only")])
+    _rollout(tmp_path / "codex-home" / "sessions", [("gpt-6.2-astra", "medium", "read-only")])
     for tail in ((), ({"type": "turn.failed", "error": {"message": "stream ended"}}, _DONE)):
         out = "\n".join(json.dumps(e) for e in (
             {"type": "thread.started", "thread_id": THREAD}, _READ, *tail))
@@ -211,7 +212,7 @@ def test_quota_error_is_pending_and_records_the_reset_time(monkeypatch, tmp_path
     monkeypatch.setattr(gpt, "staged_fingerprint", lambda: "f" * 64)
     assert gpt.main(["staged"]) == 3
     record = json.loads(gpt.PENDING_PATH.read_text(encoding="utf-8"))
-    assert record["status"] == "PENDING" and record["model"] == "gpt-6.1-sol"
+    assert record["status"] == "PENDING" and record["model"] == "gpt-6.2-astra"
     assert record["failure_kind"] == "quota" and record["retry_after"] == "3:05 PM"
 
 
@@ -263,7 +264,7 @@ def test_unsupported_model_is_blocked_not_deferred(monkeypatch, tmp_path):
     """2026-10-14 實測:舊 CLI 對 gpt-6.1-sol 回 400 —— 那不是額度問題,要擋下而不是 pending。"""
     _isolate(monkeypatch, tmp_path)
     out = json.dumps({"type": "turn.failed", "error": {"message":
-        "The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account."}})
+        "The 'gpt-6.2-astra' model is not supported when using Codex with a ChatGPT account."}})
     monkeypatch.setattr(gpt.subprocess, "run", lambda *a, **k: _Proc(1, out))
     monkeypatch.setattr(gpt, "staged_fingerprint", lambda: "f" * 64)
     assert gpt.main(["staged"]) == 4
@@ -283,10 +284,10 @@ def test_success_requires_rollout_evidence(monkeypatch, tmp_path):
     monkeypatch.setattr(gpt.subprocess, "run", fake_run)
     monkeypatch.setattr(gpt, "staged_fingerprint", lambda: "f" * 64)
     assert gpt.main(["staged"]) == 4, "沒有 rollout 證據 → 擋下,不可當成通過"
-    _rollout(sessions, [("gpt-6.1-sol", "xhigh", "read-only")])
+    _rollout(sessions, [("gpt-6.2-astra", "medium", "read-only")])
     assert gpt.main(["staged"]) == 0
     review = json.loads((gpt.STATE_DIR / "last_review.json").read_text(encoding="utf-8"))
-    assert review["model"] == "gpt-6.1-sol" and review["verdict"] == "APPROVE"
+    assert review["model"] == "gpt-6.2-astra" and review["verdict"] == "APPROVE"
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +339,7 @@ def test_content_commit_is_queued_for_gpt_not_claude(tmp_path):
     msg.write_text("fix: something\n", encoding="utf-8")
     assert gpt.commit_message(str(msg)) == 0
     text = msg.read_text(encoding="utf-8")
-    assert "GPT-6-1-Sol-Review: pending" in text and "GPT-6-1-Sol-Review-Effort: xhigh" in text
+    assert "GPT-6-1-Sol-Review: pending" in text and "GPT-6-1-Sol-Review-Effort: medium" in text
     assert "Claude-Opus-5-Review" not in text
 
 
@@ -363,19 +364,19 @@ def test_no_per_commit_hooks_and_policy_requires_pr_review():
     assert policy["pr_review"] is True
     assert "review_gate" not in policy and "claude_hook" not in policy
     installer = (ROOT / "tools" / "install_claude_review_hooks.ps1").read_text(encoding="utf-8")
-    assert "pr_review.py" in installer and "gpt-6.1-sol" in installer
+    assert "pr_review.py" in installer and "gpt-6.2-astra" in installer
     assert "pre-commit" not in installer and "commit-msg" not in installer
     for ignored in (".gpt-review/x", ".codex-review/x"):
         r = subprocess.run(["git", "check-ignore", "-q", ignored], cwd=ROOT, capture_output=True)
         assert r.returncode == 0, f"{ignored} 必須被忽略(pr_review.py 要求乾淨工作樹)"
     for wrapper in ("codex_review.sh", "codex_review.ps1"):
         text = (ROOT / "tools" / wrapper).read_text(encoding="utf-8")
-        assert "gpt-6.1-sol" in text and "gpt-5.6-sol" not in text
+        assert "gpt-6.2-astra" in text and "gpt-5.6-sol" not in text
         assert "gpt_diff_review.py" in text, "手動外審要用與閘門同一個 CLI 選擇邏輯"
 
 
 def _turn_rollout(root: Path, cwd: str, stamp: str = "2026-10-15T08:00:00Z",
-                  turns=(("gpt-6.1-sol", "xhigh", "read-only"),)) -> Path:
+                  turns=(("gpt-6.2-astra", "medium", "read-only"),)) -> Path:
     f = _rollout(root, list(turns))
     rows = [json.loads(line) for line in f.read_text(encoding="utf-8").splitlines()]
     for row in rows:
@@ -403,7 +404,7 @@ def test_session_proof_requires_this_repo_and_this_invocation(tmp_path):
 
 def test_session_proof_fails_closed_on_wrong_model(tmp_path):
     sessions = tmp_path / "sessions"
-    _turn_rollout(sessions, str(ROOT), turns=(("gpt-6.1-sol", "high", "read-only"),))
+    _turn_rollout(sessions, str(ROOT), turns=(("gpt-6.1-sol", "xhigh", "read-only"),))
     with pytest.raises(gpt.ReviewError):
         gpt.session_proof(THREAD, 0, sessions)
     assert gpt.main(["verify-session", "--session", THREAD]) == 4, "--since 缺少 → 擋下"
@@ -488,9 +489,10 @@ def test_ps1_repo_root_survives_a_non_utf8_console(tmp_path):
 
 def test_legacy_high_pending_commits_stay_in_the_queue_after_the_xhigh_switch():
     """GPT 閘門 2026-10-14 由 high 改 xhigh:切換前排入、標 high 的 commit 不可從待審清單消失;
-    新 commit 標 xhigh;新的 GPT audit 必須寫 xhigh(實際審查的 effort)。"""
+    2026-11-18 換 gpt-6.2-astra / medium:切換前標 xhigh / high 的仍在佇列(由新模型補審),新的標 medium。"""
     assert queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["high"]}, gpt)
     assert queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["xhigh"]}, gpt)
-    assert not queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["medium"]}, gpt)
-    assert queue.effort_value(gpt) == "xhigh" and queue.effort_value(claude) == "high"
+    assert queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["medium"]}, gpt)
+    assert not queue.is_pending({"gpt-6-1-sol-review": ["pending"], "gpt-6-1-sol-review-effort": ["low"]}, gpt)
+    assert queue.effort_value(gpt) == "medium" and queue.effort_value(claude) == "high"
     assert queue.accepted_efforts(claude) == ("high",), "Claude 佇列不受影響"

@@ -37,6 +37,9 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTEXT = "codex-review/gpt-6.2-astra"   # 使用者 2026-11-18:改 gpt-6.2-astra / medium
+#: 切換前的 context:它的 APPROVE 只代表「當時的規定下已審過」(--pending 不再列出);
+#: 它的 quota-pending 仍要以新模型補審。推 main 只認 CONTEXT(_delivery_review.py)。
+LEGACY_CONTEXT = "codex-review/gpt-6.1-sol"
 MODEL = "gpt-6.2-astra"
 EFFORT = "medium"
 MARKER = "<!-- codex-pr-review -->"
@@ -261,10 +264,10 @@ def reviewed_base(api: API, sha: str) -> str:
     return ""
 
 
-def latest_status(api: API, sha: str) -> dict | None:
+def latest_status(api: API, sha: str, context: str = CONTEXT) -> dict | None:
     owner = api.repo.split("/")[0].lower()
     rows = api.call("GET", f"/commits/{sha}/statuses?per_page=100") or []
-    mine = [s for s in rows if s.get("context") == CONTEXT
+    mine = [s for s in rows if s.get("context") == context
             and str(s.get("creator", {}).get("login", "")).lower() == owner]
     return max(mine, key=lambda s: s["id"]) if mine else None
 
@@ -287,6 +290,10 @@ def list_pending(api: API) -> int:
         status = latest_status(api, head)
         if status and status["state"] == "success":
             continue
+        legacy = None if status else latest_status(api, head, LEGACY_CONTEXT)
+        if legacy and legacy["state"] == "success":
+            continue   # 切換前已依當時規定(gpt-6.1-sol)APPROVE
+        status = status or legacy
         label = status["description"] if status else "never reviewed"
         merged = "merged" if pr.get("merged_at") else pr["state"]
         print(f"#{pr['number']} [{merged}] {head[:12]} {label} — {pr['title']}")

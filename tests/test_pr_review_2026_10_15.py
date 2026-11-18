@@ -306,3 +306,44 @@ class RebuttalDiffMarkerTests(unittest.TestCase):
                 with self.subTest(line=line):
                     rc = subprocess.run([grep, "-qE", pattern, str(sample)]).returncode
                     self.assertEqual(rc, expected)
+
+
+class LegacyContextTests(unittest.TestCase):
+    """2026-11-18 審查模型改 gpt-6.2-astra:切換前以 gpt-6.1-sol APPROVE 的 PR 不再被列成待審;
+    舊 context 的 quota-pending 仍要以新模型補審。推 main 只認新 context。"""
+
+    def _api(self, statuses):
+        def routes(path):
+            if path.startswith("/pulls"):
+                return [{"number": n, "title": f"PR{n}", "state": "closed", "merged_at": "x",
+                         "head": {"sha": sha}} for n, sha in ((1, "1" * 40), (2, "2" * 40), (3, "3" * 40))]
+            return statuses.get(path.split("/")[2], [])
+        return FakeAPI(routes)
+
+    def test_pending_list_skips_legacy_approvals_but_keeps_legacy_quota_pending(self):
+        owner = {"login": "owner"}
+        api = self._api({
+            "1" * 40: [{"id": 1, "context": pr.LEGACY_CONTEXT, "state": "success", "creator": owner,
+                        "description": "APPROVE base=" + "a" * 40}],
+            "2" * 40: [{"id": 2, "context": pr.LEGACY_CONTEXT, "state": "pending", "creator": owner,
+                        "description": "quota-pending base=" + "a" * 40}],
+        })
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            pr.list_pending(api)
+        text = out.getvalue()
+        self.assertNotIn("#1 ", text)
+        self.assertIn("#2 ", text)
+        self.assertIn("quota-pending", text)
+        self.assertIn("#3 ", text)
+        self.assertIn("2 PR(s)", text)
+
+    def test_promotion_gate_only_accepts_the_new_context(self):
+        import importlib
+        import sys
+        sys.path.insert(0, str(ROOT))
+        gate = importlib.import_module("_delivery_review")
+        self.assertEqual(gate.REVIEW_CONTEXT, pr.CONTEXT)
+        self.assertNotEqual(pr.CONTEXT, pr.LEGACY_CONTEXT)

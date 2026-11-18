@@ -39,4 +39,18 @@ def target_session(date_str: str, get) -> str:
         print(f"::warning::[holidays] 證交所休市日抓取失敗,退回只跳週末: {type(exc).__name__}",
               file=sys.stderr)
         closed = frozenset()
+    global CLOSED
+    CLOSED = closed
     return _infer_target_session_date(date_str, closed)
+
+
+#: 本班抓到的休市日(target_session 填入);抓不到是空集合 → 只跳週末。
+CLOSED: frozenset = frozenset()
+
+
+def previous_session(day: dt.date) -> dt.date:
+    """`day` 之前最近的台股交易日(跳過週末與休市日表;颱風等臨時休市無法事先得知)。"""
+    day -= dt.timedelta(days=1)
+    while day.weekday() >= 5 or day.isoformat() in CLOSED:
+        day -= dt.timedelta(days=1)
+    return day

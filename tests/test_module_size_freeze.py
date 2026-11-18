@@ -210,7 +210,7 @@ MODULE_CEILINGS = {
     "fulltext_fetch.py": 60,   # 全文並行抓取(2026-10-30)
     "mover_news.py": 75,   # 大漲大跌權值股補查新聞(2026-10-30)
     "announcement_filter.py": 110,   # 觀測站例行公告不上卡(2026-10-29);募資、法說、生技(10-30)
-    "tw_holidays.py": 50,   # 證交所休市日表(2026-10-26)
+    "tw_holidays.py": 60,   # 證交所休市日表(2026-10-26);上一個交易日(2026-11-18 連假累計)
     "conclusion_guard.py": 45,
     "local_news_routing.py": 55,   # +分類尾綴去重(2026-10-26)
     "local_news_event_dates.py": 30,
@@ -226,7 +226,7 @@ MODULE_CEILINGS = {
     "report_tidy.py": 90,
     "corporate_splits.py": 95,   # 分割還原(2026-11-17 00662 1 拆 5)
     "us_earnings.py": 65,   # 美股財報日換算台北時間(2026-11-17)
-    "trading_halts.py": 85,   # 停牌日不估 00662、復牌日累計(2026-11-17 使用者同意)
+    "trading_halts.py": 100,   # 停牌日不估 00662、停牌/連假後累計(使用者 2026-11-17、11-18 同意)
     "email_size.py": 45,   # 信件超過約 100KB 才精簡體育(2026-11-17 使用者選 b)
     "content_risk.py": 105,   # 供應商內容風險拒收時減新聞重送(2026-11-14)
     "apbc.py": 140,   # 亞冠賽中華隊賽程與比分(2026-11-08)

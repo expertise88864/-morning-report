@@ -63,7 +63,7 @@ from data_quality import (  # noqa: E402,F401  覆蓋率判準搬到葉模組,�
 import run_manifest as _rm
 import analysis_origin as _ao
 import legacy_actor_guard as _legacy_actor_guard
-import content_risk as _content_risk, corporate_splits as _splits, trading_halts as _halts   # noqa: E401 - 行數上限
+import content_risk as _content_risk, corporate_splits as _splits, email_size, trading_halts as _halts   # noqa: E401 - 行數上限
 import official_numbers as _official
 import report_polish as _polish
 import market_fresh as _fresh
@@ -4915,10 +4915,8 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
         qqq_s.index = qqq_s.index.tz_localize(None) if qqq_s.index.tz else qqq_s.index
         tw_s.index  = tw_s.index.tz_localize(None)  if tw_s.index.tz  else tw_s.index
         fx_s.index  = fx_s.index.tz_localize(None)  if fx_s.index.tz  else fx_s.index
-        if since_trade:   # 復牌日:從停牌前最後交易日起累計 QQQ 與匯率(11-17 使用者同意,見 trading_halts)
-            qqq_prev_close, usdtwd_prev = _halts.bases(qqq_s, fx_s, since_trade, qqq_prev_close, usdtwd_prev)
-            qqq_pct = (qqq_close - qqq_prev_close) / qqq_prev_close
-            fx_pct = (usdtwd - usdtwd_prev) / usdtwd_prev if usdtwd and usdtwd_prev else 0.0
+        qqq_prev_close, qqq_pct, usdtwd_prev, fx_pct = _halts.rebase(   # 停牌/連假後累計(使用者 11-17、11-18 同意)
+            qqq_s, fx_s, since_trade, qqq_close, qqq_prev_close, qqq_pct, usdtwd, usdtwd_prev, fx_pct)
 
         # 計算 00662 隔日漲跌（台股對應前一夜美股）
         df = pd.DataFrame({
@@ -5373,7 +5371,7 @@ def _previous_market_values(series: pd.Series, target_index) -> pd.Series:
 
 def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
                             usdtwd: float, hist_2330: pd.DataFrame,
-                            ex_div_amt: float = 0.0) -> dict:
+                            ex_div_amt: float = 0.0, since_trade: Optional[dt.date] = None) -> dict:
     """
     雙模型 2330 預測：
     1. 漲跌幅 1:1 對應法 — 用昨日 2330 收盤 × (1 + TSM%)
@@ -5416,6 +5414,8 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
         tsm_close_s.index = tsm_close_s.index.tz_localize(None) if tsm_close_s.index.tz else tsm_close_s.index
         fx_close_s.index  = fx_close_s.index.tz_localize(None)  if fx_close_s.index.tz  else fx_close_s.index
         t2330_s.index     = t2330_s.index.tz_localize(None)     if t2330_s.index.tz     else t2330_s.index
+        tsm_prev_close, tsm_pct, _, _ = _halts.rebase(tsm_close_s, None, since_trade, tsm_close, tsm_prev_close, tsm_pct)
+        model1 = last_2330 * (1 + tsm_pct)   # 連假後累計 ADR 變化(使用者 11-18 同意,見 trading_halts)
         # 2330 的同日收盤早於 TSM ADR 同日收盤。歷史比值必須使用台股交易日
         # 前一個可用 ADR / FX 值，否則會把尚未發生的美股收盤偷渡進訓練集。
         df = pd.DataFrame({"t2330": t2330_s})
@@ -10230,7 +10230,7 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         a662 = t00662_o.get(open_date)
         a2330 = t2330_o.get(open_date)
         atwii = twii_o.get(open_date)
-        p662 = _splits.match("00662", a662, h.get("fair_00662"))   # 預測換到實際開盤的刻度
+        p662 = None if _halts.resumed_since("00662", open_date) else _splits.match("00662", a662, h.get("fair_00662"))   # 換到實際開盤的刻度;復牌日不學(11-18)
         if p662 and a662:
             err["00662"].append((a662 - p662) / p662)
         if a2330:
@@ -23023,10 +23023,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         if _estimated_email_kb(html) > LIMIT_KB:
             print(f"[render] keep 模式已壓到 {podcast_shown_n} 集 × {_pts_floor} 條仍偏長",
                   file=sys.stderr)
-    import email_size   # 11-17 使用者選 b:寄出那份超過約 100KB 才精簡體育(NBA 賽程 4 場、新聞 2 條)
-    if sports_html and email_size.over(_estimated_email_kb(_polish.display_pass(html))):
-        sports_html = _safe_block("體育", _render_sports_html,
-                                  email_size.compact_sports(quotes.get("SPORTS") or {}), _htmllib)
+    if sports_html and email_size.over(_estimated_email_kb(_polish.display_pass(html))):   # 11-17 使用者選 b:超量才精簡體育
+        sports_html = _safe_block("體育", _render_sports_html, email_size.compact_sports(quotes.get("SPORTS") or {}), _htmllib)
         html = _assemble()
         print("[render] 信件超過 100KB,體育快訊已精簡", file=sys.stderr)
     # 橫幅:trim 模式真的動了區塊 → 紅色「已暫略…」;否則(含 keep 模式)內容偏長 → 琥珀色提示可點開看全文。
@@ -24543,22 +24541,21 @@ def _us_price_predictions(quotes: dict, inputs: dict, hist_2330, ex_div: dict) -
     usdtwd_today, usdtwd_prev = inputs["usdtwd_today"], inputs["usdtwd_prev"]
     qqq_q = require_quote(quotes, "QQQ")
     tsm_q = require_quote(quotes, "TSM")
-    day = inputs.get("target_day")   # 停牌日不估;復牌日累計停牌期間的變化(11-17 使用者同意)
+    day = inputs.get("target_day")   # 停牌日不估;停牌/連假後累計休市期間的變化(使用者 11-17、11-18 同意)
     if _halts.halted("00662", day):
         fair = {"error": _halts.halt_note("00662", day), "halted": True}
     elif qqq_q is not None:
         fair = calc_00662_fair_value(
             qqq_q["close"], qqq_q["prev_close"],
             usdtwd_today, inputs["last_00662"], usdtwd_prev=usdtwd_prev,
-            ex_div_amt=ex_div.get("00662", 0.0), since_trade=_halts.resumed_since("00662", day))
+            ex_div_amt=ex_div.get("00662", 0.0), since_trade=_halts.last_trade("00662", day))
     else:
         fair = {"error": "QQQ 行情抓取失敗，無法估算 00662 合理價"}
         print("[main] QQQ 行情缺失 → 00662 估值降級", file=sys.stderr)
     if tsm_q is not None:
         predictions = calc_2330_predictions(
             tsm_q["close"], tsm_q["prev_close"],
-            usdtwd_today, hist_2330, ex_div_amt=ex_div.get("2330", 0.0),
-        )
+            usdtwd_today, hist_2330, ex_div_amt=ex_div.get("2330", 0.0), since_trade=_halts.last_trade("2330", day))
     else:
         predictions = {"error": "TSM ADR 行情抓取失敗，無法預測 2330 開盤價"}
         print("[main] TSM 行情缺失 → 2330 預測降級", file=sys.stderr)

@@ -514,6 +514,18 @@ def test_npm_shim_resolves_to_the_bundled_native_exe(tmp_path):
     assert gpt.native_cli(str(lonely)) == str(lonely)   # 找不到原生 exe 就原樣回傳 → find_codex 擋下
 
 
+def test_project_local_npm_shims_resolve_too(tmp_path):
+    """外審 PR #60:專案安裝 node_modules/.bin/codex.cmd,平台套件在套件內或被提升到同層都要找得到。"""
+    modules = tmp_path / "node_modules"
+    shim = modules / ".bin" / "codex.cmd"
+    shim.parent.mkdir(parents=True)
+    shim.write_text("@echo off\n", encoding="utf-8")
+    hoisted = modules / "@openai" / "codex-win32-x64" / "vendor" / "x86_64-pc-windows-msvc" / "bin" / "codex.exe"
+    hoisted.parent.mkdir(parents=True)
+    hoisted.write_bytes(b"")
+    assert gpt.native_cli(str(shim)) == str(hoisted)
+
+
 def test_batch_files_are_never_used_as_the_reviewer_cli(tmp_path, monkeypatch):
     shim = tmp_path / "codex.cmd"
     shim.write_text("@echo off\n", encoding="utf-8")

@@ -154,9 +154,13 @@ def native_cli(path: str) -> str:
     找不到就原樣回傳(find_codex 會拒絕批次檔,不會默默截斷)。"""
     if not path.lower().endswith(_SHIMS):
         return path
-    root = os.path.join(os.path.dirname(path), "node_modules", "@openai", "codex")
-    hits = sorted(glob.glob(os.path.join(root, "node_modules", "@openai", "codex-win32-*",
-                                         "vendor", "*", "bin", "codex.exe")))
+    shim_dir = os.path.dirname(path)
+    # 全域安裝:<prefix>/codex.cmd + <prefix>/node_modules;專案安裝:node_modules/.bin/codex.cmd(外審 PR #60)
+    modules = (os.path.dirname(shim_dir) if os.path.basename(shim_dir).lower() == ".bin"
+               else os.path.join(shim_dir, "node_modules"))
+    platform = os.path.join("@openai", "codex-win32-*", "vendor", "*", "bin", "codex.exe")
+    hits = sorted(glob.glob(os.path.join(modules, "@openai", "codex", "node_modules", platform))
+                  + glob.glob(os.path.join(modules, platform)))   # 平台套件可能被提升到同層
     return hits[-1] if hits else path
 
 

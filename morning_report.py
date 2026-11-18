@@ -5405,17 +5405,16 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
     model2 = None
     try:
         tsm_hist = yf.Ticker("TSM").history(period="6mo", auto_adjust=False)
-        fx_hist = yf.Ticker("TWD=X").history(period="6mo", auto_adjust=False)
-        # 各自過濾 nan
+        # 各自過濾 nan;時區拿掉以利對齊
         tsm_close_s = tsm_hist["Close"].dropna()
+        tsm_close_s.index = tsm_close_s.index.tz_localize(None) if tsm_close_s.index.tz else tsm_close_s.index
+        tsm_prev_close, tsm_pct, _, _ = _halts.rebase(tsm_close_s, None, since_trade, tsm_close, tsm_prev_close, tsm_pct)
+        model1 = last_2330 * (1 + tsm_pct)   # 連假後累計 ADR 變化(使用者 11-18 同意);匯率抓不到也保留(外審 PR #59)
+        fx_hist = yf.Ticker("TWD=X").history(period="6mo", auto_adjust=False)
         fx_close_s = fx_hist["Close"].dropna()
         t2330_s = hist_2330["Close"].dropna()
-        # 將時區拿掉以利對齊
-        tsm_close_s.index = tsm_close_s.index.tz_localize(None) if tsm_close_s.index.tz else tsm_close_s.index
         fx_close_s.index  = fx_close_s.index.tz_localize(None)  if fx_close_s.index.tz  else fx_close_s.index
         t2330_s.index     = t2330_s.index.tz_localize(None)     if t2330_s.index.tz     else t2330_s.index
-        tsm_prev_close, tsm_pct, _, _ = _halts.rebase(tsm_close_s, None, since_trade, tsm_close, tsm_prev_close, tsm_pct)
-        model1 = last_2330 * (1 + tsm_pct)   # 連假後累計 ADR 變化(使用者 11-18 同意,見 trading_halts)
         # 2330 的同日收盤早於 TSM ADR 同日收盤。歷史比值必須使用台股交易日
         # 前一個可用 ADR / FX 值，否則會把尚未發生的美股收盤偷渡進訓練集。
         df = pd.DataFrame({"t2330": t2330_s})

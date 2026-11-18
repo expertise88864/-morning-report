@@ -65,18 +65,20 @@ def _points(series) -> list:
 
 
 def rebase(us_series, fx_series, last: dt.date | None, close, prev, pct, fx=None, fx_prev=None, fx_pct=0.0):
-    """最後交易日之後若有兩個以上美股收盤(連假、停牌),比較基準改成驅動最後成交價的那個美股收盤
-    (美東日期早於最後交易日),匯率基準改成最後交易日當天(含)以前的匯率。回傳 (prev, pct, fx_prev, fx_pct);
-    沒有跳空或取不到就原樣回傳。"""
+    """休市(連假、停牌)後改比較基準,回傳 (prev, pct, fx_prev, fx_pct);沒有跳空或取不到就原樣回傳。
+    - 美股:最後交易日之後有兩個以上收盤 → 基準改成驅動最後成交價的那個收盤(美東日期早於最後交易日)。
+    - 匯率:獨立判斷(外審 PR #59)—— 最後交易日之後有兩個以上匯率觀測,或美股已跳空 → 基準改成
+      最後交易日當天(含)以前的匯率。平常日子兩者都只有一筆新資料,與原本相同。"""
+    if not last:
+        return prev, pct, fx_prev, fx_pct
     points = [(d, v) for d, v in _points(us_series) if d]
-    if not last or not close or sum(d >= last for d, _ in points) < 2:
-        return prev, pct, fx_prev, fx_pct
     base = [v for d, v in points if d < last]
-    if not base:
-        return prev, pct, fx_prev, fx_pct
-    prev, pct = base[-1], close / base[-1] - 1
-    fx_base = [v for d, v in _points(fx_series) if d and d <= last]
-    if fx and fx_base:
+    us_gap = bool(close and base and sum(d >= last for d, _ in points) >= 2)
+    if us_gap:
+        prev, pct = base[-1], close / base[-1] - 1
+    fx_points = [(d, v) for d, v in _points(fx_series) if d]
+    fx_base = [v for d, v in fx_points if d <= last]
+    if fx and fx_base and (us_gap or sum(d > last for d, _ in fx_points) >= 2):
         fx_prev, fx_pct = fx_base[-1], fx / fx_base[-1] - 1
     return prev, pct, fx_prev, fx_pct
 

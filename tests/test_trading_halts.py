@@ -115,3 +115,30 @@ def test_resume_day_misses_do_not_feed_the_00662_bias(fake_yf, monkeypatch):
     monkeypatch.setattr(th, "HALTS", {"00662": tuple(((d - dt.timedelta(days=1)).isoformat(), d.isoformat()) for d in dates)})
     skipped, _, _ = mr.calibrate_predictions(dict(fair), {"error": "x"}, {"error": "x"}, history)
     assert not skipped["calibration"]["applied"] and skipped["fair_price"] == 99.0
+
+
+def test_fx_accumulates_on_its_own_when_us_markets_were_also_closed():
+    """外審 PR #59:台美同天休市(美股只有一個新收盤),匯率仍有多筆觀測 → 匯率照樣累計。"""
+    qqq = _series({"2026-12-30": 600.0, "2026-12-31": 605.0})
+    fx = _series({"2026-12-30": 32.0, "2027-01-01": 32.4, "2027-01-02": 32.5})
+    prev, pct, fx_prev, fx_pct = th.rebase(qqq, fx, D(2026, 12, 31), 605.0, 600.0, 605 / 600 - 1, 32.5, 32.4, 32.5 / 32.4 - 1)
+    assert (prev, round(pct, 6)) == (600.0, round(605 / 600 - 1, 6))   # 美股照舊
+    assert fx_prev == 32.0 and round(fx_pct, 6) == round(32.5 / 32.0 - 1, 6)
+
+
+def test_2330_keeps_the_cumulative_adr_move_when_fx_history_fails(monkeypatch):
+    days = pd.bdate_range("2026-08-03", "2026-11-16")
+    tsm = pd.DataFrame({"Close": [300.0 + i for i in range(len(days))]}, index=days)
+    hist = pd.DataFrame({"Open": [2000.0] * len(days), "Close": [2000.0] * len(days)}, index=days)
+
+    def ticker(sym):
+        if sym == "TWD=X":
+            raise RuntimeError("fx down")
+        return _Hist(tsm)
+    monkeypatch.setattr(mr.yf, "Ticker", ticker)
+    monkeypatch.setattr(mr, "fetch_twse_close", lambda code: None)
+    by_day = dict(zip(days.date, tsm["Close"]))
+    close, prev = by_day[D(2026, 11, 16)], by_day[D(2026, 11, 13)]
+    after = mr.calc_2330_predictions(close, prev, 32.0, hist, since_trade=D(2026, 11, 11))
+    assert after["tsm_pct"] == round((close / by_day[D(2026, 11, 10)] - 1) * 100, 2)
+    assert after["model1_1to1"] == round(2000.0 * close / by_day[D(2026, 11, 10)], 2)

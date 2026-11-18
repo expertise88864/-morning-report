@@ -142,3 +142,20 @@ def test_2330_keeps_the_cumulative_adr_move_when_fx_history_fails(monkeypatch):
     after = mr.calc_2330_predictions(close, prev, 32.0, hist, since_trade=D(2026, 11, 11))
     assert after["tsm_pct"] == round((close / by_day[D(2026, 11, 10)] - 1) * 100, 2)
     assert after["model1_1to1"] == round(2000.0 * close / by_day[D(2026, 11, 10)], 2)
+
+
+def test_00662_keeps_the_cumulative_qqq_move_when_other_history_fails(monkeypatch):
+    """外審 PR #59:00662 與匯率歷史讀不到時,已取得的 QQQ 累計漲跌仍要算進去(不可退回最後一晚)。"""
+    days = pd.bdate_range("2026-08-03", "2026-11-16")
+    qqq = pd.DataFrame({"Close": [600.0 + i for i in range(len(days))]}, index=days)
+
+    def ticker(sym):
+        if sym == "QQQ":
+            return _Hist(qqq)
+        raise RuntimeError("history down")
+    monkeypatch.setattr(mr.yf, "Ticker", ticker)
+    by_day = dict(zip(days.date, qqq["Close"]))
+    close, prev = by_day[D(2026, 11, 16)], by_day[D(2026, 11, 13)]
+    out = mr.calc_00662_fair_value(close, prev, 32.0, 23.56, usdtwd_prev=32.0, since_trade=D(2026, 11, 10))
+    assert out["qqq_pct"] == round((close / by_day[D(2026, 11, 9)] - 1) * 100, 2)
+    assert out["fair_price"] == round(23.56 * close / by_day[D(2026, 11, 9)], 2)

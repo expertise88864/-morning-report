@@ -305,7 +305,7 @@ def test_other_sector_queries_precision():
     assert len(q) == 22               # 0906:金融集團/子公司/建設投資四條查詢。
     assert {"金融-銀行壽險", "金融-保險資管", "金融-轉投資", "金融-建設投資"} <= q.keys()
     assert "新青安" in q["房市政策-台股"]
-    assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
+    assert "藥華藥" not in q["生技-台股"] and "臨床" in q["生技-台股"]   # 11-19 使用者:藥華藥(內科)不再專查
     assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字
     assert "投資收益" in q["金融-台股"] or "淨息差" in q["金融-台股"]
     # 新增四類齊備,以台股在地事件為主

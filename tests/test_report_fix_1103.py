@@ -146,3 +146,24 @@ def test_full_prompt_has_no_conflicting_heat_table_citation_rule(monkeypatch):
     monkeypatch.setattr(mr, "SHOW_SECTOR_HEAT_TABLE", True)
     shown = mr._build_prompt(*legacy_prompt_inputs())
     assert "這張表信件內有刊出" in shown and "全信不得出現" not in shown
+
+
+def test_biotech_prefers_derm_ophth_and_drops_daily_pharmaessentia_1119():
+    """11-19 使用者:藥華藥是內科藥,不用一直出現;皮膚科/眼科公司優先。"""
+    import morning_report as mr
+    import prompt_profiles
+    assert "藥華藥" not in mr.OTHER_SECTOR_QUERIES["生技-台股"]
+    assert all("藥華藥" not in s for s in mr.SECTOR_LEADERS["生技"])
+    luna = open(prompt_profiles.__file__, encoding="utf-8").read()
+    assert "生技看藥華藥" not in luna and "藥證申請不寫" in luna
+
+
+def test_two_fed_rows_hidden_from_the_pulse_card_1119():
+    """11-19 使用者:刪除「全年累計升息幅度」「12 月決議完成前再升息」兩列(只隱藏顯示)。"""
+    import polymarket_local_elections as ple
+    rows = [{"label": "2026 全年累計升息幅度（1碼=25基點）", "detail": "累計2碼 90%"},
+            {"label": "2026年12月決議完成前 Fed 再升息", "detail": "機率 97%"},
+            {"label": "Fed 2026年12月決議", "detail": "升息1碼 91%"}]
+    html = ple.render_pulse(rows)
+    assert "全年累計升息" not in html and "決議完成前" not in html and "Fed 2026年12月決議" in html
+    assert ple.render_pulse(rows[:2]) == ""

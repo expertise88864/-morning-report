@@ -155,8 +155,13 @@ def _label(row: dict) -> str:
     return label
 
 
+#: 使用者 2026-11-19 要求信裡不再顯示(資料照抓,分歧提示仍可用)。
+HIDDEN = ("全年累計升息幅度", "決議完成前 Fed 再升息")
+
+
 def render_pulse(rows: list[dict], divergence_note: str = "") -> str:
     """Existing pulse card, with source links and a local-election price legend."""
+    rows = [r for r in rows or [] if not any(h in str(r.get("label", "")) for h in HIDDEN)]
     if not rows:
         return ""
     lines = "".join(

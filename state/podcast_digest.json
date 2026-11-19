@@ -2420,6 +2420,65 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "73fe5f43-849a-4cfa-bb3f-ca6797854d78",
+        "title": "EP355. 沒有黃仁勳的輝達、谷歌 OpenAI 新模型、FSD 進台灣法律問題 | M觀點",
+        "published": "Thu, 19 Nov 2026 17:32:13 GMT",
+        "processed_at": "2026-11-19T22:47:40Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為若民主黨真的讓AI資料中心建設減速，AI infra股估值砍半都合理，Credo等已跌一半，他無法斷言跌完、選擇靜觀其變。",
+            "主持人已在黃仁勳辭職後先減碼輝達20%，認為新CEO接不下黃仁勳在技術決策與留才的角色，長線信心不同，可能再減至原本一半。",
+            "主持人認為現階段相對安全的是三大公有雲/科技巨頭：已握有現成算力，若AI建設放慢可漲價、資金成本變便宜，因此他把部分資金轉向科技巨頭。",
+            "主持人認為Google新模型Gemini 4 Neon以更低成本達到接近甚至超越Carbon的實戰分數，Google已復活且他個人有信心；OpenAI GPT-6.2便宜但穩定性不足，待修正後仍可能成為他的主力模型。",
+            "主持人認為大型語言模型範式不變下GPU市占率本就承壓，黃仁勳過去靠FP4、Dynamo、網路與機櫃級策略減緩下滑；若換人，AI運算GPU市占可能從90%快速掉到20%-10%，是輝達最大長期風險。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為黃仁勳離任後輝達技術決策與留才能力受創，已減碼20%，若黃回不來可能再降至原本一半。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "所以我有可能說我之前已經減20%了但是我覺得如果之後再減30%的話我就會把我總輝達部位調到我之前的maybe一半而已",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Alphabet (Google)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為Google新模型競爭力回升，對Google後市有信心。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Google回來啦Google回來啦那雖然Google最近這一個月股價也蠻慘的但是我覺得我自己對它有信心好不好我說真的連Mula我這種不是Google粉的人都可以對Google有信心你就知道嗯它真的不錯啦",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為現在是資金變貴、民主黨大勝、黃仁勳事件三波海嘯造成AI Infra股重挫；若民主黨真的讓AI建設減速，AI infra估值砍半合理，但不確定是否跌完，目前靜觀其變。",
+          "action_view": "主持人已將輝達部位先減碼20%，AI infra部位從25%一路降到16-17%；建議部分資金轉向三大公有雲/科技巨頭，不貿然抄底AI infra。",
+          "notable_quote": "如果如果AI這些 infra的公司如果這個我們預期的AI減速真的發生的話這些AI infra的公司估值砍半我都覺得合理估值砍半都覺得合理",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "如果如果AI這些 infra的公司如果這個我們預期的AI減速真的發生的話這些AI infra的公司估值砍半我都覺得合理估值砍半都覺得合理"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "2dbfc3b6-cce7-40f4-a605-ee2a7486f32d",
         "title": "EP354. 是誰想打倒黃仁勳、輝達 AI 央行的未來、SPCX 併 TSLA 快來了！ | M觀點",
         "published": "Mon, 16 Nov 2026 05:49:25 GMT",
@@ -3146,108 +3205,6 @@
           }
         },
         "shown_at": "2026-10-09T01:36:29Z"
-      },
-      {
-        "guid": "5726508f-d13e-4bfd-80a9-b5d4b72e75fb",
-        "title": "EP342. 亞馬遜賣掉 GPU、台積電想進 Terafab、Agent 特助 vs 經理 | M觀點",
-        "published": "Mon, 05 Oct 2026 05:37:10 GMT",
-        "processed_at": "2026-10-05T08:24:17Z",
-        "digest": {
-          "summary_points": [
-            "亞馬遜傳出把已上線的80億美元GPU賣給SPV再回租，主持人解讀這是AI大基建從「用自己的錢買」進入財務工程階段，科技巨頭因極度看好需求而以槓桿放大算力投資，不是利空，但也代表市場風險升溫。",
-            "主持人認為台積電主動找特斯拉談TeraFab合作，目的在搶下特斯拉Optimus或SpaceX未來大量AI晶片訂單；若成局，他預期TeraFab將變成與Intel兩線並進，台積電在園區內另蓋廠，不取代Intel。",
-            "主持人提到約兩三週前看到圖表顯示OpenAI與Anthropic第三季成長可能減速（未確認），他將此視為AI需求的一個潛在風險，但認為可能只是開源模型與AI agent搶市，還不到需要認真研究的地步。",
-            "主持人在比較Meta Muse與xAI Grok Bot後，提出「特助 vs 部門經理」的框架；他個人偏愛Grok Bot，因為可以跳過中階、直接對個別agent交代細節，避免上下文被污染，讓每個任務執行更佳。",
-            "主持人認為Meta用免費Muse搶消費級AI agent，規模可能達上億用戶，而Grok Bot因月費30美元用戶僅百萬至一兩千萬，OpenAI的AI agent因成本無法推免費版；Google可能動作太慢，讓Muse享有規模真空。"
-          ],
-          "tickers": [
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人解讀出售GPU再回租為放大資本效率、加大AI投資，非利空；但整體市場槓桿風險升溫，未給出股價方向。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "unknown",
-              "reason": "主持人猜測台積電主動找特斯拉談TeraFab合作，想鎖定特斯拉/SpaceX晶片訂單；若成局預期與Intel並行，非取代。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為若台積電主導TeraFab，特斯拉資本支出可能降低，但Intel部分仍會進行；未給股價方向。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "英特爾",
-              "code": "INTC",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人表示Intel 18A與14A目前無壞消息，台積電若加入TeraFab也不取代Intel，兩線並進。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為Muse免費策略可望取得上億用戶，但Meta需燒錢，商業模式尚未驗證；未給股價方向。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為AI基建已進入財務工程階段，科技巨頭用槓桿放大投資，市場風險升溫；但他目前只看到兩個危險訊號，尚未到減碼程度。",
-          "action_view": "主持人操作思路是先觀察，不急著減碼；若累積到四個危險訊號才會考慮減碼。",
-          "notable_quote": "我不會把這個看成是一個利空的新聞,這不是個利空的新聞這是某個程度來講反而是科技巨頭還在想辦法要加大投資的一個新聞",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "我不會把這個看成是一個利空的新聞,這不是個利空的新聞這是某個程度來講反而是科技巨頭還在想辦法要加大投資的一個新聞"
-          },
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 0,
-            "unverified": 5,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-06T02:19:08Z"
       }
     ]
   },

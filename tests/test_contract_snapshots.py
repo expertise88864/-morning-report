@@ -809,7 +809,7 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (86, "9d5b0f23d99c29eb"),  # Nov19: biotech leaders derm/ophth; internal-medicine filings skipped.
+    "primary_profile_version":  (86, "f9abf8d4c7126742"),  # Nov19: biotech leaders derm/ophth; internal-medicine filings skipped.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。

@@ -162,7 +162,7 @@ HIDDEN = ("全年累計升息幅度", "決議完成前 Fed 再升息")
 def render_pulse(rows: list[dict], divergence_note: str = "") -> str:
     """Existing pulse card, with source links and a local-election price legend."""
     rows = [r for r in rows or [] if not any(h in str(r.get("label", "")) for h in HIDDEN)]
-    if not rows:
+    if not rows and not divergence_note:   # 隱藏列算出的分歧提示仍要留著(外審 PR #61)
         return ""
     lines = "".join(
         f"<tr><td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;"

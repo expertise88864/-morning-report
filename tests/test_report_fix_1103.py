@@ -167,3 +167,5 @@ def test_two_fed_rows_hidden_from_the_pulse_card_1119():
     html = ple.render_pulse(rows)
     assert "全年累計升息" not in html and "決議完成前" not in html and "Fed 2026年12月決議" in html
     assert ple.render_pulse(rows[:2]) == ""
+    kept = ple.render_pulse(rows[:2], "分歧提示:市場對再升息定價 97%")
+    assert "分歧提示" in kept and "決議完成前" not in kept and "全年累計升息" not in kept

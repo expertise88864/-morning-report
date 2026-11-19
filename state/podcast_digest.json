@@ -787,6 +787,94 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2440843368",
+        "title": "2026/11/19(四)AI股災遇上 史上最大IPO?輝達對中政策轉彎 美股這波 夠恐慌了嗎?【早晨財經速解讀】",
+        "published": "Thu, 19 Nov 2026 01:06:49 +0000",
+        "processed_at": "2026-11-19T01:51:48Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為輝達財報與庫藏股利多無法止跌，反映市場對領導層交接、SEC調查與監管風險的疑慮仍高；技術面若跌破平台可能形成兩層套牢賣壓，但因前瞻本益比已降至約12倍，做空誘因也下降。",
+            "主持人解讀美銀經理人調查：科技股配置出現2006年以來最大單月降幅、38%經理人認為企業過度投資，高成長預期正在鬆動，但整體情緒僅從高度樂觀退潮至戒慎恐懼，未到全面恐慌或熊市投降。",
+            "主持人認為Anthropic（ANT）以83美元定價、1.49兆美元估值掛牌，募資規模超越SpaceX，可能成為市場轉折點；但其仍在虧損、資本支出極高，加上今年大型IPO普遍破發，市場謹慎，能否帶動下一輪明星股待觀察。",
+            "輝達宣布停止向中國出貨H系列AI晶片，主持人視為公司對美國國安派交代、中國業務態度重大轉變；新管制可能針對中國海外資料中心算力，東南亞（尤其馬來西亞）資料中心與相關基建受衝擊風險高。",
+            "資金明顯輪動至防禦與資安：HACK單日漲6.1%、XLU自10月低點反彈約13%，主持人指出防禦股估值溢價已高於輝達，是否該回看科技成長股是當前取捨。",
+            "台股修正幅度較美股深（台股約兩成、櫃買平均跌40-45%，美股尚未兩成），主持人認為恐慌感主要集中在費半與硬體，而非大盤系統性崩跌；短線交易易被雙巴，不如冷靜以投資角度看待。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人認為輝達估值已大幅修正、做空誘因降低，但領導層交接、SEC調查與技術面雙重套牢風險仍高，傾向觀望不買個股。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "ANT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為ANT定價83美元、估值1.49兆美元，基期低但仍在虧損，市場態度謹慎，觀察是否成為下一輪明星股轉折。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那能不能這種低基期的布局為未來的拉伸來做更多空間,可是你也要知道Anzor Peak是7巨頭當中少數目前還在虧損的,前9個月還是虧損13億美元",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "網路安全ETF HACK",
+              "code": "HACK",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人視資安股上漲為AI風險擔憂下的資金避風港，屬市場情緒觀察，未明確喊買。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "昨天像是網路安全類股還是逆勢大漲的,我們看網路安全的ETF-HACK上漲了6.1%,這說明短期內大家對於AI的風險擔憂還是真的,累積來看今年年初到現在,網路安全類股也上漲了48.8%",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "公用事業ETF XLU",
+              "code": "XLU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人指出防禦性類股反彈、估值溢價高於輝達，作為資金輪動觀察，未明確喊買。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我們看在最近美國公用事業板塊ETF-XLU從10月初這樣子低點反彈也談了13%,目前大概已經接近回年線了",
+                "direction": "neutral"
+              }
+            }
+          ],
+          "market_view": "主持人認為目前美股/歐股只是從高度樂觀退潮、風險意識升溫，尚未到極度悲觀或熊市投降；重災區集中在半導體/硬體，資金仍在資安、公用事業等防禦板塊輪動，大盤未全面崩跌。",
+          "action_view": "主持人認為短線交易容易被急拉急殺雙巴，不如冷靜以投資角度看待；並提問是否該在防禦股溢價高、科技股基期低時重新關注科技成長股。",
+          "notable_quote": "投資最難的地方,也不是說,誰看見了更遠的機會,你要在抵達之前,先承受沿途的恐懼和不確定性",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "投資最難的地方,也不是說,誰看見了更遠的機會,你要在抵達之前,先承受沿途的恐懼和不確定性"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2440294203",
         "title": "2026/11/18(三)輝達財報炸裂 老黃回鍋夢碎?新CEO如何面對 晶片禁令與融資風暴?【早晨財經速解讀】",
         "published": "Wed, 18 Nov 2026 01:22:11 +0000",
@@ -1503,80 +1591,6 @@
           }
         },
         "shown_at": "2026-11-04T22:18:05Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2431190226",
-        "title": "2026/11/3(二)蘋果重奪市值第一 AI生產力革命是真是假 美股跌出買點了嗎?【早晨財經速解讀】",
-        "published": "Tue, 03 Nov 2026 01:07:45 +0000",
-        "processed_at": "2026-11-03T02:11:56Z",
-        "digest": {
-          "summary_points": [
-            "主持人以勞動生產力與全要素生產力（TFP）拆解AI多空：科技業勞動生產力明顯提升、員工人數未增，但TFP仍近零，市場真正疑慮是資本支出回收太慢，關鍵在勞動生產率增速能否壓過TFP。",
-            "主持人判斷蘋果重登全球市值第一並非因成長快速，而是市場對非AI企業預期低、財報容易優於預期；摺疊機與觸控MacBook Pro有機會讓蘋果成為消費性電子反彈的領航者並撐住大盤高位。",
-            "主持人認為本波回檔主要針對科技與記憶體族群，費半跌破7月去槓桿低點，但非系統性恐慌，可趁財報季尾聲釋放利空後觀察市場情緒。",
-            "主持人認為AI後續最大風險不是算力過剩而是算力與電力跟不上，美國資料中心電力缺口從2026年15GW擴大到2028年43GW，缺電與監管是擴張阻力。",
-            "主持人提醒勿以AI初期用於短劇、娛樂等看似浪費就斷定泡沫，科技革命初期多從慾望開始，但也不該用理想潛力合理化所有估值。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果公司",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為蘋果受惠資金輪動至非AI股，財報容易優於市場低預期，摺疊機與觸控MacBook Pro有機會帶動消費性電子反彈並撐住大盤高位。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "蘋果能夠維持住過往的銷售量,其實就已經算很厲害了",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人指出記憶體股賣壓沉重，美光單日續跌5.7%，屬本波費半修正核心。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "威騰電子",
-              "code": "WDC",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人提到威騰單日跌7.5%，記憶體族群賣壓沉重，資金持續撤出科技股。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為本波回檔主要針對科技與記憶體族群，費半已跌破7月去槓桿低點，但大盤仍非系統性恐慌；市場正以謹慎態度檢視AI資本支出能否回收，資金輪動到以蘋果為代表的非AI股，等選舉不確定性消除後再觀察。",
-          "action_view": "主持人未明確喊加減碼，但提醒不要因AI初期浪費或TFP偏低就隨便看空AI，也不要隨意追高；可趁利空釋放時觀察勞動生產率與全要素生產率差距、算力與電力供給，再決定方向。",
-          "notable_quote": "你不要隨便的去看空這場泡沫",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "你不要隨便的去看空這場泡沫"
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 2,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-11-03T22:18:25Z"
       }
     ]
   },

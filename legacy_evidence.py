@@ -147,17 +147,27 @@ def _supported(claim: tuple, pool: list[tuple], market: list[float] = ()) -> boo
     return (kind == "pct" or (kind in ("twd", "usd") and not mag)) and any(abs(v - value) <= tol for v in market)
 
 
+def _negative(text: str) -> set[tuple[float, str]]:
+    """前面緊貼負號的數字(「-3 美元」「−US$3」),以(數值, 種類)記;只看該次匹配的位置(PR #62 外審)。"""
+    text, out = unicodedata.normalize("NFKC", str(text or "")), set()
+    for rx in (_QUANT, _EN):
+        for m in rx.finditer(text):
+            if m.group(2) and any(re.search(r"[-−負]\s*$", text[:at]) for at in (m.start(), m.start(2))):
+                out |= {(q[1], q[2]) for q in _quantities(m.group(0))}
+    return out
+
+
 def _ratio(claim: tuple, own: list[tuple], text: str) -> bool:
     """「差到 2.67 倍」是同一條裡兩個同類數字相除(8 美元 ÷ 3 美元),算得對就算有根據(2026-11-20 使用者)。
-    運算元必須本身已有來源、為正數、同類(數量要同單位);依宣稱的小數位四捨五入後相等(PR #62 外審)。"""
+    運算元必須本身已有來源、為正數、同類(數量要有同一個單位);以十進位相除、依宣稱的小數位四捨五入(PR #62 外審)。"""
     from decimal import ROUND_HALF_UP, Decimal
     raw, value, kind, *_ = claim
-    exp = Decimal(1).scaleb(-(len(raw.split(".", 1)[1]) if "." in raw else 0))
-    nums = [(v, k, u) for r, v, k, _, u in own if k not in ("", "x") and v > 0
-            and not re.search(r"[-−負]\s*" + re.escape(r) + r"(?![\d.])", text)]
+    exp, neg = Decimal(1).scaleb(-(len(raw.split(".", 1)[1]) if "." in raw else 0)), _negative(text)
+    nums = [(Decimal(r.replace(",", "")) * int(_SCALE.get(m, 1)), k, u) for r, v, k, m, u in own
+            if k not in ("", "x") and v > 0 and (v, k) not in neg]
     return kind == "x" and value > 1 and any(
-        a > b and k1 in _COMPATIBLE.get(k2, ()) and (k1 != "count" or u1 == u2)
-        and Decimal(a / b).quantize(exp, ROUND_HALF_UP) == Decimal(raw.replace(",", ""))
+        a > b and k1 in _COMPATIBLE.get(k2, ()) and (k1 != "count" or (u1 and u1 == u2))
+        and (a / b).quantize(exp, ROUND_HALF_UP) == Decimal(raw.replace(",", ""))
         for a, k1, u1 in nums for b, k2, u2 in nums)
 
 

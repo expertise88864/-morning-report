@@ -61,3 +61,21 @@ def test_review_pr62_counts_need_the_same_unit():
 def test_review_pr62_ratio_rounds_half_up_at_the_stated_precision():
     assert "2 倍（未核實）" in _audit("售價 5 美元、成本 2 美元", "售價 5 美元、成本 2 美元,差 2 倍。")
     assert "（未核實）" not in _audit("售價 5 美元、成本 2 美元", "售價 5 美元、成本 2 美元,差 3 倍。")
+
+
+def test_review_pr62_round2_sign_belongs_to_each_amount():
+    src = "甲每股虧損 −US$3,乙每股盈餘 US$8"
+    assert "2.67 倍（未核實）" in _audit(src, src + ",乙是甲的 2.67 倍。")
+    both = "跌幅 -3%,輸入 3 美元、輸出 8 美元"
+    assert "（未核實）" not in _audit(both, both + ",差到 2.67 倍。")
+
+
+def test_review_pr62_round2_english_counts_need_a_unit():
+    src = "8 million users, 3 million vehicles"
+    assert "2.67 倍（未核實）" in _audit(src, src + ",出貨量是去年的 2.67 倍。")
+
+
+def test_review_pr62_round2_ratio_is_computed_in_decimal():
+    src = "售價 107 美元、成本 40 美元"
+    assert "（未核實）" not in _audit(src, src + ",差 2.68 倍。")
+    assert "2.67 倍（未核實）" in _audit(src, src + ",差 2.67 倍。")

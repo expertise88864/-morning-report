@@ -9559,6 +9559,65 @@
     "name": "Forward Guidance",
     "episodes": [
       {
+        "guid": "caba60ee-e48f-11f1-899a-9375cafeb724",
+        "title": "Anthropic IPOs As Markets Wait On A Slowdown | Weekly Roundup",
+        "published": "Fri, 20 Nov 2026 11:00:00 -0000",
+        "processed_at": "2026-11-20T16:26:39Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Anthropic 以 2 兆美元估值 IPO 是「now or never」：token 價格持續下跌、用量上升但支出持平，前沿模型經濟效益難以支撐更高估值，且解鎖節奏比 SpaceX 更激進、買盤品質堪憂。",
+            "主持人指出 AI 產業使用量飆升但支出持平，代表需求轉向非前沿模型，token 價格只會單向下跌、算力成為大宗商品；加上信用市場緊縮與反射性，AI 資本支出減速將外溢到整體經濟。",
+            "主持人認為 Fed 在成長轉弱時仍放鷹（Waller 喊 50 基點升息）是典型政策錯誤，可能把放緩推成衰退；並預測在貨幣政策轉向前，債市沒有人敢進場。",
+            "主持人對成長偏空，認為未來一年左右有相當機率衰退，但這會是緩慢的「受控拆除」而非 V 型崩盤；因此不急著放空，也不想做多，傾向退場觀望。",
+            "主持人說在放緩確認前不想持有黃金與比特幣，因為兩者仍每週失血、宏觀相關性未定；即使要買也要等確認放緩後，並對沖市場風險。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為 2 兆美元估值下上行空間有限，token 價格下跌使前沿模型經濟效益難以支撐更高估值。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "if they want to IPO $2 trillion, it's now or never. And the upside just feels really limited.",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為其股價不到 40 天回檔約 40%，且以手搖協議提供的融資在下游緊縮時將面臨壓力。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "the AI central bank in the Nvidia their share price would pull them at 40% in less than 40 days.",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "主持人認為成長正在放緩、衰退風險上升，Fed 落後數據且政策可能失誤；在貨幣政策轉向前，風險資產難有持續上行，債券也因 Fed 鷹派談話而不敢追。",
+          "action_view": "主持人傾向降低部位、觀望等待放緩確認，不急著押注債券、黃金或比特幣；現在放空有點晚、做多也不舒服，先退場重新評估。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "3301e3c0-d9e1-11f1-b500-43ee636a1f13",
         "title": "Long Gold And Short Semis Into Year-End? | Weekly Roundup",
         "published": "Fri, 06 Nov 2026 13:00:00 -0000",
@@ -10298,37 +10357,6 @@
           }
         },
         "shown_at": "2026-09-17T00:22:20Z"
-      },
-      {
-        "guid": "fecd7090-ad46-11f1-b991-7f70ab8e99f7",
-        "title": "The Bond Market Is Trapping The Fed | Weekly Roundup",
-        "published": "Fri, 11 Sep 2026 10:00:00 -0000",
-        "processed_at": "2026-09-11T17:27:21Z",
-        "digest": {
-          "summary_points": [
-            "財政部長 Bessent 宣布長天期公債回購規模 60 億美元,高於他原先指引的 40 億、更遠高於傳統的 20 億,但長端照樣殺、殖利率照樣往上;主持人形容這是債市在叫牌——想自稱「莊家」就得拿出相稱的彈藥,60 億遠遠不夠。",
-            "主持人用名目 GDP(6.6%)對 10 年期殖利率做迴歸,推估 10 年期合理價約 5.8%,而政策面想壓在合理價下方至少 100 個基點,目前價位已接近這個區間上緣。",
-            "PPI 解讀:主持人引用 Guy LeBas 的觀點——8 月 PPI 月增 0.4% 符合預期、服務業除運輸倉儲(柴油等能源傳導)外偏弱、流入 PCE 的項目(如投資組合服務 -1.6%)相當溫和;但他反駁市場只挑細節看,月增 0.4%、年增接近 4~5% 本身就非常嚴重,而且投資組合服務根本不在多數人的通膨籃子裡。",
-            "9 月 FOMC 定價在 PPI 後變成約 70% 升息、30% 按兵不動(一週前還是五五波),主持人認為應該停留在五五波,並批評 Waller 的反應函數太教條——單一數據就決定投票方向;他們原基準情境是不升息但機率持續升高,同時對曲線已定價到明年 6 月、9 月共三次升息非常懷疑、傾向 fade:「三個升息配上 120 美元油價,聽起來就是硬著陸」。",
-            "傳導機制分析:若長端殖利率上行由通膨預期帶動(如 2022),升息後長端會續揚;若由期限溢價帶動(目前的主導因素),一次性的「信譽／保險式升息」反而會讓長天期殖利率回落,主持人偏向後者。",
-            "AI 資本支出的成長率正在減速(但未下滑),而它是經濟的主要動能;落後實質利率的效果會遞延顯現,垃圾債利差擴大、股市以外的金融條件都在緊縮。同時 AI 資料中心已面臨跨黨派政治反彈,原本支持資料中心的候選人因民調轉向而反過來反對,選後還有舉債上限、預算與國會僵局,展望相當不明。",
-            "半導體等去年的動能交易已被大量去槓桿(3 倍槓桿 ETF 爆量、某檔 400 億基金 4 倍槓桿),一旦籌碼被清洗,至少 6 個月到一年不要碰——不是說會更低,而是會變成死錢;比特幣已消化大部分套牢籌碼,金銀也是。",
-            "操作思路:貶值交易的基本面論點未變,但路徑風險大——他們願意在 FOMC 前的混沌期回吐部分獲利(因為進場價位有獲利緩衝),並提醒決策者可能刻意放氣、放大波動、打壓這個交易以醞釀下一段,逢跌仍要買;另預期民主黨期中選舉表現好、拿下眾院(參院也有機會),意味更多支出、更不市場友好、更通膨。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "市值一度回到約 5.5~6 兆美元,但主持人認為要維持在高位需要大規模政府資金支撐,語氣偏懷疑。"
-            }
-          ],
-          "market_view": "政策制定者最終會選擇通膨,長天期殖利率已接近合理區間上緣;升息機率雖升高,但驅動長端的是期限溢價,一次性的信譽升息反而可能壓低長端,而成長動能(AI 資本支出)增速正在放緩、股市以外的金融條件持續緊縮。",
-          "action_view": "願意在 FOMC 前的混沌期回吐部分貶值交易獲利(有獲利緩衝),逢跌買進;會 fade 市場對三次升息的定價;對已去槓桿的動能交易(半導體)至少 6~12 個月不碰。",
-          "notable_quote": "If you want to say that you're the house, you got to act like it."
-        },
-        "shown_at": "2026-09-11T23:50:49Z"
       }
     ]
   }

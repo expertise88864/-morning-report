@@ -150,7 +150,7 @@ def _supported(claim: tuple, pool: list[tuple], market: list[float] = ()) -> boo
 def _operands(text: str, backed) -> list[tuple]:
     """同一條裡可拿來驗算倍數的數字:每次匹配各自看前面有沒有負號(「-3 美元」與「3 美元」分開算),
     且本身要有來源(PR #62 外審)。"""
-    text, out = unicodedata.normalize("NFKC", str(text or "")), []
+    text, out = unicodedata.normalize("NFKC", str(text or "")).replace("仟", "千"), []   # 與 _quantities 同樣正規化
     for rx in (_QUANT, _EN):
         for m in rx.finditer(text):
             if m.group(2) and not any(re.search(r"[-−負]\s*$", text[:at]) for at in (m.start(), m.start(2))):

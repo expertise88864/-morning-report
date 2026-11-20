@@ -84,3 +84,8 @@ def test_review_pr62_round2_ratio_is_computed_in_decimal():
 def test_review_pr62_round3_a_negative_does_not_knock_out_an_equal_positive():
     src = "每股盈餘 -3 美元;甲模型輸入價 3 美元、乙模型 8 美元"
     assert "（未核實）" not in _audit(src, src + ",單價差到 2.67 倍。")
+
+
+def test_review_pr62_round4_operands_in_qian_yuan():
+    src = "甲產品售價 8 仟元、乙產品 3 仟元"
+    assert "（未核實）" not in _audit(src, src + ",價差達 2.67 倍。")

@@ -147,13 +147,18 @@ def _supported(claim: tuple, pool: list[tuple], market: list[float] = ()) -> boo
     return (kind == "pct" or (kind in ("twd", "usd") and not mag)) and any(abs(v - value) <= tol for v in market)
 
 
-def _ratio(claim: tuple, own: list[tuple]) -> bool:
-    """「差到 2.67 倍」是同一條裡兩個同類數字相除(8 美元 ÷ 3 美元),算得對就算有根據(2026-11-20 使用者)。"""
+def _ratio(claim: tuple, own: list[tuple], text: str) -> bool:
+    """「差到 2.67 倍」是同一條裡兩個同類數字相除(8 美元 ÷ 3 美元),算得對就算有根據(2026-11-20 使用者)。
+    運算元必須本身已有來源、為正數、同類(數量要同單位);依宣稱的小數位四捨五入後相等(PR #62 外審)。"""
+    from decimal import ROUND_HALF_UP, Decimal
     raw, value, kind, *_ = claim
-    tol = 0.5 * 10 ** -(len(raw.split(".", 1)[1]) if "." in raw else 0) + 1e-9
-    nums = [(v, k) for _, v, k, *_ in own if k not in ("", "x") and v > 0]
-    return kind == "x" and value > 1 and any(a > b and k1 in _COMPATIBLE.get(k2, ()) and abs(a / b - value) <= tol
-                                            for a, k1 in nums for b, k2 in nums)
+    exp = Decimal(1).scaleb(-(len(raw.split(".", 1)[1]) if "." in raw else 0))
+    nums = [(v, k, u) for r, v, k, _, u in own if k not in ("", "x") and v > 0
+            and not re.search(r"[-−負]\s*" + re.escape(r) + r"(?![\d.])", text)]
+    return kind == "x" and value > 1 and any(
+        a > b and k1 in _COMPATIBLE.get(k2, ()) and (k1 != "count" or u1 == u2)
+        and Decimal(a / b).quantize(exp, ROUND_HALF_UP) == Decimal(raw.replace(",", ""))
+        for a, k1, u1 in nums for b, k2, u2 in nums)
 
 
 def _publisher(item: dict) -> str:
@@ -214,9 +219,11 @@ def _check(block: str, market: list[float], missing: list | None = None) -> list
     cited = [q for i in ids if known(i) for q in _quantities(_item_text(_REGISTRY[i]))]
     cited += _quantities(official_numbers.facts(block))   # 官方營收、EPS、稅後淨利也算來源
     everything = [q for item in _REGISTRY.values() for q in _quantities(_item_text(item))]
-    own = _quantities(_ID.sub(" ", _META.sub(" ", block)))
+    text = _ID.sub(" ", _META.sub(" ", block))
+    own = _quantities(text)
+    backed = [q for q in own if q[2] != "x" and _supported(q, cited, market)]
     for claim in own:
-        if _supported(claim, cited, market) or _ratio(claim, own):
+        if _supported(claim, cited, market) or _ratio(claim, backed, text):
             continue
         where = "其他新聞" if _supported(claim, everything) else "任何素材"
         if where == "任何素材" and missing is not None:

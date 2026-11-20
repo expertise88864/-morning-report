@@ -281,18 +281,6 @@
  ],
  "watch": [
   {
-   "trigger": "南亞法說（若順延則為 10/27）是否揭露 9 月獲利的業內外組成與 M9 驗證進度",
-   "trigger_full": "南亞法說（若順延則為 10/27）是否揭露 9 月獲利的業內外組成與 M9 驗證進度",
-   "trigger_key": "t2b0e7880dce388cc",
-   "why": "這是 1303 淨效果從 unknown 變成有方向的唯一入口",
-   "horizon": "1-4w",
-   "watch_id": "w77",
-   "status": "open",
-   "created": "2026-10-23",
-   "last_reviewed": "2026-11-20",
-   "deadline": "2026-11-20"
-  },
-  {
    "trigger": "微軟、亞馬遜或 Alphabet 是否在後續場合上調 2026 年資本支出",
    "trigger_full": "微軟、亞馬遜或 Alphabet 是否在後續場合上調 2026 年資本支出",
    "trigger_key": "te44719dc2d329c0f",
@@ -301,7 +289,7 @@
    "watch_id": "w100",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-19",
+   "last_reviewed": "2026-11-23",
    "deadline": "2026-11-27"
   },
   {
@@ -313,44 +301,8 @@
    "watch_id": "w101",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-19",
+   "last_reviewed": "2026-11-23",
    "deadline": "2026-11-27"
-  },
-  {
-   "trigger": "外資台指期淨空 -100,870 口能否在 5 個交易日內縮回 9 萬口以內（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空 -100,870 口能否在 5 個交易日內縮回 9 萬口以內（觀察期：5 天內）",
-   "trigger_key": "t5654b92aa35c32a4",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w136",
-   "status": "open",
-   "created": "2026-11-16",
-   "last_reviewed": "2026-11-20",
-   "deadline": "2026-11-21"
-  },
-  {
-   "trigger": "外資台指期淨空單是否從 96,787 口繼續回補至 9 萬口以內，同時現貨市值前 10 大合計轉為買超（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空單是否從 96,787 口繼續回補至 9 萬口以內，同時現貨市值前 10 大合計轉為買超（觀察期：5 天內）",
-   "trigger_key": "t1d108f0c5b2bf458",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w139",
-   "status": "open",
-   "created": "2026-11-17",
-   "last_reviewed": "2026-11-20",
-   "deadline": "2026-11-22"
-  },
-  {
-   "trigger": "10 年期美債殖利率是否站上 5.2%，以及 12 月升息 1 碼機率是否維持在 95% 上方（觀察期：5 天內）",
-   "trigger_full": "10 年期美債殖利率是否站上 5.2%，以及 12 月升息 1 碼機率是否維持在 95% 上方（觀察期：5 天內）",
-   "trigger_key": "taf5207310cd5de1e",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w140",
-   "status": "open",
-   "created": "2026-11-17",
-   "last_reviewed": "2026-11-20",
-   "deadline": "2026-11-22"
   },
   {
    "trigger": "外資台指期淨空 97,896 口能否在 5 個交易日內縮回 9 萬口以內（觀察期：5 天內）",
@@ -361,20 +313,8 @@
    "watch_id": "w142",
    "status": "open",
    "created": "2026-11-18",
-   "last_reviewed": "2026-11-20",
+   "last_reviewed": "2026-11-23",
    "deadline": "2026-11-23"
-  },
-  {
-   "trigger": "夜盤台指期收 39,987 點、跌 0.86%，加權指數今日開盤參考區間為 39,451.96 至 40,732.26 點；跌破區間下緣代表外資賣壓未消化完（觀察期：今日）",
-   "trigger_full": "夜盤台指期收 39,987 點、跌 0.86%，加權指數今日開盤參考區間為 39,451.96 至 40,732.26 點；跌破區間下緣代表外資賣壓未消化完（觀察期：今日）",
-   "trigger_key": "td4003e9b2bfc69a5",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w144",
-   "status": "open",
-   "created": "2026-11-19",
-   "last_reviewed": "2026-11-20",
-   "deadline": "2026-11-20"
   },
   {
    "trigger": "外資台指期淨空 99,438 口能否回補至 9 萬口以內，同時現貨市值前 10 大由賣超 72,845 張轉為買超（觀察期：5 天內）",
@@ -385,7 +325,7 @@
    "watch_id": "w145",
    "status": "open",
    "created": "2026-11-19",
-   "last_reviewed": "2026-11-20",
+   "last_reviewed": "2026-11-23",
    "deadline": "2026-11-24"
   },
   {
@@ -397,20 +337,8 @@
    "watch_id": "w146",
    "status": "open",
    "created": "2026-11-19",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-23",
    "deadline": "2026-11-24"
-  },
-  {
-   "trigger": "加權指數今日開盤是否跌破模型估計區間下緣 37,603.68 點；跌破代表夜盤 -1.30% 的賣壓尚未消化完（觀察期：今日）",
-   "trigger_full": "加權指數今日開盤是否跌破模型估計區間下緣 37,603.68 點；跌破代表夜盤 -1.30% 的賣壓尚未消化完（觀察期：今日）",
-   "trigger_key": "t95dd574a20a94f7a",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w147",
-   "status": "open",
-   "created": "2026-11-20",
-   "last_reviewed": "",
-   "deadline": "2026-11-21"
   },
   {
    "trigger": "外資台指期淨空 -99,219 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 26,547 張轉為買超（觀察期：5 天內）",
@@ -421,7 +349,7 @@
    "watch_id": "w148",
    "status": "open",
    "created": "2026-11-20",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-23",
    "deadline": "2026-11-25"
   },
   {
@@ -433,56 +361,91 @@
    "watch_id": "w149",
    "status": "open",
    "created": "2026-11-20",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-23",
    "deadline": "2026-11-25"
+  },
+  {
+   "trigger": "加權指數周一開盤是否落在模型區間 34,176.64 至 35,285.74 點之內；若開低於下緣且半小時內未收回 34,731.19 點，代表賣壓延續（觀察期：周一開盤後 1 小時）。",
+   "trigger_full": "加權指數周一開盤是否落在模型區間 34,176.64 至 35,285.74 點之內；若開低於下緣且半小時內未收回 34,731.19 點，代表賣壓延續（觀察期：周一開盤後 1 小時）。",
+   "trigger_key": "t679ef45497812883",
+   "why": "",
+   "horizon": "1-4w",
+   "watch_id": "w150",
+   "status": "open",
+   "created": "2026-11-23",
+   "last_reviewed": "",
+   "deadline": "2026-12-21"
+  },
+  {
+   "trigger": "外資台指期淨空 -97,863 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）。",
+   "trigger_full": "外資台指期淨空 -97,863 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）。",
+   "trigger_key": "tc4761005cfae9448",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w151",
+   "status": "open",
+   "created": "2026-11-23",
+   "last_reviewed": "",
+   "deadline": "2026-11-28"
+  },
+  {
+   "trigger": "2330 能否守住模型合理價 1,908.91 元附近；若收盤跌破區間下緣 1,810.39 元，代表短期超賣反彈失敗（觀察期：5 天內）。",
+   "trigger_full": "2330 能否守住模型合理價 1,908.91 元附近；若收盤跌破區間下緣 1,810.39 元，代表短期超賣反彈失敗（觀察期：5 天內）。",
+   "trigger_key": "te4ac1a3dcc50177e",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w152",
+   "status": "open",
+   "created": "2026-11-23",
+   "last_reviewed": "",
+   "deadline": "2026-11-28"
   }
  ],
- "watch_seq": 149,
+ "watch_seq": 152,
  "legacy_report": {
-  "date": "2026-11-20",
+  "date": "2026-11-23",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**AMD（全球第二大 x86 CPU 與 AI GPU 廠，MI300X 為主力）**：遭放空機構 Hunterbrook 指控與黑名單企業浪潮信息往來、逾 20% 營收來自中國與香港，股價重挫 7.72% 收 489.19 美元，公司否認並稱遵守美國法律。機制與上一條出口管制同向：合規風險從 NVIDIA 擴散到第二大 GPU 供應商，台股 ASIC 與伺服器鏈先受情緒波及，世芯-KY 昨日已跌 8.9%。量級判斷不出來——報告未經獨立查證，20% 是控方說法不是財報數字，實際影響要看商務部是否立案。**[B 級・信心:中-低，資訊有限]**　[CNBC](https://www.cnbc.com/2026/11/19/amd-falls-on-short-seller-report-of-alleged-china-exposure.html) [中央社](https://www.cna.com.tw/news/aopl/202611200008.aspx) [鉅亨](https://news.cnyes.com/news/id/6667979)",
+    "statement": "**台積電（2330，全球最大晶圓代工廠，先進製程與 CoWoS 為 AI 晶片核心瓶頸）**：延續昨日台積電跌破 2,000 元關卡的壓力，今日 TSM ADR 再跌 9.48%，路透報導公司暫停中國 16 奈米以下訂單。ADR 跌幅透過歷史映射傳導，模型估計 2330 合理價 1,908.91 元，較昨收 2,000 元低 4.55%，區間 1,810.39 至 1,925.53 元。中國成熟製程訂單占比有限，真正壓力來自 AI 客戶估值修正與外資降風險；**量級上開盤合理價已反映 ADR 跌幅，但 5 日累積 -14.89% 屬短期超賣，開盤後可能出現技術性反彈，追空風險高**。**[A 級・信心:中]**　[UDN](https://news.google.com/rss/articles/CBMiUEFVX3lxTFBKbTJxT2w5YjMwUG9iUlNBTjRFZG0ySmZoYzVnRXVoQTdiaC1Rd2FYeV9YWUxKemlCTk1kMUpJOUdkRW9xenloNkExb2hJaUJf0gFWQVVfeXFMTlFqMUVmNWJ3NTZNTGtnZXZxLUF5ZHl0am1GSHpPU01uTzZKZUdJQ0xYZ0NwRnh3MjNfWU1QT05TTnR4ek9WSG50c2Jha1d2LVJNSVhmTkE?oc=5) [中央社](https://news.google.com/rss/articles/CBMiXkFVX3lxTE5mMEtWM29HWFVpYTFibG1LcWJxeXJtS0gwRkJ2bWNOSHluTzA1WnFFZ3dsaFVwRW5GZ2hKQnBJR3V0QWNLREVqQUZxUUMzd256Qy1BUlVEeHI2TzE0TXc?oc=5)",
     "source_urls": [
-     "https://www.cnbc.com/2026/11/19/amd-falls-on-short-seller-report-of-alleged-china-exposure.html",
-     "https://www.cna.com.tw/news/aopl/202611200008.aspx",
-     "https://news.cnyes.com/news/id/6667979"
+     "https://news.google.com/rss/articles/CBMiUEFVX3lxTFBKbTJxT2w5YjMwUG9iUlNBTjRFZG0ySmZoYzVnRXVoQTdiaC1Rd2FYeV9YWUxKemlCTk1kMUpJOUdkRW9xenloNkExb2hJaUJf0gFWQVVfeXFMTlFqMUVmNWJ3NTZNTGtnZXZxLUF5ZHl0am1GSHpPU01uTzZKZUdJQ0xYZ0NwRnh3MjNfWU1QT05TTnR4ek9WSG50c2Jha1d2LVJNSVhmTkE?oc=5",
+     "https://news.google.com/rss/articles/CBMiXkFVX3lxTE5mMEtWM29HWFVpYTFibG1LcWJxeXJtS0gwRkJ2bWNOSHluTzA1WnFFZ3dsaFVwRW5GZ2hKQnBJR3V0QWNLREVqQUZxUUMzd256Qy1BUlVEeHI2TzE0TXc?oc=5"
     ]
    },
    {
-    "statement": "**英特爾（INTC，美國整合元件製造廠，正轉型晶圓代工）**：宣布 18A-P 製程簽下首家外部客戶，股價漲 1.92% 收 55.72 美元。這是對第 1 條的反向訊號：台積電在綁客戶，英特爾在搶客戶。但客戶身分、訂單規模、量產時程全部未公布，且英特爾晶圓代工第三季仍虧 19 億美元，目前判斷不出對 2330 市占的實質侵蝕，只能說先進製程多了一個報價壓力來源。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6668104) [經濟日報](https://news.google.com/rss/articles/CBMidEFVX3lxTE5CLUo4ZnJoUzRrc0laQTEzQzNDeGp2V1FzTGtNd3YxYVJ1dUtGQVNBZzZUUUQyREwxdFdGSUFRR3pfUFVrb2ZISDQ4TElaTzlpNVBoUzNnMjJDMTZqNDEtZ0xBYm8yam1ZSzY5WDluQUlJSk9J0gFfQVVfeXFMTmhuWFJ4bWF0ZWFtZE16SU1xT3BMREFjR2dxWTV5MzJaRFRTN2VsLVZ6Zy0zY01JUU9LaVQ1OUcwbU9qUG9ETVdwYjBEcWFxNGpYblhNZm95bkJYNW1CTFE?oc=5)",
+    "statement": "**輝達（NVDA，AI GPU 龍頭，台積電先進製程與 CoWoS 最大客戶之一）**：SEC 正調查輝達會計作業，股價單日暴跌 13.80%，並寫下 2008 年以來最長週線連跌紀錄。輝達佔台積電 AI 營收比重高，若調查影響市場對其訂單能見度與財務可信度，CoWoS 與 HBM 供應鏈評價會先受壓；但目前調查未公布具體會計問題，實際訂單與產能未變。**量級判斷不出來——沒有調查結論、沒有訂單調整數字，現階段只能視為估值折價，還不是基本面下修**。**[B 級・信心:中-低，資訊有限]**　[中央社](https://www.cna.com.tw/news/aopl/202611210010.aspx) [CNBC](https://www.cnbc.com/2026/11/20/nvidias-7-week-losing-streak-is-longest-since-2008-financial-crisis.html)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6668104",
-     "https://news.google.com/rss/articles/CBMidEFVX3lxTE5CLUo4ZnJoUzRrc0laQTEzQzNDeGp2V1FzTGtNd3YxYVJ1dUtGQVNBZzZUUUQyREwxdFdGSUFRR3pfUFVrb2ZISDQ4TElaTzlpNVBoUzNnMjJDMTZqNDEtZ0xBYm8yam1ZSzY5WDluQUlJSk9J0gFfQVVfeXFMTmhuWFJ4bWF0ZWFtZE16SU1xT3BMREFjR2dxWTV5MzJaRFRTN2VsLVZ6Zy0zY01JUU9LaVQ1OUcwbU9qUG9ETVdwYjBEcWFxNGpYblhNZm95bkJYNW1CTFE?oc=5"
+     "https://www.cna.com.tw/news/aopl/202611210010.aspx",
+     "https://www.cnbc.com/2026/11/20/nvidias-7-week-losing-streak-is-longest-since-2008-financial-crisis.html"
     ]
    },
    {
-    "statement": "**日月光投控（3711，全球最大封測廠）**：旗下台灣福雷電子投入 2,489 億元於高雄仁武 J 坵塊，擴大高階半導體測試聚落，2028 至 2029 年分期完成。機制是先進封裝與測試：CoWoS 把晶片疊起來之後還需要測試與載板，這是 AI 晶片出貨的後段瓶頸之一，與第 1 條的客戶綁定指向同一段產能。量級上 2028 年才分期完成、測試產能數字未揭露，對今年營收零貢獻，今天只有題材意義。**[A 級・信心:中]**　[TechNews](https://news.google.com/rss/articles/CBMixgFBVV95cUxQYXJBSzZMZ0V6Y2xwT1RIUzhyMFlFSkRDSkRmczhURHVjZVdMTXFIT0x1ZGw3X1ZnYUp5dWhpU3RueFVNQldkSHcxZGlhaTI1UTd3WDZ3NVBza1RBZlF4OWVNdlMxYTA3LUtpWnFnQlV4d2NEbGlDMEs4QXNLUl9fcTB3VUtON3NTTU9PWmNmLXdLZlB6Mm9DNlBHUDlOZC1GTUVUTXRCSWpKSm1OWXY4cURRWHRCX1pJWDB3MGR2ZXh0X3RmNmc?oc=5)",
+    "statement": "**AMD（全球第二大 x86 CPU 與 AI GPU 廠，MI300X 為主力）**：延續昨日放空機構 Hunterbrook 指控與中國黑名單企業往來的線索，AMD 今日隨 AI 晶片股暴跌超過 13%。合規風險從輝達擴散到第二大 GPU 供應商，台股 ASIC 與 AI 伺服器鏈開盤情緒受拖累；但公司已否認指控，且報告未經獨立查證。**目前沒有金額或訂單數量可估算影響，量級判斷不出來；與上一條輝達調查同向，兩者共同指向 AI 晶片監管風險升溫**。**[B 級・信心:中-低，資訊有限]**　[經濟日報](https://news.google.com/rss/articles/CBMiXEFVX3lxTE5UeGU5QUlvb1dCeUpYM2gtMGdkbF80WkViYlZ0bVB4Um5hUVJGZnJIY2tkdFFnSlhwdnU2QjZmWjhfZlpZSXNvWVJVNkF3RHBxU05GUzdGQVpQTUN30gFiQVVfeXFMTmVYSVhTVkdVcjVsS3Bya0J2RE5iTzQ3UWRhcHlyTTJ4aHJaZ3pUb1Rqa0F4R3pXZ0xmNWJJWVZ4QjdEc25wMkFpU21mZmFDdEdVMDE3bDA1bHhha1hrQmZyUFE?oc=5) [鉅亨](https://news.cnyes.com/news/id/6669311)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMixgFBVV95cUxQYXJBSzZMZ0V6Y2xwT1RIUzhyMFlFSkRDSkRmczhURHVjZVdMTXFIT0x1ZGw3X1ZnYUp5dWhpU3RueFVNQldkSHcxZGlhaTI1UTd3WDZ3NVBza1RBZlF4OWVNdlMxYTA3LUtpWnFnQlV4d2NEbGlDMEs4QXNLUl9fcTB3VUtON3NTTU9PWmNmLXdLZlB6Mm9DNlBHUDlOZC1GTUVUTXRCSWpKSm1OWXY4cURRWHRCX1pJWDB3MGR2ZXh0X3RmNmc?oc=5"
+     "https://news.google.com/rss/articles/CBMiXEFVX3lxTE5UeGU5QUlvb1dCeUpYM2gtMGdkbF80WkViYlZ0bVB4Um5hUVJGZnJIY2tkdFFnSlhwdnU2QjZmWjhfZlpZSXNvWVJVNkF3RHBxU05GUzdGQVpQTUN30gFiQVVfeXFMTmVYSVhTVkdVcjVsS3Bya0J2RE5iTzQ3UWRhcHlyTTJ4aHJaZ3pUb1Rqa0F4R3pXZ0xmNWJJWVZ4QjdEc25wMkFpU21mZmFDdEdVMDE3bDA1bHhha1hrQmZyUFE?oc=5",
+     "https://news.cnyes.com/news/id/6669311"
     ]
    },
    {
-    "statement": "**【航運｜台灣】台航（2617，散裝船東兼土地資產股）**：受陽明股利挹注獲利進補，公司稱散裝運價有撐、全台土地資產逾 41 億元；BDI 指數 11 月 18 日反彈近 1%。機制是雙引擎：本業看日租金，業外看轉投資股利。股利是一次性、明年不會重複，真正該追的是 Q4 租金水準，公司未揭露具體數字。**[B 級・信心:中]**　[工商時報](https://news.google.com/rss/articles/CBMiX0FVX3lxTE5CTEdLdUkzTlBaRFFvNTNCcklIZGNTZ0pkZ3VfWU12aDV3bXZHaGI4N0FKaXE3VG42eVViYXdCQWRkSnB2dS1CeUVXZmljcklYUXd0WFhBUjFxNTY1M3Nv?oc=5) [自由時報](https://news.google.com/rss/articles/CBMiWEFVX3lxTE5qaC1tUVF0WWpOd1NnbHhuLTdDbE9tMlFOa1dHREJMVU9WMGhZR0JwQ0pxNW40bTFnaXA3YVdDaUJiYWRadWxfdjQxdzFyd185bktFajVBaHQ?oc=5) [富聯網](https://news.google.com/rss/articles/CBMiiAFBVV95cUxNS1hJYnhMSjREX2l5c28yTUZIN1RmQmJjSzh4M3ZkT3hxVTVsQ3JDSXdJNG9DQmRFeGV0bjJGdzlFSDUzcmR1U3JXczNBM2pkd3NLc3pQckxVMmhWM2NGdXVOTEt4VlczeUdHcGt5MjNvZjJaWkdPVWl6dzB2VDVfVS04S2k0YWYt?oc=5)",
+    "statement": "**記憶體族群（南亞科、華邦電、旺宏等）**：美光單日重挫 13.86%，台股記憶體族群昨日已先反應，南亞科跌停、華邦電見到 8 字頭，法人示警報價第一季可能凍漲。記憶體報價若由漲轉凍，南亞科、華邦電的毛利率與營收動能會直接受壓；這與台積電的先進製程邏輯不同，記憶體走的是報價循環。**量級上報價凍漲尚屬法人示警、未見原廠正式公告，還無法量化對獲利的影響，但台股記憶體權值佔成交人氣高，是周一加權指數的另一個賣壓來源**。**[B 級・信心:中-低，資訊有限]**　[鉅亨](https://news.cnyes.com/news/id/6669311) [旺得富](https://news.google.com/rss/articles/CBMiakFVX3lxTE91QmR5cC05MnR5WERJcWhJMVBpZm50cHZ1VERSVTVieTJaMUozRXV4MVpnUFh6cHpkMXp2MzVDNm1MbVlzZVRFM3RJczhaQlNvdnh5OUFaZGVLV3dhLU9DYWptOXEyQU5EV1E?oc=5)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5CTEdLdUkzTlBaRFFvNTNCcklIZGNTZ0pkZ3VfWU12aDV3bXZHaGI4N0FKaXE3VG42eVViYXdCQWRkSnB2dS1CeUVXZmljcklYUXd0WFhBUjFxNTY1M3Nv?oc=5",
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5qaC1tUVF0WWpOd1NnbHhuLTdDbE9tMlFOa1dHREJMVU9WMGhZR0JwQ0pxNW40bTFnaXA3YVdDaUJiYWRadWxfdjQxdzFyd185bktFajVBaHQ?oc=5",
-     "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNS1hJYnhMSjREX2l5c28yTUZIN1RmQmJjSzh4M3ZkT3hxVTVsQ3JDSXdJNG9DQmRFeGV0bjJGdzlFSDUzcmR1U3JXczNBM2pkd3NLc3pQckxVMmhWM2NGdXVOTEt4VlczeUdHcGt5MjNvZjJaWkdPVWl6dzB2VDVfVS04S2k0YWYt?oc=5"
+     "https://news.cnyes.com/news/id/6669311",
+     "https://news.google.com/rss/articles/CBMiakFVX3lxTE91QmR5cC05MnR5WERJcWhJMVBpZm50cHZ1VERSVTVieTJaMUozRXV4MVpnUFh6cHpkMXp2MzVDNm1MbVlzZVRFM3RJczhaQlNvdnh5OUFaZGVLV3dhLU9DYWptOXEyQU5EV1E?oc=5"
     ]
    },
    {
-    "statement": "**【生技｜台灣】安成生技（圓禿外用新藥開發商）**：治療圓禿的外用新藥將在台大展開臨床二 a 期收案，初步成果最快明年第三季出爐。機制是里程金與授權談判籌碼，二 a 期達標才有國際藥廠願意坐下來談。量級上仍在收案階段、距解盲至少一年，現在完全看不到營收。**[B 級・信心:低-中]**　[環球生技](https://news.google.com/rss/articles/CBMickFVX3lxTE5hN19DMnM1WkJEaEtGTnlZTjg0WjIzQ0RFR3Bqc1NxdW94TTZBYXdsYXlVSnFCUF9pSzdiUzRLWThrdFRvZlh2SERZUU51TzZiWnB0SjVFWl91U041VmdEOVl5Wldmd2tRQlBzSHRrd2Y1Zw?oc=5) [自由時報](https://news.google.com/rss/articles/CBMiWEFVX3lxTE9VNFQ3TldST25GLXhhOFJtbzh2aXVCUWthWFppUUg5UFpFalgtX1M1Y2R5M01sMi1KQ2tmWWNFM2xZdmh4dGl2b0IwNWNLQTBFUC1xUm8zRnQ?oc=5)",
+    "statement": "**台灣 AI 伺服器供應鏈的資金周轉壓力**：央行指出，台廠因擴產與 AI 伺服器高單價零組件需先墊款，今年前三季新增國內銀行外幣借款超過 162 億美元，並發行 116 億美元海外可轉債與 77 億美元 GDR；10 月外銷訂單達 1,238.2 億美元、年增 78.3% 創紀錄。訂單強勁對廣達、緯穎等伺服器代工是營收利多，但備料與應收帳款上升會吃掉現金流；對 2330 的意義是 AI 需求仍在，但客戶拉貨越急，供應鏈資金越緊。**量級上 162 億美元借款與 1,238.2 億美元訂單是具體數字，但對個別公司獲利的影響要看利率與周轉天數，目前還無法量化**。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6669420)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMickFVX3lxTE5hN19DMnM1WkJEaEtGTnlZTjg0WjIzQ0RFR3Bqc1NxdW94TTZBYXdsYXlVSnFCUF9pSzdiUzRLWThrdFRvZlh2SERZUU51TzZiWnB0SjVFWl91U041VmdEOVl5Wldmd2tRQlBzSHRrd2Y1Zw?oc=5",
-     "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9VNFQ3TldST25GLXhhOFJtbzh2aXVCUWthWFppUUg5UFpFalgtX1M1Y2R5M01sMi1KQ2tmWWNFM2xZdmh4dGl2b0IwNWNLQTBFUC1xUm8zRnQ?oc=5"
+     "https://news.cnyes.com/news/id/6669420"
     ]
    },
    {
-    "statement": "**【汽車｜台灣】和泰車（2207，Toyota 台灣總代理）**：獲利與配息穩健，被市場視為股災資金避風港，昨日逆勢漲 1.49%。機制是殖利率防禦：恐慌期資金往高股息、低波動的內需股停泊，外資昨日買超 302 張、近 5 日漲 4.8%。但防禦性買盤會隨恐慌降溫而退場，本業仍需看新車交車與電動車布局。**[B 級・信心:低-中]**　[MoneyDJ](https://news.google.com/rss/articles/CBMikgFBVV95cUxNTWxPbGRQeThCcnY3U2t0M3dkOUFCdUJpcVdKbjllVTFKQmJ1OXBrdUN2OXIzMkRlQl95NUtPNjhDLXBDRHgxUFFwLW85QWM0R0FCWnpteGRmTF9aYi00UC1QZ2pMSVJERlBCbDVsWGVzUkVza2NpQ1NvRmtBNXJOcWJqcndGOXB0X1NVTUdfZEtndw?oc=5)",
+    "statement": "**【航運｜台灣】貨櫃三雄（長榮、陽明、萬海）**：SCFI 運價指數連三跌、週跌幅 1.91%，北美線疲軟，法人認為可能修正至 12 月中旬。運價下跌直接壓縮貨櫃航商第四季營收與利潤，長榮、陽明、萬海短線缺乏上攻催化；燃油成本雖有回落，但貨櫃航運看的是運價而非油價。**量級上 1.91% 的週跌幅不算崩盤，但連三跌代表淡季壓力確定，對航運類股偏空，信心中等**。**[A 級・信心:中]**　[經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTE9WOU93dWtOM2c1d2RZNVFMQ25WdHdsTFBtS0dSNWFweDZEX0d2V2RsRnhUazA0RVdZQWFzMzBQSUtOYWN1cnppeklDb0p1UWh4ZkhsNkJ0NFotZ9IBX0FVX3lxTE56QmxsS1BOMk9KM2NyZTRReGdIMDU3Mk1naGRSX01NOWZoOUd0cFB5ZEhNcW1NNE9Kd29WN2RYcHM4ZWR0dmNfVmZaNVQ5STJJYlVEVERuUFlBQ1lxWnJJ?oc=5) [鉅亨](https://news.google.com/rss/articles/CBMiS0FVX3lxTE51dGJ0MVptenpxTUpMWkdieEJwdkZxVDZxTl9CUDlBZWIzMVRYTFdMWkcwOUxWT3FCRnlmTV9kN2ljMF9kaVhUUXNLaw?oc=5)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMikgFBVV95cUxNTWxPbGRQeThCcnY3U2t0M3dkOUFCdUJpcVdKbjllVTFKQmJ1OXBrdUN2OXIzMkRlQl95NUtPNjhDLXBDRHgxUFFwLW85QWM0R0FCWnpteGRmTF9aYi00UC1QZ2pMSVJERlBCbDVsWGVzUkVza2NpQ1NvRmtBNXJOcWJqcndGOXB0X1NVTUdfZEtndw?oc=5"
+     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE9WOU93dWtOM2c1d2RZNVFMQ25WdHdsTFBtS0dSNWFweDZEX0d2V2RsRnhUazA0RVdZQWFzMzBQSUtOYWN1cnppeklDb0p1UWh4ZkhsNkJ0NFotZ9IBX0FVX3lxTE56QmxsS1BOMk9KM2NyZTRReGdIMDU3Mk1naGRSX01NOWZoOUd0cFB5ZEhNcW1NNE9Kd29WN2RYcHM4ZWR0dmNfVmZaNVQ5STJJYlVEVERuUFlBQ1lxWnJJ?oc=5",
+     "https://news.google.com/rss/articles/CBMiS0FVX3lxTE51dGJ0MVptenpxTUpMWkdieEJwdkZxVDZxTl9CUDlBZWIzMVRYTFdMWkcwOUxWT3FCRnlmTV9kN2ljMF9kaVhUUXNLaw?oc=5"
     ]
    }
   ]

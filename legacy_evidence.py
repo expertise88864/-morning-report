@@ -147,6 +147,15 @@ def _supported(claim: tuple, pool: list[tuple], market: list[float] = ()) -> boo
     return (kind == "pct" or (kind in ("twd", "usd") and not mag)) and any(abs(v - value) <= tol for v in market)
 
 
+def _ratio(claim: tuple, own: list[tuple]) -> bool:
+    """「差到 2.67 倍」是同一條裡兩個同類數字相除(8 美元 ÷ 3 美元),算得對就算有根據(2026-11-20 使用者)。"""
+    raw, value, kind, *_ = claim
+    tol = 0.5 * 10 ** -(len(raw.split(".", 1)[1]) if "." in raw else 0) + 1e-9
+    nums = [(v, k) for _, v, k, *_ in own if k not in ("", "x") and v > 0]
+    return kind == "x" and value > 1 and any(a > b and k1 in _COMPATIBLE.get(k2, ()) and abs(a / b - value) <= tol
+                                            for a, k1 in nums for b, k2 in nums)
+
+
 def _publisher(item: dict) -> str:
     name = str(item.get("source_name") or "").strip()
     if not name:
@@ -205,8 +214,9 @@ def _check(block: str, market: list[float], missing: list | None = None) -> list
     cited = [q for i in ids if known(i) for q in _quantities(_item_text(_REGISTRY[i]))]
     cited += _quantities(official_numbers.facts(block))   # 官方營收、EPS、稅後淨利也算來源
     everything = [q for item in _REGISTRY.values() for q in _quantities(_item_text(item))]
-    for claim in _quantities(_ID.sub(" ", _META.sub(" ", block))):
-        if _supported(claim, cited, market):
+    own = _quantities(_ID.sub(" ", _META.sub(" ", block)))
+    for claim in own:
+        if _supported(claim, cited, market) or _ratio(claim, own):
             continue
         where = "其他新聞" if _supported(claim, everything) else "任何素材"
         if where == "任何素材" and missing is not None:

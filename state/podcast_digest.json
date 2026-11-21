@@ -101,7 +101,8 @@
             "unverified": 1,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-11-21T22:11:08Z"
       },
       {
         "guid": "6e0d7037-eff5-4cc1-917e-dc43ef5dedbc",
@@ -7843,7 +7844,8 @@
             "unverified": 0,
             "invalid": 0
           }
-        }
+        },
+        "shown_at": "2026-11-21T22:11:08Z"
       },
       {
         "guid": "22b845c5-e5be-4dd1-b4dd-7f3843120d12",

@@ -7731,6 +7731,108 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "87f8e24a-476f-4565-88fb-9e5ee7549ece",
+        "title": "Anthropic Goes Public, Nvidia in Crisis, Markets Tank, Open Source Crackdown?",
+        "published": "Fri, 20 Nov 2026 22:14:00 +0000",
+        "processed_at": "2026-11-21T01:04:43Z",
+        "digest": {
+          "summary_points": [
+            "Chamath 提出「9 到 10 家巨型企業」理論：AI 讓贏家必須從應用層一路垂直整合到土地、電力與資料中心，市場近一年的資金流其實是在押注「誰能擠進這份名單」；他認為這也是 Nvidia 走弱的部分原因——「超額獲利時代可能結束」。",
+            "他認為在破壞期執行庫藏股是一種「tell」：等於向市場承認不知道該買什麼、建什麼；現在市場改為獎勵併購——Palo Alto Networks 以約 45 億美元買下開源模型團隊後，股價當天漲 8 至 9%，Chamath 的解讀是「市場在投票，叫他們多做一點」。",
+            "對 Anthropic 掛牌（以約 2 兆美元估值上市）：Freeberg 認為其企業級產品優於 Google 與 OpenAI、可觸及客群滲透率還不到 1%，願意持有五年以上「從這個價位仍可能是多倍股」；Chamath 則認為未來三、四個月的股價跟公司本身關係不大，是總體經濟在決定。",
+            "Nvidia 單季營收 1,160 億美元、淨利 650 億美元雙雙翻倍，股價照樣下跌；Chamath 的結論是目前應降低風險而非加風險——十年期殖利率可能往 5.5% 至 6% 走、波動偏高、通膨黏著、還有升息可能，「很難正當化在此超級做多」，並預期之後有更便宜的買點；Jason 則認為大盤正在打底。",
+            "華府傳出要求企業揭露是否使用中國開源模型的政策風聲（眾院中國委員會已發函 Airbnb、DoorDash、Cursor）：Freeberg 強烈反對，主張開源權重只是資料、不是可執行軟體、可被完整稽核，貼標籤等於替閉源廠商打造受監管的壟斷，是決策圈對技術的根本誤解。",
+            "Nvidia 治理面：Jensen 已辭職、董事會表明不會讓他回任，代理執行長 Collette Cress 終止 H-200 對中國銷售、並對 Neocloud 融資轉趨保守；Chamath 認為在 12 月初國會聽證結束前誰都不該有定論，這件事屬於「太難」的一籃，公司同時面臨 SEC 調查與集體訴訟。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Chamath 認為財報再爆表股價仍跌，反映「超額獲利時代可能結束」，且創辦人回任、聽證與訴訟未明前屬於太難判斷的一籃；Jason 則表示自己在 150 至 160 美元進場。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "This I think is why NVIDIA is trading down, is this realization that the over-earning era of NVIDIA may be over.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Palo Alto Networks",
+              "code": "PANW",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Chamath 認為它跨出資安領域買下開源模型團隊，市場以股價大漲回應，等於在鼓勵企業用現金流與股票大膽併購。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "That is why when Nikesh does a $4.5 billion acquisition, the stock goes up. The market is voting.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Freeberg 看好其企業級產品與極低滲透率帶來的長跑道，認為長抱五年以上仍可能是多倍股；Chamath 則提醒短期股價由總經而非公司基本面主導。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "given the growth rate, given the potential, there's an amazing story to be told here that if you're willing to buy the stock and own it for five-plus years, you could hold a multi-bagger from here at this entry point.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Freeberg 把 Google 列為少數同時具備前沿模型與多業務垂直整合的公司，認為以目前價位長抱五年以上也可能有不錯報酬。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "And that's true for them, it's true for SpaceX, it's true for potentially Google even at this moment.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Chamath 把 Meta 列為「從土地一路整合到應用層」的巨型企業候選，並認為開源模型佈局是它該走的方向，只是目前模型被削弱、還不夠強。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Meta. Meta owns all the way down to the dirt all the way up to the app stack.",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "Chamath 偏空方思考：十年期殖利率往上、波動升高、通膨黏著、可能的升息與政治不確定性都對股票不利，現在很難正當化「超級做多」，但他也不認為適合放空；Jason 則認為大盤正在打底，差別在於他相信 AI 使用量還有數百倍的成長空間。",
+          "action_view": "Chamath 主張先降低風險、保留現金等更便宜的進場點，並等 12 月初國會聽證結束後再判斷 Nvidia 相關的連鎖效應；他的資金偏好轉向願意用現金流與股票大舉併購、往垂直整合走的公司。",
+          "notable_quote": "I think that there are going to be nine to 10 megacorps that get built over the next decade because of AI.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "I think that there are going to be nine to 10 megacorps that get built over the next decade because of AI."
+          },
+          "direction_quality": {
+            "attributed": 5,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "22b845c5-e5be-4dd1-b4dd-7f3843120d12",
         "title": "Databricks CEO: AGI Is Already Here, Why Companies Are Behind, and the Superintelligence Debate",
         "published": "Tue, 17 Nov 2026 21:43:00 +0000",
@@ -8374,28 +8476,6 @@
           "notable_quote": "We have to win on things like on AI, on quantum, on nuclear, on bio."
         },
         "shown_at": "2026-08-25T22:35:08Z"
-      },
-      {
-        "guid": "688c4809-9cf4-4d77-b5d7-482ee43e7ccc",
-        "title": "Dario Defends Himself, Datacenter Panic, AI Doomer Trap, Senate Toss-Up",
-        "published": "Fri, 21 Aug 2026 14:14:00 +0000",
-        "processed_at": "2026-08-21T20:03:31Z",
-        "digest": {
-          "summary_points": [
-            "Sacks直指Dario的AI監管主張是「監管俘獲」，批評Anthropic刻意散播AI失業恐慌（如預測1-5年內50%入門知識工作者失業）卻從未修正，如今又推動類似FINRA的監管機構，實為FDA/FAA式審批，將拖慢美國AI發展並讓中國領先。",
-            "Chamath與Sacks警告反資料中心運動蔓延：德州州長Abbott與賓州州長Shapiro相繼限制資料中心，加上共和黨內部備忘錄要求AI公司停止「rage baiting」，顯示AI恐懼已引發兩黨政治反彈，將威脅前沿模型公司的融資能力，因其資產負債表最差且無法取得算力。",
-            "Chamath對比開放與封閉模型：開放模型搭配任何harness能力反而提升，封閉模型在自己的harness下能力衰減，因此開放模型更便宜且高效；但Sacks預測監管將藉「標準一致」之名逐步禁止開放模型，導致美國經濟競爭力下降。",
-            "Freiberg認為RSI（遞迴自我改進）是真實可能且可能很快發生，屆時任何國家監管都無法阻止，因為只要有晶片、電力和網路就能在境外（如冰島、太空）運行；因此美國應吸引並留住前沿實驗室，而非把資料中心逼走。",
-            "關於中期選舉：Sacks認為民調嚴重高估民主黨（歷史平均偏差D+3.7），且當前民調過度採樣年輕進步派；Freiberg則指出年輕人對社會主義接受度上升（53%的40歲以下保守派支持政府經營雜貨店），認為債務螺旋將導致2028年出現AOC式總統。",
-            "Chamath批評矽谷已失去理想主義，企業界只顧賺錢，導致公眾將資料中心視為「億萬富翁的寺廟」，形成仇富情緒；呼籲企業界展現更負責任的面貌，否則將助長社會主義浪潮。",
-            "Sacks主張AI安全應透過公開論文、會議、開放標準協作，而非祕密的SRO；Demis的FINRA式提案不可行，因為FINRA本質是保護現有大公司，開放透明才能避免監管俘獲。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為美國經濟短期仍穩健（如小企業信心上升、就業增加），但長期財政赤字與30年期殖利率不斷創高（本週達5.3%）構成風險，加上政治轉向社會主義的壓力，對市場形成結構性威脅。",
-          "action_view": "主持人未給出明確買賣建議，但強調需關注收益率與政策風險；Chamath建議政府應運用聯邦土地與資源推動平價住宅與技職培訓，以挽回公眾信任。",
-          "notable_quote": "It's just a repackaging of what Dario has always wanted, which is an FDA for AI. Now he's saying it's an FAA for AI."
-        },
-        "shown_at": "2026-08-21T22:34:18Z"
       }
     ]
   },

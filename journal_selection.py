@@ -29,3 +29,10 @@ def articles(ids: list, records: dict, journal: str, limit: int) -> list:
         seen.add(key)
         out.append({'journal': journal, 'pmid': pid, 'title': title})
     return out
+
+
+def clean_zh(text: str) -> str:
+    """拿掉譯者的「語義待摘要確認」提示,只留原文術語(11-10);提示單獨在括號裡時連括號一起拿掉,
+    不留「Smoke（）」這種空括號(11-22 實信)。"""
+    text = re.sub(r"[，；,;]?\s*語義待摘要確認", "", str(text or ""))
+    return re.sub(r"[（(]\s*[）)]", "", text).strip()

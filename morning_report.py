@@ -16143,7 +16143,7 @@ def translate_journal_titles(articles: list[dict]) -> list[dict]:
         zh_map = {int(it.get("i", -1)): str(it.get("zh", "")) for it in items}
         for i, a in enumerate(articles):
             if zh_map.get(i):   # 11-10 實信:「（decoupling，語義待摘要確認）」只留原文術語
-                a["zh"] = zh_map[i].replace("，語義待摘要確認", "").replace("；語義待摘要確認", "").replace("語義待摘要確認", "")
+                a["zh"] = __import__("journal_selection").clean_zh(zh_map[i])   # 11-22:不留空括號
     except Exception as e:
         print(f"[journals] 中文摘要失敗(顯示英文): {e}", file=sys.stderr)
     return articles

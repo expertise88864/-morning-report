@@ -399,53 +399,79 @@
    "created": "2026-11-23",
    "last_reviewed": "",
    "deadline": "2026-11-28"
+  },
+  {
+   "trigger": "成交量能否萎縮至 5,000 億元以下、且上漲家數佔比回升到 30% 以上，這是法人定義的窒息量後止跌訊號（觀察期：5 天內）[自由財經]",
+   "trigger_full": "成交量能否萎縮至 5,000 億元以下、且上漲家數佔比回升到 30% 以上，這是法人定義的窒息量後止跌訊號（觀察期：5 天內）[自由財經]",
+   "trigger_key": "t97d215b558cf915f",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w153",
+   "status": "open",
+   "created": "2026-11-23",
+   "last_reviewed": "",
+   "deadline": "2026-11-28"
+  },
+  {
+   "trigger": "外資台指期淨空 -97,863 口能否回補至 9 萬口以內，同時外資對市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -97,863 口能否回補至 9 萬口以內，同時外資對市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）",
+   "trigger_key": "tbd55ece619a4e316",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w154",
+   "status": "open",
+   "created": "2026-11-23",
+   "last_reviewed": "",
+   "deadline": "2026-11-28"
+  },
+  {
+   "trigger": "10 年期美債殖利率能否維持在 5.0% 之下，今日為 4.912%（觀察期：5 天內）",
+   "trigger_full": "10 年期美債殖利率能否維持在 5.0% 之下，今日為 4.912%（觀察期：5 天內）",
+   "trigger_key": "tce5e5d738c0ce488",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w155",
+   "status": "open",
+   "created": "2026-11-23",
+   "last_reviewed": "",
+   "deadline": "2026-11-28"
   }
  ],
- "watch_seq": 152,
+ "watch_seq": 155,
  "legacy_report": {
   "date": "2026-11-23",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠，先進製程與 CoWoS 為 AI 晶片核心瓶頸）**：延續昨日台積電跌破 2,000 元關卡的壓力，今日 TSM ADR 再跌 9.48%，路透報導公司暫停中國 16 奈米以下訂單。ADR 跌幅透過歷史映射傳導，模型估計 2330 合理價 1,908.91 元，較昨收 2,000 元低 4.55%，區間 1,810.39 至 1,925.53 元。中國成熟製程訂單占比有限，真正壓力來自 AI 客戶估值修正與外資降風險；**量級上開盤合理價已反映 ADR 跌幅，但 5 日累積 -14.89% 屬短期超賣，開盤後可能出現技術性反彈，追空風險高**。**[A 級・信心:中]**　[UDN](https://news.google.com/rss/articles/CBMiUEFVX3lxTFBKbTJxT2w5YjMwUG9iUlNBTjRFZG0ySmZoYzVnRXVoQTdiaC1Rd2FYeV9YWUxKemlCTk1kMUpJOUdkRW9xenloNkExb2hJaUJf0gFWQVVfeXFMTlFqMUVmNWJ3NTZNTGtnZXZxLUF5ZHl0am1GSHpPU01uTzZKZUdJQ0xYZ0NwRnh3MjNfWU1QT05TTnR4ek9WSG50c2Jha1d2LVJNSVhmTkE?oc=5) [中央社](https://news.google.com/rss/articles/CBMiXkFVX3lxTE5mMEtWM29HWFVpYTFibG1LcWJxeXJtS0gwRkJ2bWNOSHluTzA1WnFFZ3dsaFVwRW5GZ2hKQnBJR3V0QWNLREVqQUZxUUMzd256Qy1BUlVEeHI2TzE0TXc?oc=5)",
+    "statement": "**輝達（NVDA，AI 加速器龍頭）**：延續上週換帥這條線，輝達 18 日宣示擴大與台積電、鴻海、矽品、京元電、景碩、欣興等 6 家台廠合作，以現金投資與多年期合約綁定先進封裝、載板與晶圓產能。整體供應承諾金額已攀升至 3,900 億美元，新一代 Vera Rubin NVL72 平台開始出貨。傳導機制：多年期合約把 CoWoS 與 ABF 載板的產能排到未來數年，直接支撐 2330 的先進封裝稼動率。量級要分清——3,900 億美元是採購承諾不是台積電營收，換算不出單一數字，它買到的是訂單能見度，營收要等明年上半年才陸續反映。**[A 級・信心:中]**　[中央社財經](https://www.cna.com.tw/news/afe/202611220025.aspx)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiUEFVX3lxTFBKbTJxT2w5YjMwUG9iUlNBTjRFZG0ySmZoYzVnRXVoQTdiaC1Rd2FYeV9YWUxKemlCTk1kMUpJOUdkRW9xenloNkExb2hJaUJf0gFWQVVfeXFMTlFqMUVmNWJ3NTZNTGtnZXZxLUF5ZHl0am1GSHpPU01uTzZKZUdJQ0xYZ0NwRnh3MjNfWU1QT05TTnR4ek9WSG50c2Jha1d2LVJNSVhmTkE?oc=5",
-     "https://news.google.com/rss/articles/CBMiXkFVX3lxTE5mMEtWM29HWFVpYTFibG1LcWJxeXJtS0gwRkJ2bWNOSHluTzA1WnFFZ3dsaFVwRW5GZ2hKQnBJR3V0QWNLREVqQUZxUUMzd256Qy1BUlVEeHI2TzE0TXc?oc=5"
+     "https://www.cna.com.tw/news/afe/202611220025.aspx"
     ]
    },
    {
-    "statement": "**輝達（NVDA，AI GPU 龍頭，台積電先進製程與 CoWoS 最大客戶之一）**：SEC 正調查輝達會計作業，股價單日暴跌 13.80%，並寫下 2008 年以來最長週線連跌紀錄。輝達佔台積電 AI 營收比重高，若調查影響市場對其訂單能見度與財務可信度，CoWoS 與 HBM 供應鏈評價會先受壓；但目前調查未公布具體會計問題，實際訂單與產能未變。**量級判斷不出來——沒有調查結論、沒有訂單調整數字，現階段只能視為估值折價，還不是基本面下修**。**[B 級・信心:中-低，資訊有限]**　[中央社](https://www.cna.com.tw/news/aopl/202611210010.aspx) [CNBC](https://www.cnbc.com/2026/11/20/nvidias-7-week-losing-streak-is-longest-since-2008-financial-crisis.html)",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：上週五盤中一度跌破 2,000 元，最後一盤湧入超過 1 萬張買單，市場解讀為國家隊護盤。今日模型以 ADR 單日重挫折算後，2330 合理價落在 1,908.91 元、參考區間 1,810 至 1,926 元。傳導機制：ADR 跌幅經歷史衰減係數換算後，本地開盤通常比 ADR 暗示的幅度收斂，但今日是恐慌級賣壓，收斂效果會打折。關鍵在禁空令讓盤下追空受限，若成交量同步萎縮，實際跌幅有機會小於模型值。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6669881)",
     "source_urls": [
-     "https://www.cna.com.tw/news/aopl/202611210010.aspx",
-     "https://www.cnbc.com/2026/11/20/nvidias-7-week-losing-streak-is-longest-since-2008-financial-crisis.html"
+     "https://news.cnyes.com/news/id/6669881"
     ]
    },
    {
-    "statement": "**AMD（全球第二大 x86 CPU 與 AI GPU 廠，MI300X 為主力）**：延續昨日放空機構 Hunterbrook 指控與中國黑名單企業往來的線索，AMD 今日隨 AI 晶片股暴跌超過 13%。合規風險從輝達擴散到第二大 GPU 供應商，台股 ASIC 與 AI 伺服器鏈開盤情緒受拖累；但公司已否認指控，且報告未經獨立查證。**目前沒有金額或訂單數量可估算影響，量級判斷不出來；與上一條輝達調查同向，兩者共同指向 AI 晶片監管風險升溫**。**[B 級・信心:中-低，資訊有限]**　[經濟日報](https://news.google.com/rss/articles/CBMiXEFVX3lxTE5UeGU5QUlvb1dCeUpYM2gtMGdkbF80WkViYlZ0bVB4Um5hUVJGZnJIY2tkdFFnSlhwdnU2QjZmWjhfZlpZSXNvWVJVNkF3RHBxU05GUzdGQVpQTUN30gFiQVVfeXFMTmVYSVhTVkdVcjVsS3Bya0J2RE5iTzQ3UWRhcHlyTTJ4aHJaZ3pUb1Rqa0F4R3pXZ0xmNWJJWVZ4QjdEc25wMkFpU21mZmFDdEdVMDE3bDA1bHhha1hrQmZyUFE?oc=5) [鉅亨](https://news.cnyes.com/news/id/6669311)",
+    "statement": "**【金融｜台灣】國銀海外據點**：金管會統計本國銀行前 3 季海外分支機構獲利 811.8 億元、年增 13.81%，創歷年同期新高。獲利前 5 大地區依序是香港、美國、新加坡、中國與日本，其中美國與日本都寫下同期新高。傳導機制：海外放款成長帶動利息與手續費淨收益，呆帳費用同時減少，對海外布局較深的兆豐金、第一金與合庫金是直接加分。不過這是前 3 季累計數字、不是 11 月新動能，今天對股價的支撐遠小於禁空令與美債利率的影響。**[A 級・信心:中]**　[中央社財經](https://www.cna.com.tw/news/afe/202611220110.aspx) [自由財經](https://ec.ltn.com.tw/article/paper/1779532)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiXEFVX3lxTE5UeGU5QUlvb1dCeUpYM2gtMGdkbF80WkViYlZ0bVB4Um5hUVJGZnJIY2tkdFFnSlhwdnU2QjZmWjhfZlpZSXNvWVJVNkF3RHBxU05GUzdGQVpQTUN30gFiQVVfeXFMTmVYSVhTVkdVcjVsS3Bya0J2RE5iTzQ3UWRhcHlyTTJ4aHJaZ3pUb1Rqa0F4R3pXZ0xmNWJJWVZ4QjdEc25wMkFpU21mZmFDdEdVMDE3bDA1bHhha1hrQmZyUFE?oc=5",
-     "https://news.cnyes.com/news/id/6669311"
+     "https://www.cna.com.tw/news/afe/202611220110.aspx",
+     "https://ec.ltn.com.tw/article/paper/1779532"
     ]
    },
    {
-    "statement": "**記憶體族群（南亞科、華邦電、旺宏等）**：美光單日重挫 13.86%，台股記憶體族群昨日已先反應，南亞科跌停、華邦電見到 8 字頭，法人示警報價第一季可能凍漲。記憶體報價若由漲轉凍，南亞科、華邦電的毛利率與營收動能會直接受壓；這與台積電的先進製程邏輯不同，記憶體走的是報價循環。**量級上報價凍漲尚屬法人示警、未見原廠正式公告，還無法量化對獲利的影響，但台股記憶體權值佔成交人氣高，是周一加權指數的另一個賣壓來源**。**[B 級・信心:中-低，資訊有限]**　[鉅亨](https://news.cnyes.com/news/id/6669311) [旺得富](https://news.google.com/rss/articles/CBMiakFVX3lxTE91QmR5cC05MnR5WERJcWhJMVBpZm50cHZ1VERSVTVieTJaMUozRXV4MVpnUFh6cHpkMXp2MzVDNm1MbVlzZVRFM3RJczhaQlNvdnh5OUFaZGVLV3dhLU9DYWptOXEyQU5EV1E?oc=5)",
+    "statement": "**【航運｜台灣】貨櫃運價**：上海航交所上週五公布 SCFI 續跌 68.55 點至 3,503.78 點，週減 1.92%，連 3 週走跌並創 9 月中旬以來新低。美國線運價續弱，貨攬業者認為下修壓力可能延續到 12 月中旬。傳導機制：運價直接連動長榮、陽明與萬海的營收，連 3 跌意味第四季傳統淡季更淡。但長榮上週五僅跌 5.67%、相對大盤抗跌，代表市場已部分定價這條利空。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6669876)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6669311",
-     "https://news.google.com/rss/articles/CBMiakFVX3lxTE91QmR5cC05MnR5WERJcWhJMVBpZm50cHZ1VERSVTVieTJaMUozRXV4MVpnUFh6cHpkMXp2MzVDNm1MbVlzZVRFM3RJczhaQlNvdnh5OUFaZGVLV3dhLU9DYWptOXEyQU5EV1E?oc=5"
+     "https://news.cnyes.com/news/id/6669876"
     ]
    },
    {
-    "statement": "**台灣 AI 伺服器供應鏈的資金周轉壓力**：央行指出，台廠因擴產與 AI 伺服器高單價零組件需先墊款，今年前三季新增國內銀行外幣借款超過 162 億美元，並發行 116 億美元海外可轉債與 77 億美元 GDR；10 月外銷訂單達 1,238.2 億美元、年增 78.3% 創紀錄。訂單強勁對廣達、緯穎等伺服器代工是營收利多，但備料與應收帳款上升會吃掉現金流；對 2330 的意義是 AI 需求仍在，但客戶拉貨越急，供應鏈資金越緊。**量級上 162 億美元借款與 1,238.2 億美元訂單是具體數字，但對個別公司獲利的影響要看利率與周轉天數，目前還無法量化**。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6669420)",
+    "statement": "**【能源｜全球】荷姆茲海峽航運風險**：英國海事貿易行動辦公室指出，兩艘離開荷姆茲海峽的油輪在阿曼外海遭不明拋射物擊中，海峽威脅等級升至「嚴重」。船隻通行量較戰前驟降約 65%，布蘭特原油維持每桶 83.62 美元。機制：繞道與保險費上升會推高油價的風險溢價，但 WTI 上週五只漲 0.24%，顯示市場目前更在意 AI 拋售而非供給中斷。若通行量再往下掉，成本端會是繼 AI 評價修正之後對台股的第二波打擊。**[B 級・信心:中-低]**　[鉅亨美股](https://news.cnyes.com/news/id/6669843)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6669420"
-    ]
-   },
-   {
-    "statement": "**【航運｜台灣】貨櫃三雄（長榮、陽明、萬海）**：SCFI 運價指數連三跌、週跌幅 1.91%，北美線疲軟，法人認為可能修正至 12 月中旬。運價下跌直接壓縮貨櫃航商第四季營收與利潤，長榮、陽明、萬海短線缺乏上攻催化；燃油成本雖有回落，但貨櫃航運看的是運價而非油價。**量級上 1.91% 的週跌幅不算崩盤，但連三跌代表淡季壓力確定，對航運類股偏空，信心中等**。**[A 級・信心:中]**　[經濟日報](https://news.google.com/rss/articles/CBMiWkFVX3lxTE9WOU93dWtOM2c1d2RZNVFMQ25WdHdsTFBtS0dSNWFweDZEX0d2V2RsRnhUazA0RVdZQWFzMzBQSUtOYWN1cnppeklDb0p1UWh4ZkhsNkJ0NFotZ9IBX0FVX3lxTE56QmxsS1BOMk9KM2NyZTRReGdIMDU3Mk1naGRSX01NOWZoOUd0cFB5ZEhNcW1NNE9Kd29WN2RYcHM4ZWR0dmNfVmZaNVQ5STJJYlVEVERuUFlBQ1lxWnJJ?oc=5) [鉅亨](https://news.google.com/rss/articles/CBMiS0FVX3lxTE51dGJ0MVptenpxTUpMWkdieEJwdkZxVDZxTl9CUDlBZWIzMVRYTFdMWkcwOUxWT3FCRnlmTV9kN2ljMF9kaVhUUXNLaw?oc=5)",
-    "source_urls": [
-     "https://news.google.com/rss/articles/CBMiWkFVX3lxTE9WOU93dWtOM2c1d2RZNVFMQ25WdHdsTFBtS0dSNWFweDZEX0d2V2RsRnhUazA0RVdZQWFzMzBQSUtOYWN1cnppeklDb0p1UWh4ZkhsNkJ0NFotZ9IBX0FVX3lxTE56QmxsS1BOMk9KM2NyZTRReGdIMDU3Mk1naGRSX01NOWZoOUd0cFB5ZEhNcW1NNE9Kd29WN2RYcHM4ZWR0dmNfVmZaNVQ5STJJYlVEVERuUFlBQ1lxWnJJ?oc=5",
-     "https://news.google.com/rss/articles/CBMiS0FVX3lxTE51dGJ0MVptenpxTUpMWkdieEJwdkZxVDZxTl9CUDlBZWIzMVRYTFdMWkcwOUxWT3FCRnlmTV9kN2ljMF9kaVhUUXNLaw?oc=5"
+     "https://news.cnyes.com/news/id/6669843"
     ]
    }
   ]

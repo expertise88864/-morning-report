@@ -801,6 +801,65 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2442947520",
+        "title": "2026/11/23(一)融資斷頭大逃殺 政府全面救市!誰能解決 流動性問題?【早晨財經速解讀】",
+        "published": "Mon, 23 Nov 2026 01:07:23 +0000",
+        "processed_at": "2026-11-23T10:13:57Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為本波台股急跌本質是流動性枯竭與融資斷頭踩踏，不是基本面惡化；今天政策重點是打開中小型股跌停鎖死與信用收縮循環，否則大型權值股會被連鎖拖累。",
+            "他引用歷史經驗判斷目前較像長多中的中期修正：標普輕度跌破200日線多在一個月內收復，QQQ跌破100週線後過去四次一年平均報酬約40.9%；但他承認若轉為深度跌破，熊市風險會升高。",
+            "主持人操作立場明確：長期看多、在市場乖離過大且情緒極度悲觀時逆勢加碼，但嚴格控制槓桿；他以SOXL今年先漲615%後轉為全年虧損為例，提醒槓桿只能超車、不能飆車。",
+            "他提醒美國財富效應已放大：家庭股票資產接近GDP的200%，遠高於2000年網路泡沫前108%，股市每跌10%約影響GDP 20%；若股市續跌，消費與景氣將受衝擊。",
+            "他認為金管會限空、擬降融資維持率至120%、國安基金可能擴至1到2兆等救市措施，是政策買時間、釋放流動性與預期管理；真正觀察點是中小型股跌停能否打開、外資空單與ETF贖回賣壓能否止穩。"
+          ],
+          "tickers": [
+            {
+              "name": "Direxion Daily Semiconductor Bull 3X Shares",
+              "code": "SOXL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人以SOXL先暴漲615%，上週五已轉為全年下跌26.19%、淨值最大回落達八成，警告三倍槓桿ETF的波動耗損與被洗掉風險，不宜重倉。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "原型ETF即便經歷過劇烈的修正,今年還是會持有正報酬,但是三倍槓桿的ETF它從最高六倍的獲利一路回吐到全年虧損,SOXL的淨值最大回落程度已經來到八成",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "iShares Semiconductor ETF",
+              "code": "SOXX",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人以SOXX今年仍上漲約22%對照SOXL全年虧損，說明原型ETF相對能承受修正，但未給明確買賣方向。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "SOXX大概漲了117%,但是三倍槓桿的半導體ETFSOXL它是漲了615%,可是回過頭說到上個禮拜五為止,費半SOXX還是上漲了大概漲了22%,結果SOXL反而下跌了26.19%",
+                "direction": "neutral"
+              }
+            }
+          ],
+          "market_view": "主持人傾向認為這是長多中的中期修正而非2000／2008式熊市，急跌主因是流動性與籌碼踩踏，實質基本面未惡化。",
+          "action_view": "主持人操作思路：長期看多、逆勢加碼，但嚴格控制槓桿，不追高；接受帳面套牢，重點是留在市場、不被強制出場。",
+          "notable_quote": "我們目標從來不是精準預測每一次的高低點,我們要預測,自己能夠長期留在市場當中,熬過每一次的景氣循環,我可以接受被套牢,但是不能夠接受被迫出場",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我們目標從來不是精準預測每一次的高低點,我們要預測,自己能夠長期留在市場當中,熬過每一次的景氣循環,我可以接受被套牢,但是不能夠接受被迫出場"
+          },
+          "direction_quality": {
+            "attributed": 2,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2441513526",
         "title": "2026/11/20(五)四大指數年線全失守 ANT吃飽 美股全倒?台股禁空令 擋得住賣壓?【早晨財經速解讀】",
         "published": "Fri, 20 Nov 2026 01:13:33 +0000",
@@ -1544,94 +1603,6 @@
           }
         },
         "shown_at": "2026-11-06T22:17:34Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2432375685",
-        "title": "2026/11/5(四)川普大潰敗 藍潮反撲!為什麼選完 費半還在跌?現在該停損 還是加碼?【早晨財經速解讀】",
-        "published": "Thu, 05 Nov 2026 01:09:03 +0000",
-        "processed_at": "2026-11-05T09:01:53Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為民主黨橫掃國會後，AI 仍會發展但速度可能放慢，硬體股下跌屬估值回調而非 AI 受創，無需過度擔心。",
-            "主持人指出德州變天可能使當地資料中心建置放緩，因民主黨州長要求配套措施，但只是時間拉長，訂單仍緊繃不致供過於求。",
-            "主持人解讀分裂國會歷史：過去13次分裂國會未來一年標普從未負報酬，平均近17%，認為分裂國會反而是政策穩定性利多。",
-            "主持人認為川普減稅不會被取消（有否決權），但雙方各取所需下財政支出仍可能增長，美債赤字長期惡化，不宜幻想殖利率大幅下滑。",
-            "主持人從出口民調指出65%選民認為關稅傷害美國經濟，只有22%認為有幫助，關稅政策可能受制，但台美貿易仍待觀察。"
-          ],
-          "tickers": [
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人解讀選後監管可能放緩科技巨頭 AI 資本支出惡化，自由現金流優化，帶動亞馬遜等大型科技股上漲。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人觀察記憶體股因市場擔憂德州資料中心放緩而大跌，但他認為是估值回調而非 AI 受創，訂單仍緊繃。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "威騰電子",
-              "code": "WDC",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人提到威騰隨記憶體股同步下跌，同樣視為市場反映資料中心建置放緩疑慮的估值回調。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為馬斯克政治押注失利使德州監管風險上升，可能影響 FSD 與 SpaceX 發展，但衝擊不至於太離譜。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為分裂國會歷史上對股市穩定有利，平均未來一年標普漲近17%；此次硬體股修正屬估值回調而非 AI 重創，大盤反彈不需過度擔心。",
-          "action_view": "操作上宜以估值回調看待硬體股與記憶體，不需恐慌；留意德州資料中心放緩是否只是時間拉長，而非訂單消失。",
-          "notable_quote": "如果是,那就不用特別擔心了,那就是單純的估值回調,那只是見得慢一點,而並不是AI受到了重創。",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "如果是,那就不用特別擔心了,那就是單純的估值回調,那只是見得慢一點,而並不是AI受到了重創。"
-          },
-          "direction_quality": {
-            "attributed": 0,
-            "non_investment": 0,
-            "unverified": 4,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-11-05T22:15:50Z"
       }
     ]
   },

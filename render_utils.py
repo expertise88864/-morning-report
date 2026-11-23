@@ -1600,8 +1600,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 未來一週焦點賽程（台北時間;強隊對戰）</b>"
             + rows + "</div>")
     if tennis.get("tournaments") or tennis.get("results"):
-        t_inner, finished, still_open = [], set(), set()   # 已出冠軍的賽事不再列「進行中」(11-23 實信 ATP 年終賽);
-        # 大滿貫男女籤表同名:任一籤表還沒打完決賽就照列(PR #64 外審)
+        # 已出冠軍的賽事不再列「進行中」(11-23 實信 ATP 年終賽);大滿貫男女籤表同名:任一籤表還沒打完
+        # 決賽就照列,含上游截斷前記下的 open_events(PR #64 外審)
+        t_inner, finished, still_open = [], set(), set(tennis.get("open_events") or [])
         results = tennis.get("results") or []
         if results:
             # 比照世足收斂(使用者 2026-07-15):已結束的賽事不再逐場列,收斂成「冠軍行」。

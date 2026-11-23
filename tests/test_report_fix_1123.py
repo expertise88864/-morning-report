@@ -72,3 +72,39 @@ def test_review_pr64_grand_slam_stays_listed_while_one_draw_is_unfinished():
     }
     page = re.sub(r"<[^>]+>", "", mr._render_sports_html({"tennis": tennis}, htmllib))
     assert "冠軍" in page and "（進行中）" in page
+
+
+def test_review_pr64_round2_open_draw_recorded_before_results_are_cut():
+    """男單準決賽被三場其他決賽擠出賽果,截斷前記下的 open_events 仍讓賽事列進行中。"""
+    tennis = {
+        "results": [{"tour": "WTA", "tier": "大滿貫", "winner": "A. Sabalenka", "loser": "C. Gauff",
+                     "event": "Australian Open", "event_key": "Australian Open", "date": "01/31", "round": "Final"}],
+        "tournaments": [{"name": "Australian Open", "event_key": "Australian Open", "status": "進行中", "tier": "大滿貫"}],
+        "open_events": ["Australian Open"],
+    }
+    page = re.sub(r"<[^>]+>", "", mr._render_sports_html({"tennis": tennis}, htmllib))
+    assert "冠軍" in page and "Australian Open" in page and "（進行中）" in page
+
+
+def test_review_pr64_round2_fetch_records_open_draws(monkeypatch):
+    import datetime as dt
+    from zoneinfo import ZoneInfo
+
+    def comp(cid, slug_round, day, win, lose):
+        return {"id": cid, "date": f"2027-01-{day}T09:00Z", "round": {"displayName": slug_round},
+                "status": {"type": {"completed": True}},
+                "competitors": [{"athlete": {"shortName": win}, "winner": True},
+                                {"athlete": {"shortName": lose}, "winner": False}]}
+    event = {"shortName": "Australian Open", "date": "2027-01-12T00:00Z", "endDate": "2027-02-02T00:00Z",
+             "groupings": [{"grouping": {"slug": "womens-singles"}, "competitions": [comp("w", "Final", 31, "A. Sabalenka", "C. Gauff")]},
+                           {"grouping": {"slug": "mens-singles"}, "competitions": [comp("m", "Semifinal", 30, "J. Sinner", "A. Zverev")]}]}
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [event]}
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: Response())
+    tennis = mr.fetch_tennis_digest(dt.datetime(2027, 2, 1, 6, tzinfo=ZoneInfo("Asia/Taipei")))
+    assert tennis["open_events"] == ["Australian Open"]

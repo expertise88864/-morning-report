@@ -20395,6 +20395,9 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             for k in by_label:
                 by_label[k] = [m for m in by_label[k] if m["_tier"] == 0]
         out["tournaments"] = [t for t in out["tournaments"] if t["_tier"] == 0] or out["tournaments"]
+    # 截斷賽果前記下還有籤表沒打完決賽的賽事,渲染端靠它決定是否仍列「進行中」(外審 PR #64)
+    _done = {(m["event_key"], m["tour"]) for ms in [*by_label.values(), final_evidence] for m in ms if m.get("round") == "Final"}
+    out["open_events"] = sorted({m["event_key"] for ms in by_label.values() for m in ms if (m["event_key"], m["tour"]) not in _done})
     combined = []
     for label in ("ATP", "WTA"):
         ms = sorted(by_label[label], key=lambda m: m["_ts"], reverse=True)  # 新→舊

@@ -49,6 +49,7 @@ _KIND = {"%": "pct", "倍": "x", "bp": "bp", "個基點": "bp"}
 _MONEY = set(_CURRENCY.values())
 _COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "count": {"count"}, "amt": _MONEY | {"amt"},
                **{k: {k, "amt"} for k in _MONEY}}
+_HOUSE = re.compile(r"本報(?:類股|行情)統計|類股熱度表")
 _META = re.compile(r"\[[A-C] 級[^\]]*\]|\*\*\[[^\]]*\]\*\*|\]\(https?://[^)\s]+\)")
 
 
@@ -221,7 +222,7 @@ def _check(block: str, market: list[float], missing: list | None = None) -> list
     import official_numbers
     ids = _ID.findall(block)
     problems = []
-    if not ids:
+    if not ids and not _HOUSE.search(block):   # 標「本報行情/類股統計」的條目數字來自行情,不需要新聞編號(11-23 使用者)
         problems.append("沒有附新聞編號")
     unknown = [i for i in ids if not known(i)]
     if unknown:

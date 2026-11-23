@@ -25,3 +25,31 @@ def test_ongoing_tournament_without_a_final_stays_listed():
     }
     page = re.sub(r"<[^>]+>", "", mr._render_sports_html({"tennis": tennis}, htmllib))
     assert "Nitto ATP Finals（進行中）" in page
+
+
+def _audit(block, quotes):
+    import legacy_evidence as le
+    le.reset()
+    manifest = {}
+    out = le.audit(f"## 八、科技板塊脈動\n{block}\n", quotes, manifest)
+    le.reset()
+    return out, manifest["llm"]["legacy_evidence"]
+
+
+QUOTES = {"SECTOR_HEAT": {"sectors": {"半導體業": {"value_yi": 3579.0, "inst_net_yi": -162.3, "median_pct": -9.0}}}}
+
+
+def test_house_statistics_items_need_no_news_id_when_numbers_match_market_data():
+    for label in ("（本報類股統計）", "[本報行情統計]"):
+        _, report = _audit(f"**半導體類股**：成交 3,579 億元,法人估算淨賣超 162.3 億元 {label}。[B 級・信心:中-低]", QUOTES)
+        assert report["failed"] == 0, label
+
+
+def test_house_label_does_not_excuse_numbers_missing_from_market_data():
+    out, report = _audit("**半導體類股**：成交 4,000 億元 （本報類股統計）。", QUOTES)
+    assert report["failed"] == 1 and "4,000 億元（未核實）" in out
+
+
+def test_items_without_news_id_or_house_label_still_fail():
+    _, report = _audit("**半導體類股**：成交 3,579 億元,資金流出。", QUOTES)
+    assert report["failed"] == 1

@@ -53,3 +53,22 @@ def test_house_label_does_not_excuse_numbers_missing_from_market_data():
 def test_items_without_news_id_or_house_label_still_fail():
     _, report = _audit("**半導體類股**：成交 3,579 億元,資金流出。", QUOTES)
     assert report["failed"] == 1
+
+
+def test_review_pr64_mentioning_the_table_in_prose_is_not_a_source_label():
+    _, report = _audit("**半導體類股**：依類股熱度表觀察成交活躍;某公司宣布取得大單。", QUOTES)
+    assert report["failed"] == 1
+    _, ok = _audit("**半導體類股**：成交 3,579 億元 （類股熱度表）。", QUOTES)
+    assert ok["failed"] == 0
+
+
+def test_review_pr64_grand_slam_stays_listed_while_one_draw_is_unfinished():
+    tennis = {
+        "results": [{"tour": "WTA", "tier": "大滿貫", "winner": "A. Sabalenka", "loser": "C. Gauff",
+                     "event": "Australian Open", "event_key": "Australian Open", "date": "01/31", "round": "Final"},
+                    {"tour": "ATP", "tier": "大滿貫", "winner": "J. Sinner", "loser": "A. Zverev",
+                     "event": "Australian Open", "event_key": "Australian Open", "date": "01/30", "round": "Semifinal"}],
+        "tournaments": [{"name": "Australian Open", "event_key": "Australian Open", "status": "進行中", "tier": "大滿貫"}],
+    }
+    page = re.sub(r"<[^>]+>", "", mr._render_sports_html({"tennis": tennis}, htmllib))
+    assert "冠軍" in page and "（進行中）" in page

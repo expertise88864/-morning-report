@@ -49,7 +49,8 @@ _KIND = {"%": "pct", "倍": "x", "bp": "bp", "個基點": "bp"}
 _MONEY = set(_CURRENCY.values())
 _COMPATIBLE = {"pct": {"pct"}, "x": {"x"}, "bp": {"bp"}, "count": {"count"}, "amt": _MONEY | {"amt"},
                **{k: {k, "amt"} for k in _MONEY}}
-_HOUSE = re.compile(r"本報(?:類股|行情)統計|類股熱度表")
+#: 只認括號裡的來源標記;正文提到表名不算(PR #64 外審)。
+_HOUSE = re.compile(r"[（(\[]\s*(?:本報(?:類股|行情)統計|類股熱度表)\s*[）)\]]")
 _META = re.compile(r"\[[A-C] 級[^\]]*\]|\*\*\[[^\]]*\]\*\*|\]\(https?://[^)\s]+\)")
 
 

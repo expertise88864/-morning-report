@@ -1600,7 +1600,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 未來一週焦點賽程（台北時間;強隊對戰）</b>"
             + rows + "</div>")
     if tennis.get("tournaments") or tennis.get("results"):
-        t_inner, finished = [], set()   # 已出冠軍的賽事不再列「進行中」(11-23 實信 ATP 年終賽)
+        t_inner, finished, still_open = [], set(), set()   # 已出冠軍的賽事不再列「進行中」(11-23 實信 ATP 年終賽);
+        # 大滿貫男女籤表同名:任一籤表還沒打完決賽就照列(PR #64 外審)
         results = tennis.get("results") or []
         if results:
             # 比照世足收斂(使用者 2026-07-15):已結束的賽事不再逐場列,收斂成「冠軍行」。
@@ -1622,6 +1623,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                             if str(r.get("round") or "") == "Final"), None)
                 if fin is None:
                     live_lines.extend(rs[-4:])          # 未見決賽:列最近 4 場
+                    still_open.add(event)
                     continue
                 finished.add(event)
                 tier = (f"<span style='color:#b45309;'>[{htmllib.escape(fin['tier'])}]</span> "
@@ -1667,7 +1669,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         from report_polish import notable_tennis as _notable_tennis
         # 11-05 外審 PR #42:沒有值得列的賽事就整行不顯示,不退回小型賽事
         _shown_events = [x for x in tennis.get("tournaments") or [] if (x.get("tier") or _notable_tennis(x.get("name")))
-                         and str(x.get("event_key") or x.get("name") or "") not in finished][:5]
+                         and str(x.get("event_key") or x.get("name") or "") not in finished - still_open][:5]
         if _shown_events:
             # 進行中/即將開打的賽事:逐行列(原「|」串接一長行難讀,2026-07-16)
             seg = "".join(

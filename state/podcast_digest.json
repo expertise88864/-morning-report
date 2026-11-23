@@ -1639,6 +1639,150 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmwrzzv9v044b01ti7w81exze",
+        "title": "581.【台股美股提款機】美對中新一輪管制壓抑半導體需求，對 GPU 與 AI ASIC 影響分歧",
+        "published": "Sun, 22 Nov 2026 23:02:08 GMT",
+        "processed_at": "2026-11-23T01:15:42Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為美國最新 AI 禁令是「AI 往下的 trigger」，會同時削減 AI 算力的需求與供給，對整體 AI 供應鏈從下游到上游同步造成衝擊。",
+            "主持人判斷 Tier 2 數據中心（如甲骨文）因中國曝險高、承接中國海外算力租用，受創將比 Tier 1（Google/AWS/微軟）更重；品牌伺服器（Dell、HPE）受害程度高於白牌 ODM（廣達、鴻海）。",
+            "主持人認為 GPU（NVIDIA）短期首當其衝，因中國海外租用算力以通用 GPU 為主且 NVIDIA 市占高；ASIC 相對受害較小，中長期可能因北美 AI 模型業者市占提升、加速自研 ASIC 而受惠。",
+            "主持人判斷記憶體全面受負面影響，因 GPU 需求下滑連帶 HBM、Server DRAM、SSD 需求減少；代工（台積電）2027 年仍供不應求，但 2028 年因新產能開出、美國數據中心建置放緩及中國需求削減，供需不確定性升高。",
+            "主持人指出半導體設備為落後指標，初期未必砍單，但 NVIDIA 純度高的測試設備商（如 Advantest）2027-2028 展望下調風險較大；TARGETA 因 ASIC 比重較高影響較小。",
+            "主持人認為美國此舉等同圍堵中國「影子需求」，長期讓北美 AI 模型（OpenAI、Anthropic）市占增加，可能反而強化 ASIC 路線。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為中國海外算力租用多使用 NVIDIA GPU，禁令將使 GPU 受害首當其衝。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得GPU的受害一定是首當其衝尤其是NVIDIA",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為甲骨文與中國合作密切，在東南亞有明確算力佈局，Tier2 數據中心受創較重。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得數據中心我認為就是比較明確就是會受到影響的我覺得應該就是甲骨文吧",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Dell",
+              "code": "DELL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為品牌伺服器業者受創將大於白牌 ODM。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得對於品牌伺服器業者的負面影響會比這種就是所謂的白牌伺服器ODM的伺服器影響還要大",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "HPE",
+              "code": "HPE",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為品牌伺服器業者受創將大於白牌 ODM。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得對於品牌伺服器業者的負面影響會比這種就是所謂的白牌伺服器ODM的伺服器影響還要大",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Broadcom",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 ASIC 短期受害較小，中長期可能因北美業者市占提升而受惠。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "有機會不受影響真的有機會受惠吧",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為聯發科有機會接到 Google TPU、Anthropic 或 OpenAI 的 ASIC 訂單，不一定有負面影響。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得不一定有負面影響",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Marvell",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Marvell 有機會接到 Google TPU、Anthropic 或 OpenAI 的 ASIC 訂單，不一定有負面影響。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我覺得不一定有負面影響",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "主持人認為算力需求下滑對台積電也是負面，2027 供不應求但 2028 供需有疑慮。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "台積的話就是偏向比較是消減",
+                "direction": "bearish"
+              }
+            }
+          ],
+          "market_view": "主持人認為新禁令短期對整體 AI 供應鏈偏負面，尤其削弱中國算力需求，但 2027 年供不應求仍可維持，2028 年供需不確定性明顯升高。",
+          "action_view": "主持人未明確給出買賣建議，但暗示短期宜留意高 NVIDIA 純度與高中國曝險的業者，相對看好 ASIC 供應鏈中長期表現，2028 年供需需保守看待。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 8,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "cmwnm2dej001a01xkgai78k3x",
         "title": "580.【財經時事放大鏡】ARR 與禁令如何衝擊 AI CapEx",
         "published": "Thu, 19 Nov 2026 23:02:16 GMT",
@@ -2338,80 +2482,6 @@
           }
         },
         "shown_at": "2026-10-16T22:37:55Z"
-      },
-      {
-        "guid": "cmuzo1n0400dx01wx7n6ram7l",
-        "title": "569.【財經時事放大鏡】V3 x VCSEL 二三代半導體元件新需求",
-        "published": "Thu, 08 Oct 2026 23:02:14 GMT",
-        "processed_at": "2026-10-09T00:30:21Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為中國限制鍺、石英出口對台灣半導體影響有限，因高階石英原料與加工多掌握在日本、美國業者手中，新聞誇大了衝擊。",
-            "主持人指出光通訊從 800G 升級到 1.6T/3.2T 時，舊技術 VCSEL 魔改（波長 1060nm、背發光）可能成為磷化銦短缺的低成本替代方案，但通訊協定尚未建立、發酵時間較慢。",
-            "主持人判斷第三代半導體（GaN/SiC）低谷已過，GaN 打入資料中心保護元件、SiC 進入固態變壓器與衛星等新應用，由車用擴大到 AI 基礎建設；股價先動、獲利可能明年下半年轉正。",
-            "主持人提到 Starlink V3 衛星讓 GaN、射頻、PCB 等內含價值明顯增加，TrendForce 估衛星市場 2025/2026/2028 年成長 19%/16%/19%，衛星族群相對低、值得關注。",
-            "主持人對台股 5 萬點表示「每天都怕」，但也怕沒賺到；AI 資本支出佔 GDP 3.6% 為史上最高，高利率反映高報酬，策略是摸著石頭過河並穩住抗通膨資產。"
-          ],
-          "tickers": [
-            {
-              "name": "宏捷科",
-              "code": "8086",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "主持人提到其漲停並宣布轉型光通訊/VCSEL 與 AI 伺服器；但通訊協定未定，屬早期押注，方向偏多但高風險。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "就押嘛。大家就押嘛。因為你說真的。東西出來的便宜。好用。欸。Why not。對。就是這樣。",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "漢磊",
-              "code": "3707",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "第三代半導體打入資料中心保護元件，上半年相關營收年增 88%、佔比 40%，主持人認為低谷已過。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "漢雷就是講。Gam這個不錯。對。碳化器。V型反轉。這是他自己搶的。符合搶的。",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "嘉晶",
-              "code": "3016",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "與漢磊同屬三五族／碳化矽供應鏈，主持人視為第三代半導體復甦受惠股。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "除了。嘉靖以外就是漢雷嘛。那當然這兩個算同一家啦。好不好。",
-                "direction": "bullish"
-              }
-            }
-          ],
-          "market_view": "主持人認為台股漲幅驚人、AI 資本支出佔 GDP 3.6% 為史上最高，高利率反映高報酬，但仍需警惕高利率與資產配置，整體仍偏多但心態上「每天都怕」。",
-          "action_view": "操作上建議摸著石頭過河，不要因怕崩盤而空手，同時穩住抗通膨資產；產業上優先關注發酵速度較快的 GaN 電力元件，其次碳化矽，VCSEL 與相關設備更晚。",
-          "notable_quote": "摸著石頭過河啊各位。",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "摸著石頭過河啊各位。"
-          },
-          "direction_quality": {
-            "attributed": 3,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-09T01:36:29Z"
       }
     ]
   },

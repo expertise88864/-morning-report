@@ -289,7 +289,7 @@
    "watch_id": "w100",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-23",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-27"
   },
   {
@@ -301,20 +301,8 @@
    "watch_id": "w101",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-23",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-27"
-  },
-  {
-   "trigger": "外資台指期淨空 97,896 口能否在 5 個交易日內縮回 9 萬口以內（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空 97,896 口能否在 5 個交易日內縮回 9 萬口以內（觀察期：5 天內）",
-   "trigger_key": "t5b4e4f9800bb6aca",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w142",
-   "status": "open",
-   "created": "2026-11-18",
-   "last_reviewed": "2026-11-23",
-   "deadline": "2026-11-23"
   },
   {
    "trigger": "外資台指期淨空 99,438 口能否回補至 9 萬口以內，同時現貨市值前 10 大由賣超 72,845 張轉為買超（觀察期：5 天內）",
@@ -325,7 +313,7 @@
    "watch_id": "w145",
    "status": "open",
    "created": "2026-11-19",
-   "last_reviewed": "2026-11-23",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-24"
   },
   {
@@ -337,7 +325,7 @@
    "watch_id": "w146",
    "status": "open",
    "created": "2026-11-19",
-   "last_reviewed": "2026-11-23",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-24"
   },
   {
@@ -349,7 +337,7 @@
    "watch_id": "w148",
    "status": "open",
    "created": "2026-11-20",
-   "last_reviewed": "2026-11-23",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-25"
   },
   {
@@ -361,7 +349,7 @@
    "watch_id": "w149",
    "status": "open",
    "created": "2026-11-20",
-   "last_reviewed": "2026-11-23",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-25"
   },
   {
@@ -385,7 +373,7 @@
    "watch_id": "w151",
    "status": "open",
    "created": "2026-11-23",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-28"
   },
   {
@@ -397,7 +385,7 @@
    "watch_id": "w152",
    "status": "open",
    "created": "2026-11-23",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-24",
    "deadline": "2026-11-28"
   },
   {
@@ -435,43 +423,88 @@
    "created": "2026-11-23",
    "last_reviewed": "",
    "deadline": "2026-11-28"
+  },
+  {
+   "trigger": "加權指數開盤後能否站穩模型區間下緣 37,507 點，且收盤不低於昨收 36,811.89 點（觀察期：今日）",
+   "trigger_full": "加權指數開盤後能否站穩模型區間下緣 37,507 點，且收盤不低於昨收 36,811.89 點（觀察期：今日）",
+   "trigger_key": "t91d67e483ba5bd6b",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w156",
+   "status": "open",
+   "created": "2026-11-24",
+   "last_reviewed": "",
+   "deadline": "2026-11-25"
+  },
+  {
+   "trigger": "外資台指期淨空 -103,432 口能否在 5 個交易日內回補至 9 萬口以內（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -103,432 口能否在 5 個交易日內回補至 9 萬口以內（觀察期：5 天內）",
+   "trigger_key": "t4d30d404326ba372",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w157",
+   "status": "open",
+   "created": "2026-11-24",
+   "last_reviewed": "",
+   "deadline": "2026-11-29"
+  },
+  {
+   "trigger": "2330 收盤能否維持在模型合理價 2,161 元附近，且不跌破區間下緣 1,987.61 元（觀察期：5 天內）",
+   "trigger_full": "2330 收盤能否維持在模型合理價 2,161 元附近，且不跌破區間下緣 1,987.61 元（觀察期：5 天內）",
+   "trigger_key": "t513610ab91a9ee4f",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w158",
+   "status": "open",
+   "created": "2026-11-24",
+   "last_reviewed": "",
+   "deadline": "2026-11-29"
   }
  ],
- "watch_seq": 155,
+ "watch_seq": 158,
  "legacy_report": {
-  "date": "2026-11-23",
+  "date": "2026-11-24",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**輝達（NVDA，AI 加速器龍頭）**：延續上週換帥這條線，輝達 18 日宣示擴大與台積電、鴻海、矽品、京元電、景碩、欣興等 6 家台廠合作，以現金投資與多年期合約綁定先進封裝、載板與晶圓產能。整體供應承諾金額已攀升至 3,900 億美元，新一代 Vera Rubin NVL72 平台開始出貨。傳導機制：多年期合約把 CoWoS 與 ABF 載板的產能排到未來數年，直接支撐 2330 的先進封裝稼動率。量級要分清——3,900 億美元是採購承諾不是台積電營收，換算不出單一數字，它買到的是訂單能見度，營收要等明年上半年才陸續反映。**[A 級・信心:中]**　[中央社財經](https://www.cna.com.tw/news/afe/202611220025.aspx)",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：延續昨日「AI 需求雜音」這條線，公司 23 日主動說明全球 AI 需求與日俱增、先進製程產能持續供不應求，並點出應用正從聊天機器人轉向 AI 助理與代理式 AI。這段話的機制意義在於：需求若真如公司所述沒有轉弱，CoWoS 與 N2 的稼動率假設就不需要下修，2330 的獲利預估也不必跟著 ADR 的跌幅走。**但公司沒有給產能數字或時間表，量級判斷不出來**——目前只能確認「公司立場與市場恐慌方向相反」，實際反映要等下一季月營收與法說。**[A 級・信心:中]**　[科技新報](https://technews.tw/2026/11/23/tsmc-boosts-ai-long-term-outlook-advanced-process-supply-shortages/)",
     "source_urls": [
-     "https://www.cna.com.tw/news/afe/202611220025.aspx"
+     "https://technews.tw/2026/11/23/tsmc-boosts-ai-long-term-outlook-advanced-process-supply-shortages/"
     ]
    },
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠）**：上週五盤中一度跌破 2,000 元，最後一盤湧入超過 1 萬張買單，市場解讀為國家隊護盤。今日模型以 ADR 單日重挫折算後，2330 合理價落在 1,908.91 元、參考區間 1,810 至 1,926 元。傳導機制：ADR 跌幅經歷史衰減係數換算後，本地開盤通常比 ADR 暗示的幅度收斂，但今日是恐慌級賣壓，收斂效果會打折。關鍵在禁空令讓盤下追空受限，若成交量同步萎縮，實際跌幅有機會小於模型值。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6669881)",
+    "statement": "**輝達（NVDA，AI 加速器龍頭）**：承接過去兩週的換帥風暴，黃仁勳 23 日復職，台積電期貨夜盤同步漲停至 2,238 元、台指期夜盤攻上 40,324 點。傳導路徑是輝達 AI 伺服器拉貨重啟，經 CoWoS 先進封裝與 HBM 回到 2330 的稼動率。**這是情緒與能見度的修復，不是訂單數量的增加**——輝達沒有公布新訂單，所以今天的漲勢反映的是「不確定性移除」，可持續性要看 12 月國會聽證後的政策結論。這條與上一條指向同一個結論，是互相加強而非各自獨立。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6670353) [中央社](https://www.cna.com.tw/news/afe/202611230298.aspx)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6669881"
+     "https://news.cnyes.com/news/id/6670353",
+     "https://www.cna.com.tw/news/afe/202611230298.aspx"
     ]
    },
    {
-    "statement": "**【金融｜台灣】國銀海外據點**：金管會統計本國銀行前 3 季海外分支機構獲利 811.8 億元、年增 13.81%，創歷年同期新高。獲利前 5 大地區依序是香港、美國、新加坡、中國與日本，其中美國與日本都寫下同期新高。傳導機制：海外放款成長帶動利息與手續費淨收益，呆帳費用同時減少，對海外布局較深的兆豐金、第一金與合庫金是直接加分。不過這是前 3 季累計數字、不是 11 月新動能，今天對股價的支撐遠小於禁空令與美債利率的影響。**[A 級・信心:中]**　[中央社財經](https://www.cna.com.tw/news/afe/202611220110.aspx) [自由財經](https://ec.ltn.com.tw/article/paper/1779532)",
+    "statement": "**記憶體族群（美光、SK 海力士 ADR）**：23 日美光飆 19.04%、SK 海力士 ADR 漲 20.00%、威騰漲 13.84%，但同一時間高盛把三星目標價下調 30%、海力士下調逾 42%，理由是 2028 年 DRAM 均價可能跌 20%、NAND 跌 21%、HBM 同規格跌 20%。這是典型的方向分歧：現貨漲的是「2027 年短缺 15 年來最嚴重」，賣方砍的是「2028 年缺口從 3.9% 收窄到 1.2%」。對台股的傳導在兩層——南亞科、華邦電等現貨報價受惠程度看第四季合約價，而台積電的 HBM 相關先進封裝需求則看 2027 年不缺、2028 年才鬆。**今天先反映的是前者，2028 年的下修是評價面而非現金流面。****[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6670378) [鉅亨](https://news.cnyes.com/news/id/6670391)",
     "source_urls": [
-     "https://www.cna.com.tw/news/afe/202611220110.aspx",
-     "https://ec.ltn.com.tw/article/paper/1779532"
+     "https://news.cnyes.com/news/id/6670378",
+     "https://news.cnyes.com/news/id/6670391"
     ]
    },
    {
-    "statement": "**【航運｜台灣】貨櫃運價**：上海航交所上週五公布 SCFI 續跌 68.55 點至 3,503.78 點，週減 1.92%，連 3 週走跌並創 9 月中旬以來新低。美國線運價續弱，貨攬業者認為下修壓力可能延續到 12 月中旬。傳導機制：運價直接連動長榮、陽明與萬海的營收，連 3 跌意味第四季傳統淡季更淡。但長榮上週五僅跌 5.67%、相對大盤抗跌，代表市場已部分定價這條利空。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6669876)",
+    "statement": "**【金融｜台灣】證交所 23 日宣布，24 日起信用交易整戶擔保維持率最低標準由 130% 調降至 120%，並同步取消先前低於 130% 的追繳紀錄**。機制是直接拆掉融資斷頭的強制賣壓循環——維持率門檻下移代表同樣的擔保品可以承受更深跌幅才被追繳，對中小型股與高融資使用率的電子股是流動性利多。這是行政院 21 日穩定市場方案的一環，金管會主委彭金隆稱並非臨時起意。**幅度上，這不創造新買盤，只是減少被迫賣出，所以是「跌勢減速」而非「趨勢反轉」。****[A 級・信心:中]**　[TWSE](https://www.twse.com.tw/zh/about/news/news/content.html?8a8216d6a19afd9c01a2072d582a0593) [鉅亨](https://news.cnyes.com/news/id/6670353) [鉅亨](https://news.cnyes.com/news/id/6670238)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6669876"
+     "https://www.twse.com.tw/zh/about/news/news/content.html?8a8216d6a19afd9c01a2072d582a0593",
+     "https://news.cnyes.com/news/id/6670353",
+     "https://news.cnyes.com/news/id/6670238"
     ]
    },
    {
-    "statement": "**【能源｜全球】荷姆茲海峽航運風險**：英國海事貿易行動辦公室指出，兩艘離開荷姆茲海峽的油輪在阿曼外海遭不明拋射物擊中，海峽威脅等級升至「嚴重」。船隻通行量較戰前驟降約 65%，布蘭特原油維持每桶 83.62 美元。機制：繞道與保險費上升會推高油價的風險溢價，但 WTI 上週五只漲 0.24%，顯示市場目前更在意 AI 拋售而非供給中斷。若通行量再往下掉，成本端會是繼 AI 評價修正之後對台股的第二波打擊。**[B 級・信心:中-低]**　[鉅亨美股](https://news.cnyes.com/news/id/6669843)",
+    "statement": "**【生技｜台灣】共信-KY（動物腫瘤新藥開發商）動物腫瘤新藥取得台灣藥證，將啟動銷售**。機制是藥證核准代表可進入商業銷售、開始認列營收，對單一中小型生技股是實質里程碑。**但目前沒有授權金、沒有目標銷售額，對營收的貢獻量級無法評估**，對整體生技類股的外溢效果有限。**[A 級・信心:中]**　[鉅亨](https://news.google.com/rss/articles/CBMiT0FVX3lxTE5wTFRJaWRnUnI3Ykp0Ml9MQzJQQ21MTXJDZXNvbW1ENlNhSGdCWWZEUlNjdW5xQ0Q2YXU2RGxNR21pelA4Smc2MWtiUlZnRGs?oc=5)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6669843"
+     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE5wTFRJaWRnUnI3Ykp0Ml9MQzJQQ21MTXJDZXNvbW1ENlNhSGdCWWZEUlNjdW5xQ0Q2YXU2RGxNR21pelA4Smc2MWtiUlZnRGs?oc=5"
+    ]
+   },
+   {
+    "statement": "**【能源｜全球】WTI 原油 23 日重挫 3.88% 收 80.17 美元、布蘭特跌 3.46% 收 89.37 美元，雙雙創近三個月新低**，利比亞 Sharara 輸油管線恢復運作是主因。機制的兩面性：對台塑化等以原油為進料的業者，成本下降有利價差；但油價跌同時反映需求前景轉弱與供應過剩預期，摩根大通估 2027 年上半年可能跌到每桶 70 美元高段。**對台股是「成本端減壓、需求端轉弱」的組合，淨效果偏中性**，真正的傳導要看塑化利差是否同步改善。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6670245)",
+    "source_urls": [
+     "https://news.cnyes.com/news/id/6670245"
     ]
    }
   ]

@@ -2460,6 +2460,93 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "2d0ce706-da57-4f3c-a757-3266c116ffb9",
+        "title": "EP356. 黃仁勳意外閃電回歸、AI 基建股再遭重擊、FSD V15 正式推出、這波修正跌夠了嗎？ | M觀點",
+        "published": "Mon, 23 Nov 2026 17:16:48 GMT",
+        "processed_at": "2026-11-23T20:23:07Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為黃仁勳回任輝達是川普政府黑白臉施壓下的結果（他自評30%機率），後續輝達將更嚴格執行晶片管制，且黃仁勳回任有助輝達投資開源模型，對產業是好事。",
+            "主持人指出AI基建股過去一個半月受「四記重拳」打擊，目前僅黃仁勳回歸撤銷其中一拳，便宜資金消失、民主黨大勝導致資料中心建設減速、商務部新版算力租用與16奈米以下管制仍會實質壓抑需求，今天漲勢屬情緒反彈。",
+            "主持人認為AI基建股成長率每降10%合理估值就腰斬，因此回檔5至7成合理；目前他持有的部分AI基建股已跌5至7成，已接近他願意開始小幅加碼的位置，但不排除市場超跌續跌。",
+            "主持人看好特斯拉FSD V15與2027年展望：預測明年汽車銷售至少成長10%、毛利率佳、FSD訂閱增加，德州robotaxi車隊年底可望達2000台並超車Waymo，儲能業務受惠AI資料中心表後發電需求。",
+            "主持人估算微軟合理估值680元（打8折約544元 vs 現價480元）、Google合理估值600至650元（打8折約500元 vs 現價260元），認為科技巨頭普遍被低估，目前跌勢已某程度反映逆風。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為黃仁勳回歸是利多，但三大逆風仍在，且先前已減碼輝達部位，對其股價後市看法中性偏謹慎。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "我跟你講,雖然我們今天很開心,看到黃哲勳回鍋了,但是,另外四權裡面,另外三權也都還是在",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好FSD V15功能提升，預測2027年汽車銷售至少成長10%，德州robotaxi車隊將超車Waymo，儲能業務受惠AI資料中心需求。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Tesla2027年,他的車子絕對狂賣,我認為他的明年的汽車銷售,他的產能增加會有限,但是我跟你講,明年應該也至少成長10%,而且毛利率會不錯,然後FSD的訂閱會越來越多",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人估算微軟合理估值680元，打8折約544元，對比現價480元有明顯安全邊際，認為被低估。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為Google超便宜，合理估值600至650元，打8折約500元，對比現價260元被明顯低估。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Google真的超便宜的,大家知道我不是Google粉,但是我只能講Google超便宜的,Google,合理估值,我覺得大概在600到650之間,同樣我們打個8折,它的價值應該有500塊,然後在今天開盤之前,它股價是260,所以差不多,Google是蠻被低估的",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為AI基建股合理回檔約5至7成，科技巨頭目前普遍被低估，但便宜資金消失、民主黨資料中心減速與中國算力管制等逆風仍在，短期不排除再跌。",
+          "action_view": "主持人表示不會大幅加碼，但會開始考慮小幅加碼；若市場再跌3%至5%會更放心進場，不鼓勵抄底，強調無法預測底部。",
+          "notable_quote": "其實就我來看,這個四拳全部加起來,合理的回檔就是5到7成",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "其實就我來看,這個四拳全部加起來,合理的回檔就是5到7成"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "73fe5f43-849a-4cfa-bb3f-ca6797854d78",
         "title": "EP355. 沒有黃仁勳的輝達、谷歌 OpenAI 新模型、FSD 進台灣法律問題 | M觀點",
         "published": "Thu, 19 Nov 2026 17:32:13 GMT",
@@ -3173,79 +3260,6 @@
           }
         },
         "shown_at": "2026-10-14T00:50:03Z"
-      },
-      {
-        "guid": "c2f57401-d681-4276-bba3-efa0d3d3656b",
-        "title": "EP343. SPCX 借錢擴張、前沿模型可取代性、美國期中選舉現狀 | M觀點",
-        "published": "Thu, 08 Oct 2026 16:14:38 GMT",
-        "processed_at": "2026-10-08T20:24:14Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為 SpaceX 借 400 億美元買 GPU 是 AI 金融工程過熱的跡象，類比 2007 年 MBS，並提出 4 個 AI 泡沫觀察指標，目前總分 7 顆星仍未達危險線，但開始提高警覺。",
-            "主持人預測 SpaceX 今年底算力達 2.6 GW，明年 6 GW，2027 年 AI 部門營收低標 1500 億美元；認為 GPU 租金至少守住每 GW 300 億美元，不會崩盤。",
-            "主持人認為 AI agent 將帶動今年 10 倍以上的算力需求，2027 年算力仍供不應求，新增算力不足以滿足需求。",
-            "主持人觀察微軟、Meta、美國國防部都減少使用最前沿模型 Anthropic Opus 5.5，認為 81% 工作任務次前沿模型就夠用，但前沿模型在贏者通吃且能力與勝負線性相關的市場仍有不可取代價值。"
-          ],
-          "tickers": [
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人認為 AI 建設狂熱帶動 GPU 需求強勁，GPU 租金短期不會崩盤，每 GW 至少守得住 300 億美元。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人預測 SpaceX 明年算力大增、2027 年 AI 部門營收爆發，並表示自己持股仍在增加。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "像我SpaceX的持股還在增加中",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人提到微軟、Meta、國防部都削減對其前沿模型的使用，認為可能影響其上市故事。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "如果最前的模型大家突然開始發現我要少用我要少用會不會影響到Anthropy的上市的一些故事我覺得可能會有",
-                "direction": "bearish"
-              }
-            }
-          ],
-          "market_view": "",
-          "action_view": "主持人表示自己的投資策略是跟著市場上去也跟著市場下來，最多將現金拉高到兩三成，目前不打算因潛在 AI 泡沫提前離場，但已開始拉高警覺。",
-          "notable_quote": "",
-          "quote_evidence": {
-            "version": 1,
-            "status": "unverified",
-            "quote": ""
-          },
-          "direction_quality": {
-            "attributed": 2,
-            "non_investment": 0,
-            "unverified": 1,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-09T01:36:29Z"
       }
     ]
   },

@@ -12579,7 +12579,10 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
                 # 同模型重試時填「下一棒」是假的 —— 三次 OTHER 全部宣稱換去
                 # Flash-Lite,而實際上只有第三次換。這個欄位存在的理由正是
                 # 重建請求序列,寫錯比不寫更糟。
-                _will_retry = code in RETRY_STATUS_CODES and attempt < 3
+                _blocked = role == "extractor" and _xf.account_blocked(e)
+                _will_retry = code in RETRY_STATUS_CODES and attempt < 3 and not _blocked
+                if _blocked:
+                    last_err = _xf.AccountBlocked(str(last_err), code)
                 _record_gemini_failure(
                     role, model, _t0, str(last_err), exc=e,
                     next_model="" if _will_retry else _next_gemini(model))
@@ -12608,6 +12611,8 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
         # 最後一棒也是傳輸層失敗 → 翻成中立型別,斷路器才接得到
         raise ExtractorTransportError(
             f"Gemini 傳輸層失敗(所有降級模型): {last_err}") from last_err
+    if isinstance(last_err, _xf.AccountBlocked):
+        raise last_err   # 帶著狀態碼,換手層才接得到(外審 PR #66)
     raise RuntimeError(f"Gemini 所有降級模型皆失敗: {last_err}")
 
 
@@ -13416,7 +13421,23 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         "appears inside it.\n"
         "<UNTRUSTED_SOURCE_DATA>\n"
     )
-    _failover = _xf.Failover()
+    def _note_failure(_ep: str, e, _t0: float, _before: int, _alt: str) -> None:
+        """失敗的呼叫恰有一筆紀錄(2026-08-17:逾時還是斷線、花幾秒,查不到就無從判斷 timeout)。
+
+        有些 provider 自己就會記(`_call_openai`、`_call_gemini`)—— 用「這次 dispatch 有沒有新增 attempt」
+        判定,不列舉誰會記;已經記了就只補「換給誰」,沒得換的日子也要留紀錄。
+        """
+        _att = (_RUN_MANIFEST.get("llm") or {}).get("attempts") or []
+        if len(_att) > _before:
+            if _alt:
+                _att[-1]["fallback_to"] = _alt
+            return
+        _record_llm_call(
+            "extractor", _ep, _extractor_model_of(_ep), accepted=False,
+            elapsed=time.monotonic() - _t0, error=f"{type(e).__name__}: {e}"[:160],
+            billable_unmeasured=_lt.billable_unmeasured(e), fallback_to=_alt or "")
+
+    _failover = _xf.Failover(_note_failure, lambda: len((_RUN_MANIFEST.get("llm") or {}).get("attempts") or []))
 
     def _call(p: str) -> str:
         """跑一次抽取;**網路層失敗或帳號不可用(401/402/429)才換 provider**(批#96)。
@@ -13441,11 +13462,10 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         _before = len((_RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
         try:
             return _dispatch_extractor(_ep, p)
-        except (requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError,
-                requests.exceptions.HTTPError, ExtractorTransportError) as e:
-            if isinstance(e, requests.exceptions.HTTPError) and not _xf.account_blocked(e):
-                raise   # 4xx 是請求本身有問題:換一家會用同樣的錯誤再錯一次
+        except Exception as e:   # 其他例外(含請求寫錯的 4xx、截斷)原樣拋出
+            if not (_xf.account_blocked(e) or isinstance(e, (
+                    requests.exceptions.Timeout, requests.exceptions.ConnectionError, ExtractorTransportError))):
+                raise
             if not _circuit["open"]:
                 _circuit.update(open=True, reason=f"{type(e).__name__}",
                                 after_batch=_cur_batch["i"])
@@ -13454,30 +13474,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                     "reason": _circuit["reason"],
                     "primary_attempts_skipped": _circuit["skipped"]}
             _alt = _failover.next(_ep)
-            # **有些 provider 自己就會記**(`_call_openai` 的網路失敗
-            # handler)—— 外層再記一筆會讓同一次呼叫在成本與呼叫數上
-            # 雙計,而且外層寫的模型名還可能是空的(外審 2026-08-17)。
-            # 用「這次 dispatch 有沒有新增 attempt」判定,不列舉誰會記:
-            # 列舉出來的清單會在下一個 provider 加進來時無聲過期。
-            _att = (_RUN_MANIFEST.get("llm") or {}).get("attempts") or []
-            if len(_att) > _before:
-                # 已經有人記了 —— 只補上「換給誰」,不再開一筆。
-                if _alt:
-                    _att[-1]["fallback_to"] = _alt
-            else:
-                # **失敗的那次呼叫要留紀錄**(2026-08-17 生產):manifest 只有
-                # `fallback_from: deepseek → gemini`,而「是逾時還是連線中斷、
-                # 花了幾秒才放棄」查不到 —— 那三件事正是判斷「timeout 該不該
-                # 調」的全部依據(批#95 已經為主分析補過同一件事,抽取器漏了)。
-                # 成本也看得到它:送出去了就可能被計費。
-                # **有沒有備援可換都要記**:沒得換的日子反而完全沒有紀錄,
-                # 而那是更該被看見的一天。
-                _record_llm_call(
-                    "extractor", _ep, _extractor_model_of(_ep), accepted=False,
-                    elapsed=time.monotonic() - _t0,
-                    error=f"{type(e).__name__}: {e}"[:160],
-                    billable_unmeasured=_lt.billable_unmeasured(e),
-                    fallback_to=_alt or "")
+            _note_failure(_ep, e, _t0, _before, _alt)
             if not _alt:
                 raise
             print(f"[llm-extractor] {_ep} 網路失敗({type(e).__name__}),"

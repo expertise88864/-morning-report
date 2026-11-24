@@ -406,7 +406,7 @@ MODULE_CEILINGS = {
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
     "llm_config.py": 480,
     "gemini_adapter.py": 65,   # Gemini 型號差異、用量、牌價(2026-11-24)
-    "extractor_failover.py": 45,   # 抽取器備援換手(2026-11-24)
+    "extractor_failover.py": 58,   # 抽取器備援換手(2026-11-24)
     # 批#115:P1-12 的接收端。**沒有列進來就是後門** —— 批#95 已經因為漏列
     # llm_shadow / llm_telemetry 而被自己的宣稱打臉過一次。
     # Commit B:recorder 收下兩階段抓取的計畫(相位不得直接碰

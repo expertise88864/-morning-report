@@ -40,7 +40,9 @@ def test_deepseek_extractor_turns_thinking_off_and_records_usage(monkeypatch):
     assert mr._call_deepseek_extractor("p") == "[]"
     assert sent["thinking"] == {"type": "disabled"}
     rec = mr._RUN_MANIFEST["llm"]["extractor"]
-    assert rec["provider"] == "deepseek" and rec["completion_tokens"] == 900 and rec["estimated_cost_usd"] > 0
+    assert rec["provider"] == "deepseek" and rec["completion_tokens"] == 900
+    at = dt.datetime(2026, 11, 23, 22, 0, tzinfo=dt.timezone.utc)   # 固定計價時刻:假日日曆只收到 2026 年
+    assert lp.estimate_cost(mr.DEEPSEEK_EXTRACTOR_MODEL, {"prompt_tokens": 4000, "completion_tokens": 900}, at)["usd"] > 0
 
 
 @pytest.mark.parametrize("status,blocked", [(401, True), (402, True), (429, True), (400, False), (500, False)])
@@ -175,3 +177,91 @@ def test_gemini_calls_are_billed_even_when_rejected(monkeypatch, reason, accepte
         attempts = mr._RUN_MANIFEST["llm"]["attempts"]
         assert len(attempts) == 2 and all(a["completion_tokens"] == 50 for a in attempts)
         assert not any(a.get("billable_unmeasured") for a in attempts)
+
+
+def _news(n=30):
+    return [{"title": f"公司{i} 財報公布 營收成長", "source": "鉅亨", "link": f"https://e.example/{i}"} for i in range(n)]
+
+
+def _setup(monkeypatch, primary, *keys):
+    _keys(monkeypatch, *keys)
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", primary)
+    for name in ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.setattr(mr, name, "x" if name in keys or name.startswith(primary.upper()) else "")
+    mr._RUN_MANIFEST.pop("llm", None)
+
+
+def _ok():
+    return all(b["outcome"] == "ok" for b in mr._RUN_MANIFEST["llm_extractor"]["batches"])
+
+
+def test_review_pr66_gemini_429_reaches_the_failover(monkeypatch):
+    """走真正的 `_call_gemini`:429 不重試同型號,兩棒都沒額度就換 OpenAI;下一批不再撞。"""
+    _setup(monkeypatch, "gemini", "GEMINI_API_KEY", "OPENAI_API_KEY")
+    posts = []
+
+    def post(url, **kw):
+        posts.append(url)
+        raise _http(429)
+    monkeypatch.setattr(mr.requests, "post", post)
+    monkeypatch.setattr(mr, "_llm_sleep", lambda s: pytest.fail("帳號錯誤不該等待重試"))
+    monkeypatch.setattr(mr, "_call_openai", lambda p, **kw: "[]")
+    mr.call_llm_event_extractor(_news(), [])
+    assert _ok() and len(posts) == 2, posts
+
+
+def test_review_pr66_gemini_as_the_last_backup_is_marked_dead(monkeypatch):
+    _setup(monkeypatch, "deepseek", "DEEPSEEK_API_KEY", "GEMINI_API_KEY")
+    posts = []
+
+    def post(url, **kw):
+        posts.append(url)
+        raise _http(429) if "google" in url else requests.exceptions.ConnectionError("timeout")
+    monkeypatch.setattr(mr.requests, "post", post)
+    mr.call_llm_event_extractor(_news(), [])
+    assert sum("google" in u for u in posts) == 2, posts
+
+
+def test_review_pr66_primary_analysis_still_retries_429(monkeypatch):
+    waits = []
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+
+    def post(url, **kw):
+        raise _http(429)
+    monkeypatch.setattr(mr.requests, "post", post)
+    monkeypatch.setattr(mr, "_llm_sleep", waits.append)
+    with pytest.raises(RuntimeError):
+        mr._call_gemini("p")
+    assert len(waits) == 4
+
+
+def test_review_pr66_sdk_rate_limit_switches_and_bad_request_does_not(monkeypatch):
+    class SDKError(Exception):
+        def __init__(self, status):
+            super().__init__(str(status))
+            self.status_code = status
+    for status, good in ((429, True), (400, False)):
+        _setup(monkeypatch, "anthropic", "OPENAI_API_KEY")
+
+        def anthropic(p, status=status):
+            raise SDKError(status)
+        monkeypatch.setattr(mr, "_call_anthropic", anthropic)
+        monkeypatch.setattr(mr, "_call_openai", lambda p, **kw: "[]")
+        mr.call_llm_event_extractor(_news(5), [])
+        assert _ok() is good, status
+
+
+def test_review_pr66_a_rejected_backup_is_recorded_once(monkeypatch):
+    _setup(monkeypatch, "openai", "OPENAI_API_KEY", "DEEPSEEK_API_KEY", "GEMINI_API_KEY")
+
+    def openai(p, **kw):
+        raise requests.exceptions.Timeout("slow")
+
+    def post(url, **kw):
+        raise _http(402)
+    monkeypatch.setattr(mr, "_call_openai", openai)
+    monkeypatch.setattr(mr.requests, "post", post)
+    monkeypatch.setattr(mr, "_call_gemini", lambda p, role="primary": "[]")
+    mr.call_llm_event_extractor(_news(), [])
+    rows = [a for a in mr._RUN_MANIFEST["llm"]["attempts"] if a["provider"] == "deepseek"]
+    assert _ok() and len(rows) == 1 and rows[0]["fallback_to"] == "gemini" and "402" in rows[0]["error"]

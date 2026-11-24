@@ -75,7 +75,7 @@ def test_review_pr65_mixed_title_survives_the_whole_entrance():
 
 def test_review_pr66_punctuation_after_the_name():
     names = t.old_names(LEDGER, TODAY)
-    for title in ("薔琵颱風：新北23日停班停課", "「薔琵」颱風 停班停課一覽", "颱風「薔琵」：停班停課"):
+    for title in ("薔琵颱風：新北23日停班停課", "「薔琵」颱風 停班停課一覽", "薔琵颱風\u00a0新北23日停班停課", "薔琵颱風 ：\u3000新北停班停課", "颱風「薔琵」：停班停課"):
         assert t.stale(title, names), title
     for title in ("薔琵颱風：農損救助受理", "薔琵颱風10月23日登陸，「海葵」今逼近東部", "薔琵颱風10月登陸，海葵逼近"):
         assert not t.stale(title, names), title

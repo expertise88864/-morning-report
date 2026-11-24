@@ -68,7 +68,7 @@ def stale(title, names: set[str]) -> bool:
     for n in names:
         m = re.match(rf"(?:[^，。！!／/｜|》】]{{0,6}}[！!／/｜|》】])?\s*"
                      rf"(?:[「『“]?{n}[」』”]?\s*颱風|颱風\s*[「『“]?{n}[」』”]?)", text)
-        if m and _LIVE.search(re.split(r"[，,。；;：:！!？?、／/｜|\s]", text[m.end():].lstrip("：:｜|」』” 　"), maxsplit=1)[0]):
+        if m and _LIVE.search(re.split(r"[，,。；;：:！!？?、／/｜|\s]", re.sub(r"^[\s：:｜|」』”]+", "", text[m.end():]), maxsplit=1)[0]):
             return True
     return False
 

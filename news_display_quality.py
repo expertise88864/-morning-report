@@ -24,12 +24,14 @@ def current_inputs(news: list | None, quotes: dict | None, today, universe=None)
     觀測站的例行小額公告(取得設備、增資子公司…)也在這裡拿掉(使用者 2026-10-29);
     生技公司沒有新藥／藥證／解盲這類重大進展的新聞與公告也不進(使用者 2026-10-30)。"""
     import announcement_filter as af
+    import typhoon_staleness
+    q = dict(quotes or {})
+    old_typhoon = typhoon_staleness.drop(q, today)   # 舊颱風的停班課、路徑被重新收錄(11-24 實信)
     caps, kinds = af.market_caps(universe), af.industries(universe)
 
     def keep(rows):
-        return [n for n in without_forum_posts(rows, today) if not af.biotech_minor(n, kinds)
+        return [n for n in without_forum_posts(rows, today) if not old_typhoon(n) and not af.biotech_minor(n, kinds)
                 and not (str(n.get("source") or "") == "MOPS" and af.routine(n, caps))]
-    q = dict(quotes or {})
     if isinstance(q.get("NEWS_RESEARCH_SOURCES"), list):
         q["NEWS_RESEARCH_SOURCES"] = keep(q["NEWS_RESEARCH_SOURCES"])
     if isinstance(q.get("AI_MODELS"), dict) and isinstance(q["AI_MODELS"].get("news"), list):
@@ -54,9 +56,10 @@ _NOT_A_DATE = re.compile(
 def stale_title_date(title, today) -> bool:
     """「薔琵颱風24日颱風假資訊…」(10-29 收到、RSS 發布時間是 10-28):標題日期 5 天前 → 舊聞。"""
     import datetime as dt
+    import typhoon_staleness
     text = str(title or "")
     m = _TITLE_DAY.search(text)
-    if not m or _FUTURE.search(text) or _NOT_A_DATE.search(text):
+    if not m or typhoon_staleness.another_subject(text) or _FUTURE.search(text) or _NOT_A_DATE.search(text):
         return False
     try:   # 只認同年內「已經過去」的日期;比今天晚的一律當作還沒發生(「聯發科30日法說」)
         event = dt.date(today.year, int(m[1] or today.month), int(m[2]))

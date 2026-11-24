@@ -218,7 +218,7 @@ MODULE_CEILINGS = {
     "scenario_window.py": 85,
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
-    "typhoon_staleness.py": 70,   # 舊颱風現況被重新收錄(2026-11-24)
+    "typhoon_staleness.py": 72,   # 舊颱風現況被重新收錄(2026-11-24)
     "news_staleness.py": 55,   # 資料月份過舊的新聞(2026-11-10)
     "daily_chart.py": 95,   # 今日一圖(2026-11-10)
     "us_quote_backup.py": 70,   # 美股日線備用來源 Nasdaq(2026-11-12)
@@ -233,7 +233,7 @@ MODULE_CEILINGS = {
     "apbc.py": 140,   # 亞冠賽中華隊賽程與比分(2026-11-08)
     "session_wording.py": 90,   # +週一「昨日台股」改上週五(2026-11-09)   # 週六、連假的「今日開盤」(2026-11-07)   # 模型沒照規則時的收尾(2026-11-06)
       # 信件內容的確定性整理(2026-11-04)
-    "market_fresh.py": 110,   # 總經列的資料新鮮度(2026-11-05)
+    "market_fresh.py": 112,   # 總經列的資料新鮮度(2026-11-05)
     "world_severity.py": 40,   # 世界大事嚴重性分級(2026-11-02)
     "sports_season.py": 476,   # 2026-11-04 休賽季收戰績;季後賽/今日焦點/賽季排序(2026-10-14);+延賽重複場次(10-24、10-26)
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state

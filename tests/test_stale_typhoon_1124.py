@@ -9,7 +9,7 @@ OLD = "薔琵颱風來襲新北23日停班停課新北捷運調整班距 - 新�
 
 
 def _row(title, day):
-    return {"key": title, "headline": title, "first_seen": day}
+    return {"key": title, "headline": title, "first_seen": day, "timeline": [{"d": day, "t": title}]}
 
 
 LEDGER = [_row("強烈颱風「薔琵」逼近", "2026-10-20"), _row("薔琵颱風動態一次看", "2026-10-21"),
@@ -18,7 +18,7 @@ LEDGER = [_row("強烈颱風「薔琵」逼近", "2026-10-20"), _row("薔琵颱�
 
 
 def test_reindexed_live_news_is_dropped_everywhere():
-    quotes = {"STORY_LEDGER": LEDGER + [_row(OLD, "2026-11-24")], "EVENT_TIMELINE": [{"title": OLD}],
+    quotes = {"STORY_LEDGER": LEDGER + [_row(OLD, "2026-11-24")], "EVENT_TIMELINE": [{"latest_title": OLD}, {"latest_title": "x", "zh_title": OLD}],
               "STRUCTURED_NEWS_EVENTS": [{"title": OLD}], "NEWS_RESEARCH_SOURCES": [{"title": OLD}]}
     news, out = q.current_inputs([{"title": OLD}, {"title": "台積電法說"}], quotes, TODAY)
     assert [n["title"] for n in news] == ["台積電法說"]
@@ -31,7 +31,8 @@ def test_aftermath_and_new_typhoons_stay():
     names = t.old_names(LEDGER, TODAY)
     assert names == {"薔琵"}
     for title in ("薔琵颱風農損救助受理", "薔琵颱風重創吉安米 收成減半", "颱風「新名」逼近 停班停課一覽",
-                  "新颱風復活 專家:這天最近 最新路徑", "薔琵餐廳動態"):
+                  "新颱風逼近台灣，路徑與薔琵颱風相似", "薔琵颱風剛走 海葵逼近 停班停課",
+                  "薔琵颱風停班停課 海葵颱風逼近", "海葵逼近 路徑恐比薔琵颱風更近", "新颱風復活 專家:這天最近 最新路徑", "薔琵餐廳動態"):
         assert not t.stale(title, names), title
 
 
@@ -43,3 +44,10 @@ def test_broken_ledger_filters_nothing():
     for ledger in (None, "x", [None, 3, {"headline": "a"}, {"first_seen": "bad"}]):
         news, _ = q.current_inputs([{"title": OLD}], {"STORY_LEDGER": ledger}, dt.date(2026, 11, 23))
         assert news == [{"title": OLD}]
+
+
+def test_review_pr65_old_story_with_a_new_headline_is_not_old_evidence():
+    """線索 first_seen 很舊、headline 換成今天的新颱風:不能把新颱風當成 21 天前就有。"""
+    rows = [dict(_row(h, "2026-10-01"), timeline=[{"d": "2026-10-01", "t": "防颱整備"}, {"d": "2026-11-23", "t": h}])
+            for h in ("「海葵」颱風逼近", "海葵颱風路徑", "海葵颱風停班停課")]
+    assert t.old_names(rows, TODAY) == set()

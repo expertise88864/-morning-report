@@ -17,27 +17,40 @@ _LIVE = re.compile(r"停班|停課|颱風假|來襲|逼近|路徑|海警|警報|
 _AFTER = re.compile(r"災後|復耕|復建|重建|補助|救助|農損|災損|受損|災防法|賠償|理賠|撿拾|檢討")
 
 
-def _adjacent(name: str, text: str) -> bool:
-    return bool(re.search(rf"{name}[」』”]?\s*颱風|颱風\s*[「『“]?{name}", text))
+#: 標題同時在講別的颱風(比較、接棒、新生成)就留著:寧可漏擋,不可擋掉真的警報(外審 PR #65)。
+_OTHER = re.compile(r"新颱|新生|雙颱|相似|類似|如同|好比|媲美|翻版|接棒|又有|另一|下一|剛走|剛過|過後|之後|遠離|低壓|低氣壓")
+
+
+def _dated(ledger, today: dt.date) -> list[str]:
+    """21 天前(含)就收到的颱風標題。線索的 headline 會換成後續報導,只有 timeline 的 d/t 是成對的(外審 PR #65)。"""
+    heads = []
+    for row in ledger if isinstance(ledger, list) else []:
+        for entry in (row.get("timeline") if isinstance(row, dict) else None) or []:
+            try:
+                old = (today - dt.date.fromisoformat(str(entry["d"])[:10])).days >= MIN_AGE_DAYS
+            except (TypeError, KeyError, ValueError):
+                continue
+            if old and "颱風" in str(entry.get("t") or ""):
+                heads.append(str(entry["t"]))
+    return heads
 
 
 def old_names(ledger, today: dt.date) -> set[str]:
     """21 天前就出現過的颱風名字。引號裡也可能是「復活」「這天」,所以另要求舊標題至少三次寫成「X颱風」。"""
-    heads = []
-    for row in ledger if isinstance(ledger, list) else []:
-        try:
-            first = dt.date.fromisoformat(str(row["first_seen"])[:10])
-        except (TypeError, KeyError, ValueError):
-            continue
-        if (today - first).days >= MIN_AGE_DAYS and "颱風" in str(row.get("headline") or ""):
-            heads.append(str(row["headline"]))
+    heads = _dated(ledger, today)
     quoted = {a or b for h in heads for a, b in _NAME.findall(h)}
     return {n for n in quoted if sum(bool(re.search(rf"{n}[」』”]?\s*颱風", h)) for h in heads) >= MIN_HEADLINES}
 
 
 def stale(title, names: set[str]) -> bool:
+    """主體就是舊颱風:名字在標題開頭(前面最多一小段「快訊／」),而且全句只提這一個颱風。"""
     text = str(title or "")
-    return bool(_LIVE.search(text) and not _AFTER.search(text) and any(_adjacent(n, text) for n in names))
+    if not _LIVE.search(text) or _AFTER.search(text) or _OTHER.search(text):
+        return False
+    if text.replace("颱風假", "").replace("颱風天", "").count("颱") != 1:
+        return False
+    return any(re.match(rf"(?:[^，。！!／/｜|》】]{{0,6}}[！!／/｜|》】])?\s*"
+                        rf"(?:[「『“]?{n}[」』”]?\s*颱風|颱風\s*[「『“]?{n})", text) for n in names)
 
 
 def drop(quotes: dict, today: dt.date):
@@ -49,7 +62,7 @@ def drop(quotes: dict, today: dt.date):
         names = set()
 
     def old(row) -> bool:
-        return isinstance(row, dict) and any(stale(row.get(k), names) for k in ("title", "headline"))
+        return isinstance(row, dict) and any(stale(row.get(k), names) for k in ("title", "headline", "latest_title", "zh_title"))
     for key in ("STORY_LEDGER", "STRUCTURED_NEWS_EVENTS", "EVENT_TIMELINE") if names else ():
         if isinstance(quotes.get(key), list):
             quotes[key] = [r for r in quotes[key] if not old(r)]

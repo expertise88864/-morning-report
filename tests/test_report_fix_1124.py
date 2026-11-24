@@ -14,6 +14,7 @@ def test_holiday_close_shows_its_date():
     assert mf.asia_label("N225", "日經 225", macro, day) == "日經 225（11/20 收盤）"
     assert mf.asia_label("KOSPI", "韓國 KOSPI", macro, day) == "韓國 KOSPI"
     assert mf.asia_label("SSE", "上證綜指", macro, day) == "上證綜指"
+    assert mf.asia_label("10Y", "", {"10Y": {"observed_on": "2026-11-20"}}, day) == ""
     for weekend in (dt.date(2026, 11, 21), dt.date(2026, 11, 22), dt.date(2026, 11, 23)):   # 週末、週一看週五
         assert mf.asia_label("N225", "日經 225", macro, weekend) == "日經 225", weekend
 

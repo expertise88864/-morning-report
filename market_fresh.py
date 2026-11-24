@@ -92,6 +92,8 @@ def traded_on(name: str) -> dict:
 
 def asia_label(name: str, label: str, macro: dict | None, today: dt.date | None = None) -> str:
     """亞股休市時收盤是更早的日子:資料日早於上一個平日就標出來(11-24 實信,日股 11/23 休市)。"""
+    if name not in ASIA:   # 美債也有 observed_on,另有自己的資料日標示(外審 PR #65)
+        return label
     today = today or dt.datetime.now(ZoneInfo("Asia/Taipei")).date()
     previous = today - dt.timedelta(days={0: 3, 6: 2}.get(today.weekday(), 1))
     day = str(((macro or {}).get(name) or {}).get("observed_on") or "")

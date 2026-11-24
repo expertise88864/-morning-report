@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-#: 「資金集中」的門檻(單一類股佔全市場成交的 %)。**本模組自訂**:
+#: 「資金集中」的門檻(單一類股佔上市個股成交的 %)。**本模組自訂**:
 #: 台股常態下半導體約 25–35%,超過 35% 已是明顯的單邊集中。
 CONCENTRATION_PCT = 35.0
 
@@ -61,7 +61,7 @@ def readout(sector_heat: Optional[dict]) -> str:
     if share is not None and share >= CONCENTRATION_PCT:
         # 同上:「被抽走」是因果宣稱(其他類股的量可能同時擴張)。
         # 只說分布,不說成因。
-        bits.append(f"該類股占全市場成交{share:.0f}%,成交分布高度集中")
+        bits.append(f"該類股佔上市個股成交{share:.0f}%,成交分布高度集中")
 
     if not bits:
         return ""

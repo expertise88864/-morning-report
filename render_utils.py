@@ -978,7 +978,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
     每一列一個類股,依「相對大盤」由強到弱:
       近 5 日中位 / 相對大盤 / 5 日上漲檔數÷成分檔數(晨報 universe 口徑,
       `_sector_rotation` 算的)+ 今日成交占比・法人淨買賣(估)・領漲股
-      (全市場口徑,與「類股熱度表」同源;類股名稱對不上時該欄留「—」)。
+      (全體上市個股、不含 ETF,與「類股熱度表」同源;類股名稱對不上時該欄留「—」)。
     兩個口徑不同,表頭與註腳都寫明;紅漲綠跌是台股慣例。
     """
     rows = list((rot or {}).get("table") or [])
@@ -1044,7 +1044,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
         f"<tr>{head}</tr>{''.join(trs)}</table></div>"
         "<div style='font-size:11px;color:#94a3b8;margin-top:6px;'>"
         "※ 5 日中位 / 相對大盤 / 上漲檔數＝晨報 universe 成分股口徑（相對 &gt;0＝股價相對表現較強，不代表資金淨流入）；"
-        "今日成交占比・法人淨買賣（估）・成交代表＝全市場口徑；代表股按今日成交金額選取，漲跌為單日。"
+        "今日成交占比・法人淨買賣（估）・成交代表＝全體上市個股口徑、不含 ETF；代表股按今日成交金額選取，漲跌為單日。"
         "純參考、非買賣訊號。</div></div>")
 
 

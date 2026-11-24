@@ -125,7 +125,7 @@ def test_the_rotation_table_renders_every_sector_with_today_context():
     row = body[body.index("航運業"):]
     row = row[:row.index("</tr>")]
     assert "—" in row
-    assert "大盤中位" in html and "全市場口徑" in html
+    assert "大盤中位" in html and "全體上市個股口徑、不含 ETF" in html
 
 
 def test_the_rotation_table_is_wired_into_the_top5_card():

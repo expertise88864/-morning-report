@@ -2680,6 +2680,7 @@ def fetch_macro_indicators() -> dict:
                 "year_high": round(year_high, 3) if year_high else None,
                 "year_low": round(year_low, 3) if year_low else None,
             }
+            out[name].update(_fresh.traded_on(name))
             if name in {"10Y", "13W", "30Y"}:
                 out[name].update(source="Yahoo Finance", observed_on=_market_date(d.index[-1]))
         except Exception as e:
@@ -4337,7 +4338,7 @@ def fetch_sector_heat(top_leaders: int = 3, min_names: int = 3) -> dict:
       "sectors": { 產業名稱: {"n","up","down","median_pct","value_yi","value_share_pct",
                              "leaders":[{"code","name","pct","value_yi"}, ...]} },
       "ranked": [產業名稱, ...],          # 依成交值降序
-      "total_value_yi": 全市場成交值(億),
+      "total_value_yi": 上市普通股成交值(億;占比的分母,不含 ETF),
     }
     """
     try:
@@ -4454,8 +4455,8 @@ def _format_sector_heat_block(sector_heat: dict, top_n: int = 12) -> str:
             f"(佔 {s.get('value_share_pct', 0):.1f}%)、中位 {s.get('median_pct', 0):+.1f}%、"
             f"漲 {s.get('up', 0)}/跌 {s.get('down', 0)}{_inst_txt} | 領先:{leaders or '-'}")
     total = (sector_heat or {}).get("total_value_yi") or 0
-    return ("\n\n【類股熱度表(今日 TWSE 全市場,依成交值排序;純行情數據非新聞,"
-            f"供「九、其他類股」判斷哪些類股在動、誰領漲。全市場成交約 {total:,.0f} 億"
+    return ("\n\n【類股熱度表(今日 TWSE 上市普通股、不含 ETF,依成交值排序;占比請寫「佔上市個股成交」,不可寫「佔全市場」;純行情數據非新聞,"
+            f"供「九、其他類股」判斷哪些類股在動、誰領漲。上市個股成交約 {total:,.0f} 億"
             + ("" if SHOW_SECTOR_HEAT_TABLE else ";這張表信裡不顯示:數字可用,但全信不得出現「類股熱度表」這個名稱或把它當出處")
             + ")】\n"
             + "\n".join(lines))
@@ -11556,7 +11557,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     def fmt_m(name: str) -> str:
         return _format_macro_line(name, macro.get(name) or {})
     macro_block = "\n".join(
-        [f"  {fmt_m(n)}" for n in
+        [f"  {fmt_m(n)}{_fresh.asia_label(n, '', macro)}" for n in
          ["VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "KOSPI", "SSE",
           "NQ", "ES", "WTI", "GOLD"]])
     # 殖利率曲線 10Y − 13W 利差（由已抓資料推導，倒掛為衰退領先訊號）。
@@ -21931,9 +21932,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     macro_rows = (
             fmt_macro_row(_fresh.fx_label(macro), "USDTWD",
                       "數字升=台幣貶:利出口商獲利,但外資匯出壓力增") +
-        fmt_macro_row("韓國 KOSPI", "KOSPI", "記憶體/半導體出口國,與台股連動") +
-        fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +
-        fmt_macro_row("上證綜指", "SSE", "中國盤面→台股資金面") +
+        fmt_macro_row(_fresh.asia_label("KOSPI", "韓國 KOSPI", macro), "KOSPI", "記憶體/半導體出口國,與台股連動") +
+        fmt_macro_row(_fresh.asia_label("N225", "日經 225", macro), "N225", "亞股開盤情緒參考") +
+        fmt_macro_row(_fresh.asia_label("SSE", "上證綜指", macro), "SSE", "中國盤面→台股資金面") +
         fmt_macro_row("VIX 恐慌指數", "VIX", "<15樂觀 / >25恐慌") +
         fmt_macro_row("SOX 費半指數", "SOX", "美國半導體,與台積電連動最高") +
         fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫")
@@ -22455,7 +22456,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 f"{_htmllib.escape(_heat_line)}</div>" if _heat_line else "")
             sector_heat_html = f"""
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;margin:12px 0;">
-          <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:4px;">類股熱度表（依成交值前 5;全市場口徑）</div>
+          <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:4px;">類股熱度表（依成交值前 5;上市個股、不含 ETF）</div>
           {''.join(_hrows)}{_heat_readout_html}
         </div>
         """

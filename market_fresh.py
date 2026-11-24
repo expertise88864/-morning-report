@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 
 #: 美股收盤後才跑,只有亞股會遇到日線少一天。
 ASIA = {"N225", "KOSPI", "SSE"}
+#: 這一班各亞股收盤的資料日(`latest_close` 寫入)。
+_TRADED_ON: dict[str, str] = {}
 _FX_URL = "https://openapi.taifex.com.tw/v1/DailyForeignExchangeRates"
 #: OpenAPI 曾停更(2026-08-22 籌碼事故),太舊就不用;連假最長約 4 天。
 _FX_MAX_AGE_DAYS = 4
@@ -19,7 +21,9 @@ _FX_MAX_AGE_DAYS = 4
 
 def latest_close(name: str, ticker, bars, close: float, prev: float) -> tuple[float, float]:
     """回應裡的最新成交比日線新,就以它為收盤、日線最後一筆為前收。查不到就用日線。"""
+    _TRADED_ON.pop(name, None)
     try:
+        _TRADED_ON[name] = bars.index[-1].date().isoformat()
         meta = ticker.history_metadata or {}
         price, stamp = float(meta["regularMarketPrice"]), meta["regularMarketTime"]
         zone = ZoneInfo(meta.get("exchangeTimezoneName") or "UTC")
@@ -28,6 +32,7 @@ def latest_close(name: str, ticker, bars, close: float, prev: float) -> tuple[fl
         last_bar = bars.index[-1].date()
         print(f"[macro-fresh] {name} 日線 {last_bar}={close} 最新成交 {traded}={price}", flush=True)
         if traded > last_bar and price > 0 and close and abs(price / close - 1) <= 0.2:
+            _TRADED_ON[name] = traded.isoformat()
             return price, close
     except Exception as exc:  # noqa: BLE001 - 退回日線
         print(f"[macro-fresh] {name} 中繼資料不可用: {type(exc).__name__}", flush=True)
@@ -79,6 +84,18 @@ def fx_label(macro: dict | None) -> str:
 def fx_prompt_note(quotes: dict) -> str:
     row = (quotes.get("MACRO") or {}).get("USDTWD") or {}
     return f"(期交所 {row.get('observed_on')} 官方值,不一定是昨日)" if row.get("source") == "TAIFEX" else ""
+
+
+def traded_on(name: str) -> dict:
+    return {"observed_on": _TRADED_ON[name]} if name in ASIA and name in _TRADED_ON else {}
+
+
+def asia_label(name: str, label: str, macro: dict | None, today: dt.date | None = None) -> str:
+    """亞股休市時收盤是更早的日子:資料日早於上一個平日就標出來(11-24 實信,日股 11/23 休市)。"""
+    today = today or dt.datetime.now(ZoneInfo("Asia/Taipei")).date()
+    previous = today - dt.timedelta(days={0: 3, 6: 2}.get(today.weekday(), 1))
+    day = str(((macro or {}).get(name) or {}).get("observed_on") or "")
+    return label + (f"（{day[5:].replace('-', '/')} 收盤）" if day and day < previous.isoformat() else "")
 
 
 def margin_card_text(margin: dict | None, session: str = "") -> str:

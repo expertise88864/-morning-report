@@ -60,3 +60,8 @@ def test_review_pr65_mixed_title_survives_the_whole_entrance():
     news, out = q.current_inputs([{"title": title}], quotes, TODAY)
     assert news == out["NEWS_RESEARCH_SOURCES"] == [{"title": title}]
     assert q.stale_title_date("薔琵颱風10月23日停班停課一覽", TODAY), "單純的舊日期照擋"
+    for same in ("薔琵颱風10月23日停班停課，暴風圈逼近北台灣", "薔琵颱風10月23日停班停課，暴風圈今逼近北台灣",
+                 "薔琵颱風10月23日停班停課，海葵逼近"):   # 同一颱風、或後句沒寫今明:日期過濾照擋兩個池
+        quotes = {"STORY_LEDGER": LEDGER, "NEWS_RESEARCH_SOURCES": [{"title": same}]}
+        news, out = q.current_inputs([{"title": same}], quotes, TODAY)
+        assert news == out["NEWS_RESEARCH_SOURCES"] == [], same

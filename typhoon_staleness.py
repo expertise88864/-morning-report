@@ -21,14 +21,15 @@ _AFTER = re.compile(r"災後|復耕|復建|重建|補助|救助|農損|災損|�
 _OTHER = re.compile(r"新颱|新生|雙颱|相似|類似|如同|好比|媲美|翻版|接棒|又有|另一|下一|剛走|剛過|過後|之後|遠離|低壓|低氣壓"
                     r"|上個?月|上週|上周|日前|去年|[月週周天]前|曾|當時|先前|此前|滿月|周年|週年|[0-9一二三四五六七八九十]個?月|\d/\d")
 #: 後面的小句另有主體在動(「…，海葵今逼近東部」):可能是沒寫「颱風」的新颱風,留著(外審 PR #65)。
-_SECOND = re.compile(r"[，,。；;！!？?、／/｜|\s][一-鿿]{2,4}?(?:今|明|恐|將|正|又|再|持續|最快)?[日天晚早]?"
+_SECOND = re.compile(r"[，,。；;！!？?、／/｜|\s](?!暴風|風雨|外圍|環流|中心|警報|颱風|強風|豪雨|雨)[一-鿿]{2,4}?(?:今|明|恐|將|正|又|再|持續|最快)?[日天晚早]?"
                      r"(?:逼近|來襲|侵襲|侵台|撲|登陸|生成|增強|直襲)")
 
 
 def another_subject(title) -> bool:
-    """颱風標題的後面小句另有主體在動:前句的日期只是背景,不代表整則是舊聞。"""
+    """標題日期過濾的例外:後面小句另有主體,而且寫明今／明天在動(前句的日期只是背景;外審 PR #65)。"""
     text = str(title or "")
-    return "颱風" in text and bool(_SECOND.search(text))
+    m = _SECOND.search(text) if "颱風" in text else None
+    return bool(m and re.search(r"今|明", m.group(0)))
 
 
 def _dated(ledger, today: dt.date) -> list[str]:
@@ -56,7 +57,7 @@ def stale(title, names: set[str]) -> bool:
     """主體就是舊颱風:名字在標題開頭(前面最多一小段「快訊／」)、全句只提這一個颱風,而且現況詞就在
     那一小句裡(「薔琵颱風上月擦過台灣，海葵今逼近」的「逼近」不是在講薔琵;外審 PR #65)。"""
     text = str(title or "")
-    if _AFTER.search(text) or _OTHER.search(text) or another_subject(text):
+    if _AFTER.search(text) or _OTHER.search(text) or _SECOND.search(text):
         return False
     if text.replace("颱風假", "").replace("颱風天", "").count("颱") != 1:
         return False

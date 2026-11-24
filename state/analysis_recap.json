@@ -289,7 +289,7 @@
    "watch_id": "w100",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-24",
+   "last_reviewed": "2026-11-25",
    "deadline": "2026-11-27"
   },
   {
@@ -305,30 +305,6 @@
    "deadline": "2026-11-27"
   },
   {
-   "trigger": "外資台指期淨空 99,438 口能否回補至 9 萬口以內，同時現貨市值前 10 大由賣超 72,845 張轉為買超（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空 99,438 口能否回補至 9 萬口以內，同時現貨市值前 10 大由賣超 72,845 張轉為買超（觀察期：5 天內）",
-   "trigger_key": "t0f6ce18c3aa8f08c",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w145",
-   "status": "open",
-   "created": "2026-11-19",
-   "last_reviewed": "2026-11-24",
-   "deadline": "2026-11-24"
-  },
-  {
-   "trigger": "10 年期美債殖利率能否維持在 5.07% 之下、不站上 5.2%（觀察期：5 天內）",
-   "trigger_full": "10 年期美債殖利率能否維持在 5.07% 之下、不站上 5.2%（觀察期：5 天內）",
-   "trigger_key": "tbebd77ac9eb5767f",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w146",
-   "status": "open",
-   "created": "2026-11-19",
-   "last_reviewed": "2026-11-24",
-   "deadline": "2026-11-24"
-  },
-  {
    "trigger": "外資台指期淨空 -99,219 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 26,547 張轉為買超（觀察期：5 天內）",
    "trigger_full": "外資台指期淨空 -99,219 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 26,547 張轉為買超（觀察期：5 天內）",
    "trigger_key": "t2f4c9158f20203da",
@@ -337,7 +313,7 @@
    "watch_id": "w148",
    "status": "open",
    "created": "2026-11-20",
-   "last_reviewed": "2026-11-24",
+   "last_reviewed": "2026-11-25",
    "deadline": "2026-11-25"
   },
   {
@@ -349,20 +325,8 @@
    "watch_id": "w149",
    "status": "open",
    "created": "2026-11-20",
-   "last_reviewed": "2026-11-24",
+   "last_reviewed": "2026-11-25",
    "deadline": "2026-11-25"
-  },
-  {
-   "trigger": "加權指數周一開盤是否落在模型區間 34,176.64 至 35,285.74 點之內；若開低於下緣且半小時內未收回 34,731.19 點，代表賣壓延續（觀察期：周一開盤後 1 小時）。",
-   "trigger_full": "加權指數周一開盤是否落在模型區間 34,176.64 至 35,285.74 點之內；若開低於下緣且半小時內未收回 34,731.19 點，代表賣壓延續（觀察期：周一開盤後 1 小時）。",
-   "trigger_key": "t679ef45497812883",
-   "why": "",
-   "horizon": "1-4w",
-   "watch_id": "w150",
-   "status": "open",
-   "created": "2026-11-23",
-   "last_reviewed": "",
-   "deadline": "2026-12-21"
   },
   {
    "trigger": "外資台指期淨空 -97,863 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）。",
@@ -389,18 +353,6 @@
    "deadline": "2026-11-28"
   },
   {
-   "trigger": "成交量能否萎縮至 5,000 億元以下、且上漲家數佔比回升到 30% 以上，這是法人定義的窒息量後止跌訊號（觀察期：5 天內）[自由財經]",
-   "trigger_full": "成交量能否萎縮至 5,000 億元以下、且上漲家數佔比回升到 30% 以上，這是法人定義的窒息量後止跌訊號（觀察期：5 天內）[自由財經]",
-   "trigger_key": "t97d215b558cf915f",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w153",
-   "status": "open",
-   "created": "2026-11-23",
-   "last_reviewed": "",
-   "deadline": "2026-11-28"
-  },
-  {
    "trigger": "外資台指期淨空 -97,863 口能否回補至 9 萬口以內，同時外資對市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）",
    "trigger_full": "外資台指期淨空 -97,863 口能否回補至 9 萬口以內，同時外資對市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）",
    "trigger_key": "tbd55ece619a4e316",
@@ -409,7 +361,7 @@
    "watch_id": "w154",
    "status": "open",
    "created": "2026-11-23",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-25",
    "deadline": "2026-11-28"
   },
   {
@@ -421,20 +373,8 @@
    "watch_id": "w155",
    "status": "open",
    "created": "2026-11-23",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-25",
    "deadline": "2026-11-28"
-  },
-  {
-   "trigger": "加權指數開盤後能否站穩模型區間下緣 37,507 點，且收盤不低於昨收 36,811.89 點（觀察期：今日）",
-   "trigger_full": "加權指數開盤後能否站穩模型區間下緣 37,507 點，且收盤不低於昨收 36,811.89 點（觀察期：今日）",
-   "trigger_key": "t91d67e483ba5bd6b",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w156",
-   "status": "open",
-   "created": "2026-11-24",
-   "last_reviewed": "",
-   "deadline": "2026-11-25"
   },
   {
    "trigger": "外資台指期淨空 -103,432 口能否在 5 個交易日內回補至 9 萬口以內（觀察期：5 天內）",
@@ -459,52 +399,86 @@
    "created": "2026-11-24",
    "last_reviewed": "",
    "deadline": "2026-11-29"
+  },
+  {
+   "trigger": "外資台指期淨空 -103,182 口能否在 5 個交易日內回補至 9 萬口以內，且現貨市值前 10 大由買超 1,873 張轉為連續買超（觀察期：5 天內）。",
+   "trigger_full": "外資台指期淨空 -103,182 口能否在 5 個交易日內回補至 9 萬口以內，且現貨市值前 10 大由買超 1,873 張轉為連續買超（觀察期：5 天內）。",
+   "trigger_key": "t4027113759600c69",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w159",
+   "status": "open",
+   "created": "2026-11-25",
+   "last_reviewed": "",
+   "deadline": "2026-11-30"
+  },
+  {
+   "trigger": "加權指數今日開盤是否落在預測區間 38,613 至 40,275 點；若跌破下緣且半小時內未收回，代表賣壓延續（觀察期：今日）。",
+   "trigger_full": "加權指數今日開盤是否落在預測區間 38,613 至 40,275 點；若跌破下緣且半小時內未收回，代表賣壓延續（觀察期：今日）。",
+   "trigger_key": "td5ed3df2c33168e3",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w160",
+   "status": "open",
+   "created": "2026-11-25",
+   "last_reviewed": "",
+   "deadline": "2026-11-26"
+  },
+  {
+   "trigger": "10 年期美債殖利率是否站上 5.0%，以及 FedWatch 12 月升息 1 碼機率能否維持 97% 上方（觀察期：5 天內）。",
+   "trigger_full": "10 年期美債殖利率是否站上 5.0%，以及 FedWatch 12 月升息 1 碼機率能否維持 97% 上方（觀察期：5 天內）。",
+   "trigger_key": "t621b7f61ac5b3492",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w161",
+   "status": "open",
+   "created": "2026-11-25",
+   "last_reviewed": "",
+   "deadline": "2026-11-30"
   }
  ],
- "watch_seq": 158,
+ "watch_seq": 161,
  "legacy_report": {
-  "date": "2026-11-24",
+  "date": "2026-11-25",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠）**：延續昨日「AI 需求雜音」這條線，公司 23 日主動說明全球 AI 需求與日俱增、先進製程產能持續供不應求，並點出應用正從聊天機器人轉向 AI 助理與代理式 AI。這段話的機制意義在於：需求若真如公司所述沒有轉弱，CoWoS 與 N2 的稼動率假設就不需要下修，2330 的獲利預估也不必跟著 ADR 的跌幅走。**但公司沒有給產能數字或時間表，量級判斷不出來**——目前只能確認「公司立場與市場恐慌方向相反」，實際反映要等下一季月營收與法說。**[A 級・信心:中]**　[科技新報](https://technews.tw/2026/11/23/tsmc-boosts-ai-long-term-outlook-advanced-process-supply-shortages/)",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：昨日股價跳空漲停 2,230 元，但外資當日再賣超 4,098 張、連 9 賣；今日 TSM ADR 回跌 3.96%，費半重挫 7.88%。傳導機制是 ADR 溢價收斂與 SOX 下跌會壓抑 2330 開盤，法人賣超則顯示現貨籌碼沒有跟著漲停轉多。以今日預測中樞 2,217.39 元看，合理區間落在 2,035.5 至 2,245.41 元，開盤若接近下緣，代表賣壓比 ADR 跌幅更重。**[A 級・信心:中]**　[自由財經](https://ec.ltn.com.tw/article/paper/1779821) [鉅亨](https://news.cnyes.com/news/id/6671173)",
     "source_urls": [
-     "https://technews.tw/2026/11/23/tsmc-boosts-ai-long-term-outlook-advanced-process-supply-shortages/"
+     "https://ec.ltn.com.tw/article/paper/1779821",
+     "https://news.cnyes.com/news/id/6671173"
     ]
    },
    {
-    "statement": "**輝達（NVDA，AI 加速器龍頭）**：承接過去兩週的換帥風暴，黃仁勳 23 日復職，台積電期貨夜盤同步漲停至 2,238 元、台指期夜盤攻上 40,324 點。傳導路徑是輝達 AI 伺服器拉貨重啟，經 CoWoS 先進封裝與 HBM 回到 2330 的稼動率。**這是情緒與能見度的修復，不是訂單數量的增加**——輝達沒有公布新訂單，所以今天的漲勢反映的是「不確定性移除」，可持續性要看 12 月國會聽證後的政策結論。這條與上一條指向同一個結論，是互相加強而非各自獨立。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6670353) [中央社](https://www.cna.com.tw/news/afe/202611230298.aspx)",
+    "statement": "**NVIDIA（NVDA，AI 加速器龍頭）**：黃仁勳回鍋後首日股價回跌 5.86%，國會調查與出口管制指控同步升溫。傳導路徑是 NVIDIA 的 AI 伺服器拉貨預期，經 CoWoS 先進封裝與 HBM 回到 2330 稼動率；但國會 12 月聽證前，市場會先下修的是評價而不是訂單。**目前沒有新訂單數字，還看不出對台積電產能利用率的實際影響多大**，短線只能當情緒面利空。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671173) [原文](https://news.cnyes.com/news/id/6671169)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6670353",
-     "https://www.cna.com.tw/news/afe/202611230298.aspx"
+     "https://news.cnyes.com/news/id/6671173",
+     "https://news.cnyes.com/news/id/6671169"
     ]
    },
    {
-    "statement": "**記憶體族群（美光、SK 海力士 ADR）**：23 日美光飆 19.04%、SK 海力士 ADR 漲 20.00%、威騰漲 13.84%，但同一時間高盛把三星目標價下調 30%、海力士下調逾 42%，理由是 2028 年 DRAM 均價可能跌 20%、NAND 跌 21%、HBM 同規格跌 20%。這是典型的方向分歧：現貨漲的是「2027 年短缺 15 年來最嚴重」，賣方砍的是「2028 年缺口從 3.9% 收窄到 1.2%」。對台股的傳導在兩層——南亞科、華邦電等現貨報價受惠程度看第四季合約價，而台積電的 HBM 相關先進封裝需求則看 2027 年不缺、2028 年才鬆。**今天先反映的是前者，2028 年的下修是評價面而非現金流面。****[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6670378) [鉅亨](https://news.cnyes.com/news/id/6670391)",
+    "statement": "**美光（MU，記憶體大廠）**：股價單日重挫 10.97%，法國巴黎銀行下調評等並警告記憶體供過於求風險升高。這與昨日台股南亞科、華邦電漲停形成強烈對比；傳導機制是 DRAM 合約價若鬆動，南亞科與華邦電的現貨利差會先收斂，台積電的 HBM 相關先進封裝需求則要看 2027 年缺口是否真的收窄。**今天先反映的是評價面，第四季合約價才是現金流的分水嶺**。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671173)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6670378",
-     "https://news.cnyes.com/news/id/6670391"
+     "https://news.cnyes.com/news/id/6671173"
     ]
    },
    {
-    "statement": "**【金融｜台灣】證交所 23 日宣布，24 日起信用交易整戶擔保維持率最低標準由 130% 調降至 120%，並同步取消先前低於 130% 的追繳紀錄**。機制是直接拆掉融資斷頭的強制賣壓循環——維持率門檻下移代表同樣的擔保品可以承受更深跌幅才被追繳，對中小型股與高融資使用率的電子股是流動性利多。這是行政院 21 日穩定市場方案的一環，金管會主委彭金隆稱並非臨時起意。**幅度上，這不創造新買盤，只是減少被迫賣出，所以是「跌勢減速」而非「趨勢反轉」。****[A 級・信心:中]**　[TWSE](https://www.twse.com.tw/zh/about/news/news/content.html?8a8216d6a19afd9c01a2072d582a0593) [鉅亨](https://news.cnyes.com/news/id/6670353) [鉅亨](https://news.cnyes.com/news/id/6670238)",
+    "statement": "**AMD（全球第二大 x86 CPU 與 AI GPU 廠）**：股價重挫 8.86%，為費半成分股中最弱之一。AMD 的 AI GPU 出貨同樣倚賴台積電 N3 與 CoWoS，股價大跌會壓抑台股 AI 伺服器鏈的開盤情緒；不過近 30 日賣方對 AMD 的目標價調整方向仍偏正向，可作為股價跌深後的一項方向性佐證。**但沒有新訂單或產能數字，量級判斷不出來**。**[B 級・信心:中-低，資訊有限]**　[鉅亨](https://news.cnyes.com/news/id/6671173)",
     "source_urls": [
-     "https://www.twse.com.tw/zh/about/news/news/content.html?8a8216d6a19afd9c01a2072d582a0593",
-     "https://news.cnyes.com/news/id/6670353",
-     "https://news.cnyes.com/news/id/6670238"
+     "https://news.cnyes.com/news/id/6671173"
     ]
    },
    {
-    "statement": "**【生技｜台灣】共信-KY（動物腫瘤新藥開發商）動物腫瘤新藥取得台灣藥證，將啟動銷售**。機制是藥證核准代表可進入商業銷售、開始認列營收，對單一中小型生技股是實質里程碑。**但目前沒有授權金、沒有目標銷售額，對營收的貢獻量級無法評估**，對整體生技類股的外溢效果有限。**[A 級・信心:中]**　[鉅亨](https://news.google.com/rss/articles/CBMiT0FVX3lxTE5wTFRJaWRnUnI3Ykp0Ml9MQzJQQ21MTXJDZXNvbW1ENlNhSGdCWWZEUlNjdW5xQ0Q2YXU2RGxNR21pelA4Smc2MWtiUlZnRGs?oc=5)",
+    "statement": "**聯發科（2454，全球第二大 IC 設計廠）**：宣布 2026 年有 17 篇論文入選 ISSCC、JSSC、NeurIPS 等頂尖會議與期刊，其中 5 篇將在 ISSCC 2027 發表。研究涵蓋 2 奈米晶片設計、AI 加速器與 6G，傳導到台積電先進製程與台股 IC 設計族群的技術能見度；但這是研發進度，不是訂單或營收，**目前沒有金額與時程，對短期獲利的影響判斷不出來**。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671017)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMiT0FVX3lxTE5wTFRJaWRnUnI3Ykp0Ml9MQzJQQ21MTXJDZXNvbW1ENlNhSGdCWWZEUlNjdW5xQ0Q2YXU2RGxNR21pelA4Smc2MWtiUlZnRGs?oc=5"
+     "https://news.cnyes.com/news/id/6671017"
     ]
    },
    {
-    "statement": "**【能源｜全球】WTI 原油 23 日重挫 3.88% 收 80.17 美元、布蘭特跌 3.46% 收 89.37 美元，雙雙創近三個月新低**，利比亞 Sharara 輸油管線恢復運作是主因。機制的兩面性：對台塑化等以原油為進料的業者，成本下降有利價差；但油價跌同時反映需求前景轉弱與供應過剩預期，摩根大通估 2027 年上半年可能跌到每桶 70 美元高段。**對台股是「成本端減壓、需求端轉弱」的組合，淨效果偏中性**，真正的傳導要看塑化利差是否同步改善。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6670245)",
+    "statement": "**【金融｜台灣】金管會**：延續本週穩定市場措施，自 11 月 24 日起將融資維持率由 130% 調降至 120%，上一次放寬要追溯到 1998 年亞洲金融風暴期間。傳導機制是斷頭強制賣壓的門檻下移，對高融資使用率的電子股與中小型股是流動性利多，但這只減少被迫賣出、不創造新買盤，對加權指數是「跌勢減速」而非「趨勢反轉」。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671059)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6670245"
+     "https://news.cnyes.com/news/id/6671059"
     ]
    }
   ]

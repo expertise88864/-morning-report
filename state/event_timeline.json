@@ -1,136 +1,4 @@
 {
- "export_controls:export_control:台積電:2026-11": {
-  "first_seen": "2026-11-20",
-  "days": 2,
-  "last_seen": "2026-11-21",
-  "latest_title": "美國晶片出口管制新規生效，台積電據報暫停部分中國先進製程訂單",
-  "latest_summary": "",
-  "object": "台積電",
-  "incident_tokens": [
-   "中國",
-   "停部",
-   "先進",
-   "出口",
-   "分中",
-   "制新",
-   "口管",
-   "國先",
-   "國晶",
-   "報暫",
-   "據報",
-   "新規",
-   "晶片",
-   "暫停",
-   "片出",
-   "生效",
-   "程訂",
-   "管制",
-   "美國",
-   "製程",
-   "規生",
-   "訂單",
-   "進製",
-   "部分"
-  ],
-  "entity": "台積電",
-  "subject_basis": "alias",
-  "subjects": [
-   "台積電"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 14
- },
- "export_controls:export_control:超微:2026-11": {
-  "first_seen": "2026-11-20",
-  "days": 2,
-  "last_seen": "2026-11-21",
-  "latest_title": "AMD被指涉入對中國出口管制爭議",
-  "latest_summary": "",
-  "object": "超微",
-  "incident_tokens": [
-   "中國",
-   "入對",
-   "出口",
-   "制爭",
-   "口管",
-   "國出",
-   "對中",
-   "指涉",
-   "涉入",
-   "爭議",
-   "管制",
-   "被指"
-  ],
-  "entity": "超微",
-  "subject_basis": "alias",
-  "subjects": [
-   "超微"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 14
- },
- "export_controls:export_control:超微:2026-11#b98fb9": {
-  "first_seen": "2026-11-20",
-  "days": 2,
-  "last_seen": "2026-11-21",
-  "latest_title": "超微陷中國出口管制疑雲 循環融資同步受檢視 - DIGITIMES",
-  "latest_summary": "",
-  "object": "超微",
-  "incident_tokens": [
-   "中國",
-   "出口",
-   "制疑",
-   "受檢",
-   "口管",
-   "同步",
-   "國出",
-   "循環",
-   "檢視",
-   "步受",
-   "環融",
-   "疑雲",
-   "管制",
-   "融資",
-   "資同",
-   "陷中"
-  ],
-  "entity": "超微",
-  "subject_basis": "alias",
-  "subjects": [
-   "超微"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 14
- },
- "litigation:輝達:2026-11": {
-  "first_seen": "2026-11-21",
-  "days": 1,
-  "last_seen": "2026-11-21",
-  "latest_title": "市場報導輝達或遭SEC查核會計問題",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "sec",
-   "問題",
-   "市場",
-   "或遭",
-   "會計",
-   "查核",
-   "核會",
-   "計問"
-  ],
-  "entity": "輝達",
-  "subject_basis": "alias",
-  "subjects": [
-   "輝達"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:中國移動:2026-11": {
   "first_seen": "2026-11-23",
   "days": 1,
@@ -332,8 +200,8 @@
  },
  "export_controls:export_control:ASML:2026-11": {
   "first_seen": "2026-11-24",
-  "days": 1,
-  "last_seen": "2026-11-24",
+  "days": 2,
+  "last_seen": "2026-11-25",
   "latest_title": "ASML 艾司摩爾控股- 標題 : Nvidia復職黃仁勳引爆兩黨怒火國會逼近出口管制、傳喚聽證周密追查- 股市爆料同學會 - CMoney",
   "latest_summary": "",
   "object": "ASML",
@@ -496,6 +364,230 @@
   ],
   "event_type": "geopolitical",
   "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:輝達:2026-11#603ca5": {
+  "first_seen": "2026-11-25",
+  "days": 1,
+  "last_seen": "2026-11-25",
+  "latest_title": "Senate Democratic leader Schumer accuses NVIDIA CEO Jensen Huang of violating US export co",
+  "latest_summary": "",
+  "object": "輝達",
+  "incident_tokens": [
+   "accuses",
+   "advanced",
+   "bipartisan",
+   "calls",
+   "ceo",
+   "china",
+   "chips",
+   "controls",
+   "democratic",
+   "export",
+   "huang",
+   "jensen",
+   "leader",
+   "legislation",
+   "of",
+   "on",
+   "schumer",
+   "senate",
+   "tighter",
+   "to",
+   "us",
+   "violating"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:中國:2026-11": {
+  "first_seen": "2026-11-25",
+  "days": 1,
+  "last_seen": "2026-11-25",
+  "latest_title": "China extends suspension of dual-use export controls on gallium, germanium, antimony and g",
+  "latest_summary": "",
+  "object": "中國",
+  "incident_tokens": [
+   "2027",
+   "27",
+   "and",
+   "antimony",
+   "controls",
+   "dual",
+   "export",
+   "extends",
+   "gallium",
+   "germanium",
+   "graphite",
+   "jan",
+   "of",
+   "on",
+   "suspension",
+   "to",
+   "until",
+   "us",
+   "use"
+  ],
+  "entity": "中國",
+  "subject_basis": "alias",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
+  "identity_schema": 14
+ },
+ "cybersecurity:微軟:2026-11": {
+  "first_seen": "2026-11-25",
+  "days": 1,
+  "last_seen": "2026-11-25",
+  "latest_title": "Microsoft launches 'Code Red' review after 24-hour M365 outage, targets 1-hour global reco",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "24",
+   "after",
+   "code",
+   "global",
+   "hour",
+   "incidents",
+   "launches",
+   "m365",
+   "major",
+   "outage",
+   "recovery",
+   "red",
+   "review",
+   "targets"
+  ],
+  "entity": "微軟",
+  "subject_basis": "alias",
+  "subjects": [
+   "微軟"
+  ],
+  "event_type": "cybersecurity",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:tariff_action:台灣:2026-11": {
+  "first_seen": "2026-11-25",
+  "days": 1,
+  "last_seen": "2026-11-25",
+  "latest_title": "US may announce new tariffs on China, EU and a dozen economies; Taiwan on Section 301 list",
+  "latest_summary": "",
+  "object": "台灣",
+  "incident_tokens": [
+   "301",
+   "and",
+   "china",
+   "dozen",
+   "economies",
+   "eu",
+   "list",
+   "may",
+   "new",
+   "on",
+   "section",
+   "tariffs",
+   "us"
+  ],
+  "entity": "台灣",
+  "subject_basis": "alias",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "geopolitical",
+  "action": "tariff_action",
+  "identity_schema": 14
+ },
+ "export_controls:馬來西亞:2026-11": {
+  "first_seen": "2026-11-25",
+  "days": 1,
+  "last_seen": "2026-11-25",
+  "latest_title": "Malaysia MITI directs data centers not to serve 7 US entity-list companies",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "centers",
+   "companies",
+   "data",
+   "directs",
+   "entity",
+   "list",
+   "miti",
+   "not",
+   "serve",
+   "to",
+   "us"
+  ],
+  "entity": "馬來西亞",
+  "subject_basis": "alias",
+  "subjects": [
+   "馬來西亞"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:Megaspeed:2026-11": {
+  "first_seen": "2026-11-25",
+  "days": 1,
+  "last_seen": "2026-11-25",
+  "latest_title": "US Commerce Department adds Singapore-based Megaspeed to trade blacklist",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "adds",
+   "based",
+   "blacklist",
+   "commerce",
+   "department",
+   "singapore",
+   "to",
+   "trade",
+   "us"
+  ],
+  "entity": "Megaspeed",
+  "subject_basis": "literal",
+  "subjects": [
+   "Megaspeed"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:輝達:2026-11#d66e02": {
+  "first_seen": "2026-11-25",
+  "days": 1,
+  "last_seen": "2026-11-25",
+  "latest_title": "Congress scrutiny raises export control risk for NVIDIA amid Huang reinstatement backlash",
+  "latest_summary": "",
+  "object": "輝達",
+  "incident_tokens": [
+   "amid",
+   "backlash",
+   "congress",
+   "control",
+   "export",
+   "huang",
+   "raises",
+   "reinstatement",
+   "risk",
+   "scrutiny"
+  ],
+  "entity": "輝達",
+  "subject_basis": "alias",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
   "identity_schema": 14
  }
 }

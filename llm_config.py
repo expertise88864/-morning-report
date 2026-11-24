@@ -353,19 +353,19 @@ def config_snapshot(*, provider: str, extractor_provider: str,
 EXTRACTOR_FALLBACK_ORDER = ("openai", "deepseek", "gemini")
 
 
-def fallback_extractor_provider(primary: str, has_key) -> str:
+def fallback_extractor_provider(primary: str, has_key, exclude=()) -> str:
     """抽取器該改用誰;沒有可用的替代就回空字串(批#96)。
 
     2026-08-01 連續兩班的抽取器都在同一個 endpoint 逾時
     (`api.deepseek.com` read timeout,35 則進去 0 則出來),
     而它被釘在單一 provider 上 —— 對方機房的狀況直接等於今天沒有事件抽取。
 
-    只在**網路層**失敗時才換人:HTTP 4xx 是我們的請求有問題,換一家會用同樣
+    只在**網路層**失敗或帳號不可用(`extractor_failover`)時換人:其他 4xx 是我們的請求有問題,換一家會用同樣
     的錯誤參數再錯一次;額度用完有既有的減量重試路徑,不該混進來。
     """
     p = (primary or "").strip().lower()
     for cand in EXTRACTOR_FALLBACK_ORDER:
-        if cand != p and has_key(PROVIDER_KEY_ENV[cand]):
+        if cand != p and cand not in exclude and has_key(PROVIDER_KEY_ENV[cand]):
             return cand
     return ""
 
@@ -403,7 +403,7 @@ CONFIG_SOURCE_SPEC = {
     "DEEPSEEK_EXTRACTOR_MODEL":   ("fixed", "deepseek-v4-flash"),
     "DEEPSEEK_BASE_URL":          ("fixed", "https://api.deepseek.com"),
     "LLM_EVENT_EXTRACTION":       ("fixed", "1"),
-    "GEMINI_MODEL":               ("fixed", "gemini-2.5-flash"),
+    "GEMINI_MODEL":               ("fixed", "gemini-3.8-flash"),
     "CLAUDE_MODEL":               ("fixed", "claude-sonnet-4-6"),
 }
 

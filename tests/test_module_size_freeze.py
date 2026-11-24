@@ -306,7 +306,7 @@ MODULE_CEILINGS = {
     # 版本、自己的出處、自己的失效方式,而且這個數字直接決定「換不換模型」。
     # 實測 191 行。
     # 2026-08-14:DeepSeek 峰谷計價(單價是時間的函數)
-    "llm_pricing.py": 300,
+    "llm_pricing.py": 303,
     "deepseek_calendar.py": 40,  # 官方假期表與離峰判定;新模組 34 行
     # DeepSeek Responses 的專屬 adapter(外審 P1-2)。契約釘在實機
     # 捕獲的 fixture 上,說明佔了近半 —— 那是這個模組的重點:
@@ -405,6 +405,8 @@ MODULE_CEILINGS = {
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
     "llm_config.py": 480,
+    "gemini_adapter.py": 65,   # Gemini 型號差異、用量、牌價(2026-11-24)
+    "extractor_failover.py": 45,   # 抽取器備援換手(2026-11-24)
     # 批#115:P1-12 的接收端。**沒有列進來就是後門** —— 批#95 已經因為漏列
     # llm_shadow / llm_telemetry 而被自己的宣稱打臉過一次。
     # Commit B:recorder 收下兩階段抓取的計畫(相位不得直接碰

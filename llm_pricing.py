@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import gemini_adapter
 from deepseek_calendar import UnknownPricingCalendar, is_offpeak_day
 
 # ---------------------------------------------------------------- 成本估算
@@ -114,6 +115,7 @@ CACHE_WRITE_MULTIPLIER = 1.25
 PRICING_SOURCE_BY_PREFIX = {
     "gpt-": "developers.openai.com/api/docs/pricing",
     "deepseek-": "api-docs.deepseek.com/quick_start/pricing",
+    "gemini-": gemini_adapter.PRICING_SOURCE,
 }
 #: **超長輸入的另一段費率**(第十三輪 P1-1,2026-08-02 官方頁查證)。
 #: `>272K input tokens` 讓**整個 request** 換價:in ×2、cached ×2、out ×1.5。
@@ -186,6 +188,8 @@ def price_of(model: str, at=None) -> Optional[dict]:
         return None  # Do not silently bill a later year's holiday as peak.
     if peaked:
         return peaked
+    if m.startswith("gemini-"):
+        return gemini_adapter.price_at(m, at)
     if m in MODEL_PRICING:
         return MODEL_PRICING[m]
     for name, price in MODEL_PRICING.items():
@@ -268,7 +272,8 @@ def estimate_cost(model: str, usage: Optional[dict], at=None) -> dict:
     input_cost = (plain * rate_in + cached * rate_cached
                   + written * rate_in * CACHE_WRITE_MULTIPLIER)
     usd = (input_cost + ct * rate_out) / 1_000_000
-    bits = [f"官方牌價({PRICING_SOURCE} {PRICING_AS_OF});推理以 output 計價"]
+    _src = gemini_adapter.PRICING_SOURCE if str(model).startswith("gemini-") else f"{PRICING_SOURCE} {PRICING_AS_OF}"
+    bits = [f"官方牌價({_src});推理以 output 計價"]
     # **時段要記下來**:同一個模型同一天可以有兩種單價,只記總額的話
     # 事後對不上帳單時分不出是「跑在尖峰」還是「漏算呼叫」。
     _win = (deepseek_window(at)

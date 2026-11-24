@@ -155,7 +155,7 @@ jobs:
           EXTRACTOR_PROVIDER: ${{ vars.EXTRACTOR_PROVIDER || '' }}
           LLM_TOTAL_TIMEOUT_SECONDS: ${{ vars.LLM_TOTAL_TIMEOUT_SECONDS }}
           LLM_REQUEST_TIMEOUT_SECONDS: ${{ vars.LLM_REQUEST_TIMEOUT_SECONDS }}
-          GEMINI_MODEL: gemini-2.5-flash
+          GEMINI_MODEL: gemini-3.8-flash
           CLAUDE_MODEL: claude-sonnet-4-6
           # 空字串 = 依 provider 自動選(deepseek → 特化結構化路徑),
           # 與排程班同一個逃生門語意。

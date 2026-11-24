@@ -56,6 +56,8 @@ MODEL_LIMITS = {
     # 未來有人看到表裡「支援」就可能重新放回 runtime。真要復活必須連同
     # 出處一起重新查證(本表自己的規則)。
     "gemini-2.5-flash": {"max_output": 65_536},
+    "gemini-3.8-flash": {"max_output": 65_536, "context": 1_048_576},   # 官方型號頁 2026-11-24
+    "gemini-3.5-flash-lite": {"max_output": 65_536, "context": 1_048_576},
     "gpt-5.6-sol": {"max_output": 128_000, "context": 1_050_000},
     "gpt-5.6-terra": {"max_output": 128_000, "context": 1_050_000},
     # `efforts` 是**實測**,不是抄文件(批#105)。官方 Models 頁面把 luna 的

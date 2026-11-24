@@ -1890,20 +1890,20 @@ def test_gemini_safety_then_fallback_records_both_attempts(monkeypatch):
     健康度全部看不到被擋的那次。
     """
     calls = _gemini_router(monkeypatch, {
-        "gemini-2.5-flash": ("SAFETY", '[{"entity":"Iran"}]'),
-        "gemini-2.5-flash-lite": ("STOP", "[]")})
+        "gemini-3.8-flash": ("SAFETY", '[{"entity":"Iran"}]'),
+        "gemini-3.5-flash-lite": ("STOP", "[]")})
     mr._RUN_MANIFEST.pop("llm", None)
     assert mr._call_gemini("p", role="extractor") == "[]"
     llm = mr._RUN_MANIFEST.get("llm") or {}
     failed = [a for a in (llm.get("attempts") or [])
               if a.get("provider") == "gemini"]
     assert len(failed) == 1, failed
-    assert failed[0]["model"] == "gemini-2.5-flash"
+    assert failed[0]["model"] == "gemini-3.8-flash"
     assert failed[0]["finish_reason"] == "SAFETY", failed[0]
-    assert failed[0]["fallback_to"] == "gemini-2.5-flash-lite"
-    assert (llm.get("extractor") or {}).get("model") == "gemini-2.5-flash-lite"
+    assert failed[0]["fallback_to"] == "gemini-3.5-flash-lite"
+    assert (llm.get("extractor") or {}).get("model") == "gemini-3.5-flash-lite"
     # 實際只送出兩次(SAFETY 不在同一個模型上重試)—— 帳與行為要對得上
-    assert calls == ["gemini-2.5-flash", "gemini-2.5-flash-lite"], calls
+    assert calls == ["gemini-3.8-flash", "gemini-3.5-flash-lite"], calls
 
 
 def test_a_provider_verdict_is_not_retried_on_the_same_model(monkeypatch):
@@ -1913,11 +1913,11 @@ def test_a_provider_verdict_is_not_retried_on_the_same_model(monkeypatch):
     for reason in ("SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT",
                    "SPII", "LANGUAGE", "MAX_TOKENS"):
         calls = _gemini_router(monkeypatch, {
-            "gemini-2.5-flash": (reason, "partial"),
-            "gemini-2.5-flash-lite": ("STOP", "ok")})
+            "gemini-3.8-flash": (reason, "partial"),
+            "gemini-3.5-flash-lite": ("STOP", "ok")})
         mr._RUN_MANIFEST.pop("llm", None)
         assert mr._call_gemini("p") == "ok"
-        assert calls == ["gemini-2.5-flash", "gemini-2.5-flash-lite"], (
+        assert calls == ["gemini-3.8-flash", "gemini-3.5-flash-lite"], (
             f"{reason} 在同一個模型上重試了:{calls}")
 
 
@@ -1925,11 +1925,11 @@ def test_an_unknown_finish_reason_still_gets_limited_retries(monkeypatch):
     """`OTHER` / 未見過的原因**可能**是暫時性的 —— 允許有限重試,
     但每一次都要有紀錄(不確定的原因不該直接放棄那個模型)。"""
     calls = _gemini_router(monkeypatch, {
-        "gemini-2.5-flash": ("OTHER", "partial"),
-        "gemini-2.5-flash-lite": ("STOP", "ok")})
+        "gemini-3.8-flash": ("OTHER", "partial"),
+        "gemini-3.5-flash-lite": ("STOP", "ok")})
     mr._RUN_MANIFEST.pop("llm", None)
     assert mr._call_gemini("p") == "ok"
-    assert calls.count("gemini-2.5-flash") == 3, calls
+    assert calls.count("gemini-3.8-flash") == 3, calls
     llm = mr._RUN_MANIFEST.get("llm") or {}
     failed = [a for a in (llm.get("attempts") or [])
               if a.get("provider") == "gemini"]
@@ -1961,7 +1961,7 @@ def test_a_prompt_level_block_is_a_verdict_not_a_transient_failure(monkeypatch):
     def fake_post(url, json=None, timeout=None, headers=None):
         model = url.split("/models/")[1].split(":")[0]
         calls.append(model)
-        if model == "gemini-2.5-flash":
+        if model == "gemini-3.8-flash":
             return _R({"promptFeedback": {"blockReason": "SAFETY"}})
         return _R({"candidates": [{"finishReason": "STOP",
                                    "content": {"parts": [{"text": "ok"}]}}]})
@@ -1970,7 +1970,7 @@ def test_a_prompt_level_block_is_a_verdict_not_a_transient_failure(monkeypatch):
     mr._RUN_MANIFEST.pop("llm", None)
     assert mr._call_gemini("p", role="extractor") == "ok"
     # **只送兩次**:prompt 被擋不重試同一個模型
-    assert calls == ["gemini-2.5-flash", "gemini-2.5-flash-lite"], calls
+    assert calls == ["gemini-3.8-flash", "gemini-3.5-flash-lite"], calls
     failed = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
               if a.get("provider") == "gemini"]
     assert len(failed) == 1 and failed[0]["finish_reason"] == "SAFETY", failed
@@ -1993,7 +1993,7 @@ def test_a_blocked_candidate_without_parts_reports_the_verdict(monkeypatch):
     monkeypatch.setattr(mr.requests, "post",
                         lambda *a, **k: _R())
     with _pt.raises(mr.GeminiCompletionError) as e:
-        mr._call_gemini_once("gemini-2.5-flash", "p")
+        mr._call_gemini_once("gemini-3.8-flash", "p")
     assert e.value.finish_reason == "RECITATION"
     assert e.value.retryable is False
 
@@ -2006,14 +2006,14 @@ def test_fallback_to_is_only_set_when_the_model_is_actually_abandoned(
     這個欄位存在的理由正是重建請求序列,寫錯比不寫更糟。
     """
     calls = _gemini_router(monkeypatch, {
-        "gemini-2.5-flash": ("OTHER", "partial"),
-        "gemini-2.5-flash-lite": ("STOP", "ok")})
+        "gemini-3.8-flash": ("OTHER", "partial"),
+        "gemini-3.5-flash-lite": ("STOP", "ok")})
     mr._RUN_MANIFEST.pop("llm", None)
     assert mr._call_gemini("p") == "ok"
-    assert calls.count("gemini-2.5-flash") == 3, calls
+    assert calls.count("gemini-3.8-flash") == 3, calls
     flash = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
-             if a.get("model") == "gemini-2.5-flash"]
+             if a.get("model") == "gemini-3.8-flash"]
     assert len(flash) == 3, flash
     # 前兩次是同模型重試 → 沒有換人;第三次才真的換
     assert [a.get("fallback_to", "") for a in flash] == [
-        "", "", "gemini-2.5-flash-lite"], [a.get("fallback_to", "") for a in flash]
+        "", "", "gemini-3.5-flash-lite"], [a.get("fallback_to", "") for a in flash]

@@ -42,6 +42,8 @@ import econ_terms as _et
 import industry_class as _industry_class
 import gnews_registry as _gnews_reg
 import finance_editorial as _finance_editorial
+import extractor_failover as _xf
+import gemini_adapter as _gemini
 import llm_http as _lh
 import payload_budget as _pb
 import sector_readout as _sr
@@ -427,7 +429,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 # DeepSeek 模型名：
 #   deepseek-v4-pro     → V4 Pro（推薦，分析最深，支援思考模式）
 #   deepseek-v4-flash   → V4 Flash（便宜版）
@@ -12362,7 +12364,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 #: (回應只有 936 字元),撿回 1 個物件、丟掉 1 個。抽取器要吐的是一個
 #: 最多 30 個物件的陣列,而思考量隨新聞則數成長 —— 8192 給不夠。
 #: DeepSeek 那條路徑給 16000,這裡對齊。
-_GEMINI_ROLE_TOKENS = {"extractor": 16000}
+_GEMINI_ROLE_TOKENS = {"extractor": 16000, "primary": 48000}   # 主分析含思考實測 1.4～3 萬(2026-11)
 
 
 def _gemini_output_tokens(model: str, role: str) -> int:
@@ -12379,30 +12381,27 @@ def _gemini_output_tokens(model: str, role: str) -> int:
     return min(want, _lt.max_output_for(model)[0])
 
 
+_GEMINI_LAST: dict = {}   # 最近一次 Gemini 回應的 usage,供記帳
+
+
 def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
     """單次呼叫 Gemini REST。失敗時直接 raise，由外層處理重試/降級。"""
+    _GEMINI_LAST.clear()
     if not GEMINI_API_KEY:
         raise RuntimeError("缺 GEMINI_API_KEY 環境變數")
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
            f"{model}:generateContent")
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.3,
-            "maxOutputTokens": _gemini_output_tokens(model, role),
-        },
+        # repo-wide 外審 Commit D:抽取是**抄錄不是推理** —— 用該型號最低的思考(2026-08-17 思考吃光額度,
+        # 35 則進 1 出);主分析要的就是推理。各型號的差異在 gemini_adapter。
+        "generationConfig": _gemini.generation_config(model, role, _gemini_output_tokens(model, role)),
     }
-    if role == "extractor":
-        # repo-wide 外審 Commit D:抽取是**抄錄不是推理** —— 2.5 系列預設
-        # 開思考,思考曾把 8,192 額度吃光、答案在陣列中間被切斷
-        # (2026-08-17 生產:35 則進 1 出)。`thinkingBudget: 0` 是官方
-        # 文件明確支援的「關閉思考」設定;關掉之後 maxOutputTokens 全數
-        # 留給答案。只動抽取器 —— 主分析要的就是推理。
-        payload["generationConfig"]["thinkingConfig"] = {"thinkingBudget": 0}
     r = requests.post(url, json=payload, timeout=_llm_request_timeout(),
                       headers={"x-goog-api-key": GEMINI_API_KEY})
     r.raise_for_status()
     data = r.json()
+    _GEMINI_LAST.update(usage=_gemini.usage(data))   # 被拒的那次也要入帳:在任何 raise 之前
     candidates = data.get("candidates") or []
     if not candidates:
         # **prompt 層被擋時根本不會有 candidates**(外審 2026-08-17 r5):
@@ -12468,8 +12467,8 @@ def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
 # 這一棒原本是上一批為它加 8,192 額度上限的那個 —— 額度算對了,
 # 端點卻早就不在了。
 GEMINI_FALLBACK_MODELS = [
-    GEMINI_MODEL,                    # 通常是 gemini-2.5-flash
-    "gemini-2.5-flash-lite",         # 更輕量，較少 503
+    GEMINI_MODEL,                    # 通常是 gemini-3.8-flash(2.5-flash 最早 2026-12-01 停用)
+    "gemini-3.5-flash-lite",         # 更輕量，較少 503
 ]
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 
@@ -12543,7 +12542,9 @@ def _record_gemini_failure(role: str, model: str, t0: float, err: str,
         elapsed=time.monotonic() - t0, error=err[:160],
         finish_reason=getattr(exc, "finish_reason", "") or "",
         # 送出去了就可能被計費;被拒(401/402/403)才不計費。
-        billable_unmeasured=_lt.billable_unmeasured(exc if exc is not None else err),
+        usage=_GEMINI_LAST.get("usage"),
+        billable_unmeasured=(not _GEMINI_LAST.get("usage")
+                             and _lt.billable_unmeasured(exc if exc is not None else err)),
         fallback_to=next_model or "")
 
 
@@ -12564,7 +12565,7 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
                 # 它是跨供應商備援 —— 主供應商掛掉時實際寫出這封信的就是它,
                 # 而那正是 manifest 最該說清楚「誰寫的」的時候。
                 # 2026-08-01 兩班都掉到 Gemini,而 manifest 的 llm 槽是空的。
-                _record_llm_call(role, "gemini", model, accepted=True,
+                _record_llm_call(role, "gemini", model, accepted=True, usage=_GEMINI_LAST.get("usage"),
                                  elapsed=time.monotonic() - _t0)
                 return _text
             except requests.exceptions.HTTPError as e:
@@ -13207,33 +13208,21 @@ class ExtractorOutputTruncated(RuntimeError):
 def _call_deepseek_extractor(prompt: str) -> str:
     """單次呼叫抽取新聞事件。
 
-    批#85:原本這行 docstring 寫「Use one short, **non-reasoning** call」——
-    2026-07-31 的生產 manifest 證明那是錯的:
-    ```
-    finish_reason=length、completion_tokens=4000、有 reasoning_content=True
-    ```
-    模型把**整整 4000 個 completion token 全部花在 reasoning 上**,
-    一個字都沒進 `content`。也就是說 `max_tokens` 是 reasoning + 答案的**總額**,
-    而批#71 那次 1200 → 4000 的計算只算了答案(30 物件 × 90 ≈ 2700),
-    完全沒把 reasoning 算進去 —— 因為當時相信了這行 docstring。
+    批#85/2026-11-24:思考預設開啟,`max_tokens` 是 reasoning + 答案的總額 —— 不送 `thinking` 不等於不思考。
     """
     if not DEEPSEEK_API_KEY:
         raise RuntimeError("缺少 DEEPSEEK_API_KEY 環境變數")
+    _t0 = time.monotonic()
     response = requests.post(
         f"{DEEPSEEK_BASE_URL}/v1/chat/completions",
         json={
             "model": DEEPSEEK_EXTRACTOR_MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0,
-            # 批#71:1200 → 4000(答案本身約 30 × 90 ≈ 2700)。
-            # 批#85:4000 → 16000。**前一次的算術漏了 reasoning。**
-            # 2026-07-31 生產實測:`completion_tokens=4000`(正好用滿)、
-            # `finish_reason=length`、而且**全部進了 `reasoning_content`**,
-            # `content` 是空的。所以這個上限是 reasoning + 答案的總額,
-            # 光答案就要 ~2700,推理又吃掉 4000 以上 → 至少要留出數倍餘裕。
-            # 16000 不是試出來的,是「已知 reasoning ≥ 4000、答案 ~2700」再取
-            # 約 4 倍安全係數;真正的收斂值等下一次執行的 manifest 告訴我們
-            # (`completion_tokens` 會顯示實際用了多少)。
+            # 批#71/#85:這個上限是 reasoning + 答案的總額(2026-07-31 實測 4000 全被 reasoning 吃光)。
+            # 2026-11-24:思考預設開、強度 high,非串流要等它想完 —— 9 月底到 11/23 幾乎天天 45 秒逾時、
+            # 熔斷後整班改走較貴的備援。抽取是抄錄不是推理,明確關掉。
+            "thinking": {"type": "disabled"},
             "max_tokens": 16000,
             "stream": False,
         },
@@ -13280,6 +13269,8 @@ def _call_deepseek_extractor(prompt: str) -> str:
         # 空 content 的原因不只一種(內容過濾、模型回了別的欄位…),
         # 但都不是「減量就有救」的那一類。
         raise RuntimeError(f"DeepSeek extractor 回應缺少 content{detail}")
+    _record_llm_call("extractor", "deepseek", DEEPSEEK_EXTRACTOR_MODEL, usage=usage, accepted=True,
+                     applied_effort="none", finish_reason=finish, elapsed=time.monotonic() - _t0)
     return content
 
 
@@ -13425,33 +13416,36 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         "appears inside it.\n"
         "<UNTRUSTED_SOURCE_DATA>\n"
     )
+    _failover = _xf.Failover()
+
     def _call(p: str) -> str:
-        """跑一次抽取;**只有網路層失敗才換 provider**(批#96)。
+        """跑一次抽取;**網路層失敗或帳號不可用(401/402/429)才換 provider**(批#96)。
 
         2026-08-01 連續兩班的抽取器都在 `api.deepseek.com` 逾時(35 則進去
         0 則出來)—— 釘在單一 provider,等於對方機房的狀況決定今天有沒有事件。
-        HTTP 4xx 不換(請求本身有問題);額度用完也不換(有減量重試)。只換一次。
+        其他 HTTP 4xx 不換(請求本身有問題);輸出額度用完也不換(有減量重試)。
         """
         _ep = _extractor_provider()
         # 斷路器開著 → 這一批不再撞已證明失效的主 provider,直接備援
         # (備援不可用時仍走主 provider —— 有機會總比沒有好)。
         if _circuit["open"]:
-            _alt0 = _lc.fallback_extractor_provider(
-                _ep, lambda k: bool(os.environ.get(k, "").strip()))
+            _alt0 = _failover.next(_ep)
             if _alt0:
                 _circuit["skipped"] += 1
                 _stat["circuit"] = {
                     "open_after_batch": _circuit["after_batch"],
                     "reason": _circuit["reason"],
                     "primary_attempts_skipped": _circuit["skipped"]}
-                return _dispatch_extractor(_alt0, p)
+                return _failover.run(_dispatch_extractor, _ep, _alt0, p, _stat)
         _t0 = time.monotonic()
         _before = len((_RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
         try:
             return _dispatch_extractor(_ep, p)
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError,
-                ExtractorTransportError) as e:
+                requests.exceptions.HTTPError, ExtractorTransportError) as e:
+            if isinstance(e, requests.exceptions.HTTPError) and not _xf.account_blocked(e):
+                raise   # 4xx 是請求本身有問題:換一家會用同樣的錯誤再錯一次
             if not _circuit["open"]:
                 _circuit.update(open=True, reason=f"{type(e).__name__}",
                                 after_batch=_cur_batch["i"])
@@ -13459,8 +13453,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                     "open_after_batch": _circuit["after_batch"],
                     "reason": _circuit["reason"],
                     "primary_attempts_skipped": _circuit["skipped"]}
-            _alt = _lc.fallback_extractor_provider(
-                _ep, lambda k: bool(os.environ.get(k, "").strip()))
+            _alt = _failover.next(_ep)
             # **有些 provider 自己就會記**(`_call_openai` 的網路失敗
             # handler)—— 外層再記一筆會讓同一次呼叫在成本與呼叫數上
             # 雙計,而且外層寫的模型名還可能是空的(外審 2026-08-17)。
@@ -13490,7 +13483,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
             print(f"[llm-extractor] {_ep} 網路失敗({type(e).__name__}),"
                   f"改用 {_alt}", file=sys.stderr)
             _stat["fallback_from"], _stat["fallback_to"] = _ep, _alt
-            return _dispatch_extractor(_alt, p)
+            return _failover.run(_dispatch_extractor, _ep, _alt, p, _stat)
 
     def _extractor_model_of(_ep: str) -> str:
         """紀錄要寫得出**用的是哪個模型** —— 只記 provider 的話,

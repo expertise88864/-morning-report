@@ -260,8 +260,8 @@ def main() -> int:
         # `DEEPSEEK_REASONING_EFFORT=max` 從來不會進 `validate_llm_config`。
         efforts={"primary": (effort if provider == "openai"
                              else _env("DEEPSEEK_REASONING_EFFORT")),
-                 # DeepSeek 抽取器(`_call_deepseek_extractor`)**不送**
-                 # thinking / reasoning_effort,所以它沒有強度可驗 ——
+                 # DeepSeek 抽取器(`_call_deepseek_extractor`)固定
+                 # 關閉 thinking,所以它沒有強度可驗 ——
                  # 套上主分析的強度只會製造假警告。
                  "extractor": (ext_effort if extractor == "openai" else "")},
         models={"primary": (model if provider == "openai"
@@ -566,7 +566,7 @@ def probe_one_provider(provider: str) -> int:
                                 "官方文件沒有列出這個值,已正規化成 high 送出",
                                 fatal=False))
     elif provider == "gemini":
-        checks = [_probe_gemini(key, _env("GEMINI_MODEL", "gemini-2.5-flash"))]
+        checks = [_probe_gemini(key, _env("GEMINI_MODEL", "gemini-3.8-flash"))]
     elif provider == "anthropic":
         checks = [_probe_anthropic(key, _env("CLAUDE_MODEL", "claude-sonnet-4-6"))]
     else:

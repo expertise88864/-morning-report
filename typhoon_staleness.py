@@ -29,7 +29,7 @@ _CLAUSE = re.compile(r"[，,。；;！!？?、／/｜|\s]+")
 
 def another_subject(title, today_only: bool = True) -> bool:
     """後面任一小句的主體不是第一句提過的名字,而且在動。`today_only`(標題日期過濾的例外)另要求寫明今／明。"""
-    head, *rest = _CLAUSE.split(str(title or "").strip())
+    head, *rest = _CLAUSE.split(re.sub(r"[「」『』“”]", "", str(title or "")).strip())
     if rest and re.fullmatch(r"[^\d]{1,6}", head) and "颱風" not in head:   # 只合併「快訊／」這種前綴
         head, rest = head + rest[0], rest[1:]
     hits = (_SECOND.match(c) for c in rest) if "颱風" in str(title) else ()
@@ -68,7 +68,7 @@ def stale(title, names: set[str]) -> bool:
     for n in names:
         m = re.match(rf"(?:[^，。！!／/｜|》】]{{0,6}}[！!／/｜|》】])?\s*"
                      rf"(?:[「『“]?{n}[」』”]?\s*颱風|颱風\s*[「『“]?{n}[」』”]?)", text)
-        if m and _LIVE.search(re.split(r"[，,。；;：:！!？?、／/｜|\s]", text[m.end():].lstrip(), maxsplit=1)[0]):
+        if m and _LIVE.search(re.split(r"[，,。；;：:！!？?、／/｜|\s]", text[m.end():].lstrip("：:｜|」』” 　"), maxsplit=1)[0]):
             return True
     return False
 

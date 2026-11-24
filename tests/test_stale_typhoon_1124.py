@@ -67,7 +67,17 @@ def test_review_pr65_mixed_title_survives_the_whole_entrance():
         news, out = q.current_inputs([{"title": same}], quotes, TODAY)
         assert news == out["NEWS_RESEARCH_SOURCES"] == [], same
     for mixed in ("薔琵颱風10月23日發布海警，薔琵登陸後減弱，海葵今逼近東部", "快訊／薔琵颱風10月23日登陸，海葵明登陸",
-                  "10月23日薔琵登陸，海葵颱風今逼近東部"):
+                  "10月23日薔琵登陸，海葵颱風今逼近東部", "薔琵颱風10月23日登陸，「海葵」今逼近東部"):
         assert q.current_inputs([{"title": mixed}], {"STORY_LEDGER": LEDGER}, TODAY)[0] == [{"title": mixed}], mixed
         _, pools = q.current_inputs([], {"STORY_LEDGER": LEDGER, "NEWS_RESEARCH_SOURCES": [{"title": mixed}]}, TODAY)
         assert pools["NEWS_RESEARCH_SOURCES"] == [{"title": mixed}], mixed
+
+
+def test_review_pr66_punctuation_after_the_name():
+    names = t.old_names(LEDGER, TODAY)
+    for title in ("薔琵颱風：新北23日停班停課", "「薔琵」颱風 停班停課一覽", "颱風「薔琵」：停班停課"):
+        assert t.stale(title, names), title
+    for title in ("薔琵颱風：農損救助受理", "薔琵颱風10月23日登陸，「海葵」今逼近東部", "薔琵颱風10月登陸，海葵逼近"):
+        assert not t.stale(title, names), title
+    same = "「薔琵」颱風10月23日發布海警，「薔琵」今晚登陸"
+    assert q.current_inputs([{"title": same}], {"STORY_LEDGER": LEDGER}, TODAY)[0] == []

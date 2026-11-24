@@ -196,7 +196,7 @@ def _ok():
 
 
 def test_review_pr66_gemini_429_reaches_the_failover(monkeypatch):
-    """走真正的 `_call_gemini`:429 不重試同型號,兩棒都沒額度就換 OpenAI;下一批不再撞。"""
+    """走真正的 `_call_gemini`:第一個 429 就換 OpenAI,不試下一個型號、不等待;下一批不再撞。"""
     _setup(monkeypatch, "gemini", "GEMINI_API_KEY", "OPENAI_API_KEY")
     posts = []
 
@@ -207,7 +207,8 @@ def test_review_pr66_gemini_429_reaches_the_failover(monkeypatch):
     monkeypatch.setattr(mr, "_llm_sleep", lambda s: pytest.fail("帳號錯誤不該等待重試"))
     monkeypatch.setattr(mr, "_call_openai", lambda p, **kw: "[]")
     mr.call_llm_event_extractor(_news(), [])
-    assert _ok() and len(posts) == 2, posts
+    assert _ok() and len(posts) == 1, posts
+    assert mr._RUN_MANIFEST["llm"]["attempts"][-1]["fallback_to"] == "openai"
 
 
 def test_review_pr66_gemini_as_the_last_backup_is_marked_dead(monkeypatch):
@@ -219,7 +220,7 @@ def test_review_pr66_gemini_as_the_last_backup_is_marked_dead(monkeypatch):
         raise _http(429) if "google" in url else requests.exceptions.ConnectionError("timeout")
     monkeypatch.setattr(mr.requests, "post", post)
     mr.call_llm_event_extractor(_news(), [])
-    assert sum("google" in u for u in posts) == 2, posts
+    assert sum("google" in u for u in posts) == 1, posts
 
 
 def test_review_pr66_primary_analysis_still_retries_429(monkeypatch):
@@ -265,22 +266,3 @@ def test_review_pr66_a_rejected_backup_is_recorded_once(monkeypatch):
     mr.call_llm_event_extractor(_news(), [])
     rows = [a for a in mr._RUN_MANIFEST["llm"]["attempts"] if a["provider"] == "deepseek"]
     assert _ok() and len(rows) == 1 and rows[0]["fallback_to"] == "gemini" and "402" in rows[0]["error"]
-
-
-@pytest.mark.parametrize("second", [404, 429, "timeout"])
-def test_review_pr66_a_later_error_does_not_hide_the_account_error(monkeypatch, second):
-    """Flash 429、Flash Lite 別的錯誤:仍要換 OpenAI,下一批不再撞 Gemini。"""
-    _setup(monkeypatch, "gemini", "GEMINI_API_KEY", "OPENAI_API_KEY")
-    posts = []
-
-    def post(url, **kw):
-        posts.append(url)
-        if "lite" not in url:
-            raise _http(429)
-        raise requests.exceptions.ReadTimeout("t") if second == "timeout" else _http(second)
-    monkeypatch.setattr(mr.requests, "post", post)
-    monkeypatch.setattr(mr, "_llm_sleep", lambda s: None)
-    monkeypatch.setattr(mr, "_call_openai", lambda p, **kw: "[]")
-    mr.call_llm_event_extractor(_news(), [])
-    assert _ok() and sum("lite" not in u for u in posts) == 1, posts
-    assert mr._RUN_MANIFEST["llm"]["attempts"][-1]["fallback_to"] == "openai"

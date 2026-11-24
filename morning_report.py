@@ -12556,7 +12556,6 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
     任何模型成功就回傳；全部失敗才 raise。
     """
     last_err: Optional[Exception] = None
-    blocked: Optional[Exception] = None   # 第一個帳號錯誤:不可被下一個型號的錯誤蓋掉(外審 PR #66)
     for model in GEMINI_FALLBACK_MODELS:
         for attempt in range(1, 4):
             try:
@@ -12583,11 +12582,11 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
                 # 重建請求序列,寫錯比不寫更糟。
                 _blocked = role == "extractor" and _xf.account_blocked(e)
                 _will_retry = code in RETRY_STATUS_CODES and attempt < 3 and not _blocked
-                if _blocked:
-                    blocked = blocked or _xf.AccountBlocked(str(last_err), code)
                 _record_gemini_failure(
                     role, model, _t0, str(last_err), exc=e,
-                    next_model="" if _will_retry else _next_gemini(model))
+                    next_model="" if _will_retry or _blocked else _next_gemini(model))
+                if _blocked:   # 時間留給換手:不試下一個型號、不等待,帶著狀態碼交出去(外審 PR #66)
+                    raise _xf.AccountBlocked(str(last_err), code) from None
                 if _will_retry:
                     wait = 5 * (3 ** (attempt - 1))   # 5, 15, 45
                     print(f"[llm] HTTP {code} 暫時故障，{wait}s 後重試", file=sys.stderr)
@@ -12608,8 +12607,6 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
                     _llm_sleep(5)
                     continue
                 break
-    if blocked is not None:
-        raise blocked   # 帶著狀態碼,換手層才接得到
     if isinstance(last_err, (requests.exceptions.Timeout,
                              requests.exceptions.ConnectionError)):
         # 最後一棒也是傳輸層失敗 → 翻成中立型別,斷路器才接得到

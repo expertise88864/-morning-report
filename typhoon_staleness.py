@@ -25,6 +25,12 @@ _SECOND = re.compile(r"[，,。；;！!？?、／/｜|\s][一-鿿]{2,4}?(?:今|�
                      r"(?:逼近|來襲|侵襲|侵台|撲|登陸|生成|增強|直襲)")
 
 
+def another_subject(title) -> bool:
+    """颱風標題的後面小句另有主體在動:前句的日期只是背景,不代表整則是舊聞。"""
+    text = str(title or "")
+    return "颱風" in text and bool(_SECOND.search(text))
+
+
 def _dated(ledger, today: dt.date) -> list[str]:
     """21 天前(含)就收到的颱風標題。線索的 headline 會換成後續報導,只有 timeline 的 d/t 是成對的(外審 PR #65)。"""
     heads = []
@@ -50,7 +56,7 @@ def stale(title, names: set[str]) -> bool:
     """主體就是舊颱風:名字在標題開頭(前面最多一小段「快訊／」)、全句只提這一個颱風,而且現況詞就在
     那一小句裡(「薔琵颱風上月擦過台灣，海葵今逼近」的「逼近」不是在講薔琵;外審 PR #65)。"""
     text = str(title or "")
-    if _AFTER.search(text) or _OTHER.search(text) or _SECOND.search(text):
+    if _AFTER.search(text) or _OTHER.search(text) or another_subject(text):
         return False
     if text.replace("颱風假", "").replace("颱風天", "").count("颱") != 1:
         return False

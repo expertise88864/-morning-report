@@ -56,9 +56,10 @@ _NOT_A_DATE = re.compile(
 def stale_title_date(title, today) -> bool:
     """「薔琵颱風24日颱風假資訊…」(10-29 收到、RSS 發布時間是 10-28):標題日期 5 天前 → 舊聞。"""
     import datetime as dt
+    import typhoon_staleness
     text = str(title or "")
     m = _TITLE_DAY.search(text)
-    if not m or _FUTURE.search(text) or _NOT_A_DATE.search(text):
+    if not m or typhoon_staleness.another_subject(text) or _FUTURE.search(text) or _NOT_A_DATE.search(text):
         return False
     try:   # 只認同年內「已經過去」的日期;比今天晚的一律當作還沒發生(「聯發科30日法說」)
         event = dt.date(today.year, int(m[1] or today.month), int(m[2]))

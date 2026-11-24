@@ -52,3 +52,11 @@ def test_review_pr65_old_story_with_a_new_headline_is_not_old_evidence():
     rows = [dict(_row(h, "2026-10-01"), timeline=[{"d": "2026-10-01", "t": "防颱整備"}, {"d": "2026-11-23", "t": h}])
             for h in ("「海葵」颱風逼近", "海葵颱風路徑", "海葵颱風停班停課")]
     assert t.old_names(rows, TODAY) == set()
+
+
+def test_review_pr65_mixed_title_survives_the_whole_entrance():
+    title = "薔琵颱風10月23日登陸，海葵今逼近東部"
+    quotes = {"STORY_LEDGER": LEDGER, "NEWS_RESEARCH_SOURCES": [{"title": title}]}
+    news, out = q.current_inputs([{"title": title}], quotes, TODAY)
+    assert news == out["NEWS_RESEARCH_SOURCES"] == [{"title": title}]
+    assert q.stale_title_date("薔琵颱風10月23日停班停課一覽", TODAY), "單純的舊日期照擋"

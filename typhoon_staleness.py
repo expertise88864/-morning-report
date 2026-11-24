@@ -43,14 +43,19 @@ def old_names(ledger, today: dt.date) -> set[str]:
 
 
 def stale(title, names: set[str]) -> bool:
-    """主體就是舊颱風:名字在標題開頭(前面最多一小段「快訊／」),而且全句只提這一個颱風。"""
+    """主體就是舊颱風:名字在標題開頭(前面最多一小段「快訊／」)、全句只提這一個颱風,而且現況詞就在
+    那一小句裡(「薔琵颱風上月擦過台灣，海葵今逼近」的「逼近」不是在講薔琵;外審 PR #65)。"""
     text = str(title or "")
-    if not _LIVE.search(text) or _AFTER.search(text) or _OTHER.search(text):
+    if _AFTER.search(text) or _OTHER.search(text):
         return False
     if text.replace("颱風假", "").replace("颱風天", "").count("颱") != 1:
         return False
-    return any(re.match(rf"(?:[^，。！!／/｜|》】]{{0,6}}[！!／/｜|》】])?\s*"
-                        rf"(?:[「『“]?{n}[」』”]?\s*颱風|颱風\s*[「『“]?{n})", text) for n in names)
+    for n in names:
+        m = re.match(rf"(?:[^，。！!／/｜|》】]{{0,6}}[！!／/｜|》】])?\s*"
+                     rf"(?:[「『“]?{n}[」』”]?\s*颱風|颱風\s*[「『“]?{n}[」』”]?)", text)
+        if m and _LIVE.search(re.split(r"[，,。；;：:！!？?、／/｜|\s]", text[m.end():].lstrip(), maxsplit=1)[0]):
+            return True
+    return False
 
 
 def drop(quotes: dict, today: dt.date):

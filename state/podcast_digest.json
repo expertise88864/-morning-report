@@ -7852,6 +7852,66 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "0211081a-5243-4c18-ac57-e7ece5cac75d",
+        "title": "CrowdStrike CEO: AI Cyberattack Wave, Hyperspeed Hacks, & The Patching Problem",
+        "published": "Tue, 24 Nov 2026 02:30:00 +0000",
+        "processed_at": "2026-11-24T19:10:00Z",
+        "digest": {
+          "summary_points": [
+            "AI 讓漏洞發現量爆炸：Kurtz 指出今年新增的 CVE 約 17,000 個、佔史上所有 CVE 的四分之一，10 月對 10 月成長 300%，而且 AI 能把多個「低風險」漏洞串成可遠端執行的致命攻擊鏈；企業因此陷入他所說的 break or breach（補破網或等著被駭）二選一。",
+            "Kurtz 判斷近期 Microsoft、FAA、Chase 等大規模服務中斷多數不是駭客攻擊，而是企業在機器速度下趕著打補丁引發的二階災難；在他看來，這是過去 25 至 30 年累積的技術債帳單到期，未來「排定停機」將從禁忌變成常態。",
+            "「代理人國家」成新頂級掠食者：Kurtz 說自主攻擊框架（ATS）不到 3 小時就能完整攻陷一家公司，已衍生超過 12,000 個 fork，曾用來攻擊韓國銀行，國家級能力如今下放到駭客行動主義者與網路犯罪者，等於「量產對手、民主化毀滅」。",
+            "防禦方拿不到前沿模型是最關鍵缺口——Hugging Face 事件中防禦方得轉用中國模型才看得懂發生什麼事，Kurtz 因此主張把前沿 AI 交到防禦方手上；他認為這波壓力會迫使金融、醫療、關鍵基礎設施加速現代化，對資安產業是催化劑。",
+            "開源／開放權重模型：企業為了省成本與追求 AI、資料主權，將自建並後訓練模型，再把難題路由到前沿模型；兩人預測多數 token 終究跑在開源模型上，本地端 AI 用量未來會「off the charts」，並帶動邊緣推論需求。",
+            "Kurtz 看好 Apple 在本地 AI 的商機，認為工程背景的新經營層會抓住 Mac Studio 這類可跑大型模型的桌機機會，並明說自己已買進 Apple 股票。他也強調沒有「完美程式碼」這回事，即使漏洞歸零仍會有身分驗證與帳號被盜問題，攻防 AI 互相對衝的紅藍循環會是長期常態。"
+          ],
+          "tickers": [
+            {
+              "name": "CrowdStrike",
+              "code": "CRWD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "Kurtz 認為漏洞暴增與強制現代化將成為資安需求的催化劑，客戶已把這波事件視為重啟現代化預算的理由。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Kurtz 認為 Apple 在本地 AI／AI 主權的桌機商機上會大放異彩，並表示自己已買進股票。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "And by the way, I think Apple is going to kill it. Like I think I'm going to kill it on this. You know, to me, it's going to be a great opportunity and investment for them. I literally have bought the stock",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "So essentially, you know, you're minting more adversaries and you're democratizing destruction.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "So essentially, you know, you're minting more adversaries and you're democratizing destruction."
+          },
+          "direction_quality": {
+            "attributed": 1,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "87f8e24a-476f-4565-88fb-9e5ee7549ece",
         "title": "Anthropic Goes Public, Nvidia in Crisis, Markets Tank, Open Source Crackdown?",
         "published": "Fri, 20 Nov 2026 22:14:00 +0000",
@@ -8575,29 +8635,6 @@
           "notable_quote": "The AIs are going to start reading all of the things that our leading physicists have laughed at. Look out."
         },
         "shown_at": "2026-08-27T23:56:23Z"
-      },
-      {
-        "guid": "64b534f7-b272-4bb8-9238-96055f4fa858",
-        "title": "Michael Kratsios: Trump's Science Agenda, Anti-Science Claims, Fauci's Damage, DEI & China",
-        "published": "Mon, 24 Aug 2026 23:19:00 +0000",
-        "processed_at": "2026-08-25T03:21:39Z",
-        "digest": {
-          "summary_points": [
-            "主持人與白宮科技政策辦公室主任 Michael Kratsios 對談，Kratsios 認為美國科研經費使用效率低落，NIH 預算自1998年至今成長3倍，但突破性療法並未等比例增加，指出「Eroom定律」使每9年投資效率減半。",
-            "Kratsios 批評 NSF 約25%的經費用於 DEI 相關計畫，等於每年浪費約20億美元，主張回歸「金標準科學」，將資源投入真正的基礎研究。",
-            "Kratsios 明確表示「氣候變遷是真實的、人類有貢獻」，但否認「氣候緊急狀態」，並指出最極端的 RCP8.5 情境已被 IPCC 撤回，認為政府應把焦點轉向投資核能、核融合等能源技術。",
-            "Kratsios 提出科研資助改革方向，包括「黃金門票」機制讓審查者能單獨支持高風險計畫，以及不同期限的補助，並強調應以個人科學家為核心而非機構。",
-            "Kratsios 指出美國本土 STEM 人才流失，30年前電腦科學博士70%是美國人，如今已反轉，需加強本土 STEM 教育並吸引全球頂尖人才留在美國。",
-            "政府將透過大型計畫重拾主導性，包含2028年重返月球、2028年打造科學級量子電腦、2035年核融合目標，以及運用 AI 加速科學發現的「Genesis 任務」。",
-            "Kratsios 認為中國中央計畫式科研雖然效率高，但美國自由市場與多元機構競爭的模式仍是最大優勢，政府只需專注補足基礎研究缺口。",
-            "NIH 內部研究員中位年齡高達71歲，凸顯年輕科學家斷層，Kratsios 暗示將有針對 NIH 的改革措施以吸引新血。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "Kratsios 主張政府科研資金應從「補助機構」轉向「直接支持個人科學家」，並透過實驗性機制（如黃金門票）提高資金使用效率；對市場而言，政府將集中資源於量子、核融合、太空與 AI 科研基礎建設，相關產業可能受惠。",
-          "notable_quote": "We have to win on things like on AI, on quantum, on nuclear, on bio."
-        },
-        "shown_at": "2026-08-25T22:35:08Z"
       }
     ]
   },

@@ -265,3 +265,22 @@ def test_review_pr66_a_rejected_backup_is_recorded_once(monkeypatch):
     mr.call_llm_event_extractor(_news(), [])
     rows = [a for a in mr._RUN_MANIFEST["llm"]["attempts"] if a["provider"] == "deepseek"]
     assert _ok() and len(rows) == 1 and rows[0]["fallback_to"] == "gemini" and "402" in rows[0]["error"]
+
+
+@pytest.mark.parametrize("second", [404, 429, "timeout"])
+def test_review_pr66_a_later_error_does_not_hide_the_account_error(monkeypatch, second):
+    """Flash 429、Flash Lite 別的錯誤:仍要換 OpenAI,下一批不再撞 Gemini。"""
+    _setup(monkeypatch, "gemini", "GEMINI_API_KEY", "OPENAI_API_KEY")
+    posts = []
+
+    def post(url, **kw):
+        posts.append(url)
+        if "lite" not in url:
+            raise _http(429)
+        raise requests.exceptions.ReadTimeout("t") if second == "timeout" else _http(second)
+    monkeypatch.setattr(mr.requests, "post", post)
+    monkeypatch.setattr(mr, "_llm_sleep", lambda s: None)
+    monkeypatch.setattr(mr, "_call_openai", lambda p, **kw: "[]")
+    mr.call_llm_event_extractor(_news(), [])
+    assert _ok() and sum("lite" not in u for u in posts) == 1, posts
+    assert mr._RUN_MANIFEST["llm"]["attempts"][-1]["fallback_to"] == "openai"

@@ -218,6 +218,7 @@ MODULE_CEILINGS = {
     "scenario_window.py": 85,
     "sports_quality.py": 85,
     "card_curation.py": 270,   # 新聞卡主角/主題去重/產業輪替/影響標的節制(2026-10-27)
+    "typhoon_staleness.py": 70,   # 舊颱風現況被重新收錄(2026-11-24)
     "news_staleness.py": 55,   # 資料月份過舊的新聞(2026-11-10)
     "daily_chart.py": 95,   # 今日一圖(2026-11-10)
     "us_quote_backup.py": 70,   # 美股日線備用來源 Nasdaq(2026-11-12)
@@ -248,7 +249,7 @@ MODULE_CEILINGS = {
     "email_style_dictionary.py": 210,
     "email_syntax_compact.py": 130,
     "reader_fact_labels.py": 65,
-    "news_display_quality.py": 126,   # +標題日期過期、補充池與例行公告(2026-10-29)
+    "news_display_quality.py": 128,   # +標題日期過期、補充池與例行公告(2026-10-29)
     "news_memory_selection.py": 60,
     "news_memory.py": 330,
     "news_research_context.py": 310,

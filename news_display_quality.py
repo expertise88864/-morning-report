@@ -24,12 +24,14 @@ def current_inputs(news: list | None, quotes: dict | None, today, universe=None)
     觀測站的例行小額公告(取得設備、增資子公司…)也在這裡拿掉(使用者 2026-10-29);
     生技公司沒有新藥／藥證／解盲這類重大進展的新聞與公告也不進(使用者 2026-10-30)。"""
     import announcement_filter as af
+    import typhoon_staleness
+    q = dict(quotes or {})
+    old_typhoon = typhoon_staleness.drop(q, today)   # 舊颱風的停班課、路徑被重新收錄(11-24 實信)
     caps, kinds = af.market_caps(universe), af.industries(universe)
 
     def keep(rows):
-        return [n for n in without_forum_posts(rows, today) if not af.biotech_minor(n, kinds)
+        return [n for n in without_forum_posts(rows, today) if not old_typhoon(n) and not af.biotech_minor(n, kinds)
                 and not (str(n.get("source") or "") == "MOPS" and af.routine(n, caps))]
-    q = dict(quotes or {})
     if isinstance(q.get("NEWS_RESEARCH_SOURCES"), list):
         q["NEWS_RESEARCH_SOURCES"] = keep(q["NEWS_RESEARCH_SOURCES"])
     if isinstance(q.get("AI_MODELS"), dict) and isinstance(q["AI_MODELS"].get("news"), list):

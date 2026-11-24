@@ -66,5 +66,8 @@ def test_review_pr65_mixed_title_survives_the_whole_entrance():
         quotes = {"STORY_LEDGER": LEDGER, "NEWS_RESEARCH_SOURCES": [{"title": same}]}
         news, out = q.current_inputs([{"title": same}], quotes, TODAY)
         assert news == out["NEWS_RESEARCH_SOURCES"] == [], same
-    for mixed in ("薔琵颱風10月23日發布海警，薔琵登陸後減弱，海葵今逼近東部", "快訊／薔琵颱風10月23日登陸，海葵明登陸"):
+    for mixed in ("薔琵颱風10月23日發布海警，薔琵登陸後減弱，海葵今逼近東部", "快訊／薔琵颱風10月23日登陸，海葵明登陸",
+                  "10月23日薔琵登陸，海葵颱風今逼近東部"):
         assert q.current_inputs([{"title": mixed}], {"STORY_LEDGER": LEDGER}, TODAY)[0] == [{"title": mixed}], mixed
+        _, pools = q.current_inputs([], {"STORY_LEDGER": LEDGER, "NEWS_RESEARCH_SOURCES": [{"title": mixed}]}, TODAY)
+        assert pools["NEWS_RESEARCH_SOURCES"] == [{"title": mixed}], mixed

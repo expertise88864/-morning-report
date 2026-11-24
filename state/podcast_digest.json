@@ -8625,6 +8625,135 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "f84656ef-8e60-46e7-8de9-78e9f91b8dec",
+        "title": "NVDA Earnings, Ecosystem Analysis, Anthropic IPO",
+        "published": "Mon, 23 Nov 2026 09:44:04 -0800",
+        "processed_at": "2026-11-24T01:12:26Z",
+        "digest": {
+          "summary_points": [
+            "Nvidia 財報本身無懈可擊：主持人指出公司把明年營收成長指引上調到 75%、加碼供應鏈承諾、指引上調約 50 億美元，但股價隔天照樣下跌，因為所有人只在乎 CEO 是誰；主持人認為結構性需求與技術藍圖沒變，可是「棋盤」在沒有 Jensen 的情況下必須重畫，因此把 NVDA 降到觀望、認為未來六個月以上的不確定性本身不會構成催化劑。",
+            "新雲（neocloud）是這波最大的壓力點：主持人解讀 Nvidia 法說會訊號是信用條件轉嚴、資金從新創 neocloud 轉向大型或二線業者，等於「AI 央行」角色減弱；加上利率上升與信用投資人對 neocloud 資本結構的疑慮，主持人預測目前 200 多家 GPU 即服務業者絕大多數會被整併淘汰。",
+            "主持人認為這場合併的真正贏家是大型雲端業者：neocloud 退場後，hyperscaler 可用折扣價接手土地、電力與機殼、拿到更有利的 GPU 配額，資本支出效率反而變好；並預告 AWS re:Invent 會端出近年最看多的企業需求論調，這種信心與 Nvidia 的不確定性形成強烈對比，會繼續壓抑 Nvidia 的市場情緒。",
+            "終端需求仍有疑問：Jay 說他無法判斷 AI 終端需求到底多大，因為很大一部分其實來自 OpenAI、尤其是 Amazon 轉售 Anthropic，若 Anthropic 自己蓋資料中心，其他地方的訂單可能被抽走；Ben 補上一刀，指 neocloud 的 GPU 需求主要來自訓練，一旦轉向推論，真正的推論雲只有 hyperscaler，這對賣通用 GPU 的業者與半導體議價能力都不利。",
+            "Anthropic 上市的表現驗證了市場情緒轉向：發行價 83 美元、首日最高 104、收 93，之後回落至 84 附近幾乎貼著發行價；主持人認為季增率從 140% 掉到 40–50% 又沒解釋清楚（明明可以說是算力不夠）最傷信心，且公開市場要面對會做空的敵意投資人，與過去只面對創投的環境完全不同；並引用 Evercore 的「guilty until proven durable」形容現在的零信心狀態。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報與 75% 成長指引都很好，但 CEO 人選未定使主持人把評等降到觀望，認為投資人短期不會有任何信心。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I am firmly in the camp that, again, you look at the chessboard one way with a Jensen run NVIDIA. You look at the chessboard another way with someone else running NVIDIA. And that's going to change your competitive landscape.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "首日衝高後回落、幾乎貼住發行價，主持人認為成長減速沒有解釋清楚，加上 AI 情緒反轉，很難對抗大盤氣氛。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I'm a little surprised I think there was a lot more interest in it. It sounded to me like the book the underwriters did was very concentrated and that may have left a bad taste in some people's mouth.",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "CoreWeave",
+              "code": "CRWV",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人指新雲陣營在利率上升與信用投資人檢視下已開始緊張，Nvidia 融資條件轉嚴對其最不利。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "the neoclouds were already starting to feel a little nervous because you had interest rates increasing. And then you had growing scrutiny from credit investors for all these different deals out there.",
+                "direction": "bearish"
+              }
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人預測 AWS re:Invent 將釋出近年最強烈的企業需求論調，是新雲整併下最有優勢的大者。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "I absolutely guarantee you is going to come off with the most bullish tone of enterprise demand for AWS infrastructure we have seen in the last few years.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Dell",
+              "code": "DELL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人稱 Dell 對客戶做嚴格盡調、是 GPU 出貨的品質標竿，無法從 Dell 拿到貨本身就是一種訊號。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "Dell remains the gold standard of demand for GPUs from everybody we talk to because of their quality and because of their support.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Palo Alto Networks",
+              "code": "PANW",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為資安會是最快讓市場重拾信心的題材，並以 Palo Alto 這一季的財報表現當作佐證。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "It's going to be cybersecurity because Palo Alto absolutely crushed it.",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "CrowdStrike",
+              "code": "CRWD",
+              "market": "US",
+              "direction": "unknown",
+              "reason": "主持人說其需求看起來「爆表」，並把資安列為 2027 年的布局主題。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "unverified",
+                "quote": "",
+                "direction": ""
+              }
+            }
+          ],
+          "market_view": "主持人認為市場正在重設預期：企業看到的是 2028–29 年的建置潮，街頭卻以為会更早，這個時間差正好解釋「公司很樂觀、投資人很悲觀」的落差；年底前缺乏催化劑，下一個觀察點是 Nvidia 新 CEO 何時公布。",
+          "action_view": "把 NVDA 由看多降為觀望、等 CEO 定案再重估；機構資金會回流但不一定回到過去兩年的同一批標的；Ben 點名 2027 年的布局主題是資安。",
+          "notable_quote": "Nvidia had reported incredible numbers and no one cared. Right. That's the headline. And the stock was down the next day.",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "Nvidia had reported incredible numbers and no one cared. Right. That's the headline. And the stock was down the next day."
+          },
+          "direction_quality": {
+            "attributed": 6,
+            "non_investment": 0,
+            "unverified": 1,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "8d7490d5-bfbf-4ee5-b1d8-a75c1c862e77",
         "title": "Jensen Huang Resigns: NVIDIA's Succession Crisis and the Fate of the AI Supply Chain",
         "published": "Thu, 12 Nov 2026 19:45:53 -0800",
@@ -9735,44 +9864,6 @@
           "notable_quote": "We've turned over every rock. We've searched under every cushion couch and we know where all the bottlenecks are. So then what, what do we do now?"
         },
         "shown_at": "2026-09-07T23:53:51Z"
-      },
-      {
-        "guid": "bd8c2709-7cb6-4766-9a80-24b591f4bdb0",
-        "title": "EP 189: NVIDIA and Marvell Earnings, Hot Chips Hot Takes",
-        "published": "Mon, 31 Aug 2026 09:00:01 -0700",
-        "processed_at": "2026-08-31T23:25:59Z",
-        "digest": {
-          "summary_points": [
-            "Nvidia 給出下一會計年度營收成長至少 70% 的指引,高於市場預期,並表示若產能足夠可望更高,顯示 AI 需求極度強勁。",
-            "Nvidia 毛利率預估從 75% 降至 72%,主因記憶體成本上漲,即便漲價也無法完全轉嫁,凸顯記憶體供應商的定價權提升。",
-            "Nvidia 開始運用資產負債表大規模融資與投資供應鏈(規模達數百億美元),以扶持生態系,這是新的競爭優勢但伴隨反壟斷與財務風險。",
-            "Nvidia 對超大規模客戶的銷售模式開始從整櫃轉為零組件(如 CPU+GPU),使得營收與毛利率建模更複雜。",
-            "Marvell 財報後股價大跌,因其 60% 營收成長遜於 Nvidia 的 70%,遭市場解讀為流失市佔;但主持人認為其專注 XPU attach 的策略正確。",
-            "Marvell 與 Google 的 120 億美元潛在交易缺乏轉化時間表,是市場失望主因;主持人仍抱持樂觀,認為將在投資人日有更多細節。",
-            "Hot Chips 顯示 AI 推論架構進入「era of ferment」,各家在記憶體、ASIC 與軟體路徑上激烈分歧,未來標準化方向不明,投資難度提高。",
-            "記憶體廠商轉向客製化 HBM base die,雖能優化效能,但將使記憶體成本上升、互換性下降,並可能造成同一 GPU 搭配不同記憶體時的性能差異。"
-          ],
-          "tickers": [
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為其需求強勁、成長展望佳,但供應鏈受限與毛利率壓力是隱憂。"
-            },
-            {
-              "name": "Marvell",
-              "code": "MRVL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人肯定其 XPU attach 策略與 Google 合約潛力,但成長遜於 Nvidia 且缺乏細節,短期觀望。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Nvidia is most incentivized to help Intel execute here and that they are customer zero cleaning the pipe for Intel the same way that Apple did for TSMC."
-        },
-        "shown_at": "2026-09-01T00:28:37Z"
       }
     ]
   },

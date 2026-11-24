@@ -30,7 +30,7 @@ _CLAUSE = re.compile(r"[，,。；;！!？?、／/｜|\s]+")
 def another_subject(title, today_only: bool = True) -> bool:
     """後面任一小句的主體不是第一句提過的名字,而且在動。`today_only`(標題日期過濾的例外)另要求寫明今／明。"""
     head, *rest = _CLAUSE.split(str(title or "").strip())
-    if rest and re.fullmatch(r"[^\d]{1,6}", head) and "颱" not in head:   # 只合併「快訊／」這種前綴
+    if rest and re.fullmatch(r"[^\d]{1,6}", head) and "颱風" not in head:   # 只合併「快訊／」這種前綴
         head, rest = head + rest[0], rest[1:]
     hits = (_SECOND.match(c) for c in rest) if "颱風" in str(title) else ()
     return any(m and m[1][:2] not in head and (not today_only or re.search(r"今|明", m[2])) for m in hits)

@@ -3,6 +3,79 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "3da75e11-4344-41d7-be41-55d516ec4991",
+        "title": "EP717 | 🦪",
+        "published": "Wed, 25 Nov 2026 07:57:33 GMT",
+        "processed_at": "2026-11-25T10:54:24Z",
+        "digest": {
+          "summary_points": [
+            "主持人判斷黃仁勳回任消除光通、先進散熱、CCL 等 roadmap 不確定性，但政治調查與 BIS 對中算力管制不變、甚至加劇，市場仍要面對 push out 與訂單取消的震盪。",
+            "主持人認為供應鏈「漲價故事」可能結束：長料因 push out 重新議價、ASP 下修；連記憶體 NAND 現貨價已跌、DRAM 稍撐，已反應過漲價的 bottleneck 個股要避開。",
+            "主持人自己買的設備股本益比從 10 倍跌到 5 倍仍被通殺，但他用「EPS 是否依賴 ASP 續漲」當濾網，認為被錯殺的 value-add／roadmap 受惠股反彈時有機會先站起來。",
+            "主持人認為 AI 反彈後下一個帶盤題材不明：衛星股也跌需三思，台股資安股市值太小無法帶大盤；他長期持有 Cloudflare、CrowdStrike 等美股資安股，但買不下台股資安股。",
+            "主持人認為接下來的重點是 Elon Musk：SpaceX 與 Tesla 合併可能提前，衛星 AI、機器人可能是救世主；xAI/SpaceX 算力租賃降價應是短期，但若 Neo Cloud 價格跌破 4-5 美元可能引爆，最終馬斯克受惠。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為黃仁勳回任降低 roadmap 不確定性，但政治調查與 BIS 對中管制風險仍在，股價方向不明。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "他回到公司就代表,我覺得公司對於未來的一些前瞻科技的推進,應該就是稍微的把不確定性給消滅掉了",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Cloudflare",
+              "code": "NET",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人自述美股資安股長期持有，認為資安是全球服務，台股資安股自己買不太下去。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "資安股其實對,美股我已經長期爆了嘛,像叫做Cloudflare或是CrossTri,他們都是資安嘛",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "CrowdStrike",
+              "code": "CRWD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人自述美股資安股長期持有，認為資安是全球服務，台股資安股自己買不太下去。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "資安股其實對,美股我已經長期爆了嘛,像叫做Cloudflare或是CrossTri,他們都是資安嘛",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為目前是修正而非真正的 Armageddon，直接 A 下去的機率偏低；預期先修正、反彈，之後才可能迎來真正的暴跌，因此要提前規劃、槓桿不能太高。",
+          "action_view": "主持人操作思路：先縮小部位、回防最核心持股，避開已反應漲價的 components；反彈後減碼 bottleneck 漲價股，改挑被錯殺的 value-add／roadmap 受惠股；不開高槓桿，確保自己活到反彈。",
+          "notable_quote": "即便現在外面的盤面是不太好,即便現在看起來有點像是Armageddon,就是那種大爆炸,但我自己心中其實覺得應該不是這一波啦,我自己感覺就是直接那種A下去的機率,要我去猜的話我覺得還是會偏低一點,就是真正的Armageddon可能還沒有來,應該是這波是一個修正,然後接著會有一些recovery,然後接著就是真正的Armageddon,就如果要我猜會是這樣",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "即便現在外面的盤面是不太好,即便現在看起來有點像是Armageddon,就是那種大爆炸,但我自己心中其實覺得應該不是這一波啦,我自己感覺就是直接那種A下去的機率,要我去猜的話我覺得還是會偏低一點,就是真正的Armageddon可能還沒有來,應該是這波是一個修正,然後接著會有一些recovery,然後接著就是真正的Armageddon,就如果要我猜會是這樣"
+          },
+          "direction_quality": {
+            "attributed": 3,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "9518e365-fb3b-498b-a7f7-fc1c56b33371",
         "title": "EP716 | 🍒",
         "published": "Sat, 21 Nov 2026 06:39:15 GMT",
@@ -748,52 +821,6 @@
           }
         },
         "shown_at": "2026-10-17T22:09:38Z"
-      },
-      {
-        "guid": "8d310d75-919d-4cc9-9530-75ac4dd6a7b9",
-        "title": "EP705 | 🎀",
-        "published": "Wed, 14 Oct 2026 07:28:22 GMT",
-        "processed_at": "2026-10-14T13:48:40Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為目前大盤仍會緩步創高但非常震盪，操作上應「反動能」：逢亂殺時撿、逢亂衝時丟，並避開人多的熱門區域，績效才能慢慢墊高。",
-            "主持人分享設備股中，基本面最強的一線股常因籌碼太擁擠而利多不漲，反而 tier 2/tier 3 的題材股漲幅驚人；他不會重倉擁擠標的，會等超預期數字或洗籌碼後再介入。",
-            "主持人舉量化交易者為例，其 AI token 明年預算翻倍但股票部位卻很低，並以自身用 AI 快速研究衛星板、HBM 等陌生領域的經驗，認為 AI 確實有生產力價值，不同意「企業找不到 ROI」的悲觀論調。",
-            "主持人提醒記憶體是市場最缺、最漲價的族群卻相對弱勢，若後續財報無法帶動，要小心漲價題材；市場可能從交易供應鏈瓶頸轉向尋找真正能產出價值的公司。",
-            "主持人認為看到強勢股後去追買同族群弱勢股只是蹭題材而非眼光，若弱勢股未跟漲代表理論錯誤，應修正或賣出；他以信昌電/華新科、大立光/玉晶光等案例說明。"
-          ],
-          "tickers": [
-            {
-              "name": "Broadcom",
-              "code": "AVGO",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為以明年 EPS 推算本益比僅約十倍多，受惠漲價與供不應求；但強調若股價未持續上漲不會再加碼，買到一定限度即停。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "Broadcom的話,我怎麼算都覺得說它只有10倍多一點而已,就是用明年的EPS來推算的話,因為有一些漲價的故事在發生,或是說一些供不應求的情形,所以理論上它是DPE的東西,那你說這種東西我就會多配一點嘛,也不一定啦,就它如果沒有持續的上漲,我就不會再去做更多的加碼,就會買到一個限度就去停了",
-                "direction": "bullish"
-              }
-            }
-          ],
-          "market_view": "主持人認為大盤仍會緩步創高但波動極大，應以反動能操作：逢亂殺撿、逢亂衝丟，避開人多的熱門區域。另外，若最缺最漲的記憶體族群後續財報無法轉強，需留意市場從漲價題材轉向真正能產出價值的公司。",
-          "action_view": "主持人目前操作偏向反動能、低接高拋，不重倉擁擠的設備股；對 Broadcom 這類低本益比但需股價續漲確認的標的，會買到一定限度就停，不預設立場。",
-          "notable_quote": "這個盤其實不難做,就是只要每次有人亂丟的時候你就撿起來,然後下次大家亂衝的時候,你就可以適當的丟一點出來",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "這個盤其實不難做,就是只要每次有人亂丟的時候你就撿起來,然後下次大家亂衝的時候,你就可以適當的丟一點出來"
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 0,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-15T00:28:23Z"
       }
     ]
   },

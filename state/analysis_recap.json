@@ -289,7 +289,7 @@
    "watch_id": "w100",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-25",
+   "last_reviewed": "2026-11-26",
    "deadline": "2026-11-27"
   },
   {
@@ -301,32 +301,8 @@
    "watch_id": "w101",
    "status": "open",
    "created": "2026-10-30",
-   "last_reviewed": "2026-11-24",
+   "last_reviewed": "2026-11-26",
    "deadline": "2026-11-27"
-  },
-  {
-   "trigger": "外資台指期淨空 -99,219 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 26,547 張轉為買超（觀察期：5 天內）",
-   "trigger_full": "外資台指期淨空 -99,219 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 26,547 張轉為買超（觀察期：5 天內）",
-   "trigger_key": "t2f4c9158f20203da",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w148",
-   "status": "open",
-   "created": "2026-11-20",
-   "last_reviewed": "2026-11-25",
-   "deadline": "2026-11-25"
-  },
-  {
-   "trigger": "10 年期美債殖利率是否站上 5.2%，以及 FedWatch 的 12 月升息 1 碼機率能否維持在九成上方（觀察期：5 天內）",
-   "trigger_full": "10 年期美債殖利率是否站上 5.2%，以及 FedWatch 的 12 月升息 1 碼機率能否維持在九成上方（觀察期：5 天內）",
-   "trigger_key": "t33e6da40a27cc1e9",
-   "why": "",
-   "horizon": "1-5d",
-   "watch_id": "w149",
-   "status": "open",
-   "created": "2026-11-20",
-   "last_reviewed": "2026-11-25",
-   "deadline": "2026-11-25"
   },
   {
    "trigger": "外資台指期淨空 -97,863 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超 14,669 張轉為買超（觀察期：5 天內）。",
@@ -337,7 +313,7 @@
    "watch_id": "w151",
    "status": "open",
    "created": "2026-11-23",
-   "last_reviewed": "2026-11-24",
+   "last_reviewed": "2026-11-26",
    "deadline": "2026-11-28"
   },
   {
@@ -349,7 +325,7 @@
    "watch_id": "w152",
    "status": "open",
    "created": "2026-11-23",
-   "last_reviewed": "2026-11-24",
+   "last_reviewed": "2026-11-26",
    "deadline": "2026-11-28"
   },
   {
@@ -361,7 +337,7 @@
    "watch_id": "w154",
    "status": "open",
    "created": "2026-11-23",
-   "last_reviewed": "2026-11-25",
+   "last_reviewed": "2026-11-26",
    "deadline": "2026-11-28"
   },
   {
@@ -385,7 +361,7 @@
    "watch_id": "w157",
    "status": "open",
    "created": "2026-11-24",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-26",
    "deadline": "2026-11-29"
   },
   {
@@ -397,7 +373,7 @@
    "watch_id": "w158",
    "status": "open",
    "created": "2026-11-24",
-   "last_reviewed": "",
+   "last_reviewed": "2026-11-26",
    "deadline": "2026-11-29"
   },
   {
@@ -413,18 +389,6 @@
    "deadline": "2026-11-30"
   },
   {
-   "trigger": "加權指數今日開盤是否落在預測區間 38,613 至 40,275 點；若跌破下緣且半小時內未收回，代表賣壓延續（觀察期：今日）。",
-   "trigger_full": "加權指數今日開盤是否落在預測區間 38,613 至 40,275 點；若跌破下緣且半小時內未收回，代表賣壓延續（觀察期：今日）。",
-   "trigger_key": "td5ed3df2c33168e3",
-   "why": "",
-   "horizon": "intraday",
-   "watch_id": "w160",
-   "status": "open",
-   "created": "2026-11-25",
-   "last_reviewed": "",
-   "deadline": "2026-11-26"
-  },
-  {
    "trigger": "10 年期美債殖利率是否站上 5.0%，以及 FedWatch 12 月升息 1 碼機率能否維持 97% 上方（觀察期：5 天內）。",
    "trigger_full": "10 年期美債殖利率是否站上 5.0%，以及 FedWatch 12 月升息 1 碼機率能否維持 97% 上方（觀察期：5 天內）。",
    "trigger_key": "t621b7f61ac5b3492",
@@ -435,50 +399,67 @@
    "created": "2026-11-25",
    "last_reviewed": "",
    "deadline": "2026-11-30"
+  },
+  {
+   "trigger": "外資台指期淨空 -105,709 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超轉為買超（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -105,709 口能否在 5 個交易日內回補至 9 萬口以內，同時現貨市值前 10 大由賣超轉為買超（觀察期：5 天內）",
+   "trigger_key": "t8a65904223f6b197",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w162",
+   "status": "open",
+   "created": "2026-11-26",
+   "last_reviewed": "",
+   "deadline": "2026-12-01"
+  },
+  {
+   "trigger": "加權今日是否站穩模型區間 37,819 至 39,447 點上緣；若早盤衝高後半小時內跌回 38,195 點昨收之下，代表反彈無力（觀察期：今日）",
+   "trigger_full": "加權今日是否站穩模型區間 37,819 至 39,447 點上緣；若早盤衝高後半小時內跌回 38,195 點昨收之下，代表反彈無力（觀察期：今日）",
+   "trigger_key": "t3d80d0b5aee71ff1",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w163",
+   "status": "open",
+   "created": "2026-11-26",
+   "last_reviewed": "",
+   "deadline": "2026-11-27"
+  },
+  {
+   "trigger": "2330 能否守在台積電期夜盤收盤價 2,162 元附近，現貨若跌破 2,100 元代表外資賣壓未歇（觀察期：今日）",
+   "trigger_full": "2330 能否守在台積電期夜盤收盤價 2,162 元附近，現貨若跌破 2,100 元代表外資賣壓未歇（觀察期：今日）",
+   "trigger_key": "t5ec8b1f6b28fd923",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w164",
+   "status": "open",
+   "created": "2026-11-26",
+   "last_reviewed": "",
+   "deadline": "2026-11-27"
   }
  ],
- "watch_seq": 161,
+ "watch_seq": 164,
  "legacy_report": {
-  "date": "2026-11-25",
+  "date": "2026-11-26",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠）**：昨日股價跳空漲停 2,230 元，但外資當日再賣超 4,098 張、連 9 賣；今日 TSM ADR 回跌 3.96%，費半重挫 7.88%。傳導機制是 ADR 溢價收斂與 SOX 下跌會壓抑 2330 開盤，法人賣超則顯示現貨籌碼沒有跟著漲停轉多。以今日預測中樞 2,217.39 元看，合理區間落在 2,035.5 至 2,245.41 元，開盤若接近下緣，代表賣壓比 ADR 跌幅更重。**[A 級・信心:中]**　[自由財經](https://ec.ltn.com.tw/article/paper/1779821) [鉅亨](https://news.cnyes.com/news/id/6671173)",
+    "statement": "**NVIDIA（NVDA，AI 加速器龍頭）**：延續黃仁勳回歸後的反彈消退，週三再跌 3.91%，標普全球將 AA 評級列入負面觀察、90 天內可能降至 AA-，指董事會獨立性與接班計畫有漏洞。輝達一個月已跌約 30%，評價修正會經 CoWoS 與 HBM 的拉貨預期傳導到 2330 稼動率。但目前沒有雲端商下修資本支出的訂單數字，**還看不出對台積電產能利用率的實際影響多大**，短線是評價面利空而非訂單面。**[A 級・信心:中]**　[鉅亨美股](https://news.cnyes.com/news/id/6671911) [鉅亨期貨](https://news.cnyes.com/news/id/6671877)",
     "source_urls": [
-     "https://ec.ltn.com.tw/article/paper/1779821",
-     "https://news.cnyes.com/news/id/6671173"
+     "https://news.cnyes.com/news/id/6671911",
+     "https://news.cnyes.com/news/id/6671877"
     ]
    },
    {
-    "statement": "**NVIDIA（NVDA，AI 加速器龍頭）**：黃仁勳回鍋後首日股價回跌 5.86%，國會調查與出口管制指控同步升溫。傳導路徑是 NVIDIA 的 AI 伺服器拉貨預期，經 CoWoS 先進封裝與 HBM 回到 2330 稼動率；但國會 12 月聽證前，市場會先下修的是評價而不是訂單。**目前沒有新訂單數字，還看不出對台積電產能利用率的實際影響多大**，短線只能當情緒面利空。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671173) [原文](https://news.cnyes.com/news/id/6671169)",
+    "statement": "**台積電（2330，全球最大晶圓代工廠）**：白宮與台積電確認川普將於 12 月 4 日出席亞利桑那鳳凰城第五期擴建動土，台積電在美承諾投資總額達 2,650 億美元。這對地緣風險折價是收斂，但海外廠成本高於台灣，長期對毛利率是稀釋。目前沒有五期產能規模與量產時程，**量級判斷不出來**；可確定的是 301 豁免半導體與動土典禮排在同一個月，政治訊號偏向「台灣供應鏈被需要」，與上一條輝達的治理折價在 2330 身上對沖。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6671912)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6671173",
-     "https://news.cnyes.com/news/id/6671169"
+     "https://news.cnyes.com/news/id/6671912"
     ]
    },
    {
-    "statement": "**美光（MU，記憶體大廠）**：股價單日重挫 10.97%，法國巴黎銀行下調評等並警告記憶體供過於求風險升高。這與昨日台股南亞科、華邦電漲停形成強烈對比；傳導機制是 DRAM 合約價若鬆動，南亞科與華邦電的現貨利差會先收斂，台積電的 HBM 相關先進封裝需求則要看 2027 年缺口是否真的收窄。**今天先反映的是評價面，第四季合約價才是現金流的分水嶺**。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671173)",
+    "statement": "**【房市｜台灣】台中房市（沙鹿、清水）**：台中海線預售交易量年減逾 6 成，房價在暴漲後出現隱憂。這是央行選擇性信用管制與房貸緊縮傳到中彰投的具體結果：預售去化變慢，建商的土地融資與餘屋壓力上升。對台中在地建商的推案節奏是壓力，**但沒有降價幅度數字，量級判斷不出來**。**[B 級・信心:中]**　[好房網](https://news.google.com/rss/articles/CBMicEFVX3lxTE9Wek8xWE1jRDZ0bTBoenAxU3gwU2Voc2pNTnhJTlZVRnM1UGxWckIxalRGRnV0N0FpWWlKUnc4WnYzSjVWeHk4bEh5Nk01OEItVDNKdHFIVDFRT29EZVg2aFMyNk1VX0NYQWY3VDFCTGvSAXBBVV95cUxPVnpPMVhNY0Q2dG0waHpwMVN4MFNlaHNqTU54SU5WVUZzNVBsVnJCMWpURkZ1dDdBaVlpSlJ3OFp2M0o1Vnh5OGxIeTZNNThCLVQzSnRxSFQxUU9vRGVYNmhTMjZNVV9DWEFmN1QxQkxr?oc=5)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6671173"
-    ]
-   },
-   {
-    "statement": "**AMD（全球第二大 x86 CPU 與 AI GPU 廠）**：股價重挫 8.86%，為費半成分股中最弱之一。AMD 的 AI GPU 出貨同樣倚賴台積電 N3 與 CoWoS，股價大跌會壓抑台股 AI 伺服器鏈的開盤情緒；不過近 30 日賣方對 AMD 的目標價調整方向仍偏正向，可作為股價跌深後的一項方向性佐證。**但沒有新訂單或產能數字，量級判斷不出來**。**[B 級・信心:中-低，資訊有限]**　[鉅亨](https://news.cnyes.com/news/id/6671173)",
-    "source_urls": [
-     "https://news.cnyes.com/news/id/6671173"
-    ]
-   },
-   {
-    "statement": "**聯發科（2454，全球第二大 IC 設計廠）**：宣布 2026 年有 17 篇論文入選 ISSCC、JSSC、NeurIPS 等頂尖會議與期刊，其中 5 篇將在 ISSCC 2027 發表。研究涵蓋 2 奈米晶片設計、AI 加速器與 6G，傳導到台積電先進製程與台股 IC 設計族群的技術能見度；但這是研發進度，不是訂單或營收，**目前沒有金額與時程，對短期獲利的影響判斷不出來**。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671017)",
-    "source_urls": [
-     "https://news.cnyes.com/news/id/6671017"
-    ]
-   },
-   {
-    "statement": "**【金融｜台灣】金管會**：延續本週穩定市場措施，自 11 月 24 日起將融資維持率由 130% 調降至 120%，上一次放寬要追溯到 1998 年亞洲金融風暴期間。傳導機制是斷頭強制賣壓的門檻下移，對高融資使用率的電子股與中小型股是流動性利多，但這只減少被迫賣出、不創造新買盤，對加權指數是「跌勢減速」而非「趨勢反轉」。**[A 級・信心:中]**　[鉅亨](https://news.cnyes.com/news/id/6671059)",
-    "source_urls": [
-     "https://news.cnyes.com/news/id/6671059"
+     "https://news.google.com/rss/articles/CBMicEFVX3lxTE9Wek8xWE1jRDZ0bTBoenAxU3gwU2Voc2pNTnhJTlZVRnM1UGxWckIxalRGRnV0N0FpWWlKUnc4WnYzSjVWeHk4bEh5Nk01OEItVDNKdHFIVDFRT29EZVg2aFMyNk1VX0NYQWY3VDFCTGvSAXBBVV95cUxPVnpPMVhNY0Q2dG0waHpwMVN4MFNlaHNqTU54SU5WVUZzNVBsVnJCMWpURkZ1dDdBaVlpSlJ3OFp2M0o1Vnh5OGxIeTZNNThCLVQzSnRxSFQxUU9vRGVYNmhTMjZNVV9DWEFmN1QxQkxr?oc=5"
     ]
    }
   ]

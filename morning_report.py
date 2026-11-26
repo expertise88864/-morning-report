@@ -23762,13 +23762,13 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         add("2330 三模型預測", "error", (predictions or {}).get("error", "資料缺失"))
 
     # 預測自我校正（bias 修正 + 模型加權）
-    cal_objs = [fair, predictions, quotes.get("TAIEX_PRED", {})]
+    cal_objs = ([fair] if FAIR_00662_BIAS else []) + [predictions, quotes.get("TAIEX_PRED", {})]   # 00662 已停修正(11-26)
     n_cal = sum(1 for o in cal_objs
                 if isinstance(o, dict) and o.get("calibration", {}).get("applied"))
-    if n_cal == 3:
-        add("預測自我校正", "ok", "00662 / 2330 / 加權指數 均已套用歷史偏誤修正")
+    if n_cal == len(cal_objs):
+        add("預測自我校正", "ok", f"{'00662 / ' if FAIR_00662_BIAS else ''}2330 / 加權指數 均已套用歷史偏誤修正")
     elif n_cal > 0:
-        add("預測自我校正", "fallback", f"{n_cal}/3 已套用，其餘歷史樣本累積中")
+        add("預測自我校正", "fallback", f"{n_cal}/{len(cal_objs)} 已套用，其餘歷史樣本累積中")
     else:
         add("預測自我校正", "fallback", "尚未套用（歷史樣本累積中，約需 5+ 個交易日）")
 

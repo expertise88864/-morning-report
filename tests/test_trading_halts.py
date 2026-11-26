@@ -103,6 +103,7 @@ def test_2330_after_a_holiday_uses_the_whole_adr_move(monkeypatch):
 
 def test_resume_day_misses_do_not_feed_the_00662_bias(fake_yf, monkeypatch):
     """11/18 實信:11/17 復牌日以舊公式(只算一天)算的大誤差進了 bias,00662 被翻轉防護夾成 +0.00%。"""
+    monkeypatch.setattr(mr, "FAIR_00662_BIAS", True)   # 機制保留;正式流程 2026-11-26 起不修正
     days = pd.date_range("2026-04-01", periods=20, freq="B")
     fake_yf({"^TWII": pd.DataFrame({"Open": [20000.0] * 20}, index=days),
              "2330.TW": pd.DataFrame({"Open": [1000.0] * 20}, index=days),

@@ -4877,6 +4877,11 @@ def build_historical_calibration(hist_2330: Optional[pd.DataFrame],
         return _empty(f"對照表生成失敗: {e}")
 
 
+#: 00662 公允價規則版本(AGENTS.md 第 5 條)。v1 = 含 EMA 偏差修正;v2(2026-11-26 使用者同意)= 不修正
+#: (119 日回測:修正讓 MAE 0.758% → 0.808%,配對 t=2.47)。歷史 `model_00662_version` 缺值 = v1。
+FAIR_00662_MODEL_VERSION, FAIR_00662_BIAS = 2, False
+
+
 def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
                            usdtwd: float, last_00662_price: Optional[float],
                            usdtwd_prev: Optional[float] = None,
@@ -5001,6 +5006,7 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
         "method": method,
         # 折溢價（vs NDX 隱含 NAV）：正=溢價（市價>合理NAV）；負=折價；None=資料不足
         "premium_pct": round(premium_pct, 3) if premium_pct is not None else None,
+        "model_version": FAIR_00662_MODEL_VERSION,
     }
     if ex_div_amt:
         result["ex_div_amt"] = round(ex_div_amt, 4)
@@ -10323,8 +10329,8 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
 
     # ---- (B) bias 修正 00662(帶昨收做方向翻轉防護)----
     if isinstance(fair, dict) and not fair.get("error"):
-        cal = _apply_bias(fair, "fair_price", "00662", "00662",
-                          baseline=fair.get("last_00662_price"))
+        cal = _apply_bias(fair, "fair_price", "00662", "00662", baseline=fair.get("last_00662_price")) \
+            if FAIR_00662_BIAS else {"applied": False, "reason": "00662 不做偏差修正(2026-11-26 回測變差)"}
         if cal.get("applied") and fair.get("last_00662_price"):
             fair["implied_change_pct"] = round(
                 (fair["fair_price"] / fair["last_00662_price"] - 1) * 100, 2)
@@ -12120,7 +12126,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 【今日 00662 估值（Python 已算）】
 {fair}
-（fair_price 已是「自我校正後」的合理價；calibration 欄位說明校正幅度，fair_price_raw 為校正前原值）
+（fair_price 是 QQQ×beta＋匯率推得的合理價，不做偏差修正；calibration 欄位說明原因）
 
 【今日 2330 三模型預測（Python 已算）】
 {predictions}
@@ -25779,6 +25785,7 @@ def _phase_render(ctx) -> Optional[int]:
             # 避免「昨值被當成新的真觀測」讓 max_age_days 護欄失效而無限延用(Codex review)。
             "usdtwd_stale": bool(quotes.get("USDTWD_STALE")),
             "fair_00662": fair.get("fair_price"),
+            "model_00662_version": fair.get("model_version"),
             # 三個 model 的「原始」預測值（供 calibrate_predictions 算各模型 MAE 與權重）
             "model1_2330": predictions.get("model1_1to1"),
             "model2_2330": predictions.get("model2_regression"),

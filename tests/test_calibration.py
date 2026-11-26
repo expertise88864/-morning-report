@@ -27,7 +27,8 @@ def test_calibration_insufficient_history():
     assert f["fair_price"] == 120.0
 
 
-def test_calibration_applies_positive_bias(fake_yf):
+def test_calibration_applies_positive_bias(fake_yf, monkeypatch):
+    monkeypatch.setattr(mr, "FAIR_00662_BIAS", True)   # 機制保留供日後重驗;正式流程已關(2026-11-26)
     # 歷史上預測都低估 1%（實際開盤一律高 1%）→ 今日預測應被上修約 1%
     dates = _hist_dates(12)
     all_dates = pd.date_range("2026-04-01", periods=20, freq="B")
@@ -146,7 +147,8 @@ def test_weighted_final_uses_model3_not_mae_weighting(fake_yf):
     assert "純 ADR 衰減" in p["final_method"]
 
 
-def test_calibration_matches_same_day_not_next_day(fake_yf):
+def test_calibration_matches_same_day_not_next_day(fake_yf, monkeypatch):
+    monkeypatch.setattr(mr, "FAIR_00662_BIAS", True)
     """回歸測試：state entry['date'] = 對應的台股開盤日，校正必須拿『同一天』
     的實際開盤比，不可拿下一個交易日（這 bug 把週五的預測拿去比週一,
     使誤差被市場移動汙染）。"""

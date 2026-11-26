@@ -813,7 +813,7 @@ _FROZEN = {
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (54, "6d51410d41f75b35"),  # Nov19: internal-medicine biotech only on approvals.
+    "fallback_profile_version":  (55, "a72c1b04738aa52c"),  # Nov26: 00662 fair_price note — no bias correction.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。

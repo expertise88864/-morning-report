@@ -5576,7 +5576,8 @@ def calibrate_0050_bias(tw0050_pred: dict, history: list[dict],
                           min_samples: int = 5, recent_n: int = 20,
                           max_bias: float = 0.03, ewm_span: int = 8) -> dict:
     """
-    對 0050 開盤預測做獨立 bias 校正(原本 0050 完全沒校正,殘差最大 +1.77%)。
+    對 0050 開盤預測做獨立 bias 校正。**2026-11-26 起主流程不呼叫**(回測證明重複修正、變差),
+    保留函式與測試以便日後重驗。
 
     0050 雖用「校正後 2330 + 校正後加權」當輸入,但仍有自身結構性殘差
     (折溢價、配息、0.5/0.5 權重近似誤差)。這裡用歷史 pred_0050 vs 實際 0050 開盤
@@ -24811,8 +24812,8 @@ def _phase_taifex_and_chips(ctx) -> None:
     try:
         tw0050_pred = calc_0050_prediction(
             last_0050, predictions, taiex_pred, ex_div_amt=ex_div.get("0050", 0.0))
-        # 0050 自身殘差校正(原本完全沒校正,殘差最大 +1.77%)
-        tw0050_pred = calibrate_0050_bias(tw0050_pred, history)
+        # 不再做 0050 自身的殘差校正(2026-11-26 使用者同意):它的輸入已是校正後的 2330 與加權,
+        # 再修一次是重複修正。120 日 walk-forward:不修 MAE 0.951% vs 修 1.007%(配對 t=2.07)。
     except Exception as e:
         print(f"[main] 0050 預測失敗: {e}", file=sys.stderr)
         tw0050_pred = {"error": str(e)[:80]}

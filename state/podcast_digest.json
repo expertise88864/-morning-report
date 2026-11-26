@@ -2544,6 +2544,94 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "e3c25dfd-7e4d-4782-9141-7addf733c5de",
+        "title": "EP357. 老黃回鍋後的輝達、ANT 跌破發行價、逆風下的投資變陣 | M觀點",
+        "published": "Thu, 26 Nov 2026 16:52:09 GMT",
+        "processed_at": "2026-11-26T18:29:38Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為黃仁勳回歸後，輝達的產品研發藍圖與生態系支持（對新雲端業者的融資）將恢復穩定，但中國相關業務（Blackwell走私、海外算力租給中國）將近乎歸零，美中AI晶片將徹底脫鉤。",
+            "主持人認為輝達可能應考慮改變商業模式：降低客戶首付比例、分期付款，或降價改抽未來租金分潤，以緩解資料中心初期資金短缺；但他估計輝達大概不會採納，並批評其財務長只當煞車、眼光短淺。",
+            "主持人對Anthropic（節目中音譯 entropy）看法偏多：他已買兩批、若續跌會開心加碼；他認為成長率放緩是量體變大與競爭所致，但模型領先月份月增ARR仍可達100億美元，未來三年營收年化成長率50%可預期，目前直覺估值區間70至90美元。",
+            "主持人認為模型通用化趨勢仍會繼續，但出現變數：Zen6被擋後中國開源模型落後拉大，通用化程度可能降低；極少數1%超高難度科學研究（如開發治癒99%癌症的新藥）才是前沿AI公司未來巨大價值，單一藥物可能值一兆美元。",
+            "主持人提出AI投資逆風下的三個替代配置方向：科技巨頭（三大公有雲、蘋果）因算力稀缺與現金流回穩；生技醫療ETF因AI加速藥物研發；資料中心環評相關技術股（表後發電、省水、降噪）將受惠於更嚴格環保要求。",
+            "主持人認為整體AI基建股股價已跌至可進場位置，但強調非投資建議；他認為市場缺乏便宜資金，GPU與記憶體廠商應考慮延後收款以維持生態系健康。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達 (NVIDIA)",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為黃仁勳回歸後研發與生態系支持恢復，但中國業務將大幅萎縮，商業模式調整不確定，整體競爭力強但逆風未除。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "黃仁勳在的輝達,是真的有很強的競爭力,這個能夠推出這種產品,就是他的競爭力,因為別人沒那麼瘋",
+                "direction": "neutral"
+              }
+            },
+            {
+              "name": "Anthropic（節目中音譯 entropy）",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人已買兩批、若續跌會開心加碼，預期未來三年營收年化成長率50%可期，估值區間約70至90美元。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "那現在呢,所以我現在的entropy不也是虧錢啦不過我已經買了一半,所以還有另外一半那如果還繼續跌下去,我當然就開心的去搜啦",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "Google (Alphabet)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為科技巨頭在AI基建減速時反而受惠，Google現金流將由負轉正。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "像Google都跑到負現金流了但是一旦AI的bill out減速他們立刻又回到正現金流對不對",
+                "direction": "bullish"
+              }
+            },
+            {
+              "name": "蘋果 (Apple)",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為若AI硬體投資減速、記憶體降價，蘋果手機成本壓力減輕、更易推出，屬科技巨頭中受惠者。",
+              "stance_basis": "investment_view",
+              "direction_evidence": {
+                "version": 1,
+                "status": "attributed",
+                "quote": "像蘋果也是會受惠啦",
+                "direction": "bullish"
+              }
+            }
+          ],
+          "market_view": "主持人認為AI投資正處於真實逆風，但AI基建股股價已跌至他認為可進場的位置；同時科技巨頭、生技醫療與資料中心環評技術是相對抗逆風或受惠的配置方向。",
+          "action_view": "主持人已對Anthropic買入兩批、若續跌會再加碼；在AI逆風下，他思考將部分資金轉向科技巨頭、生技醫療ETF與資料中心環評相關技術股，但強調非投資建議。",
+          "notable_quote": "我真的覺得現在的股價其實已經是可以進入手的一個位置了啦",
+          "quote_evidence": {
+            "version": 1,
+            "status": "verbatim",
+            "quote": "我真的覺得現在的股價其實已經是可以進入手的一個位置了啦"
+          },
+          "direction_quality": {
+            "attributed": 4,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "2d0ce706-da57-4f3c-a757-3266c116ffb9",
         "title": "EP356. 黃仁勳意外閃電回歸、AI 基建股再遭重擊、FSD V15 正式推出、這波修正跌夠了嗎？ | M觀點",
         "published": "Mon, 23 Nov 2026 17:16:48 GMT",
@@ -3285,66 +3373,6 @@
           }
         },
         "shown_at": "2026-10-16T00:08:04Z"
-      },
-      {
-        "guid": "a92ebf6e-121c-42dc-997b-515d48dcd303",
-        "title": "EP344. OpenAI 營收假警報、Anthropic 宗教化、曼報 Pro 完全解析 | M觀點",
-        "published": "Mon, 12 Oct 2026 07:56:14 GMT",
-        "processed_at": "2026-10-12T18:15:20Z",
-        "digest": {
-          "summary_points": [
-            "主持人指出金融時報把 OpenAI 的 500 億美元 ARR 與外界傳的 700 億美元搞混，其實是 OpenAI 與 Anthropic 營收認列方式不同（OpenAI 認淨額、Anthropic 認總額），並非營收不如預期；他以 ARR 數據推算 OpenAI 2024 年底 60 億、2025 年底 200 億、2026 年底可望達 700 億美元，連三年約三倍成長。",
-            "主持人用棒球比喻 OpenAI 是單季 50 轟的強打者，只是今年被 Anthropic 的 55 轟比下去；他回顧 OpenAI 上半年成長停滯（3 月 ARR 僅 250 億），但 7 月起因 GPT-5.6 推出後加速，9 月底已達 500 億，10 月又因 Anthropic Opus/Sonnet/Haiku 5.5 被短暫壓制，但沒有上半年嚴重。",
-            "主持人批評 Anthropic 內部已是「AI神教」，高層傾向相信 AI 有意識，並找宗教領袖尋求認可；他形容 11 月 12 日起禁止用戶「虐待」模型的條款是虛無主義，並認為若真心相信 AI 有意識就應停止發展，否則就是在創造奴隸，這些治理文化可能帶來風險。",
-            "來賓 Manny 分享 Springer Nature 與 RELX 案例：兩家期刊本業相近，但 Springer Nature 將數位工具成長業務留在母公司另一實體，投資人無法參與，因此估值乘數較低；他從中學到「本業賺錢後要 reinvest，並把成長留在可投資實體」的啟發。",
-            "主持人回答聽眾時表示，AI Agent 不會取代像 Palantir 這類已嵌入企業流程的軟體平台，用戶會拿 Agent 去操作系統而非替換系統，因為軟體的可靠性、記錄性與共通操作性無法被取代。"
-          ],
-          "tickers": [
-            {
-              "name": "RELX",
-              "code": "RELX",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "來賓 Manny 認為相較 Springer Nature，RELX 把數位工具成長業務留在自家公司，投資人可以參與，因此估值有溢價。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為 AI Agent 不會取代 Palantir 這類企業已驗證的軟體平台，反而會成為操作系統的勞工。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "我今天如果是個企業主的話,我一定不會用Agent去取代軟體,為什麼呢,因為軟體它有它的可靠性,它的可複雜性,它的記錄性,包含的操作性,共通操作性,包含的理解性",
-                "direction": "neutral"
-              }
-            }
-          ],
-          "market_view": "主持人認為 AI 產業仍是 OpenAI 與 Anthropic 雙雄競賽，不能因某段時間單一公司領先就斷定對手完蛋；OpenAI 營收年增仍約三倍，AI 熱潮未因媒體誤解而泡沫化。",
-          "action_view": "操作上應先釐清公司採用的 ARR/營收認列方式，不要只跟著財經網紅的負面標題賣出 AI 股。",
-          "notable_quote": "這代表他每年營收都差不多翻三倍",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "這代表他每年營收都差不多翻三倍"
-          },
-          "direction_quality": {
-            "attributed": 1,
-            "non_investment": 0,
-            "unverified": 1,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-14T00:50:03Z"
       }
     ]
   },

@@ -97,6 +97,8 @@ def asia_label(name: str, label: str, macro: dict | None, today: dt.date | None 
     today = today or dt.datetime.now(ZoneInfo("Asia/Taipei")).date()
     previous = today - dt.timedelta(days={0: 3, 6: 2}.get(today.weekday(), 1))
     day = str(((macro or {}).get(name) or {}).get("observed_on") or "")
+    if day == today.isoformat():   # 晚跑(補寄)時亞股已開盤:數字是今天盤中,不是收盤(11-26 實信)
+        return label + "（今日盤中）"
     return label + (f"（{day[5:].replace('-', '/')} 收盤）" if day and day < previous.isoformat() else "")
 
 

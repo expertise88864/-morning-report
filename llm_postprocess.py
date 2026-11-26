@@ -898,10 +898,13 @@ def _strip_selection_rationale(text: str) -> str:
     _aside = _re.compile(_open + _inner + "(?:" + _markers + ")"
                          + _inner + _close)
 
+    # 11-26 實信:被丟的剛好是帶粗體標題的第一句,整段只剩後半、看不出在講哪家公司。
+    # 標題本身不是緣由:保留「**標題**：」,只丟後面的句子;整段只剩標題就整行不留。
+    _lead = _re.compile(r"^\s*(?:[-*]\s+)?\*\*[^*\n]{1,80}\*\*\s*[：:]\s*")
     out, dropped = [], 0
     for line in raw.split("\n"):
         parts = _re.split(r"(?<=[。;；!！?？])", line)
-        kept = []
+        kept, head = [], ""
         for seg in parts:
             # 先剝掉**括號註記**裡的緣由(如「(2882,使用者核心觀察)」)。
             # 這類措辭多半寄生在括號裡,整句丟會把同一句的事實一起丟掉
@@ -909,9 +912,14 @@ def _strip_selection_rationale(text: str) -> str:
             cleaned = _aside.sub("", seg)
             if any(m in cleaned for m in _RATIONALE_MARKERS):
                 dropped += 1          # 剝完仍違規 → 整句丟(它本身就是一句緣由)
+                lead = _lead.match(cleaned) if not kept else None
+                if lead and not any(m in lead.group(0) for m in _RATIONALE_MARKERS):
+                    head = lead.group(0)
                 continue
             kept.append(cleaned)
-        out.append("".join(kept))
+        if head and not "".join(kept).strip():
+            continue                  # 只剩標題:這一條整個不留
+        out.append(head + "".join(kept).lstrip() if head else "".join(kept))
     if dropped:
         import sys as _sys
         print(f"[render] ⚠ LLM 輸出含入選緣由措辭(違反 R15/R15b),"

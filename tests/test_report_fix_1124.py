@@ -37,3 +37,13 @@ def test_sector_share_names_its_denominator():
     block = mr._format_sector_heat_block(heat)
     assert "上市個股成交約 9,545 億" in block and "佔上市個股成交" in block and "全市場成交約" not in block
     assert "佔上市個股成交44%" in sr.readout(heat)
+
+
+
+def test_a_late_run_marks_asian_intraday_prices():
+    """11-26 補寄在 09:26 跑:KOSPI、日經是當天盤中價,不能標成收盤。"""
+    day = dt.date(2026, 11, 26)
+    macro = {"KOSPI": {"observed_on": "2026-11-26"}, "SSE": {"observed_on": "2026-11-25"}}
+    assert mf.asia_label("KOSPI", "韓國 KOSPI", macro, day) == "韓國 KOSPI（今日盤中）"
+    assert mf.asia_label("SSE", "上證綜指", macro, day) == "上證綜指"
+    assert mf.asia_label("10Y", "", {"10Y": {"observed_on": "2026-11-26"}}, day) == ""

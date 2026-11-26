@@ -1770,6 +1770,14 @@ def test_render_defence_removes_rationale_instead_of_rewording_it():
         for bad in ("使用者", "本報固定", "本報高度", "本報核心"):
             assert bad not in out, f"{bad} 沒被移除:{out}"
 
+    # 11-26 實信:被丟的是帶粗體標題的第一句 → 標題留下,後面的事實接上
+    lead = "**應用材料（AMAT）**：本報追蹤的設備股昨晚重挫。設備與客製晶片同時被賣。"
+    assert mr._strip_selection_rationale(lead) == "**應用材料（AMAT）**：設備與客製晶片同時被賣。"
+    assert mr._strip_selection_rationale("前言\n**甲公司**：本報追蹤此股。\n後記") == "前言\n後記"
+    assert mr._strip_selection_rationale("- **乙**：本報關注。丙。") == "- **乙**：丙。"
+    # 標題本身含緣由措辭就不留
+    assert "本報追蹤" not in mr._strip_selection_rationale("**本報追蹤清單**：甲。乙。")
+
     # 沒有違規措辭時原樣通過(不得動到正常內容)
     clean = "第一句。第二句。\n第三行"
     assert mr._strip_selection_rationale(clean) == clean

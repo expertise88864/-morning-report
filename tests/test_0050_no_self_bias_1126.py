@@ -14,3 +14,15 @@ def test_the_0050_phase_does_not_apply_its_own_bias(monkeypatch):
     ctx = us._phase3_ctx(q)
     mr._phase_taifex_and_chips(ctx)
     assert ctx.tw0050_pred["pred_open"] == 100. and "calibration" not in ctx.tw0050_pred
+    assert ctx.tw0050_pred["model_version"] == mr.TW0050_MODEL_VERSION == 2
+
+
+def test_history_rows_carry_the_0050_rule_version():
+    """外審 PR #67:新舊規則寫在同一個 `pred_0050` 欄位,要有版本才分得開(缺值 = v1)。"""
+    import ast
+    import inspect
+    tree = ast.parse(inspect.getsource(mr._phase_render))
+    keys = {k.value for n in ast.walk(tree) if isinstance(n, ast.Dict) for k in n.keys if isinstance(k, ast.Constant)}
+    assert {"pred_0050", "model_0050_version"} <= keys
+    assert mr.calc_0050_prediction(100.0, {}, {"weighted_pct": 1.0})["model_version"] == 2
+    assert "model_version" not in mr.calc_0050_prediction(None, {}, {})

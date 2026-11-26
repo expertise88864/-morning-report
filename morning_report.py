@@ -5506,6 +5506,11 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
     return res
 
 
+#: 0050 開盤預測的規則版本(AGENTS.md 第 5 條:改預測係數要同步改版本)。v1 = 含自身 EMA 殘差校正;
+#: v2(2026-11-26)= 不再自身校正。歷史 `model_0050_version` 缺值的舊紀錄一律視為 v1。
+TW0050_MODEL_VERSION = 2
+
+
 def calc_0050_prediction(last_0050: Optional[float],
                           predictions_2330: dict,
                           taiex_pred: dict,
@@ -5564,6 +5569,7 @@ def calc_0050_prediction(last_0050: Optional[float],
         "pct_2330": round(pct_2330, 3) if pct_2330 is not None else None,
         "pct_taiex": round(pct_taiex, 3) if pct_taiex is not None else None,
         "method": method,
+        "model_version": TW0050_MODEL_VERSION,
     }
     if pct_2330 is not None and pct_taiex is not None:
         result["pct_taiex_ex_2330"] = round(pct_taiex_ex_2330, 3)
@@ -25786,6 +25792,7 @@ def _phase_render(ctx) -> Optional[int]:
             # 0050 開盤預測（供下次 backtest 對比）
             "pred_0050": tw0050_pred.get("pred_open") if isinstance(tw0050_pred, dict) else None,
             "last_0050": tw0050_pred.get("last") if isinstance(tw0050_pred, dict) else None,
+            "model_0050_version": tw0050_pred.get("model_version") if isinstance(tw0050_pred, dict) else None,
             "night_txf_pct": night_txf.get("night_pct"),
             "taifex_foreign_oi": taifex_oi.get("foreign_oi_net"),
             # 批#45:期權部位訊號**只餵 LLM、從未存進歷史** → 沒有時序就算不出 IC,

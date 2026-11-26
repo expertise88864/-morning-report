@@ -435,31 +435,73 @@
    "created": "2026-11-26",
    "last_reviewed": "",
    "deadline": "2026-11-27"
+  },
+  {
+   "trigger": "加權能否站穩 39,151 點：模型估計開盤位置就在此，參考區間 38,327 至 39,977 點；若開高後半小時內跌回 39,151 點之下，代表昨日 89.2% 普漲沒有後續買盤接手（觀察期：今日）",
+   "trigger_full": "加權能否站穩 39,151 點：模型估計開盤位置就在此，參考區間 38,327 至 39,977 點；若開高後半小時內跌回 39,151 點之下，代表昨日 89.2% 普漲沒有後續買盤接手（觀察期：今日）",
+   "trigger_key": "ta8d9b5a219d0cd8b",
+   "why": "",
+   "horizon": "intraday",
+   "watch_id": "w165",
+   "status": "open",
+   "created": "2026-11-27",
+   "last_reviewed": "",
+   "deadline": "2026-11-28"
+  },
+  {
+   "trigger": "外資台指期淨空 -106,275 口能否在 5 個交易日內回補至 9 萬口以內，同時對市值前 10 大維持買超（觀察期：5 天內）",
+   "trigger_full": "外資台指期淨空 -106,275 口能否在 5 個交易日內回補至 9 萬口以內，同時對市值前 10 大維持買超（觀察期：5 天內）",
+   "trigger_key": "t801ffed0aa5ef1bf",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w166",
+   "status": "open",
+   "created": "2026-11-27",
+   "last_reviewed": "",
+   "deadline": "2026-12-02"
+  },
+  {
+   "trigger": "10 年期美債殖利率能否維持在 5.0% 之下；今日 4.848%、一年百分位 79%，一旦突破前波高點，成長股折現壓力會重新回來（觀察期：5 天內）",
+   "trigger_full": "10 年期美債殖利率能否維持在 5.0% 之下；今日 4.848%、一年百分位 79%，一旦突破前波高點，成長股折現壓力會重新回來（觀察期：5 天內）",
+   "trigger_key": "t487c5452dec0da71",
+   "why": "",
+   "horizon": "1-5d",
+   "watch_id": "w167",
+   "status": "open",
+   "created": "2026-11-27",
+   "last_reviewed": "",
+   "deadline": "2026-12-02"
   }
  ],
- "watch_seq": 164,
+ "watch_seq": 167,
  "legacy_report": {
-  "date": "2026-11-26",
+  "date": "2026-11-27",
   "analysis_origin": "legacy_primary",
   "status": "unvalidated_model_opinion",
   "items": [
    {
-    "statement": "**NVIDIA（NVDA，AI 加速器龍頭）**：延續黃仁勳回歸後的反彈消退，週三再跌 3.91%，標普全球將 AA 評級列入負面觀察、90 天內可能降至 AA-，指董事會獨立性與接班計畫有漏洞。輝達一個月已跌約 30%，評價修正會經 CoWoS 與 HBM 的拉貨預期傳導到 2330 稼動率。但目前沒有雲端商下修資本支出的訂單數字，**還看不出對台積電產能利用率的實際影響多大**，短線是評價面利空而非訂單面。**[A 級・信心:中]**　[鉅亨美股](https://news.cnyes.com/news/id/6671911) [鉅亨期貨](https://news.cnyes.com/news/id/6671877)",
+    "statement": "**華為（中國最大電信設備與晶片設計商）**：正準備公布一款新型 HBM 晶片，採 64 通道、4,096 個數據介面，頻寬較南韓 HBM4 的 2,048 個提升一倍，預計 2027 年 2 月在舊金山會議發表論文。若真的量產，長期會削弱 SK 海力士與三星在 HBM 的定價權；但對台股記憶體與 2330 短期沒有直接傳導，因為時點在 2027 年、且沒有產能與良率數字。值得注意的是它與上一條方向相反：短期缺貨推升報價，長期供給增加壓縮報價，兩者不該混為同一個交易。**[A 級・信心:中-低，量級判斷不出來]**　[經濟日報](https://money.udn.com/money/story/5603/9904684)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6671911",
-     "https://news.cnyes.com/news/id/6671877"
+     "https://money.udn.com/money/story/5603/9904684"
     ]
    },
    {
-    "statement": "**台積電（2330，全球最大晶圓代工廠）**：白宮與台積電確認川普將於 12 月 4 日出席亞利桑那鳳凰城第五期擴建動土，台積電在美承諾投資總額達 2,650 億美元。這對地緣風險折價是收斂，但海外廠成本高於台灣，長期對毛利率是稀釋。目前沒有五期產能規模與量產時程，**量級判斷不出來**；可確定的是 301 豁免半導體與動土典禮排在同一個月，政治訊號偏向「台灣供應鏈被需要」，與上一條輝達的治理折價在 2330 身上對沖。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6671912)",
+    "statement": "**【金融｜台灣】壽險業**：延續 10 月台股修正這條線，金管會公布壽險業 10 月稅前虧損 112 億元，主因台股單月下跌 5.69% 造成股票評價損失；但台債殖利率走揚帶動負債端評價利益，10 月底淨值達 4 兆 4,551 億元、續創歷史新高。傳導機制是投資收益直接影響國泰金（2882）、富邦金（2881）等大型壽險金控的單月獲利，而淨值創高代表清償能力無虞、不等於獲利轉好。11 月台股若延續反彈，評價損失有回沖空間，但目前沒有一個月的數字可驗證。**[A 級・信心:中]**　[中央社財經](https://www.cna.com.tw/news/afe/202611260300.aspx)",
     "source_urls": [
-     "https://news.cnyes.com/news/id/6671912"
+     "https://www.cna.com.tw/news/afe/202611260300.aspx"
     ]
    },
    {
-    "statement": "**【房市｜台灣】台中房市（沙鹿、清水）**：台中海線預售交易量年減逾 6 成，房價在暴漲後出現隱憂。這是央行選擇性信用管制與房貸緊縮傳到中彰投的具體結果：預售去化變慢，建商的土地融資與餘屋壓力上升。對台中在地建商的推案節奏是壓力，**但沒有降價幅度數字，量級判斷不出來**。**[B 級・信心:中]**　[好房網](https://news.google.com/rss/articles/CBMicEFVX3lxTE9Wek8xWE1jRDZ0bTBoenAxU3gwU2Voc2pNTnhJTlZVRnM1UGxWckIxalRGRnV0N0FpWWlKUnc4WnYzSjVWeHk4bEh5Nk01OEItVDNKdHFIVDFRT29EZVg2aFMyNk1VX0NYQWY3VDFCTGvSAXBBVV95cUxPVnpPMVhNY0Q2dG0waHpwMVN4MFNlaHNqTU54SU5WVUZzNVBsVnJCMWpURkZ1dDdBaVlpSlJ3OFp2M0o1Vnh5OGxIeTZNNThCLVQzSnRxSFQxUU9vRGVYNmhTMjZNVV9DWEFmN1QxQkxr?oc=5)",
+    "statement": "**【金融｜台灣】華南金（2880，公股金控，銀行為主體）**：法說會公布前 10 月稅後純益 284.56 億元、EPS 2.02 元，總經理蕭玉美指明年股利配發率朝 70% 邁進、以現金為主；同時預期央行年底前不排除升息、明年台灣經濟成長率 5.82%。傳導路徑清楚：若央行升息，銀行淨息差（存放款利差）直接受惠，公股行庫的利息收入基期會往上移。這是目前看到最具體的一條「台灣總經＋金融」連結，但升息仍是不排除、不是確定。**[A 級・信心:中]**　[鉅亨台股](https://news.cnyes.com/news/id/6673137) [鉅亨台股](https://news.cnyes.com/news/id/6673210)",
     "source_urls": [
-     "https://news.google.com/rss/articles/CBMicEFVX3lxTE9Wek8xWE1jRDZ0bTBoenAxU3gwU2Voc2pNTnhJTlZVRnM1UGxWckIxalRGRnV0N0FpWWlKUnc4WnYzSjVWeHk4bEh5Nk01OEItVDNKdHFIVDFRT29EZVg2aFMyNk1VX0NYQWY3VDFCTGvSAXBBVV95cUxPVnpPMVhNY0Q2dG0waHpwMVN4MFNlaHNqTU54SU5WVUZzNVBsVnJCMWpURkZ1dDdBaVlpSlJ3OFp2M0o1Vnh5OGxIeTZNNThCLVQzSnRxSFQxUU9vRGVYNmhTMjZNVV9DWEFmN1QxQkxr?oc=5"
+     "https://news.cnyes.com/news/id/6673137",
+     "https://news.cnyes.com/news/id/6673210"
+    ]
+   },
+   {
+    "statement": "**【傳產｜台灣】中鋼（2002，國內最大鋼鐵廠）**：AI 建設潮推高鋼價，亞洲鋼材即使面臨銷美 50% 關稅仍擋不住漲勢。傳導走的是報價與利差：鋼價上漲直接改善中鋼的產品價差，而 AI 資料中心與廠房建設是這波需求的終端來源。不過中鋼 10 月營收年增 31.0%、股價卻仍在月線下 4.96%，代表市場對鋼價延續性仍有疑慮；需看到連續兩個月的盤價調漲才算站穩。**[B 級・信心:中-低，資訊有限]**　[世界新聞網](https://news.google.com/rss/articles/CBMiZ0FVX3lxTE5TbHRmeWR5M0VOR19pLWxjLXZTVkRwcGRYY3J5WlZKbUhrYzluTmxhN0JzQ3ZuSmZpVXFfUjlZWXIyeEtZajdKUDFlSVptRkYzMXQzaTNrdV9yRFBrWkpqU3pfOHZHSUnSAWdBVV95cUxOU2x0ZnlkeTNFTkdfaS1sYy12U1ZEcHBkWGNyeVpWSm1Ia2M5bk5sYTdCc0N2bkpmaVVxX1I5WVlyMnhLWWo3SlAxZUlabUZGMzF0M2kza3VfckRQa1pKalN6Xzh2R0lJ?oc=5)",
+    "source_urls": [
+     "https://news.google.com/rss/articles/CBMiZ0FVX3lxTE5TbHRmeWR5M0VOR19pLWxjLXZTVkRwcGRYY3J5WlZKbUhrYzluTmxhN0JzQ3ZuSmZpVXFfUjlZWXIyeEtZajdKUDFlSVptRkYzMXQzaTNrdV9yRFBrWkpqU3pfOHZHSUnSAWdBVV95cUxOU2x0ZnlkeTNFTkdfaS1sYy12U1ZEcHBkWGNyeVpWSm1Ia2M5bk5sYTdCc0N2bkpmaVVxX1I5WVlyMnhLWWo3SlAxZUlabUZGMzF0M2kza3VfckRQa1pKalN6Xzh2R0lJ?oc=5"
     ]
    }
   ]

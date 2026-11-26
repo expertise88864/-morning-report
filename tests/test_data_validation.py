@@ -1775,6 +1775,8 @@ def test_render_defence_removes_rationale_instead_of_rewording_it():
     assert mr._strip_selection_rationale(lead) == "**應用材料（AMAT）**：設備與客製晶片同時被賣。"
     assert mr._strip_selection_rationale("前言\n**甲公司**：本報追蹤此股。\n後記") == "前言\n後記"
     assert mr._strip_selection_rationale("- **乙**：本報關注。丙。") == "- **乙**：丙。"
+    two = "**甲公司**：本報追蹤。**選股說明**：本報關注。營收成長。"   # 外審 PR #68:第二句不得頂替標題
+    assert mr._strip_selection_rationale(two) == "**甲公司**：營收成長。"
     # 標題本身含緣由措辭就不留
     assert "本報追蹤" not in mr._strip_selection_rationale("**本報追蹤清單**：甲。乙。")
 

@@ -47,3 +47,21 @@ def test_a_late_run_marks_asian_intraday_prices():
     assert mf.asia_label("KOSPI", "韓國 KOSPI", macro, day) == "韓國 KOSPI（今日盤中）"
     assert mf.asia_label("SSE", "上證綜指", macro, day) == "上證綜指"
     assert mf.asia_label("10Y", "", {"10Y": {"observed_on": "2026-11-26"}}, day) == ""
+
+
+def test_review_pr68_intraday_rows_change_the_column_header(monkeypatch):
+    """外審 PR #68:列名寫「今日盤中」時,數值欄不能還叫「收盤」。"""
+    import re
+
+    import test_golden_faults as g
+    fair = {"fair_price": 124.43, "last_00662_price": 122.5, "implied_change_pct": 1.5,
+            "qqq_pct": 1.7, "fx_pct": 0.06, "avg_deviation_pct": 1.0, "premium_pct": 0.5}
+    preds = {"mid": 2464, "last_2330": 2410, "low": 2440, "high": 2489}
+    for observed, header in (("2026-11-26", "收盤／盤中"), ("2026-11-25", "收盤")):
+        q = g._golden_quotes()
+        q["MACRO"]["KOSPI"] = {"close": 4781.67, "change_pct": -4.48, "pct_rank_252d": 14.0, "observed_on": observed}
+        monkeypatch.setattr(mf, "asia_label", lambda n, label, m, today=None, _f=mf.asia_label:
+                            _f(n, label, m, dt.date(2026, 11, 26)))
+        html = mr.render_html(q, fair, preds, "## 科技板塊脈動\n甲。", "2026-11-26 (Thu)", "每日報")
+        heads = re.findall(r"<th[^>]*>([^<]+)</th>", html)
+        assert header in heads and ("今日盤中" in html) == (observed == "2026-11-26"), (observed, heads)

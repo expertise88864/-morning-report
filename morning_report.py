@@ -22491,7 +22491,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr style="background:#f1f5f9;">
             <th style="padding:10px 14px;text-align:left;color:#475569;font-size:12px;letter-spacing:1px;">指標</th>
-            <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">收盤</th>
+            <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">{"收盤／盤中" if "今日盤中" in macro_rows else "收盤"}</th>
             <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">變動</th>
             <th style="padding:10px 14px;text-align:center;color:#475569;font-size:12px;letter-spacing:1px;">1Y 百分位</th>
           </tr>

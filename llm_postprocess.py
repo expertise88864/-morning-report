@@ -905,14 +905,14 @@ def _strip_selection_rationale(text: str) -> str:
     for line in raw.split("\n"):
         parts = _re.split(r"(?<=[。;；!！?？])", line)
         kept, head = [], ""
-        for seg in parts:
+        for i, seg in enumerate(parts):
             # 先剝掉**括號註記**裡的緣由(如「(2882,使用者核心觀察)」)。
             # 這類措辭多半寄生在括號裡,整句丟會把同一句的事實一起丟掉
             # ——自測踩到:「國泰金(2882,使用者核心觀察):子公司公告。」整句消失。
             cleaned = _aside.sub("", seg)
             if any(m in cleaned for m in _RATIONALE_MARKERS):
                 dropped += 1          # 剝完仍違規 → 整句丟(它本身就是一句緣由)
-                lead = _lead.match(cleaned) if not kept else None
+                lead = _lead.match(cleaned) if i == 0 else None   # 只有原本的第一句是標題(外審 PR #68)
                 if lead and not any(m in lead.group(0) for m in _RATIONALE_MARKERS):
                     head = lead.group(0)
                 continue

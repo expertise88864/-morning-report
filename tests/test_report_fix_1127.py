@@ -20,6 +20,7 @@ def test_social_posts_stream_pages_and_index_pages_are_not_sports_news():
         assert not news_allowed({"title": t}), t
     assert news_allowed({"title": "澳網》確定了！2屆冠軍辛納因傷缺席 - 自由體育"})
     assert news_allowed({"title": "NBA》#1 順位新秀轟 30 分 - 自由體育"})
+    assert news_allowed({"title": "網球》世界 #1 擊敗 #2 奪冠 - 自由體育"})   # 外審 PR #70:排名不是 hashtag
 
 
 def test_retraction_notices_and_interviews_are_not_listed():
@@ -29,6 +30,10 @@ def test_retraction_notices_and_interviews_are_not_listed():
                   "pubtype": ["Journal Article"]},
             "3": {"title": "Real-world effectiveness of AI triage on cancer waiting times.", "pubtype": ["Journal Article"]}}
     assert [a["pmid"] for a in js.articles(["1", "2", "3"], recs, "BJD", 5)] == ["3"]
+    # 外審 PR #70:標題以 Retraction 開頭的一般研究(鼓膜內陷)不可誤刪;沒有類型時靠明確的通知格式
+    ear = {"4": {"title": "Retraction pockets of the tympanic membrane in children", "pubtype": ["Journal Article"]},
+           "5": {"title": "Retraction: Effect of X on Y", "pubtype": []}}
+    assert [a["pmid"] for a in js.articles(["4", "5"], ear, "AJO", 5)] == ["4"]
 
 
 def test_a_target_price_is_not_backed_by_an_unrelated_market_number():
@@ -39,6 +44,19 @@ def test_a_target_price_is_not_backed_by_an_unrelated_market_number():
     wrong = f"### 八、科技\n\n日月光投控（3711）：花旗給出 2132 元目標價，先進封裝外溢。[{eid}]\n"
     right = f"### 八、科技\n\n日月光投控（3711）：花旗給出 908 元目標價，先進封裝外溢。[{eid}]\n"
     assert le.MARK in le.audit(wrong, quotes, {}) and le.MARK not in le.audit(right, quotes, {})
+    # 外審 PR #70:同一句裡調整前後兩個目標價都只能由新聞佐證
+    moved = f"### 八、科技\n\n日月光投控：花旗將目標價由 908 元調高至 2132 元，封裝外溢。[{eid}]\n"
+    assert "2132 元" + le.MARK in le.audit(moved, quotes, {})
     # 一般價格仍可由行情佐證
     price = f"### 八、科技\n\n台積電：模型估開盤 2132 元，昨收附近。[{eid}]\n"
     assert le.MARK not in le.audit(price, quotes, {})
+
+
+def test_a_target_price_is_not_backed_by_official_eps(monkeypatch):
+    """外審 PR #70:官方 EPS 12.00 元不能替「目標價 12 元」背書。"""
+    import official_numbers
+    le.reset()
+    eid = le.tag({"title": "外資給甲公司 90 元目標價", "source": "鉅亨"}).strip().strip("[]")
+    monkeypatch.setattr(official_numbers, "facts", lambda block: "EPS 12.00 元")
+    out = le.audit(f"### 八、科技\n\n甲公司：外資給出目標價 12 元，營運回溫。[{eid}]\n", {}, {})
+    assert "12 元" + le.MARK in out

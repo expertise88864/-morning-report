@@ -1,0 +1,44 @@
+"""11-27 實信的四個問題。"""
+import html
+
+import journal_selection as js
+import legacy_evidence as le
+import morning_report as mr
+from sports_quality import news_allowed
+
+
+def test_conclusion_card_does_not_leak_the_blockquote_marker():
+    detail = "\n".join(x for x in ("昨日台股大幅波動:加權 +2.50%。", "> **立場：中性**\n理由：甲。") if x)
+    out = mr._render_summary_bar("中性", detail, html)
+    assert "&gt;" not in out and "<b>立場：中性</b>" in out and "大幅波動" in out
+
+
+def test_social_posts_stream_pages_and_index_pages_are_not_sports_news():
+    for t in ["CPBL 中華職棒. . #2026亞洲冬季棒球聯盟 海洋生物 #平日免費入場 - Facebook",
+              "觀賞北科附工 vs 台南海事：4強賽的賽事直播 | DAZN TW - DAZN",
+              "[全部]其他運動 - Now Sports"]:
+        assert not news_allowed({"title": t}), t
+    assert news_allowed({"title": "澳網》確定了！2屆冠軍辛納因傷缺席 - 自由體育"})
+    assert news_allowed({"title": "NBA》#1 順位新秀轟 30 分 - 自由體育"})
+
+
+def test_retraction_notices_and_interviews_are_not_listed():
+    recs = {"1": {"title": "Retraction and replacement of: \"Real-world effectiveness of AI triage\".",
+                  "pubtype": ["Journal Article", "Retraction Notice"]},
+            "2": {"title": "Pioneers in dermatology and venereology: An interview with Professor Thomas Bieber.",
+                  "pubtype": ["Journal Article"]},
+            "3": {"title": "Real-world effectiveness of AI triage on cancer waiting times.", "pubtype": ["Journal Article"]}}
+    assert [a["pmid"] for a in js.articles(["1", "2", "3"], recs, "BJD", 5)] == ["3"]
+
+
+def test_a_target_price_is_not_backed_by_an_unrelated_market_number():
+    le.reset()
+    item = {"title": "花旗給日月光投控 908 元目標價", "source": "TechNews"}
+    eid = le.tag(item).strip().strip("[]")
+    quotes = {"PRED": {"weighted_final": 2132.35}}
+    wrong = f"### 八、科技\n\n日月光投控（3711）：花旗給出 2132 元目標價，先進封裝外溢。[{eid}]\n"
+    right = f"### 八、科技\n\n日月光投控（3711）：花旗給出 908 元目標價，先進封裝外溢。[{eid}]\n"
+    assert le.MARK in le.audit(wrong, quotes, {}) and le.MARK not in le.audit(right, quotes, {})
+    # 一般價格仍可由行情佐證
+    price = f"### 八、科技\n\n台積電：模型估開盤 2132 元，昨收附近。[{eid}]\n"
+    assert le.MARK not in le.audit(price, quotes, {})

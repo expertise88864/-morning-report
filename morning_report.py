@@ -22727,7 +22727,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
-    stance_detail = _polish.big_move_line(quotes.get("TAIEX_SESSION_PCT"), quotes.get("BREADTH"), _session_wording.yesterday(quotes)) + stance_detail
+    stance_detail = "\n".join(x for x in (_polish.big_move_line(quotes.get("TAIEX_SESSION_PCT"), quotes.get("BREADTH"), _session_wording.yesterday(quotes)), stance_detail) if x)   # 分行:「> 立場」的記號才剝得掉(11-27)
     summary_bar = _render_summary_bar(summary_text, stance_detail, _htmllib)
     # Decision Attribution 卡:批#26 使用者要求自信件移除顯示——歸因仍在後台
     # 計算(STANCE_ATTRIB 供 log/prompt),要恢復顯示改 True 即可。

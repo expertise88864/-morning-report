@@ -62,7 +62,8 @@ def news_allowed(entry: dict) -> bool:
     # Promotional programme schedules are not result/news reports, even if freshly reposted.
     # 2026-10-14 使用者:門票/賽程懶人包與 365Scores 機翻比賽報告也是低資訊頁。
     return not re.search(r'轉播預告|轉播表|直播連結|無廣告.*體育|免費直播|回饋列車.*小球員|特別感謝.*支持與陪伴'
-                         r'|怎麼買|懶人包|整理一次看|-\s*365Scores\s*$|比賽報告、統計數據', title)
+                         r'|怎麼買|懶人包|整理一次看|-\s*365Scores\s*$|比賽報告、統計數據'
+                         r'|-\s*Facebook\s*$|#\S+.*#\S+|賽事直播\s*[|｜]\s*DAZN|^\s*\[全部\]', title)   # 11-27 實信
 
 
 def tennis_score(win: dict, lose: dict) -> str:

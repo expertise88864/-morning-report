@@ -14,7 +14,9 @@ def articles(ids: list, records: dict, journal: str, limit: int) -> list:
         item = records.get(pid) or {}
         title = str(item.get('title') or '').strip().rstrip('.')
         types = types_of(pid)
-        if not title or types.intersection({'comment', 'published erratum'}):
+        if not title or types.intersection({'comment', 'published erratum', 'retraction notice', 'retraction of publication',
+                                            'expression of concern', 'interview'}) \
+                or re.search(r'^(?:retraction|notice of retraction|expression of concern)\b|\ban interview with\b', title, re.I):
             continue
         if re.search(r'^(?:(?:comments?|commentary|corrections?|corrigendum)$|'
                      r'(?:comments?|commentary|corrections?|corrigendum)(?:\s*:|\s+(?:on|to)\b)|'

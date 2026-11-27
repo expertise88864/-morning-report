@@ -82,3 +82,17 @@ def test_target_price_is_located_by_position():
     twin = f"### 八、科技\n\n日月光：昨收 2132 元，花旗給出 2132 元目標價。[{eid}]\n"
     out = le.audit(twin, quotes, {})
     assert out.count(le.MARK) == 1 and "2132 元" + le.MARK + "目標價" in out
+
+
+def test_target_price_round_five_cases():
+    """外審 PR #70 第五輪:冒號寫法、長句標在新目標價、新聞證實的目標價可驗算倍數。"""
+    le.reset()
+    eid = le.tag({"title": "花旗給日月光投控 908 元目標價,昨收 100 元、目標價 200 元", "source": "TechNews"}).strip().strip("[]")
+    quotes = {"PRED": {"last": 2132.0, "prev": 100.0}}
+    colon = f"### 八、科技\n\n日月光：花旗目標價：2,132 元，封裝外溢。[{eid}]\n"
+    assert "2,132 元" + le.MARK in le.audit(colon, quotes, {})
+    long = f"### 八、科技\n\n日月光：昨收 2132 元，花旗將目標價較原先的 908 元調高至 2132 元。[{eid}]\n"
+    out = le.audit(long, quotes, {})
+    assert out.count(le.MARK) == 1 and out.rstrip().split("[")[0].endswith("2132 元" + le.MARK + "。")
+    ratio = f"### 八、科技\n\n日月光：花旗目標價 200 元，是昨收 100 元的 2 倍。[{eid}]\n"
+    assert le.MARK not in le.audit(ratio, quotes, {})

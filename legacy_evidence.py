@@ -234,10 +234,10 @@ def _check(block: str, market: list[float], missing: list | None = None) -> list
     text = _ID.sub(" ", _META.sub(" ", block))
     own = _quantities(text)
     backed = _operands(text, lambda q: _supported(q, cited, market)) if any(q[2] == "x" for q in own) else []
-    tp = {q[0] for seg in re.split(r"[，。；;]|,(?!\d)", text) if "目標價" in seg for part in (   # 目標價(含調整前後)只認新聞(11-27、PR #70)
-        " ".join(re.findall(r"\d[\d,.]*\s*(?:美元|元)?(?=\s*的?目標價)", seg)), re.split(r"較|比|相對|高於|低於", seg.split("目標價", 1)[1])[0]) for q in _quantities(part)}
+    tp = {q[:3:2] for seg in re.split(r"[，。；;]|,(?!\d)", text) if "目標價" in seg for part in (   # 目標價(含調整前後)只認新聞(11-27、PR #70)
+        " ".join(re.findall(r"\d[\d,.]*\s*(?:美元|元)?(?=\s*的?目標價)", seg)), re.split(r"(?:較|比|相對|高於|低於)\s*(?:昨收|昨日|收盤|今收|股價|現價|市價|目前)", seg.split("目標價", 1)[1])[0]) for q in _quantities(part) if q[2] not in ("pct", "x")}
     for claim in own:
-        if _supported(claim, news) if claim[0] in tp else _supported(claim, cited, market) or _ratio(claim, backed):
+        if _supported(claim, news) if claim[:3:2] in tp else _supported(claim, cited, market) or _ratio(claim, backed):
             continue
         where = "其他新聞" if _supported(claim, everything) else "任何素材"
         if where == "任何素材" and missing is not None:

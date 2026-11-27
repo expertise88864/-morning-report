@@ -52,6 +52,11 @@ def test_a_target_price_is_not_backed_by_an_unrelated_market_number():
     assert "2,132 元" + le.MARK in le.audit(comma, quotes, {})
     vs = f"### 八、科技\n\n日月光投控：花旗目標價 908 元較昨收 2132 元低，封裝外溢。[{eid}]\n"
     assert le.MARK not in le.audit(vs, quotes, {})
+    # 第三輪:「較原先」不是跟昨收比;同值的漲幅仍由行情佐證
+    prior = f"### 八、科技\n\n日月光投控：花旗將目標價較原先的 908 元調高至 2132 元，封裝外溢。[{eid}]\n"
+    assert "2132 元" + le.MARK in le.audit(prior, quotes, {})
+    same = f"### 八、科技\n\n日月光投控：花旗目標價 908 元且股價今日上漲 908%，量能放大。[{eid}]\n"
+    assert le.MARK not in le.audit(same, {"PRED": {"pct": 908.0}}, {})
     # 一般價格仍可由行情佐證
     price = f"### 八、科技\n\n台積電：模型估開盤 2132 元，昨收附近。[{eid}]\n"
     assert le.MARK not in le.audit(price, quotes, {})

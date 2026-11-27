@@ -47,6 +47,11 @@ def test_a_target_price_is_not_backed_by_an_unrelated_market_number():
     # 外審 PR #70:同一句裡調整前後兩個目標價都只能由新聞佐證
     moved = f"### 八、科技\n\n日月光投控：花旗將目標價由 908 元調高至 2132 元，封裝外溢。[{eid}]\n"
     assert "2132 元" + le.MARK in le.audit(moved, quotes, {})
+    # 外審 PR #70 第二輪:千分位不能拆斷;同句的昨收仍由行情佐證
+    comma = f"### 八、科技\n\n日月光投控：花旗目標價 2,132 元，封裝外溢。[{eid}]\n"
+    assert "2,132 元" + le.MARK in le.audit(comma, quotes, {})
+    vs = f"### 八、科技\n\n日月光投控：花旗目標價 908 元較昨收 2132 元低，封裝外溢。[{eid}]\n"
+    assert le.MARK not in le.audit(vs, quotes, {})
     # 一般價格仍可由行情佐證
     price = f"### 八、科技\n\n台積電：模型估開盤 2132 元，昨收附近。[{eid}]\n"
     assert le.MARK not in le.audit(price, quotes, {})

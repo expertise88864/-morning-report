@@ -96,3 +96,13 @@ def test_target_price_round_five_cases():
     assert out.count(le.MARK) == 1 and out.rstrip().split("[")[0].endswith("2132 元" + le.MARK + "。")
     ratio = f"### 八、科技\n\n日月光：花旗目標價 200 元，是昨收 100 元的 2 倍。[{eid}]\n"
     assert le.MARK not in le.audit(ratio, quotes, {})
+
+
+def test_both_wrong_target_prices_are_marked_where_they_are():
+    """外審 PR #70 第六輪:新舊目標價都錯時,先插入的標記不能讓第二個標到昨收。"""
+    le.reset()
+    eid = le.tag({"title": "花旗給日月光投控 700 元目標價", "source": "TechNews"}).strip().strip("[]")
+    text = f"### 八、科技\n\n日月光：昨收 2132 元，花旗將目標價由 900 元調高至 2132 元。[{eid}]\n"
+    out = le.audit(text, {"PRED": {"last": 2132.0}}, {})
+    assert out.count(le.MARK) == 2 and "昨收 2132 元，" in out
+    assert "900 元" + le.MARK in out and "至 2132 元" + le.MARK in out

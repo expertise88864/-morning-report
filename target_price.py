@@ -4,8 +4,9 @@
 """
 import re
 
-_BEFORE = re.compile(r"(\d[\d,.]*\s*(?:美元|元))(?=\s*的?目標價)")
-_LINK = re.compile(r"[\s:：由從自至到為達調高低降上下修升原先前的較]{0,8}?(\d[\d,.]*\s*(?:美元|元))")
+#: 已插入的「（未核實）」(legacy_evidence.MARK)要跳過:同一條標第二處時,前一處的標記不能截斷辨識(外審 PR #70)
+_BEFORE = re.compile(r"(\d[\d,.]*\s*(?:美元|元))(?=(?:（未核實）)?\s*的?目標價)")
+_LINK = re.compile(r"(?:（未核實）|[\s:：由從自至到為達調高低降上下修升原先前的較]){0,9}?(\d[\d,.]*\s*(?:美元|元))")
 
 
 def spans(text: str) -> list[tuple[int, int]]:

@@ -70,3 +70,15 @@ def test_a_target_price_is_not_backed_by_official_eps(monkeypatch):
     monkeypatch.setattr(official_numbers, "facts", lambda block: "EPS 12.00 元")
     out = le.audit(f"### 八、科技\n\n甲公司：外資給出目標價 12 元，營運回溫。[{eid}]\n", {}, {})
     assert "12 元" + le.MARK in out
+
+
+def test_target_price_is_located_by_position():
+    """外審 PR #70 第四輪:比較對象寫成「前一交易日收盤價」、同值同幣別的昨收,都不能被當成目標價。"""
+    le.reset()
+    eid = le.tag({"title": "花旗給日月光投控 908 元目標價", "source": "TechNews"}).strip().strip("[]")
+    quotes = {"PRED": {"last": 800.0, "weighted_final": 2132.35}}
+    prev = f"### 八、科技\n\n日月光：花旗目標價 908 元較前一交易日收盤價 800 元高。[{eid}]\n"
+    assert le.MARK not in le.audit(prev, quotes, {})
+    twin = f"### 八、科技\n\n日月光：昨收 2132 元，花旗給出 2132 元目標價。[{eid}]\n"
+    out = le.audit(twin, quotes, {})
+    assert out.count(le.MARK) == 1 and "2132 元" + le.MARK + "目標價" in out

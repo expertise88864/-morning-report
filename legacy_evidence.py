@@ -139,7 +139,7 @@ def _market_values(quotes, budget: int = 20000) -> list[float]:
 def _supported(claim: tuple, pool: list[tuple], market: list[float] = ()) -> bool:
     """「13%」可對 12.6～13.4(四捨五入到整數);「13.2%」只對 13.15～13.25。大金額另容許 0.5%。
     行情資料只有數字沒有單位:只拿來對漲跌幅與沒有量級的價格(「收 1,100 元」)。"""
-    raw, value, kind, mag, _ = claim
+    raw, value, kind, mag, *_ = claim
     decimals = len(raw.split(".", 1)[1]) if "." in raw else 0
     tol = max(0.5 * 10 ** -decimals * _SCALE.get(mag, 1.0) + 1e-9, abs(value) * 0.005)
     if any(k in _COMPATIBLE.get(kind, ()) and abs(v - value) <= tol for _, v, k, *_ in pool):
@@ -202,16 +202,38 @@ def _blocks(body: str) -> list[str]:
     return re.split(r"(\n\s*\n|\n(?=\s*(?:[-*] |\*\*【)))", body)
 
 
+_TP_LINK = re.compile(r"[\s由從自至到為達調高低降上下修升原先前的較]{0,8}?(\d[\d,.]*\s*(?:美元|元))")
+
+
+def _target_spans(text: str) -> list[tuple[int, int]]:
+    """目標價金額在原文的位置:緊接在「目標價」前,或接在它後面(含「由 A 調高至 B」「較原先的 A 調高至 B」)。
+    目標價只能由新聞佐證 —— 行情裡剛好相近的價格不算(11-27 實信:日月光 908 元寫成 2132 元;外審 PR #70)。"""
+    out = [m.span(1) for m in re.finditer(r"(\d[\d,.]*\s*(?:美元|元))(?=\s*的?目標價)", text)]
+    for m in re.finditer("目標價", text):
+        at = m.end()
+        for _ in range(2):
+            n = _TP_LINK.match(text, at)
+            if not n:
+                break
+            out.append(n.span(1))
+            at = n.end()
+    return out
+
+
 def _mark(block: str, claims: list[tuple]) -> str:
     """在對不到來源的數字後面加上標記。同一個寫法出現兩次(「新台幣100億元、人民幣100億元」)時,
-    只標幣別與種類也對得上的那一處(外審 PR #50);原文裡找不到就不動。"""
+    只標幣別與種類也對得上的那一處(外審 PR #50);原文裡找不到就不動。目標價(第 6 欄為真)優先標
+    緊貼「目標價」的那一處,其他數字優先標不在「目標價」旁的那一處。"""
     for claim in claims:
-        raw, _, kind, mag, unit = claim
+        raw, _, kind, mag, unit, *tgt = claim
         for tail in (re.escape(mag) + r"\s*" + re.escape(unit), re.escape(mag)):
             pattern = r"(?<![\d.,/=])" + re.escape(raw) + r"(?![\d.,])\s*" + tail + "(?!" + MARK + ")"
-            hit = next((m for m in re.finditer(pattern, block)
-                        if any(q[0] == raw and q[2] == kind and q[3] == mag
-                               for q in _quantities(block[max(0, m.start() - 4):m.end()]))), None)
+            hits = [m for m in re.finditer(pattern, block)
+                    if any(q[0] == raw and q[2] == kind and q[3] == mag
+                           for q in _quantities(block[max(0, m.start() - 4):m.end()]))]
+            near = [m for m in hits if any(a <= m.start() - max(0, m.start() - 16) < b
+                                           for a, b in _target_spans(block[max(0, m.start() - 16):m.end() + 8]))]
+            hit = next(iter(near if tgt and tgt[0] else [m for m in hits if m not in near]), None) or next(iter(hits), None)
             if hit:
                 block = block[:hit.end()] + MARK + block[hit.end():]
                 break
@@ -232,12 +254,12 @@ def _check(block: str, market: list[float], missing: list | None = None) -> list
     cited = news + _quantities(official_numbers.facts(block))   # 官方營收、EPS、稅後淨利也算來源
     everything = [q for item in _REGISTRY.values() for q in _quantities(_item_text(item))]
     text = _ID.sub(" ", _META.sub(" ", block))
-    own = _quantities(text)
-    backed = _operands(text, lambda q: _supported(q, cited, market)) if any(q[2] == "x" for q in own) else []
-    tp = {q[:3:2] for seg in re.split(r"[，。；;]|,(?!\d)", text) if "目標價" in seg for part in (   # 目標價(含調整前後)只認新聞(11-27、PR #70)
-        " ".join(re.findall(r"\d[\d,.]*\s*(?:美元|元)?(?=\s*的?目標價)", seg)), re.split(r"(?:較|比|相對|高於|低於)\s*(?:昨收|昨日|收盤|今收|股價|現價|市價|目前)", seg.split("目標價", 1)[1])[0]) for q in _quantities(part) if q[2] not in ("pct", "x")}
+    spans = _target_spans(text)   # 目標價只認新聞,依位置判定(11-27、PR #70)
+    plain = "".join(" " if any(a <= i < b for a, b in spans) else c for i, c in enumerate(text))
+    own = [q + (False,) for q in _quantities(plain)] + [q + (True,) for a, b in spans for q in _quantities(text[a:b])]
+    backed = _operands(plain, lambda q: _supported(q, cited, market)) if any(q[2] == "x" for q in own) else []
     for claim in own:
-        if _supported(claim, news) if claim[:3:2] in tp else _supported(claim, cited, market) or _ratio(claim, backed):
+        if _supported(claim, news) if claim[5] else _supported(claim, cited, market) or _ratio(claim, backed):
             continue
         where = "其他新聞" if _supported(claim, everything) else "任何素材"
         if where == "任何素材" and missing is not None:

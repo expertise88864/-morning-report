@@ -32,9 +32,9 @@ def select(candidates: list, queries: list, per_label: int, *, is_dup, seen_entr
     limits = {row[0]: row[2] if len(row) > 2 else per_label for row in queries}
     buckets: dict = {label: [] for label in limits}
     for label, item in candidates:
-        title = item["title"]
-        target = destination(label, title)
-        if target not in buckets or not relevant(target, title) or not relevant(target, item.get("raw") or title):   # 截斷前才看得到「- Facebook」(PR #71)
+        title, full = item["title"], item.get("raw") or item["title"]   # full:截斷前的標題,分類與過濾都看它(PR #71)
+        target = destination(label, full)
+        if target not in buckets or not relevant(target, title) or not relevant(target, full):
             continue
         buckets[target].append({k: v for k, v in item.items() if k != "raw"})
     out, seen, awards = {}, [], set()

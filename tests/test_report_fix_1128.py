@@ -92,3 +92,11 @@ def test_taiwan_presidential_market_is_hidden_after_election_day(monkeypatch):
     monkeypatch.setattr(mr, "_poly_prob_line", lambda outs: "民進黨 50%")
     labels = lambda day: {r["label"] for r in mr.fetch_polymarket_pulse(dt.datetime(2026, 11, day, 6, 0, tzinfo=mr.TPE))}  # noqa: E731
     assert "台灣總統大選" in labels(28) and "台灣總統大選" not in labels(29)
+
+
+def test_routing_sees_keywords_past_the_truncation_point():
+    """外審 PR #71 第二輪:「造勢」落在第 90 字之後時,要歸到選情,不是在建設被丟掉。"""
+    raw = "彰化市" + "地方建設說明" * 16 + "今晚造勢晚會登場 - 自由時報"
+    out = lnr.select([("建設", {"title": raw[:90], "link": "x", "raw": raw})],
+                     [("建設", "q", 3), ("選情", "q", 3)], 3, is_dup=lambda t, seen: False, seen_entry=lambda t: t)
+    assert list(out) == ["選情"] and out["選情"][0]["title"] == raw[:90]

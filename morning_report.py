@@ -2224,8 +2224,8 @@ def fetch_taifex_foreign_futures() -> dict:
                 "queryEndDate": date_str,
                 "commodityId": "TXF",  # 台指期
             }
-            r = requests.post(url, data=payload, timeout=15,
-                              headers={"User-Agent": "Mozilla/5.0"})
+            r = __import__("net_retry").retry_timeout(lambda t: requests.post(   # 逾時同日再試一次,不退回前一天(11-28 實信)
+                url, data=payload, timeout=t, headers={"User-Agent": "Mozilla/5.0"}))
             if r.status_code != 200 or len(r.text) < 200:
                 continue
             # CSV 格式：日期、商品名稱、身份別、多方交易、空方交易、未平倉多方、未平倉空方、淨多空
@@ -5000,7 +5000,7 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
         "avg_deviation_pct": round(avg_deviation * 100, 3),
         "samples": samples,
         "fair_price": round(fair_price, 2),
-        "implied_change_pct": round((fair_price / last_00662_price - 1) * 100, 2),
+        "implied_change_pct": round((round(fair_price, 2) / last_00662_price - 1) * 100, 2),   # 與顯示的公允價一致(11-28)
         "usdtwd": usdtwd,
         "usdtwd_prev": usdtwd_prev,
         "method": method,
@@ -19761,7 +19761,7 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
         except Exception as e:
             print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
     # 3) 多選型盤(S&P 年底區間 + 政治盤,各取市場最看好前 N)
-    for label, slug, zh, top in _POLY_PULSE_OUTRIGHT:
+    for label, slug, zh, top in (r for r in _POLY_PULSE_OUTRIGHT if r[2] is not _POLY_TW_PARTY_ZH or now_tpe.date() <= dt.date(2026, 11, 28)):   # 選後不顯示(使用者 11-28)
         try:
             complete: list[dict] = []
             outs = _poly_outright(slug, zh, top=top,

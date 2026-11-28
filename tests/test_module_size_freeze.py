@@ -239,6 +239,7 @@ MODULE_CEILINGS = {
     "tennis_market_context.py": 85,  # dated final/market identity; no network or state
     "source_text.py": 65,
     "journal_selection.py": 55,
+    "net_retry.py": 25,   # 期交所逾時同日再試(2026-11-28)
     "target_price.py": 45,   # 證據核對的目標價位置(2026-11-27,外審 PR #70)
     "history_quality.py": 55,
     "official_announcements.py": 70,

@@ -19,7 +19,7 @@ def destination(label: str, title: str) -> str:
     """Narrow positive topic signals; keep specialist hospital/school coverage."""
     if label not in {"彰化重點追蹤", "建設", "房市", "建商動態", "產業/科技", "選情"}:
         return label
-    if re.search(r"競總|造勢|後援會|民調|選情|選戰|競選|選舉", title):
+    if re.search(r"競總|造勢|後援會|民調|選情|選戰|競選|選舉|選前之夜|車掃|掃街|催票|拜票", title):
         return "選情"
     if label in {"建設", "產業/科技"} and re.search(r"推案|預售屋|房價|房市|住宅|建案", title):
         if not re.search(r"晶圓廠|半導體廠|廠房|產線", title):

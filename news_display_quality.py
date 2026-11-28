@@ -71,7 +71,7 @@ def stale_title_date(title, today) -> bool:
 
 def relevant(label: str, title: str) -> bool:
     # A stock discussion repost is not local reporting, even with a ticker prefix.
-    if forum_post(title):
+    if forum_post(title) or re.search(r"-\s*Facebook\s*$", title):   # 社群貼文不是在地報導(11-28 實信)
         return False
     if re.match(r"^\s*討論牆\s*[|｜]", title):
         return False

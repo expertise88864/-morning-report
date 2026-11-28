@@ -49,14 +49,15 @@ _DISPLAY = {"二、總經指標": "一、總經指標", "五、行情與開盤�
 _DISPLAY_RE = re.compile(r"(?<=>)(\s*)(" + "|".join(map(re.escape, _DISPLAY)) + ")")
 _GRADE_NOTE = ('<div style="font-size:12px;color:#64748b;margin:0 0 8px;">'
                "※ A 級＝有具體數字或正式公告；B 級＝只有方向性訊號、資訊有限。信心＝對這個判斷的把握。標「未核實」的數字＝在引用的新聞、行情與官方營收財報裡都對不到。</div>")
-_TECH_H = re.compile(r"(<h[1-6]\b[^>]*>\s*六、科技板塊脈動[^<]*</h[1-6]>)")
+_TECH_H = re.compile(r"(<h[1-6]\b[^>]*>\s*[一二三四五六七八九十]、科技板塊脈動[^<]*</h[1-6]>)")
 
 
 def display_pass(html: str) -> str:
     """只用在寄出去的那份(存檔與跨日回顧靠內部段落名,外審 PR #41):重新編號、換掉寫稿用語、
     補 A/B 級說明。失敗就寄原信。"""
     try:
-        out = _DISPLAY_RE.sub(lambda m: m[1] + _DISPLAY[m[2]], str(html or ""))
+        seen = list(dict.fromkeys(m[2] for m in _DISPLAY_RE.finditer(str(html or ""))))   # 依實際出現順序編號(11-28 實信:四→六)
+        out = _DISPLAY_RE.sub(lambda m: m[1] + "一二三四五六七八九十"[seen.index(m[2])] + _DISPLAY[m[2]][1:], str(html or ""))
         out = out.replace("新聞清單", "新聞")
         return _TECH_H.sub(lambda m: m[1] + _GRADE_NOTE, out, count=1)
     except Exception as exc:  # noqa: BLE001 - 晨報不可斷

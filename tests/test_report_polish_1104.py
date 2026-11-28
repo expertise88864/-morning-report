@@ -46,10 +46,12 @@ def test_section_order_and_terms_are_fixed_by_python():
 
 
 def test_display_pass_renumbers_scrubs_and_adds_the_grade_note():
-    html = ('<h2 style="x">七、昨夜三大重點</h2><p>新聞清單無對應事件</p><h2>七之二、世界大事速覽</h2>'
+    html = ('<h2>二、總經指標</h2><h2>五、行情與開盤展望</h2>'
+            '<h2 style="x">七、昨夜三大重點</h2><p>新聞清單無對應事件</p><h2>七之二、世界大事速覽</h2>'
             '<h2>七之四、敘事變化(昨日觀點)</h2><h2 style="y">八、科技板塊脈動</h2><p>x</p><h2>十、台灣本地動態</h2>')
     out = rp.display_pass(html)
-    for want in (">三、昨夜三大重點<", ">四、世界大事速覽<", ">五、敘事變化(昨日觀點)<", ">六、科技板塊脈動<", ">八、台灣本地動態<"):
+    # 11-28:依實際出現的段落連續編號 —— 其他類股缺席時,台灣本地動態接在科技之後是七,不再跳號
+    for want in (">三、昨夜三大重點<", ">四、世界大事速覽<", ">五、敘事變化(昨日觀點)<", ">六、科技板塊脈動<", ">七、台灣本地動態<"):
         assert want in out
     assert "新聞清單" not in out and out.count("A 級＝") == 1
     assert out.index("六、科技") < out.index("A 級＝") < out.index("<p>x</p>")

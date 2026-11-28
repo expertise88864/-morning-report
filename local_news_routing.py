@@ -34,9 +34,9 @@ def select(candidates: list, queries: list, per_label: int, *, is_dup, seen_entr
     for label, item in candidates:
         title = item["title"]
         target = destination(label, title)
-        if target not in buckets or not relevant(target, title):
+        if target not in buckets or not relevant(target, title) or not relevant(target, item.get("raw") or title):   # 截斷前才看得到「- Facebook」(PR #71)
             continue
-        buckets[target].append(item)
+        buckets[target].append({k: v for k, v in item.items() if k != "raw"})
     out, seen, awards = {}, [], set()
     for label, items in buckets.items():
         kept = []

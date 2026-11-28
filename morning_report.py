@@ -16805,7 +16805,7 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                 if not event_date_relevant(label, title, now_utc.astimezone(TPE).date()):
                     continue
                 candidates.append((label, {"title": title,
-                                           "link": str(entry.get("link", ""))}))
+                                           "link": str(entry.get("link", "")), "raw": str(entry.get("title", ""))}))   # raw:截斷前的標題(來源尾綴)
         except Exception as e:
             print(f"[local] 在地快訊 {label} 抓取失敗: {e}", file=sys.stderr)
     from local_news_routing import select
@@ -19797,7 +19797,7 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     # 5) 台灣總統大選(2028 盤截至 2026-07 尚未開;動態搜尋,市場一開自動出現。
     #    與 Fed 動態流程同款:取 endDate 最近的未來場,再以 slug 補抓 markets)
     try:
-        tw = [e for e in _poly_search_events("Taiwan presidential election")
+        tw = [] if now_tpe.date() > dt.date(2026, 11, 28) else [e for e in _poly_search_events("Taiwan presidential election")   # 選後台灣選舉盤都不顯示(使用者 11-28)
               if not e.get("closed")
               and "Taiwan Presidential Election" in str(e.get("title", ""))
               and _poly_event_is_future(e, now_utc)]

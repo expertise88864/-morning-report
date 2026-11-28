@@ -3,6 +3,36 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "dd46aac0-dc98-49c4-b467-7799fb9abce6",
+        "title": "EP718 | 🦝",
+        "published": "Sat, 28 Nov 2026 08:31:25 GMT",
+        "processed_at": "2026-11-28T10:00:27Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出中國 CSP 與 AI 算力大戶在美國 BIS 新禁令後已下修訂單、DRAM/NAND 現貨價下滑，中國廠商轉保守；他認為這是可能外溢到全球的灰犀牛，若整體 AI 成長遭下修，現在便宜股未必真的便宜。",
+            "他認為這波下跌已把市場浮額洗得乾淨，可期待反彈，但只先當反彈波看，關鍵是反彈到季線附近若再轉弱，就要用 2022 年式高警覺劇本應對。",
+            "操作指導原則是不用槓桿、保留現金；若 CDS 擴大、基金限制贖回、銀行抽銀根等系統性風險訊號出現，會考慮轉向美債，並等 VIX 回落、市場回穩再動作。",
+            "選股開始轉向低 AI 曝險、有殖利率、且公司真金白銀買庫藏股的價值股；他會查公司過往執行率，公司敢買是重要加分項。",
+            "衛星供應鏈近期反彈最強、有政策題材，但他提醒已開始變擁擠，台股越有共識的題材下殺越恐怖，短中期題材要用抓的、見招拆招。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為現在市場洗得乾淨、可以期待反彈，但他只先當反彈波處理；反彈到季線附近若無法站上並再轉弱，將視為較大修正的警訊。",
+          "action_view": "操作上保留現金、不用槓桿，以情境規劃應對；若系統性風險訊號出現會考慮轉往美債，選股轉向低 AI 曝險、有殖利率且公司真買庫藏股的標的。",
+          "notable_quote": "",
+          "quote_evidence": {
+            "version": 1,
+            "status": "unverified",
+            "quote": ""
+          },
+          "direction_quality": {
+            "attributed": 0,
+            "non_investment": 0,
+            "unverified": 0,
+            "invalid": 0
+          }
+        }
+      },
+      {
         "guid": "3da75e11-4344-41d7-be41-55d516ec4991",
         "title": "EP717 | 🦪",
         "published": "Wed, 25 Nov 2026 07:57:33 GMT",
@@ -706,122 +736,6 @@
           }
         },
         "shown_at": "2026-10-21T22:39:59Z"
-      },
-      {
-        "guid": "b815e52b-b0b9-47d2-980b-baf1857cd604",
-        "title": "EP706 | 👑",
-        "published": "Sat, 17 Oct 2026 06:49:12 GMT",
-        "processed_at": "2026-10-17T12:53:28Z",
-        "digest": {
-          "summary_points": [
-            "主持人判斷盤面已進入多頭中後段，強勢股越來越少、資減異常只有50億，後市可能「殺一下」，自己已轉為相對保守，並降低動能題材部位、保留現金。",
-            "主持人指出韓國股市（記憶體重鎮）破底，硬體供應鏈估值可能下修；台積電法說樂觀但股價彈不起來，是重要警訊，後續若無新利多（如戰爭停火）大盤恐難推升。",
-            "主持人認為資金可能沿「infrastructure → platform → application」三部曲輪動，軟體股有機會接棒；下一波反彈若硬體起不來，過去給硬體的高估值可能回不去，自己將加碼軟體。",
-            "主持人對Neo Cloud（CoreWeave、Nabius 等）看法修正：因產能不大，最糟可能是被巨頭收購、公司不會爆炸，但股價仍有機會「狂崩」；本輪修正可能由這類風險或爆倉故事觸發，他傾向保守、不開槓桿抄底。",
-            "主持人操作上控制回撤，避免重演七月大虧；抄底時選擇指數優於主題ETF（NASDAQ > SOX、標普 > NASDAQ），並強調不要用槓桿型工具，需設計戰略縱深，等反彈確認後再加碼。"
-          ],
-          "tickers": [
-            {
-              "name": "Avago",
-              "code": "AVGO",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人買蠻多，認為 MTK 搶市佔會掉 Share 但不代表公司不行，後續仍有開案、品質好且有漲價空間，用明後年 EPS 回算不貴，類似當時的 Nvidia。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "用它的可能明後年的EPS來回算的話,它並不是一個貴的股票,因為類似那時候的Invidia",
-                "direction": "bullish"
-              }
-            },
-            {
-              "name": "CoreWeave",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為 Neo Cloud 風險大、不喜歡，雖然公司因產能不大可能被收購、不至於爆炸，但股價仍有機會狂崩，是市場修正的可能劇本之一。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "attributed",
-                "quote": "他們確實是扛了不對稱的風險",
-                "direction": "bearish"
-              }
-            },
-            {
-              "name": "Nabius",
-              "code": "",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人同樣視為 Neo Cloud，風險大、不喜歡，雖不至於爆炸但股價可能狂崩，提醒滿手高貝塔標的要注意前波低點警訊。",
-              "stance_basis": "investment_view",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人對 Roadster 發布會技術展示感到震撼，個人已訂購 Frost 版本，但未對 Tesla 股票給出投資方向，屬產品愛好與消費分享。",
-              "stance_basis": "non_investment",
-              "direction_evidence": {
-                "version": 1,
-                "status": "non_investment",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "Micron",
-              "code": "MU",
-              "market": "US",
-              "direction": "unknown",
-              "reason": "主持人表示記憶體是 2025-2026 可能的大贏家，但自己只剩美光，其他早已被洗掉，未對美光及記憶體給出明確買賣建議。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "unknown",
-              "reason": "主持人認為台積電法說樂觀但股價未能反彈，是大盤的警訊，並未直接看空台積電本身。",
-              "stance_basis": "unclear",
-              "direction_evidence": {
-                "version": 1,
-                "status": "unverified",
-                "quote": "",
-                "direction": ""
-              }
-            }
-          ],
-          "market_view": "主持人認為盤面已進入相對警覺狀態，強勢股減少、資減異常少，後續可能有回調；目前暫以技術回調看待，關鍵在下一波反彈若硬體起不來則要更加保守。",
-          "action_view": "操作上主持人會壓低部位、保留現金，避開槓桿抄底；抄底時偏好指數優於主題ETF，並等待軟體或硬體誰先站回再決定加碼。",
-          "notable_quote": "我已經覺得有點不對勁,已經有蠻多東西已經進入了跌破季線,或者說轉空的一個狀態",
-          "quote_evidence": {
-            "version": 1,
-            "status": "verbatim",
-            "quote": "我已經覺得有點不對勁,已經有蠻多東西已經進入了跌破季線,或者說轉空的一個狀態"
-          },
-          "direction_quality": {
-            "attributed": 2,
-            "non_investment": 1,
-            "unverified": 3,
-            "invalid": 0
-          }
-        },
-        "shown_at": "2026-10-17T22:09:38Z"
       }
     ]
   },
